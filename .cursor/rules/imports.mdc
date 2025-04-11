@@ -1,0 +1,64 @@
+---
+description: Cairo Imports
+globs: *.ts,*.tsx,*.js,*.jsx
+---
+# Imports in Starknet Agent
+
+## External Libraries
+
+### Backend and Agent Libraries
+- `express`: Web server framework.
+  - Used in: `packages/backend/src/app.ts`
+  - Import: `import express from 'express';`
+- `ws`: WebSocket library for real-time communication.
+  - Used in: `packages/backend/src/websocket/`
+  - Import: `import WebSocket from 'ws';`
+- `mongodb`: MongoDB client for database operations.
+  - Used in: `packages/agents/src/db/`
+  - Import: `import { MongoClient } from 'mongodb';`
+- `anthropic`: Anthropic Claude API client.
+  - Used in: `packages/agents/src/lib/`
+  - Import: `import Anthropic from '@anthropic-ai/sdk';`
+- `openai`: OpenAI API client.
+  - Used in: `packages/agents/src/lib/`
+  - Import: `import OpenAI from 'openai';`
+
+### Frontend Libraries
+- `react`: UI library.
+  - Used in: `packages/ui/components/`
+  - Import: `import React from 'react';`
+- `next`: React framework.
+  - Used in: `packages/ui/app/`
+  - Import: `import { useRouter } from 'next/router';`
+- `tailwindcss`: CSS framework.
+  - Used in: `packages/ui/components/`
+  - Applied via class names.
+
+## Internal Modules
+
+### Agent Modules
+- `pipeline`: RAG pipeline components.
+  - Used in: `packages/agents/src/ragAgentFactory.ts`
+  - Import: `import { QueryProcessor, DocumentRetriever, ResponseGenerator } from './pipeline';`
+- `config`: Configuration management.
+  - Used in: `packages/agents/src/`
+  - Import: `import { config } from './config';`
+- `db`: Database interaction.
+  - Used in: `packages/agents/src/core/`
+  - Import: `import { VectorStore } from './db/vectorStore';`
+
+### Backend Modules
+- `websocket`: WebSocket server.
+  - Used in: `packages/backend/src/server.ts`
+  - Import: `import { setupWebSocketServer } from './websocket';`
+- `routes`: API routes.
+  - Used in: `packages/backend/src/app.ts`
+  - Import: `import { apiRouter } from './routes';`
+
+### UI Modules
+- `components`: Reusable UI components.
+  - Used in: `packages/ui/app/`
+  - Import: `import { ChatInterface } from '../components/ChatInterface';`
+- `lib/hooks`: Custom React hooks.
+  - Used in: `packages/ui/components/`
+  - Import: `import { useChat } from '../lib/hooks/useChat';`

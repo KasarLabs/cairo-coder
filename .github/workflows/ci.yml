@@ -1,0 +1,130 @@
+name: CI
+
+on:
+  push:
+    branches: [cairo-chatbot, main]
+  pull_request:
+    branches: [cairo-chatbot, main]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: 9.10.0
+
+      - name: Get pnpm store directory
+        id: pnpm-cache
+        shell: bash
+        run: |
+          echo "STORE_PATH=$(pnpm store path)" >> $GITHUB_OUTPUT
+
+      - name: Setup pnpm cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.pnpm-cache.outputs.STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Install turbo
+        run: pnpm add turbo@latest -g
+      - name: Build
+        run: turbo build
+
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    needs: build
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: 9.10.0
+
+      - name: Get pnpm store directory
+        id: pnpm-cache
+        shell: bash
+        run: |
+          echo "STORE_PATH=$(pnpm store path)" >> $GITHUB_OUTPUT
+
+      - name: Setup pnpm cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.pnpm-cache.outputs.STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Install turbo
+        run: pnpm add turbo@latest -g
+
+      - name: Create config file
+        run: |
+          mkdir -p packages/agents
+          cat > packages/agents/config.toml << 'EOL'
+          [API_KEYS]
+          OPENAI = "${{ secrets.OPENAI_API_KEY }}"
+          GROQ = "${{ secrets.GROQ_API_KEY }}"
+          ANTHROPIC = "${{ secrets.ANTHROPIC_API_KEY }}"
+          DEEPSEEK = "${{ secrets.DEEPSEEK_API_KEY }}"
+          GEMINI = "${{ secrets.GEMINI_API_KEY }}"
+
+          [API_ENDPOINTS]
+          OLLAMA = "${{ secrets.OLLAMA_ENDPOINT }}"
+
+          [VECTOR_DB]
+          MONGODB_URI = "${{ secrets.MONGODB_URI }}"
+          DB_NAME = "${{ secrets.DB_NAME }}"
+          COLLECTION_NAME = "${{ secrets.COLLECTION_NAME }}"
+
+          [GENERAL]
+          PORT = 3001
+          SIMILARITY_MEASURE = "cosine"
+
+          [HOSTED_MODE]
+          DEFAULT_CHAT_PROVIDER = "${{ secrets.DEFAULT_CHAT_PROVIDER }}"
+          DEFAULT_CHAT_MODEL = "${{ secrets.DEFAULT_CHAT_MODEL }}"
+          DEFAULT_FAST_CHAT_PROVIDER = "${{ secrets.DEFAULT_FAST_CHAT_PROVIDER }}"
+          DEFAULT_FAST_CHAT_MODEL = "${{ secrets.DEFAULT_FAST_CHAT_MODEL }}"
+          DEFAULT_EMBEDDING_PROVIDER = "${{ secrets.DEFAULT_EMBEDDING_PROVIDER }}"
+          DEFAULT_EMBEDDING_MODEL = "${{ secrets.DEFAULT_EMBEDDING_MODEL }}"
+
+          [VERSIONS]
+          STARKNET_FOUNDRY = "${{ secrets.STARKNET_FOUNDRY_VERSION }}"
+          SCARB = "${{ secrets.SCARB_VERSION }}"
+          EOL
+
+      - name: Run tests
+        run: turbo test

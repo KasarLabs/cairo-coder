@@ -1,0 +1,227 @@
+{
+  "version": "2.0.0",
+  "metadata": {
+    "owner": "OpenZeppelin",
+    "repository": "cairo-contracts"
+  },
+  "testCases": [
+    {
+      "query": "What architectural pattern does OpenZeppelin Contracts for Cairo use?",
+      "expectedTopics": ["components", "architecture", "design pattern"],
+      "expectedContent": "OpenZeppelin Contracts for Cairo uses a component-based architecture where components are modular building blocks containing storage, events, and implementations that must be explicitly instantiated, promoting composition over inheritance.",
+      "type": "factual",
+      "difficulty": "intermediate",
+      "tags": ["architecture", "components"]
+    },
+    {
+      "query": "How does the component model in Cairo contracts differ from the inheritance model in Solidity contracts?",
+      "expectedTopics": ["components", "inheritance", "Solidity comparison"],
+      "expectedContent": "Unlike inheritance in Solidity, Cairo components must be explicitly instantiated and integrated. This promotes a more explicit composition model with greater separation of concerns and granular implementations.",
+      "type": "conceptual",
+      "difficulty": "intermediate",
+      "tags": ["architecture", "Solidity", "comparison"]
+    },
+    {
+      "query": "How do you customize the behavior of a component in OpenZeppelin Contracts for Cairo?",
+      "expectedTopics": ["customization", "hooks", "custom implementations"],
+      "expectedContent": "Components can be customized using hooks (to insert custom logic before/after operations), custom implementations (to modify component behavior), and the Immutable Config pattern (to define constants for components).",
+      "type": "procedural",
+      "difficulty": "intermediate",
+      "tags": ["customization", "hooks", "configuration"]
+    },
+    {
+      "query": "How do you implement ERC20 token with OpenZeppelin Contracts for Cairo?",
+      "expectedTopics": ["ERC20", "token implementation", "ERC20Component"],
+      "expectedContent": "Implement ERC20 by instantiating the ERC20Component, configuring options like name, symbol, and decimals, and using the provided functions such as transfer, approve, and mint.",
+      "type": "procedural",
+      "difficulty": "basic",
+      "tags": ["ERC20", "tokens", "implementation"]
+    },
+    {
+      "query": "What are the supported decimals configuration options for ERC20 tokens?",
+      "expectedTopics": ["ERC20", "decimals", "configuration"],
+      "expectedContent": "ERC20 tokens support decimals configuration through either a static approach using ImmutableConfig (default is 18) or a storage approach for dynamic decimals, which is useful for factory contracts.",
+      "type": "factual",
+      "difficulty": "basic",
+      "tags": ["ERC20", "decimals", "configuration"]
+    },
+    {
+      "query": "How does OpenZeppelin Contracts for Cairo handle method naming conventions?",
+      "expectedTopics": [
+        "naming conventions",
+        "interfaces",
+        "snake_case",
+        "camelCase"
+      ],
+      "expectedContent": "OpenZeppelin Contracts for Cairo supports dual interfaces with both snake_case (Cairo standard) and camelCase (EVM compatibility) method naming conventions.",
+      "type": "factual",
+      "difficulty": "basic",
+      "tags": ["interfaces", "naming", "conventions"]
+    },
+    {
+      "query": "How do you implement access control in OpenZeppelin Contracts for Cairo?",
+      "expectedTopics": [
+        "access control",
+        "OwnableComponent",
+        "AccessControlComponent"
+      ],
+      "expectedContent": "Use either OwnableComponent for simple admin patterns with a single owner, or AccessControlComponent for role-based access control with custom roles, role administration, and permission management.",
+      "type": "procedural",
+      "difficulty": "intermediate",
+      "tags": ["security", "access control", "permissions"]
+    },
+    {
+      "query": "What security components are available in OpenZeppelin Contracts for Cairo?",
+      "expectedTopics": [
+        "security",
+        "Initializable",
+        "Pausable",
+        "ReentrancyGuard"
+      ],
+      "expectedContent": "Security components include Initializable (one-time initialization), Pausable (emergency stop mechanism), and ReentrancyGuard (protection against reentrancy attacks).",
+      "type": "factual",
+      "difficulty": "intermediate",
+      "tags": ["security", "components"]
+    },
+    {
+      "query": "How does contract upgradeability work in Starknet compared to EVM chains?",
+      "expectedTopics": ["upgrades", "replace_class", "proxy patterns"],
+      "expectedContent": "Starknet uses native upgradeability through the replace_class syscall, eliminating the need for proxy patterns as used in EVM chains. UpgradeableComponent implements this secure upgrade pattern.",
+      "type": "conceptual",
+      "difficulty": "advanced",
+      "tags": ["upgrades", "Starknet", "EVM comparison"]
+    },
+    {
+      "query": "What is the purpose of the Votes component in OpenZeppelin Contracts for Cairo?",
+      "expectedTopics": ["governance", "voting", "delegation"],
+      "expectedContent": "The Votes component provides token-based voting power tracking and delegation, working with both ERC20 and ERC721 tokens, and using historical snapshots to prevent double voting in governance systems.",
+      "type": "factual",
+      "difficulty": "intermediate",
+      "tags": ["governance", "voting", "delegation"]
+    },
+    {
+      "query": "How do you implement on-chain governance with OpenZeppelin Contracts for Cairo?",
+      "expectedTopics": ["governance", "Governor", "proposals", "voting"],
+      "expectedContent": "Implement on-chain governance using the Governor component (for proposals, voting, and execution), Votes component (for token-based voting power), and optionally the Timelock Controller (for delayed execution).",
+      "type": "procedural",
+      "difficulty": "advanced",
+      "tags": ["governance", "proposals", "voting"]
+    },
+    {
+      "query": "What is the purpose of the Timelock Controller in governance systems?",
+      "expectedTopics": ["governance", "timelock", "execution delay"],
+      "expectedContent": "The Timelock Controller adds mandatory time delays between proposal approval and execution, allowing users to exit if they disagree with decisions, enhancing security for governance actions.",
+      "type": "conceptual",
+      "difficulty": "intermediate",
+      "tags": ["governance", "timelock", "security"]
+    },
+    {
+      "query": "How do you implement a Multisig wallet with OpenZeppelin Contracts for Cairo?",
+      "expectedTopics": ["multisig", "multiple signers", "quorum"],
+      "expectedContent": "Use the Multisig component which implements collective decision-making requiring multiple signers to approve transactions, with configurable quorum requirements and transaction lifecycle management.",
+      "type": "procedural",
+      "difficulty": "intermediate",
+      "tags": ["multisig", "security", "governance"]
+    },
+    {
+      "query": "How does token URI work in the ERC721 implementation?",
+      "expectedTopics": ["ERC721", "token URI", "metadata"],
+      "expectedContent": "The ERC721 implementation stores a base URI as a ByteArray and concatenates it with the token ID to form complete token URIs for metadata retrieval.",
+      "type": "factual",
+      "difficulty": "basic",
+      "tags": ["ERC721", "metadata", "NFT"]
+    },
+    {
+      "query": "What is the purpose of the SRC5 introspection standard?",
+      "expectedTopics": ["SRC5", "introspection", "interface detection"],
+      "expectedContent": "SRC5 is Starknet's interface detection standard (similar to ERC165) that allows contracts to declare which interfaces they support and for others to query this support.",
+      "type": "factual",
+      "difficulty": "intermediate",
+      "tags": ["standards", "introspection", "interfaces"]
+    },
+    {
+      "query": "How do you implement ERC1155 multi-token standard with OpenZeppelin Contracts for Cairo?",
+      "expectedTopics": ["ERC1155", "multi-token", "fungible and non-fungible"],
+      "expectedContent": "Implement ERC1155 by instantiating the ERC1155Component which supports both fungible and non-fungible tokens with batch operations and per-token metadata.",
+      "type": "procedural",
+      "difficulty": "intermediate",
+      "tags": ["ERC1155", "tokens", "implementation"]
+    },
+    {
+      "query": "What testing utilities does OpenZeppelin provide for Cairo contracts?",
+      "expectedTopics": ["testing", "Starknet Foundry", "test utilities"],
+      "expectedContent": "OpenZeppelin provides testing utilities in the openzeppelin_testing package to facilitate testing with Starknet Foundry, with version decoupled from cairo-contracts.",
+      "type": "factual",
+      "difficulty": "intermediate",
+      "tags": ["testing", "development", "tools"]
+    },
+    {
+      "query": "How do you implement the Permit extension for ERC20 tokens?",
+      "expectedTopics": ["ERC20", "permit", "signatures"],
+      "expectedContent": "Implement Permit by integrating the ERC20PermitComponent which enables gas-less approvals through off-chain signatures, following the EIP-2612 standard.",
+      "type": "procedural",
+      "difficulty": "advanced",
+      "tags": ["ERC20", "permit", "signatures"]
+    },
+    {
+      "query": "What is the Universal Deployer Contract (UDC) and how is it used?",
+      "expectedTopics": ["UDC", "deployment", "contracts"],
+      "expectedContent": "The Universal Deployer Contract (UDC) is a utility contract for deploying other contracts on Starknet, allowing for deterministic addresses and simplified deployment processes.",
+      "type": "factual",
+      "difficulty": "intermediate",
+      "tags": ["deployment", "tools", "infrastructure"]
+    },
+    {
+      "query": "How do you implement safe transfers in ERC721?",
+      "expectedTopics": ["ERC721", "safe transfer", "receiver contracts"],
+      "expectedContent": "Safe transfers in ERC721 check if the recipient is a contract implementing the IERC721Receiver interface and call onERC721Received to ensure the recipient can handle the token.",
+      "type": "procedural",
+      "difficulty": "intermediate",
+      "tags": ["ERC721", "safety", "transfers"]
+    },
+    {
+      "query": "What are the security considerations when upgrading contracts?",
+      "expectedTopics": ["upgrades", "security", "storage"],
+      "expectedContent": "Security considerations for upgrades include handling API changes, ensuring storage compatibility, preventing storage collisions, and properly migrating data when needed.",
+      "type": "conceptual",
+      "difficulty": "advanced",
+      "tags": ["upgrades", "security", "storage"]
+    },
+    {
+      "query": "How does the Pausable component work to provide emergency stop functionality?",
+      "expectedTopics": ["security", "Pausable", "emergency stop"],
+      "expectedContent": "The Pausable component provides an emergency stop mechanism with pause/unpause functions and a modifier to restrict functions when paused, useful for responding to discovered vulnerabilities.",
+      "type": "factual",
+      "difficulty": "basic",
+      "tags": ["security", "emergency", "controls"]
+    },
+    {
+      "query": "What is the difference between OwnableComponent and AccessControlComponent?",
+      "expectedTopics": ["access control", "ownership", "roles"],
+      "expectedContent": "OwnableComponent provides a simple ownership model with a single owner, while AccessControlComponent offers granular role-based access control with custom roles and role administration capabilities.",
+      "type": "conceptual",
+      "difficulty": "basic",
+      "tags": ["security", "access control", "comparison"]
+    },
+    {
+      "query": "How do you implement custom token supply mechanisms in ERC20?",
+      "expectedTopics": ["ERC20", "supply", "minting", "burning"],
+      "expectedContent": "Customize token supply by integrating supply-related components like ERC20MintableComponent for minting or ERC20BurnableComponent for burning, allowing flexible supply management.",
+      "type": "procedural",
+      "difficulty": "intermediate",
+      "tags": ["ERC20", "supply", "customization"]
+    },
+    {
+      "query": "How do you use the Initializable component to secure contract initialization?",
+      "expectedTopics": [
+        "security",
+        "initialization",
+        "constructor alternative"
+      ],
+      "expectedContent": "Use the Initializable component to implement one-time initialization for contracts, replacing constructors and ensuring functions can only be called once during setup.",
+      "type": "procedural",
+      "difficulty": "intermediate",
+      "tags": ["security", "initialization", "patterns"]
+    }
+  ]
+}
