@@ -1,11 +1,4 @@
-import { CorsOptions } from 'cors';
-import { ModelConfig } from '../lib/modelProviderService';
-
-export interface ServerConfig {
-  port: number;
-  models: ModelConfig;
-  cors: CorsOptions;
-}
+import { ServerConfig } from './types';
 
 export function validateConfig(config: ServerConfig): void {
   if (!config.port) {

@@ -1,13 +1,4 @@
-import { ModelConfig } from '../lib/modelProviderService';
-import { Express } from 'express';
-import { WebSocketServer } from 'ws';
-import { ServerConfig } from '../config/server';
-
-export interface ServerContext {
-  config: ServerConfig;
-  app?: Express;
-  wss?: WebSocketServer;
-}
+import { ServerContext } from '../utils/types';
 
 export class Container {
   private static instance: Container;

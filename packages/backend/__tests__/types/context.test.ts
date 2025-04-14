@@ -1,6 +1,6 @@
-import { Container, ServerContext } from '../../src/types/context';
+import { Container } from '../../src/config/context';
 import { Express } from 'express';
-import { ServerConfig } from '../../src/config/server';
+import { ServerConfig, ServerContext } from '../../src/utils/types';
 
 describe('Container', () => {
   // Clear the Container instance before each test

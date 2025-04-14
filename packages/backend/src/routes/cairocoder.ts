@@ -1,58 +1,21 @@
+import express, { Router } from 'express';
 import { AIMessage } from '@langchain/core/messages';
 import { HumanMessage } from '@langchain/core/messages';
 import { SystemMessage } from '@langchain/core/messages';
 import { BaseMessage } from '@langchain/core/messages';
 import { getVectorDbConfig } from '@starknet-agent/agents/config';
-import logger from '../../utils/logger';
+import logger from '../utils/logger';
 import { v4 as uuidv4 } from 'uuid';
-import { Request, Response } from 'express';
 import {
   LLMConfig,
   VectorStore,
   RagAgentFactory,
-  AvailableAgents,
 } from '@starknet-agent/agents/index';
+import { ChatCompletionRequest } from '../utils/types';
 
-interface ChatCompletionRequest {
-  model: string;
-  messages: Array<{
-    role: string;
-    content: string;
-    name?: string;
-    function_call?: {
-      name: string;
-      arguments: string;
-    };
-  }>;
-  functions?: Array<{
-    name: string;
-    description?: string;
-    parameters: Record<string, any>;
-  }>;
-  function_call?: string | { name: string };
-  tools?: Array<{
-    type: string;
-    function: {
-      name: string;
-      description?: string;
-      parameters: Record<string, any>;
-    };
-  }>;
-  tool_choice?: string | { type: string; function: { name: string } };
-  temperature?: number;
-  top_p?: number;
-  n?: number;
-  stream?: boolean;
-  stop?: string | string[];
-  max_tokens?: number;
-  presence_penalty?: number;
-  frequency_penalty?: number;
-  logit_bias?: Record<string, number>;
-  user?: string;
-  response_format?: { type: 'text' | 'json_object' };
-}
+const router: Router = express.Router();
 
-export const chatEndpoint = async (req, res) => {
+router.post('/', async (req, res) => {
   try {
     const {
       model,
@@ -247,7 +210,7 @@ export const chatEndpoint = async (req, res) => {
       },
     });
   }
-};
+});
 
 // Convert OpenAI message format to LangChain format
 function convertToLangChainMessages(messages: any[]): BaseMessage[] {
@@ -264,3 +227,5 @@ function convertToLangChainMessages(messages: any[]): BaseMessage[] {
     }
   });
 }
+
+export default router;

@@ -3,16 +3,10 @@ import type { Embeddings } from '@langchain/core/embeddings';
 import {
   getAvailableEmbeddingModelProviders,
   getAvailableChatModelProviders,
-} from './providers';
+} from './llmProvider';
 import { getHostedModeConfig } from '@starknet-agent/agents/config';
 import logger from '../utils/logger';
-
-export interface ModelConfig {
-  defaultLLM: BaseChatModel;
-  fastLLM: BaseChatModel;
-  embeddings: Embeddings;
-}
-
+import { ModelConfig } from '../utils/types';
 let modelConfig: ModelConfig | null = null;
 
 export async function initializeLLMConfig(): Promise<ModelConfig> {

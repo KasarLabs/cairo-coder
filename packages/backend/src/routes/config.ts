@@ -2,7 +2,7 @@ import express, { Router } from 'express';
 import {
   getAvailableChatModelProviders,
   getAvailableEmbeddingModelProviders,
-} from '../lib/providers';
+} from '../config/llmProvider';
 import {
   getGroqApiKey,
   getOllamaApiEndpoint,

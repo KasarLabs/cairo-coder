@@ -1,11 +1,11 @@
 import { createApplication } from '../src/server';
-import { Container } from '../src/types/context';
+import { Container } from '../src/config/context';
 import express from 'express';
 import { Server } from 'http';
 import supertest from 'supertest';
 
 describe('Server', () => {
-  jest.mock('../src/lib/modelProviderService', () => ({
+  jest.mock('../src/config/llm', () => ({
     initializeLLMConfig: jest.fn().mockResolvedValue({
       defaultLLM: {},
       fastLLM: {},
@@ -27,7 +27,7 @@ describe('Server', () => {
 
 
   // Mock HTTP handling to avoid actual initialization
-  jest.mock('../src/http', () => ({
+  jest.mock('../src/config/http', () => ({
     initializeHTTP: jest.fn(),
   }));
 

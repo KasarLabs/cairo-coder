@@ -1,7 +1,7 @@
 import express from 'express';
 import routes from '../routes';
 import logger from '../utils/logger';
-import { Container } from '../types/context';
+import { Container } from './context';
 
 export function initializeHTTP(app: express.Application, container: Container) {
   const context = container.getContext();

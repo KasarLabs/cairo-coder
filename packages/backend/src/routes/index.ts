@@ -1,10 +1,10 @@
 import express, { Router } from 'express';
 import configRouter from './config';
-import openaiRouter from './openai';
+import cairocoderRouter from './cairocoder';
 
 const router: Router = express.Router();
 
-router.use('/api/config', configRouter);
-router.use('/v1', openaiRouter);
+router.use('/config', configRouter);
+router.use('/cairocoder', cairocoderRouter);
 
 export default router;
