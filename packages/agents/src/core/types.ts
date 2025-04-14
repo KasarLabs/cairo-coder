@@ -8,17 +8,10 @@ export interface AgentPrompts {
   noSourceFoundPrompt?: string;
 }
 
-export interface QueryClassifier {
-  isNotNeeded: (query: string) => boolean;
-  isContractQuery: (query: string, context: string) => boolean;
-  isTermQuery: (query: string, tag: string) => boolean;
-}
-
 export interface AgentConfig {
   name: string;
   prompts: AgentPrompts;
   vectorStore: VectorStore;
-  queryClassifier?: QueryClassifier;
   preprocessDocs?: (docs: Document[]) => Promise<Document[]>;
 }
 

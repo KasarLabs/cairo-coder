@@ -16,37 +16,6 @@ export const parseXMLContent = (xml: string, tag: string): string[] => {
   return matches.map((match) => match[1].trim());
 };
 
-// Default query classifier that checks for contract-related terms
-const defaultQueryClassifier = {
-  isNotNeeded: (query: string): boolean => {
-    return query.includes('<response>not_needed</response>');
-  },
-
-  isTermQuery: (query: string, tag: string): boolean => {
-    return query.includes(`<${tag}>`);
-  },
-
-  isContractQuery: (query: string, context: string): boolean => {
-    const contractTerms = [
-      'contract',
-      'storage',
-      'event',
-      'interface',
-      'abi',
-      'function',
-      'map',
-      'vec',
-    ];
-
-    const lowercaseQuery = query.toLowerCase();
-    const lowercaseContext = context.toLowerCase();
-
-    return (
-      contractTerms.some((term) => lowercaseQuery.includes(term)) ||
-      context.includes('<search_terms>')
-    );
-  },
-};
 
 export type AvailableAgents = 'cairoCoder';
 
@@ -60,7 +29,6 @@ export const createAgentConfigs = (
     vectorStore,
     contractTemplate: basicContractTemplate,
     testTemplate: basicTestTemplate,
-    queryClassifier: defaultQueryClassifier,
     maxSourceCount: 15,
     similarityThreshold: 0.4,
     sources: [
