@@ -3,7 +3,6 @@ import { Container } from '../src/types/context';
 import express from 'express';
 import { Server } from 'http';
 import supertest from 'supertest';
-import { WebSocketServer } from 'ws';
 
 describe('Server', () => {
   jest.mock('../src/lib/modelProviderService', () => ({
@@ -26,12 +25,6 @@ describe('Server', () => {
     getCairoByExampleDbConfig: jest.fn().mockReturnValue({}),
   }));
 
-  // Mock WebSocket handling to avoid actual initialization
-  jest.mock('../src/websocket', () => ({
-    initializeWebSocket: jest
-      .fn()
-      .mockReturnValue(new WebSocketServer({ noServer: true })),
-  }));
 
   // Mock HTTP handling to avoid actual initialization
   jest.mock('../src/http', () => ({
@@ -96,16 +89,6 @@ describe('Server', () => {
     expect(response.headers['access-control-allow-origin']).toBeDefined();
   });
 
-  it('should create a WebSocketServer', async () => {
-    // Act
-    await createApplication();
-    const context = Container.getInstance().getContext();
-
-    // Assert
-    expect(context.wss).toBeDefined();
-    expect(context.wss).toBeInstanceOf(WebSocketServer);
-  });
-
   it('should set up the correct Container context', async () => {
     // Act
     await createApplication();
@@ -113,7 +96,6 @@ describe('Server', () => {
 
     // Assert
     expect(context.app).toBeDefined();
-    expect(context.wss).toBeDefined();
     expect(context.config).toBeDefined();
     expect(context.config.port).toBe(3001);
   });

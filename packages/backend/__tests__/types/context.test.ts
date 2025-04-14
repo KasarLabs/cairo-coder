@@ -1,6 +1,5 @@
 import { Container, ServerContext } from '../../src/types/context';
 import { Express } from 'express';
-import { WebSocketServer } from 'ws';
 import { ServerConfig } from '../../src/config/server';
 
 describe('Container', () => {

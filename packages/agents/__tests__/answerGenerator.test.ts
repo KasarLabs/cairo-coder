@@ -13,6 +13,7 @@ import { IterableReadableStream } from '@langchain/core/utils/stream';
 import { BaseMessage, BaseMessageChunk } from '@langchain/core/messages';
 import { BaseLanguageModelInput } from '@langchain/core/language_models/base';
 
+
 // Mock the formatChatHistoryAsString utility
 jest.mock('../src/utils/formatHistory', () => ({
   __esModule: true,

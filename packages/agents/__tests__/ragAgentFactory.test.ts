@@ -7,20 +7,27 @@ import { VectorStore } from '../src/db/vectorStore';
 import { mockDeep, MockProxy } from 'jest-mock-extended';
 import { BaseMessage } from '@langchain/core/messages';
 import EventEmitter from 'events';
+import { DocumentSource } from '../src/core/types';
 
 // Mock the agent configuration and RagPipeline
 jest.mock('../src/config/agentConfigs', () => ({
   AvailableAgents: {
-    cairoBook: 'cairoBook',
-    starknetDocs: 'starknetDocs',
+    cairoCoder: 'cairoCoder',
   },
   getAgentConfig: jest.fn().mockImplementation(() => ({
-    name: 'Mock Agent',
+    name: 'Cairo Coder',
     prompts: {
       searchRetrieverPrompt: 'mock retriever prompt',
       searchResponsePrompt: 'mock response prompt',
     },
     vectorStore: {},
+    maxSourceCount: 15,
+    similarityThreshold: 0.4,
+    sources: [
+      DocumentSource.CAIRO_BOOK,
+      DocumentSource.CAIRO_BY_EXAMPLE,
+      DocumentSource.STARKNET_FOUNDRY,
+    ],
   })),
 }));
 
@@ -49,9 +56,9 @@ describe('RagAgentFactory', () => {
   });
 
   describe('createAgent', () => {
-    it('should create an agent for Cairo Book', () => {
+    it('should create a cairoCoder agent', () => {
       // Arrange
-      const agentName: AvailableAgents = 'cairoBook';
+      const agentName: AvailableAgents = 'cairoCoder';
       const message = 'How do I write a Cairo contract?';
       const history: BaseMessage[] = [];
 
@@ -75,13 +82,18 @@ describe('RagAgentFactory', () => {
       expect(executeSpy).toHaveBeenCalledWith({
         query: message,
         chatHistory: history,
+        sources: [
+          DocumentSource.CAIRO_BOOK,
+          DocumentSource.CAIRO_BY_EXAMPLE,
+          DocumentSource.STARKNET_FOUNDRY,
+        ],
       });
     });
 
-    it('should create an agent for Starknet Docs', () => {
+    it('should handle complex Cairo queries', () => {
       // Arrange
-      const agentName: AvailableAgents = 'starknetDocs';
-      const message = 'What are Starknet transactions?';
+      const agentName: AvailableAgents = 'cairoCoder';
+      const message = 'Explain how to implement ERC20 token in Cairo';
       const history: BaseMessage[] = [];
 
       // Act
@@ -97,6 +109,19 @@ describe('RagAgentFactory', () => {
       // Assert
       expect(RagPipeline).toHaveBeenCalledTimes(1);
       expect(emitter).toBeInstanceOf(EventEmitter);
+      
+      // Check streaming option is passed
+      const executeSpy = (RagPipeline as jest.Mock).mock.results[0].value
+        .execute;
+      expect(executeSpy).toHaveBeenCalledWith({
+        query: message,
+        chatHistory: history,
+        sources: [
+          DocumentSource.CAIRO_BOOK,
+          DocumentSource.CAIRO_BY_EXAMPLE,
+          DocumentSource.STARKNET_FOUNDRY,
+        ],
+      });
     });
   });
 });
