@@ -51,10 +51,10 @@ export interface RagSearchConfig extends AgentConfig {
 
 export enum DocumentSource {
   CAIRO_BOOK = 'cairo_book',
-  // STARKNET_DOCS = 'starknet_docs',
+  STARKNET_DOCS = 'starknet_docs',
   STARKNET_FOUNDRY = 'starknet_foundry',
   CAIRO_BY_EXAMPLE = 'cairo_by_example',
-  // OPENZEPPELIN_DOCS = 'openzeppelin_docs',
+  OPENZEPPELIN_DOCS = 'openzeppelin_docs',
 }
 
 export type BookChunk = {

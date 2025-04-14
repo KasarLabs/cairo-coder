@@ -3,20 +3,12 @@ services:
     build:
       context: .
       dockerfile: backend.dockerfile
-    volumes:
-      - backend-dbstore:/app/data
     ports:
       - 3001:3001
     extra_hosts:
       - host.docker.internal:host-gateway
-    networks:
-      - starknet-agent-network
     restart: unless-stopped
     environment:
       - NODE_ENV=production
 
-networks:
-  starknet-agent-network:
 
-volumes:
-  backend-dbstore:
