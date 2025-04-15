@@ -3,7 +3,8 @@
 import fs from 'fs';
 import path from 'path';
 import toml from '@iarna/toml';
-import { Config, RecursivePartial } from './types';
+import { Config, RecursivePartial } from '../types';
+
 const configFileName = 'config.toml';
 
 const loadConfig = () => {

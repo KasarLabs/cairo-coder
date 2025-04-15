@@ -1,13 +1,12 @@
-import { RagAgentFactory } from '../src/ragAgentFactory';
-import { RagPipeline } from '../src/pipeline/ragPipeline';
-import { AvailableAgents, LLMConfig } from '../src/config/agentConfigs';
+import { RagAgentFactory } from '../src/core/agentFactory';
+import { RagPipeline } from '../src/core/pipeline/ragPipeline';
+import { AvailableAgents, LLMConfig, DocumentSource } from '../src/types';
 import { Embeddings } from '@langchain/core/embeddings';
 import { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import { VectorStore } from '../src/db/vectorStore';
 import { mockDeep, MockProxy } from 'jest-mock-extended';
 import { BaseMessage } from '@langchain/core/messages';
 import EventEmitter from 'events';
-import { DocumentSource } from '../src/core/types';
 
 // Mock the agent configuration and RagPipeline
 jest.mock('../src/config/agentConfigs', () => ({

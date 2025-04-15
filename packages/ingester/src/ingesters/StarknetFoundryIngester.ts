@@ -6,11 +6,10 @@ import { Document } from '@langchain/core/documents';
 import {
   BookChunk,
   DocumentSource,
-  VectorStore,
-} from '@starknet-agent/agents/index';
+} from '@starknet-agent/agents/types/index';
 import { BookConfig, BookPageDto, ParsedSection } from '../utils/types';
 import { processDocFiles } from '../utils/fileUtils';
-import logger from '@starknet-agent/agents/utils/logger';
+import { logger } from '@starknet-agent/agents/utils/index';
 import { exec as execCallback } from 'child_process';
 import { promisify } from 'util';
 import { MarkdownIngester } from './MarkdownIngester';

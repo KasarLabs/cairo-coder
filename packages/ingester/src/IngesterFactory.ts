@@ -1,4 +1,4 @@
-import { DocumentSource } from '@starknet-agent/agents/index';
+import { DocumentSource } from '@starknet-agent/agents/types/index';
 import { BaseIngester } from './BaseIngester';
 import { BookConfig } from './utils/types';
 

@@ -1,4 +1,4 @@
-import { AnswerGenerator } from '../src/pipeline/answerGenerator';
+import { AnswerGenerator } from '../src/core/pipeline/answerGenerator';
 import { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import {
   RagInput,
@@ -6,7 +6,7 @@ import {
   RetrievedDocuments,
   RagSearchConfig,
   DocumentSource,
-} from '../src/core/types';
+} from '../src/types/index';
 import { Document } from '@langchain/core/documents';
 import { mockDeep, MockProxy } from 'jest-mock-extended';
 import { IterableReadableStream } from '@langchain/core/utils/stream';

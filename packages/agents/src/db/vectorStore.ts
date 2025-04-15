@@ -3,8 +3,8 @@ import { MongoClient, Collection, ObjectId, Filter } from 'mongodb';
 import { DocumentInterface } from '@langchain/core/documents';
 import { OpenAIEmbeddings } from '@langchain/openai';
 import { Embeddings } from '@langchain/core/embeddings';
-import logger from '../utils/logger';
-import { VectorStoreConfig } from '../config';
+import { logger } from '../utils';
+import { VectorStoreConfig } from '../types';
 import { DocumentSource } from '../types';
 
 /**

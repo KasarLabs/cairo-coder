@@ -5,8 +5,7 @@ import { Document } from '@langchain/core/documents';
 import {
   BookChunk,
   DocumentSource,
-  VectorStore,
-} from '@starknet-agent/agents/index';
+} from '@starknet-agent/agents/types/index';
 import { BaseIngester } from '../BaseIngester';
 import {
   BookConfig,
@@ -20,7 +19,7 @@ import {
   createAnchor,
 } from '../utils/contentUtils';
 import { processDocFiles } from '../utils/fileUtils';
-import logger from '@starknet-agent/agents/utils/logger';
+import { logger } from '@starknet-agent/agents/utils/index';
 import { execSync } from 'child_process';
 import * as fsSync from 'fs';
 

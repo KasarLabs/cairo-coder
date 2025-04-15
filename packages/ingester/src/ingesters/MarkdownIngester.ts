@@ -6,8 +6,7 @@ import { Document } from '@langchain/core/documents';
 import {
   BookChunk,
   DocumentSource,
-  VectorStore,
-} from '@starknet-agent/agents/index';
+} from '@starknet-agent/agents/types/index';
 import { BaseIngester } from '../BaseIngester';
 import { BookConfig, BookPageDto, ParsedSection } from '../utils/types';
 import { processDocFiles } from '../utils/fileUtils';
@@ -17,7 +16,7 @@ import {
   createAnchor,
   addSectionWithSizeLimit,
 } from '../utils/contentUtils';
-import logger from '@starknet-agent/agents/utils/logger';
+import { logger } from '@starknet-agent/agents/utils/index';
 
 /**
  * Abstract ingester for Markdown-based documentation

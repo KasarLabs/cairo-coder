@@ -1,7 +1,7 @@
 import * as path from 'path';
 import { BookConfig } from '../utils/types';
 import { MarkdownIngester } from './MarkdownIngester';
-import { DocumentSource } from '@starknet-agent/agents/index';
+import { DocumentSource } from '@starknet-agent/agents/types/index';
 
 /**
  * Ingester for the Cairo By Example documentation

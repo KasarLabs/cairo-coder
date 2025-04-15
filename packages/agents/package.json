@@ -24,6 +24,10 @@
     "winston": "^3.17.0"
   },
   "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./dist/index.js"
+    },
     "./*": {
       "types": "./src/*.ts",
       "default": "./dist/*.js"

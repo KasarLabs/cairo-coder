@@ -1,11 +1,11 @@
-import { QueryProcessor } from '../src/pipeline/queryProcessor';
+import { QueryProcessor } from '../src/core/pipeline/queryProcessor';
 import { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import {
   RagInput,
   ProcessedQuery,
   RagSearchConfig,
   DocumentSource,
-} from '../src/core/types';
+} from '../src/types/index';
 import { mockDeep, MockProxy } from 'jest-mock-extended';
 import { AIMessage } from '@langchain/core/messages';
 

@@ -3,14 +3,14 @@ import { AIMessage } from '@langchain/core/messages';
 import { HumanMessage } from '@langchain/core/messages';
 import { SystemMessage } from '@langchain/core/messages';
 import { BaseMessage } from '@langchain/core/messages';
-import { getVectorDbConfig } from '@starknet-agent/agents/config';
-import logger from '@starknet-agent/agents/utils/logger';
 import { v4 as uuidv4 } from 'uuid';
-import {
+import { 
+  getVectorDbConfig,
+  logger,
+  RagAgentFactory,
   LLMConfig,
   VectorStore,
-  RagAgentFactory,
-} from '@starknet-agent/agents/index';
+ } from '@starknet-agent/agents';
 import { ChatCompletionRequest } from '../types';
 
 const router: Router = express.Router();
@@ -80,7 +80,6 @@ router.post('/', async (req, res) => {
 
     // Stream the response
     const handler = RagAgentFactory.createAgent(
-      'cairoCoder',
       lastUserMessage.content,
       langChainMessages,
       llmConfig,

@@ -1,11 +1,11 @@
 import { Document } from '@langchain/core/documents';
 import { createInterface } from 'readline';
+import { VectorStore } from '@starknet-agent/agents/db/vectorStore';
 import {
-  VectorStore,
   BookChunk,
   DocumentSource,
-} from '@starknet-agent/agents/index';
-import logger from '@starknet-agent/agents/utils/logger';
+} from '@starknet-agent/agents/types/index';
+import { logger } from '@starknet-agent/agents/utils/index';
 import { YES_MODE } from '../generateEmbeddings';
 
 /**

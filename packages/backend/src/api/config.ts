@@ -2,7 +2,7 @@ import express, { Router } from 'express';
 import {
   getAvailableChatModelProviders,
   getAvailableEmbeddingModelProviders,
-} from '../config/llmProvider';
+} from '../config/provider';
 import {
   getGroqApiKey,
   getOllamaApiEndpoint,
@@ -12,7 +12,7 @@ import {
   updateConfig,
   isHostedMode,
   getGeminiApiKey,
-} from '@starknet-agent/agents/config';
+} from '@starknet-agent/agents/config/settings';
 
 const router: Router = express.Router();
 

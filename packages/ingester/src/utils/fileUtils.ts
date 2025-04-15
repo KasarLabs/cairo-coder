@@ -1,7 +1,7 @@
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import { BookConfig, BookPageDto } from './types';
-import logger from '@starknet-agent/agents/utils/logger';
+import { logger } from '@starknet-agent/agents/utils/index';
 
 /**
  * Process documentation files from a directory

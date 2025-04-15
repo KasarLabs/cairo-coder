@@ -1,6 +1,6 @@
 import { ChatOpenAI } from '@langchain/openai';
-import { getGroqApiKey } from '@starknet-agent/agents/config';
-import logger from '@starknet-agent/agents/utils/logger';
+import { getGroqApiKey } from '@starknet-agent/agents/config/settings';
+import { logger } from '@starknet-agent/agents/utils/index';
 
 export const loadGroqChatModels = async () => {
   const groqApiKey = getGroqApiKey();

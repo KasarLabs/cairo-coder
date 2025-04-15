@@ -5,10 +5,9 @@ import { Document } from '@langchain/core/documents';
 import {
   BookChunk,
   DocumentSource,
-  VectorStore,
-} from '@starknet-agent/agents/index';
+} from '@starknet-agent/agents/types/index';
 import { BookConfig, BookPageDto } from '../utils/types';
-import logger from '@starknet-agent/agents/utils/logger';
+import { logger } from '@starknet-agent/agents/utils/index';
 import { AsciiDocIngesterConfig } from './AsciiDocIngester';
 import { AsciiDocIngester } from './AsciiDocIngester';
 

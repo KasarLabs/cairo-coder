@@ -1,7 +1,7 @@
-import { RagPipeline } from '../src/pipeline/ragPipeline';
-import { QueryProcessor } from '../src/pipeline/queryProcessor';
-import { DocumentRetriever } from '../src/pipeline/documentRetriever';
-import { AnswerGenerator } from '../src/pipeline/answerGenerator';
+import { RagPipeline } from '../src/core/pipeline/ragPipeline';
+import { QueryProcessor } from '../src/core/pipeline/queryProcessor';
+import { DocumentRetriever } from '../src/core/pipeline/documentRetriever';
+import { AnswerGenerator } from '../src/core/pipeline/answerGenerator';
 import { Embeddings } from '@langchain/core/embeddings';
 import {
   BookChunk,
@@ -9,7 +9,7 @@ import {
   RagInput,
   RagSearchConfig,
   RetrievedDocuments,
-} from '../src/core/types';
+} from '../src/types/index';
 import { Document } from '@langchain/core/documents';
 import { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import { IterableReadableStream } from '@langchain/core/utils/stream';
@@ -18,9 +18,9 @@ import { mockDeep, MockProxy } from 'jest-mock-extended';
 import EventEmitter from 'events';
 
 // Mock the dependencies at the module level
-jest.mock('../src/pipeline/queryProcessor');
-jest.mock('../src/pipeline/documentRetriever');
-jest.mock('../src/pipeline/answerGenerator');
+jest.mock('../src/core/pipeline/queryProcessor');
+jest.mock('../src/core/pipeline/documentRetriever');
+jest.mock('../src/core/pipeline/answerGenerator');
 
 describe('RagPipeline', () => {
   let ragPipeline: RagPipeline;
@@ -35,7 +35,7 @@ describe('RagPipeline', () => {
   let mockAnswerGenerator: MockProxy<AnswerGenerator>;
 
   // Mock the logger to avoid console output during tests
-  jest.mock('../src/utils/logger', () => ({
+  jest.mock('../src/utils/index', () => ({
     info: jest.fn(),
     debug: jest.fn(),
     error: jest.fn(),

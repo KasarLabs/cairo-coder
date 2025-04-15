@@ -1,12 +1,12 @@
 import { Document } from '@langchain/core/documents';
+import { VectorStore } from '@starknet-agent/agents/db/vectorStore';
 import {
-  VectorStore,
   DocumentSource,
   BookChunk,
-} from '@starknet-agent/agents/index';
+} from '@starknet-agent/agents/types/index';
 import { BookConfig, BookPageDto, ParsedSection } from './utils/types';
 import { updateVectorStore as updateVectorStoreUtil } from './utils/vectorStoreUtils';
-import logger from '@starknet-agent/agents/utils/logger';
+import { logger } from '@starknet-agent/agents/utils/index';
 
 /**
  * Abstract base class for all document ingesters

@@ -1,5 +1,5 @@
 import { Document } from '@langchain/core/documents';
-import { BookChunk, DocumentSource } from '@starknet-agent/agents/index';
+import { BookChunk, DocumentSource } from '@starknet-agent/agents/types/index';
 import {
   AsciiDocIngester,
   AsciiDocIngesterConfig,

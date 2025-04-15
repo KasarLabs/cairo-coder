@@ -6,9 +6,8 @@ import {
   RagSearchConfig,
   BookChunk,
   DocumentSource,
-} from '../types';
-import computeSimilarity from '../utils/computeSimilarity';
-import logger from '../utils/logger';
+} from '../../types';
+import { computeSimilarity, logger } from '../../utils';
 /**
  * Retrieves and refines relevant documents based on a processed query.
  */

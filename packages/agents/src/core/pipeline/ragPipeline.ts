@@ -1,10 +1,10 @@
 import { Embeddings } from '@langchain/core/embeddings';
-import { RagInput, StreamHandler, RagSearchConfig, LLMConfig } from '../types';
+import { RagInput, StreamHandler, RagSearchConfig, LLMConfig } from '../../types';
 import { QueryProcessor } from './queryProcessor';
 import { DocumentRetriever } from './documentRetriever';
 import { AnswerGenerator } from './answerGenerator';
 import EventEmitter from 'events';
-import logger from '../utils/logger';
+import { logger } from '../../utils';
 
 /**
  * Orchestrates the RAG process in a clear, sequential flow.

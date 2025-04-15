@@ -1,10 +1,10 @@
-import { DocumentRetriever } from '../src/pipeline/documentRetriever';
+import { DocumentRetriever } from '../src/core/pipeline/documentRetriever';
 import { Embeddings } from '@langchain/core/embeddings';
 import {
   DocumentSource,
   ProcessedQuery,
   RagSearchConfig,
-} from '../src/core/types';
+} from '../src/types/index';
 import { Document } from '@langchain/core/documents';
 import { mockDeep, MockProxy } from 'jest-mock-extended';
 

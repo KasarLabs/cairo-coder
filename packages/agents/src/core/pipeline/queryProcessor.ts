@@ -6,9 +6,8 @@ import {
   ProcessedQuery,
   RagInput,
   RagSearchConfig,
-} from '../types';
-import { formatChatHistoryAsString, parseXMLContent } from '../utils/utils';
-import logger from '../utils/logger';
+} from '../../types';
+import { formatChatHistoryAsString, parseXMLContent, logger } from '../../utils';
 /**
  * Transforms a raw user query into an actionable form (e.g., rephrased query or search terms).
  */

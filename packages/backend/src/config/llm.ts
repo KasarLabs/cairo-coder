@@ -1,11 +1,9 @@
-import { BaseChatModel } from '@langchain/core/language_models/chat_models';
-import type { Embeddings } from '@langchain/core/embeddings';
 import {
   getAvailableEmbeddingModelProviders,
   getAvailableChatModelProviders,
-} from './llmProvider';
-import { getHostedModeConfig } from '@starknet-agent/agents/config';
-import logger from '@starknet-agent/agents/utils/logger';
+} from './provider';
+import { getHostedModeConfig } from '@starknet-agent/agents/config/settings';
+import { logger } from '@starknet-agent/agents/utils/index';
 import { ModelConfig } from '../types';
 let modelConfig: ModelConfig | null = null;
 

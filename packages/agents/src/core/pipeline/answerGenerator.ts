@@ -4,10 +4,10 @@ import {
   MessagesPlaceholder,
 } from '@langchain/core/prompts';
 import { IterableReadableStream } from '@langchain/core/utils/stream';
-import logger from '../utils/logger';
+import { logger } from '../../utils';
 import { BaseMessage, HumanMessage } from '@langchain/core/messages';
-import { RetrievedDocuments, RagInput, RagSearchConfig } from '../types';
-import { formatChatHistoryAsString } from '../utils/utils';
+import { RetrievedDocuments, RagInput, RagSearchConfig } from '../../types';
+import { formatChatHistoryAsString } from '../../utils';
 
 /**
  * Synthesizes a response based on retrieved documents and query context.

@@ -1,6 +1,6 @@
 import { OllamaEmbeddings } from '@langchain/community/embeddings/ollama';
-import { getOllamaApiEndpoint } from '@starknet-agent/agents/config';
-import logger from '@starknet-agent/agents/utils/logger';
+import { getOllamaApiEndpoint } from '@starknet-agent/agents/config/settings';
+import { logger } from '@starknet-agent/agents/utils/index';
 import { ChatOllama } from '@langchain/community/chat_models/ollama';
 import fetch from 'node-fetch';
 

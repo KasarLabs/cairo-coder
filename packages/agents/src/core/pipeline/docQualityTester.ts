@@ -14,8 +14,8 @@ import {
   QualityMetrics,
   DocumentationRecommendation,
   DocumentSource,
-} from '../types';
-import logger from '../utils/logger';
+} from '../../types';
+import { logger } from '../../utils';
 import {
   BaseMessage,
   HumanMessage,
