@@ -1,6 +1,54 @@
 import { BaseMessage } from '@langchain/core/messages';
 import { Document } from '@langchain/core/documents';
 import { VectorStore } from '../db/vectorStore';
+import { BaseChatModel } from '@langchain/core/language_models/chat_models';
+
+export type AvailableAgents = 'cairoCoder';
+
+export interface LLMConfig {
+  defaultLLM: BaseChatModel;
+  fastLLM?: BaseChatModel;
+}
+
+export interface VectorStoreConfig {
+  MONGODB_URI: string;
+  DB_NAME: string;
+  COLLECTION_NAME: string;
+}
+
+export interface Config {
+  GENERAL: {
+    PORT: number;
+    SIMILARITY_MEASURE: string;
+  };
+  VECTOR_DB: VectorStoreConfig;
+  API_KEYS: {
+    OPENAI: string;
+    GROQ: string;
+    ANTHROPIC: string;
+    DEEPSEEK: string;
+    GEMINI: string;
+  };
+  API_ENDPOINTS: {
+    OLLAMA: string;
+  };
+  HOSTED_MODE?: {
+    DEFAULT_CHAT_PROVIDER: string;
+    DEFAULT_CHAT_MODEL: string;
+    DEFAULT_FAST_CHAT_PROVIDER: string;
+    DEFAULT_FAST_CHAT_MODEL: string;
+    DEFAULT_EMBEDDING_PROVIDER: string;
+    DEFAULT_EMBEDDING_MODEL: string;
+  };
+  VERSIONS: {
+    STARKNET_FOUNDRY: string;
+    SCARB: string;
+  };
+}
+
+export type RecursivePartial<T> = {
+  [P in keyof T]?: RecursivePartial<T[P]>;
+};
 
 export interface AgentPrompts {
   searchRetrieverPrompt: string;

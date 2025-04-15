@@ -3,48 +3,8 @@
 import fs from 'fs';
 import path from 'path';
 import toml from '@iarna/toml';
-
+import { Config, RecursivePartial } from './types';
 const configFileName = 'config.toml';
-
-export interface VectorStoreConfig {
-  MONGODB_URI: string;
-  DB_NAME: string;
-  COLLECTION_NAME: string;
-}
-
-interface Config {
-  GENERAL: {
-    PORT: number;
-    SIMILARITY_MEASURE: string;
-  };
-  VECTOR_DB: VectorStoreConfig;
-  API_KEYS: {
-    OPENAI: string;
-    GROQ: string;
-    ANTHROPIC: string;
-    DEEPSEEK: string;
-    GEMINI: string;
-  };
-  API_ENDPOINTS: {
-    OLLAMA: string;
-  };
-  HOSTED_MODE?: {
-    DEFAULT_CHAT_PROVIDER: string;
-    DEFAULT_CHAT_MODEL: string;
-    DEFAULT_FAST_CHAT_PROVIDER: string;
-    DEFAULT_FAST_CHAT_MODEL: string;
-    DEFAULT_EMBEDDING_PROVIDER: string;
-    DEFAULT_EMBEDDING_MODEL: string;
-  };
-  VERSIONS: {
-    STARKNET_FOUNDRY: string;
-    SCARB: string;
-  };
-}
-
-type RecursivePartial<T> = {
-  [P in keyof T]?: RecursivePartial<T[P]>;
-};
 
 const loadConfig = () => {
   // Find the package root by looking for package.json

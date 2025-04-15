@@ -5,7 +5,7 @@ import { OpenAIEmbeddings } from '@langchain/openai';
 import { Embeddings } from '@langchain/core/embeddings';
 import logger from '../utils/logger';
 import { VectorStoreConfig } from '../config';
-import { DocumentSource } from '../core/types';
+import { DocumentSource } from '../types';
 
 /**
  * VectorStore class for managing document storage and similarity search

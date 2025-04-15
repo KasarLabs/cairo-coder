@@ -6,7 +6,7 @@ import {
   RagSearchConfig,
   BookChunk,
   DocumentSource,
-} from '../core/types';
+} from '../types';
 import computeSimilarity from '../utils/computeSimilarity';
 import logger from '../utils/logger';
 /**

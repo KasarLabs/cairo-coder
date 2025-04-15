@@ -3,12 +3,11 @@ import {
   ChatPromptTemplate,
   MessagesPlaceholder,
 } from '@langchain/core/prompts';
-import { StringOutputParser } from '@langchain/core/output_parsers';
-import { RetrievedDocuments, RagInput, RagSearchConfig } from '../core/types';
 import { IterableReadableStream } from '@langchain/core/utils/stream';
 import logger from '../utils/logger';
-import formatChatHistoryAsString from '../utils/formatHistory';
 import { BaseMessage, HumanMessage } from '@langchain/core/messages';
+import { RetrievedDocuments, RagInput, RagSearchConfig } from '../types';
+import { formatChatHistoryAsString } from '../utils/utils';
 
 /**
  * Synthesizes a response based on retrieved documents and query context.

@@ -1,11 +1,9 @@
 import { Embeddings } from '@langchain/core/embeddings';
-import { RagInput, StreamHandler, RagSearchConfig } from '../core/types';
+import { RagInput, StreamHandler, RagSearchConfig, LLMConfig } from '../types';
 import { QueryProcessor } from './queryProcessor';
 import { DocumentRetriever } from './documentRetriever';
 import { AnswerGenerator } from './answerGenerator';
 import EventEmitter from 'events';
-import { BaseChatModel } from '@langchain/core/language_models/chat_models';
-import { LLMConfig } from '../config/agentConfigs';
 import logger from '../utils/logger';
 
 /**

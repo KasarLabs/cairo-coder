@@ -5,7 +5,7 @@ import {
   CAIROCODER_RETRIEVER_PROMPT,
 } from './cairoCoderPrompts';
 
-import { AgentPrompts } from '../../core/types';
+import { AgentPrompts } from '../../types';
 
 
 export const cairoCoderPrompts: AgentPrompts = {
