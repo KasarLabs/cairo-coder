@@ -8,7 +8,9 @@
     "lint": "turbo run lint",
     "start": "turbo run start",
     "generate-embeddings": "turbo run generate-embeddings",
-    "generate-embeddings:yes": "turbo run generate-embeddings:yes"
+    "generate-embeddings:yes": "turbo run generate-embeddings:yes",
+    "clean": "find packages -type d -name 'dist' -exec rm -rf {} +; find packages -type d -name '.turbo' -exec rm -rf {} +",
+    "clean:all": "npm run clean && find packages -type d -name 'node_modules' -exec rm -rf {} + && rm -rf node_modules"
   },
   "devDependencies": {
     "turbo": "latest",

@@ -2,8 +2,8 @@ import dotenv from 'dotenv';
 import { createInterface } from 'readline';
 import logger from '@starknet-agent/agents/utils/logger';
 import { VectorStore } from '@starknet-agent/agents/db/vectorStore';
-import { getVectorDbConfig } from '@starknet-agent/agents/config';
-import { loadOpenAIEmbeddingsModels } from '@starknet-agent/backend/lib/providers/openai';
+import { getVectorDbConfig } from '@starknet-agent/agents/config/settings';
+import { loadOpenAIEmbeddingsModels } from '@starknet-agent/backend/config/provider/openai';
 import { DocumentSource } from '@starknet-agent/agents/types/index';
 import { IngesterFactory } from './IngesterFactory';
 

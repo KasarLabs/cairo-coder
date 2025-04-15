@@ -39,7 +39,7 @@ export async function createApplication() {
     app.use(cors(config.cors));
     app.use(express.json({ limit: '50mb' }));
 
-    // Initialize both HTTP and WebSocket with container
+    // Initialize both HTTP with container
     initializeHTTP(app, container);
 
     // Update container with initialized services
