@@ -1,4 +1,4 @@
-import { ServerConfig } from './types';
+import { ServerConfig } from '../types';
 
 export function validateConfig(config: ServerConfig): void {
   if (!config.port) {

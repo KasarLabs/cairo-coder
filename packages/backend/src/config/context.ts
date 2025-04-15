@@ -1,4 +1,4 @@
-import { ServerContext } from '../utils/types';
+import { ServerContext } from '../types';
 
 export class Container {
   private static instance: Container;

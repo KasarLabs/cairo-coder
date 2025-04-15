@@ -1,5 +1,5 @@
 import { createApplication } from './server';
-import logger from './utils/logger';
+import logger from '@starknet-agent/agents/utils/logger';
 
 // Error handling for uncaught exceptions
 process.on('uncaughtException', (err, origin) => {

@@ -3,10 +3,10 @@ import http from 'http';
 import cors from 'cors';
 import { initializeLLMConfig } from './config/llm';
 import { getPort } from '@starknet-agent/agents/config';
-import logger from './utils/logger';
+import logger from '@starknet-agent/agents/utils/logger';
 import { initializeHTTP } from './config/http';
 import { Container } from './config/context';
-import { validateConfig } from './utils/validateConfig';
+import { validateConfig } from './config/validateConfig';
 
 export async function createApplication() {
   try {

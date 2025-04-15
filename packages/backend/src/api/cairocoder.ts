@@ -4,14 +4,14 @@ import { HumanMessage } from '@langchain/core/messages';
 import { SystemMessage } from '@langchain/core/messages';
 import { BaseMessage } from '@langchain/core/messages';
 import { getVectorDbConfig } from '@starknet-agent/agents/config';
-import logger from '../utils/logger';
+import logger from '@starknet-agent/agents/utils/logger';
 import { v4 as uuidv4 } from 'uuid';
 import {
   LLMConfig,
   VectorStore,
   RagAgentFactory,
 } from '@starknet-agent/agents/index';
-import { ChatCompletionRequest } from '../utils/types';
+import { ChatCompletionRequest } from '../types';
 
 const router: Router = express.Router();
 

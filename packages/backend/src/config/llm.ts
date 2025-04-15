@@ -5,8 +5,8 @@ import {
   getAvailableChatModelProviders,
 } from './llmProvider';
 import { getHostedModeConfig } from '@starknet-agent/agents/config';
-import logger from '../utils/logger';
-import { ModelConfig } from '../utils/types';
+import logger from '@starknet-agent/agents/utils/logger';
+import { ModelConfig } from '../types';
 let modelConfig: ModelConfig | null = null;
 
 export async function initializeLLMConfig(): Promise<ModelConfig> {
