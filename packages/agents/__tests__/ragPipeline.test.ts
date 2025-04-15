@@ -22,6 +22,15 @@ jest.mock('../src/core/pipeline/queryProcessor');
 jest.mock('../src/core/pipeline/documentRetriever');
 jest.mock('../src/core/pipeline/answerGenerator');
 
+// Mock the utils including logger
+jest.mock('../src/utils/index', () => ({
+  logger: {
+    info: jest.fn(),
+    debug: jest.fn(),
+    error: jest.fn(),
+  }
+}));
+
 describe('RagPipeline', () => {
   let ragPipeline: RagPipeline;
   let mockLLMConfig: {
@@ -33,13 +42,6 @@ describe('RagPipeline', () => {
   let mockQueryProcessor: MockProxy<QueryProcessor>;
   let mockDocumentRetriever: MockProxy<DocumentRetriever>;
   let mockAnswerGenerator: MockProxy<AnswerGenerator>;
-
-  // Mock the logger to avoid console output during tests
-  jest.mock('../src/utils/index', () => ({
-    info: jest.fn(),
-    debug: jest.fn(),
-    error: jest.fn(),
-  }));
 
   beforeEach(() => {
     // Reset all mocks

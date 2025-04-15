@@ -9,10 +9,7 @@ import { BaseMessage } from '@langchain/core/messages';
 import EventEmitter from 'events';
 
 // Mock the agent configuration and RagPipeline
-jest.mock('../src/config/agentConfigs', () => ({
-  AvailableAgents: {
-    cairoCoder: 'cairoCoder',
-  },
+jest.mock('../src/config/agent', () => ({
   getAgentConfig: jest.fn().mockImplementation(() => ({
     name: 'Cairo Coder',
     prompts: {
@@ -30,7 +27,7 @@ jest.mock('../src/config/agentConfigs', () => ({
   })),
 }));
 
-jest.mock('../src/pipeline/ragPipeline', () => ({
+jest.mock('../src/core/pipeline/ragPipeline', () => ({
   RagPipeline: jest.fn().mockImplementation(() => ({
     execute: jest.fn().mockReturnValue(new EventEmitter()),
   })),
@@ -63,7 +60,6 @@ describe('RagAgentFactory', () => {
 
       // Act
       const emitter = RagAgentFactory.createAgent(
-        agentName,
         message,
         history,
         mockLLM,
@@ -97,7 +93,6 @@ describe('RagAgentFactory', () => {
 
       // Act
       const emitter = RagAgentFactory.createAgent(
-        agentName,
         message,
         history,
         mockLLM,

@@ -8,17 +8,15 @@ import {
 import { Document } from '@langchain/core/documents';
 import { mockDeep, MockProxy } from 'jest-mock-extended';
 
-// Mock computeSimilarity to control the similarity scores
-jest.mock('../src/utils/computeSimilarity', () => ({
+// Mock all utils including computeSimilarity and logger
+jest.mock('../src/utils/index', () => ({
   __esModule: true,
-  default: jest.fn().mockImplementation(() => 0.75), // Default high similarity
-}));
-
-// Mock the logger
-jest.mock('../src/utils/logger', () => ({
-  info: jest.fn(),
-  debug: jest.fn(),
-  error: jest.fn(),
+  computeSimilarity: jest.fn().mockImplementation(() => 0.75), // Default high similarity
+  logger: {
+    info: jest.fn(),
+    debug: jest.fn(),
+    error: jest.fn(),
+  }
 }));
 
 describe('DocumentRetriever', () => {
@@ -160,8 +158,8 @@ describe('DocumentRetriever', () => {
 
       // Import the real computeSimilarity function to control scores
       const computeSimilarityMock = jest.requireMock(
-        '../src/utils/computeSimilarity',
-      ).default;
+        '../src/utils/index',
+      ).computeSimilarity;
 
       // Set up different similarity scores for different documents
       computeSimilarityMock
