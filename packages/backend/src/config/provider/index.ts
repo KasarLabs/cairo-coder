@@ -1,5 +1,4 @@
 import { loadGroqChatModels } from './groq';
-import { loadOllamaChatModels, loadOllamaEmbeddingsModels } from './ollama';
 import { loadOpenAIChatModels, loadOpenAIEmbeddingsModels } from './openai';
 import { loadAnthropicChatModels } from './anthropic';
 import { loadDeepseekChatModels } from './deepseek';
@@ -12,7 +11,6 @@ import { loadGeminiChatModels } from './gemini';
 const chatModelProviders = {
   openai: loadOpenAIChatModels,
   groq: loadGroqChatModels,
-  ollama: loadOllamaChatModels,
   anthropic: loadAnthropicChatModels,
   deepseek: loadDeepseekChatModels,
   gemini: loadGeminiChatModels,
@@ -20,7 +18,6 @@ const chatModelProviders = {
 
 const embeddingModelProviders = {
   openai: loadOpenAIEmbeddingsModels,
-  ollama: loadOllamaEmbeddingsModels,
 };
 
 export const getAvailableChatModelProviders = async () => {

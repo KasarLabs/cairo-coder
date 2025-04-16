@@ -5,7 +5,6 @@ import {
 } from '../config/provider';
 import {
   getGroqApiKey,
-  getOllamaApiEndpoint,
   getAnthropicApiKey,
   getOpenaiApiKey,
   getDeepseekApiKey,
@@ -45,7 +44,6 @@ router.get('/', async (_, res) => {
   }
 
   config['openaiApiKey'] = getOpenaiApiKey();
-  config['ollamaApiUrl'] = getOllamaApiEndpoint();
   config['anthropicApiKey'] = getAnthropicApiKey();
   config['groqApiKey'] = getGroqApiKey();
   config['deepseekApiKey'] = getDeepseekApiKey();
@@ -69,9 +67,6 @@ router.post('/', async (req, res) => {
       ANTHROPIC: config.anthropicApiKey,
       DEEPSEEK: config.deepseekApiKey,
       GEMINI: config.geminiApiKey,
-    },
-    API_ENDPOINTS: {
-      OLLAMA: config.ollamaApiUrl,
     },
   };
 

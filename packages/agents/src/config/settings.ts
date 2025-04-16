@@ -45,8 +45,6 @@ export const getDeepseekApiKey = () => loadConfig().API_KEYS.DEEPSEEK;
 
 export const getGeminiApiKey = () => loadConfig().API_KEYS.GEMINI;
 
-export const getOllamaApiEndpoint = () => loadConfig().API_ENDPOINTS.OLLAMA;
-
 export const getVectorDbConfig = () => loadConfig().VECTOR_DB;
 
 export const updateConfig = (config: RecursivePartial<Config>) => {

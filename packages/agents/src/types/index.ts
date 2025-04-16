@@ -29,9 +29,6 @@ export interface Config {
     DEEPSEEK: string;
     GEMINI: string;
   };
-  API_ENDPOINTS: {
-    OLLAMA: string;
-  };
   HOSTED_MODE?: {
     DEFAULT_CHAT_PROVIDER: string;
     DEFAULT_CHAT_MODEL: string;
