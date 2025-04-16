@@ -43,7 +43,7 @@ Cairo Coder is an intelligent code generation service that makes writing Cairo s
 
 There are mainly 2 ways of installing Cairo Coder - With Docker, Without Docker. Using Docker is highly recommended.
 
-### Getting Started with Docker (Recommended)
+### Getting Started
 
 1. Ensure Docker is installed and running on your system.
 2. Clone the Cairo Coder repository:
