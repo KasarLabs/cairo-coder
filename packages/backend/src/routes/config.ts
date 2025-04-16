@@ -9,70 +9,21 @@ import {
   getOpenaiApiKey,
   getDeepseekApiKey,
   updateConfig,
-  isHostedMode,
   getGeminiApiKey,
 } from '@starknet-agent/agents/config/settings';
 
 const router: Router = express.Router();
 
 router.get('/', async (_, res) => {
-  if (isHostedMode()) {
-    return res
-      .status(403)
-      .json({ error: 'This route is disabled in hosted mode' });
-  }
-  const config = {};
-
-  const [chatModelProviders, embeddingModelProviders] = await Promise.all([
-    getAvailableChatModelProviders(),
-    getAvailableEmbeddingModelProviders(),
-  ]);
-
-  config['chatModelProviders'] = {};
-  config['embeddingModelProviders'] = {};
-
-  for (const provider in chatModelProviders) {
-    config['chatModelProviders'][provider] = Object.keys(
-      chatModelProviders[provider],
-    );
-  }
-
-  for (const provider in embeddingModelProviders) {
-    config['embeddingModelProviders'][provider] = Object.keys(
-      embeddingModelProviders[provider],
-    );
-  }
-
-  config['openaiApiKey'] = getOpenaiApiKey();
-  config['anthropicApiKey'] = getAnthropicApiKey();
-  config['groqApiKey'] = getGroqApiKey();
-  config['deepseekApiKey'] = getDeepseekApiKey();
-  config['geminiApiKey'] = getGeminiApiKey();
-
-  res.status(200).json(config);
+  return res
+    .status(403)
+    .json({ error: 'This route is disabled in hosted mode' });
 });
 
 router.post('/', async (req, res) => {
-  if (isHostedMode()) {
-    return res
-      .status(403)
-      .json({ error: 'This route is disabled in hosted mode' });
-  }
-  const config = req.body;
-
-  const updatedConfig = {
-    API_KEYS: {
-      OPENAI: config.openaiApiKey,
-      GROQ: config.groqApiKey,
-      ANTHROPIC: config.anthropicApiKey,
-      DEEPSEEK: config.deepseekApiKey,
-      GEMINI: config.geminiApiKey,
-    },
-  };
-
-  updateConfig(updatedConfig);
-
-  res.status(200).json({ message: 'Config updated' });
+  return res
+    .status(403)
+    .json({ error: 'This route is disabled in hosted mode' });
 });
 
 export default router;

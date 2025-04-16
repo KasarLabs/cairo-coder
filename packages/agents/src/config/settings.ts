@@ -26,8 +26,6 @@ const loadConfig = () => {
   ) as any as Config;
 };
 
-export const isHostedMode = () => loadConfig().HOSTED_MODE !== undefined;
-
 export const getHostedModeConfig = () => loadConfig().HOSTED_MODE;
 
 export const getPort = () => loadConfig().GENERAL.PORT;

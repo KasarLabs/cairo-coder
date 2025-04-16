@@ -2,10 +2,7 @@ import { loadGroqChatModels } from './groq';
 import { loadOpenAIChatModels, loadOpenAIEmbeddingsModels } from './openai';
 import { loadAnthropicChatModels } from './anthropic';
 import { loadDeepseekChatModels } from './deepseek';
-import {
-  getHostedModeConfig,
-  isHostedMode,
-} from '@starknet-agent/agents/config/settings';
+import { getHostedModeConfig } from '@starknet-agent/agents/config/settings';
 import { loadGeminiChatModels } from './gemini';
 
 const chatModelProviders = {
@@ -30,27 +27,21 @@ export const getAvailableChatModelProviders = async () => {
     }
   }
 
-  if (isHostedMode()) {
-    const hostedModeConfig = getHostedModeConfig();
-    return {
-      [hostedModeConfig.DEFAULT_CHAT_PROVIDER]: {
-        [hostedModeConfig.DEFAULT_CHAT_MODEL]:
-          models[hostedModeConfig.DEFAULT_CHAT_PROVIDER][
-            hostedModeConfig.DEFAULT_CHAT_MODEL
-          ],
-      },
-      [hostedModeConfig.DEFAULT_FAST_CHAT_PROVIDER]: {
-        [hostedModeConfig.DEFAULT_FAST_CHAT_MODEL]:
-          models[hostedModeConfig.DEFAULT_FAST_CHAT_PROVIDER][
-            hostedModeConfig.DEFAULT_FAST_CHAT_MODEL
-          ],
-      },
-    };
-  }
-
-  models['custom_openai'] = {};
-
-  return models;
+  const hostedModeConfig = getHostedModeConfig();
+  return {
+    [hostedModeConfig.DEFAULT_CHAT_PROVIDER]: {
+      [hostedModeConfig.DEFAULT_CHAT_MODEL]:
+        models[hostedModeConfig.DEFAULT_CHAT_PROVIDER][
+          hostedModeConfig.DEFAULT_CHAT_MODEL
+        ],
+    },
+    [hostedModeConfig.DEFAULT_FAST_CHAT_PROVIDER]: {
+      [hostedModeConfig.DEFAULT_FAST_CHAT_MODEL]:
+        models[hostedModeConfig.DEFAULT_FAST_CHAT_PROVIDER][
+          hostedModeConfig.DEFAULT_FAST_CHAT_MODEL
+        ],
+    },
+  };
 };
 
 export const getAvailableEmbeddingModelProviders = async () => {
@@ -63,18 +54,14 @@ export const getAvailableEmbeddingModelProviders = async () => {
     }
   }
 
-  if (isHostedMode()) {
-    const hostedModeConfig = getHostedModeConfig();
-    const hosted_model =
-      models[hostedModeConfig.DEFAULT_EMBEDDING_PROVIDER][
-        hostedModeConfig.DEFAULT_EMBEDDING_MODEL
-      ];
-    return {
-      [hostedModeConfig.DEFAULT_EMBEDDING_PROVIDER]: {
-        [hostedModeConfig.DEFAULT_EMBEDDING_MODEL]: hosted_model,
-      },
-    };
-  }
-
-  return models;
+  const hostedModeConfig = getHostedModeConfig();
+  const hosted_model =
+    models[hostedModeConfig.DEFAULT_EMBEDDING_PROVIDER][
+      hostedModeConfig.DEFAULT_EMBEDDING_MODEL
+    ];
+  return {
+    [hostedModeConfig.DEFAULT_EMBEDDING_PROVIDER]: {
+      [hostedModeConfig.DEFAULT_EMBEDDING_MODEL]: hosted_model,
+    },
+  };
 };
