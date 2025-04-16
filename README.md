@@ -1,71 +1,73 @@
-# 🚀 Starknet Agent - An AI-powered search engine for the Starknet Ecosystem 🔎 <!-- omit in toc -->
-
-<!-- ![preview](.assets/perplexica-screenshot.png) -->
+# 🚀 Cairo Coder - AI-Powered Cairo Code Generator
 
 ## Table of Contents <!-- omit in toc -->
 
 - [Credits](#credits)
 - [Overview](#overview)
-- [Preview](#preview)
 - [Features](#features)
 - [Installation](#installation)
   - [Getting Started with Docker (Recommended)](#getting-started-with-docker-recommended)
+  - [Running with Docker](#running-with-docker)
+- [API Usage](#api-usage)
+  - [Endpoint](#endpoint)
+  - [Request Format](#request-format)
+  - [Response Format](#response-format)
 - [Architecture](#architecture)
   - [Project Structure](#project-structure)
   - [RAG Pipeline](#rag-pipeline)
   - [Ingestion System](#ingestion-system)
   - [Database](#database)
-  - [Real-time Communication](#real-time-communication)
 - [Development](#development)
 - [Upcoming Features](#upcoming-features)
 - [Contribution](#contribution)
 
 ## Credits
 
-This project was originally forked from [Perplexica](https://github.com/ItzCrazyKns/Perplexica), an open-source AI search engine. We've adapted and expanded upon their work to create a specialized tool for the Starknet ecosystem. We're grateful for their initial contribution which provided a base foundation for Starknet Agent.
+This project is based on [Starknet Agent](https://github.com/cairo-book/starknet-agent), an open-source AI search engine for the Starknet ecosystem. We've adapted and focused the technology to create a specialized tool for Cairo code generation. We're grateful for these initial contributions which provided a strong foundation for Cairo Coder.
 
 ## Overview
 
-Starknet Agent is an open-source AI-powered searching tool specifically designed for the Starknet Ecosystem. It uses advanced Retrieval-Augmented Generation (RAG) to search and understand the Starknet documentation, Cairo Book, and other resources, providing clear and accurate answers to your queries about Starknet and Cairo.
-
-## Preview
-
-<!-- ![video-preview](.assets/perplexica-preview.gif) -->
+Cairo Coder is an intelligent code generation service that makes writing Cairo smart contracts and programs faster and easier than ever. It uses advanced Retrieval-Augmented Generation (RAG) to understand Cairo's syntax, patterns, and best practices, providing high-quality, functional Cairo code based on natural language descriptions.
 
 ## Features
 
-- **RAG-based Search**: Uses Retrieval-Augmented Generation to provide accurate, source-cited answers to your questions.
-- **Multiple Focus Modes**: Special modes to better answer specific types of questions:
-  - **Starknet Ecosystem**: Searches the entire Starknet Ecosystem, including all resources below.
-  - **Cairo Book**: Searches the [Cairo Book](https://book.cairo-lang.org) for answers.
-  - **Starknet Docs**: Searches the [Starknet documentation](https://docs.starknet.io) for answers.
-  - **Starknet Foundry**: Searches the [Starknet Foundry documentation](https://foundry-rs.github.io/starknet-foundry/) for answers.
-  - **Cairo By Example**: Searches the Cairo By Example resource for answers.
-  - **OpenZeppelin Docs**: Searches the OpenZeppelin documentation for Starknet-related information.
-- **Source Citations**: All answers include citations to the source material, allowing you to verify the information.
-- **Real-time Streaming**: Responses are streamed in real-time as they're generated.
-- **Chat History**: Your conversation history is preserved for context in follow-up questions.
-- **Modular Architecture**: Easily extensible to include additional documentation sources.
+- **Cairo Code Generation**: Transforms natural language requests into functional Cairo code
+- **RAG-based Architecture**: Uses Retrieval-Augmented Generation to provide accurate, well-documented code
+- **OpenAI Compatible API**: Interface compatible with the OpenAI API format for easy integration
+- **Multiple LLM Support**: Works with OpenAI, Anthropic, and Google models
+- **Source-Informed Generation**: Code is generated based on Cairo documentation, ensuring correctness
+- **Streaming Response**: Support for response streaming for a responsive experience
+
 
 ## Installation
 
-There are mainly 2 ways of installing Starknet Agent - With Docker, Without Docker. Using Docker is highly recommended.
+There are mainly 2 ways of installing Cairo Coder - With Docker, Without Docker. Using Docker is highly recommended.
 
 ### Getting Started with Docker (Recommended)
 
 1. Ensure Docker is installed and running on your system.
-2. Clone the Starknet Agent repository:
+2. Clone the Cairo Coder repository:
 
    ```bash
-   git clone https://github.com/cairo-book/starknet-agent.git
+   git clone https://github.com/yourusername/cairo-coder.git
    ```
 
 3. After cloning, navigate to the directory containing the project files.
 
-4. Setup your database on [MongoDB Atlas](https://www.mongodb.com/products/platform/atlas-vector-search).
+   ```bash
+   cd cairo-coder
+   ```
+
+4. Install dependencies:
+
+   ```bash
+   pnpm install
+   ```
+
+5. Setup your database on [MongoDB Atlas](https://www.mongodb.com/products/platform/atlas-vector-search).
 
    - Create a new cluster.
-   - Create a new database, e.g. `cairo-chatbot`.
+   - Create a new database, e.g. `cairo-coder`.
    - Create a new collection inside the database that will store the embeddings. e.g. `chunks`.
    - Create a vectorSearch index named **default** on the collection (tab `Atlas Search`). Example index configuration:
      ```json
@@ -85,20 +87,17 @@ There are mainly 2 ways of installing Starknet Agent - With Docker, Without Dock
      }
      ```
 
-5. Inside the packages/backend package, copy the `sample.config.toml` file to a `config.toml`. For development setups, you need only fill in the following fields:
+6. Inside the packages/agents package, copy the `sample.config.toml` file to a `config.toml`. For development setups, you need only fill in the following fields:
 
    - `OPENAI`: Your OpenAI API key. **You only need to fill this if you wish to use OpenAI's models**.
    - `ANTHROPIC`: Your Anthropic API key. **You only need to fill this if you wish to use Anthropic models**.
-
-     **Note**: You can change these after starting Starknet Agent from the settings dialog.
-
    - `SIMILARITY_MEASURE`: The similarity measure to use (This is filled by default; you can leave it as is if you are unsure about it.)
    - Databases:
-     - `VECTOR_DB`: This is the database for the entire Starknet Ecosystem, that aggregates all the other databases. You will need to fill this with your own database URL. example:
+     - `VECTOR_DB`: This is the database for Cairo documentation. You will need to fill this with your own database URL. example:
      ```toml
          [VECTOR_DB]
          MONGODB_URI = "mongodb+srv://mongo:..."
-         DB_NAME = "cairo-chatbot"
+         DB_NAME = "cairo-coder"
          COLLECTION_NAME = "chunks"
      ```
    - Models: The `[HOSTED_MODE]` table defines the underlying LLM model used. We recommend using:
@@ -111,51 +110,98 @@ There are mainly 2 ways of installing Starknet Agent - With Docker, Without Dock
       DEFAULT_EMBEDDING_MODEL = "Text embedding 3 large"
    ```
 
-6. Generate the embeddings for the databases. You can do this by running `turbo run generate-embeddings`. If you followed the example above, you will need to run the script with option `6 (Everything)` to generate embeddings for all the documentation sources.
+7. Generate the embeddings for the databases. You can do this by running `pnpm generate-embeddings`. If you followed the example above, you will need to run the script with option `6 (Everything)` to generate embeddings for all the documentation sources.
 
    ```bash
-   turbo run generate-embeddings
+   pnpm generate-embeddings
    ```
 
-7. Run the development server with turbo.
+
+8. Run the application using one of the following methods:
 
    ```bash
-   turbo dev
+   docker-compose up --build
    ```
 
-8. Wait a few minutes for the setup to complete. You can access Starknet Agent at http://localhost:3000 in your web browser.
+9. The API will be available at http://localhost:3000/generate.
 
-**Note**: After the containers are built, you can start Starknet Agent directly from Docker without having to open a terminal.
+
+## API Usage
+
+Cairo Coder provides a simple REST API compatible with the OpenAI format for easy integration.
+
+### Endpoint
+
+```
+POST /generate
+```
+
+### Request Format
+
+```json
+{
+  "model": "gemini-2.0-flash",
+  "messages": [
+    {
+      "role": "system",
+      "content": "You are a Cairo programming expert."
+    },
+    {
+      "role": "user",
+      "content": "Write a Cairo contract that implements a simple ERC-20 token."
+    }
+  ],
+  "temperature": 0.7,
+}
+```
+
+### Response Format
+
+```json
+{
+  "id": "gen-123456",
+  "object": "chat.completion",
+  "created": 1717273561,
+  "model": "gemini-2.0-flash",
+  "choices": [
+    {
+      "index": 0,
+      "message": {
+        "role": "assistant",
+        "content": "#[starknet::contract]\nmod ERC20 {\n    // Contract code here...\n}"
+      },
+      "finish_reason": "stop"
+    }
+  ]
+}
+```
 
 ## Architecture
 
-Starknet Agent uses a modern architecture based on Retrieval-Augmented Generation (RAG) to provide accurate, source-cited answers to questions about Starknet and Cairo.
+Cairo Coder uses a modern architecture based on Retrieval-Augmented Generation (RAG) to provide accurate, functional Cairo code based on natural language descriptions.
 
 ### Project Structure
 
 The project is organized as a monorepo with multiple packages:
 
 - **packages/agents/**: Core RAG agent implementation
-  - Contains the pipeline for processing queries, retrieving documents, and generating answers
+  - Contains the pipeline for processing queries, retrieving documents, and generating code
   - Implements the RAG pipeline in a modular, extensible way
-- **packages/backend/**: Express server with WebSocket support
-  - Handles API endpoints and WebSocket connections for real-time communication
+- **packages/backend/**: Express server with API endpoints
+  - Handles API endpoints for code generation requests
   - Manages configuration and environment settings
-- **packages/ui/**: Next.js frontend application
-  - Provides a modern, responsive user interface
-  - Implements real-time streaming of responses
-- **packages/ingester/**: Data ingestion tools for documentation sources
+- **packages/ingester/**: Data ingestion tools for Cairo documentation sources
   - Uses a template method pattern with a `BaseIngester` abstract class
   - Implements source-specific ingesters for different documentation sources
 - **packages/typescript-config/**: Shared TypeScript configuration
 
 ### RAG Pipeline
 
-The RAG pipeline is implemented in the `packages/agents/src/pipeline/` directory and consists of several key components:
+The RAG pipeline is implemented in the `packages/agents/src/core/pipeline/` directory and consists of several key components:
 
-1. **Query Processor**: Processes user queries and prepares them for document retrieval
-2. **Document Retriever**: Retrieves relevant documents from the vector database
-3. **Answer Generator**: Generates answers based on the retrieved documents
+1. **Query Processor**: Processes user requests and prepares them for document retrieval
+2. **Document Retriever**: Retrieves relevant Cairo documentation from the vector database
+3. **Code Generator**: Generates Cairo code based on the retrieved documents
 4. **RAG Pipeline**: Orchestrates the entire RAG process
 
 ### Ingestion System
@@ -163,42 +209,34 @@ The RAG pipeline is implemented in the `packages/agents/src/pipeline/` directory
 The ingestion system is designed to be modular and extensible, allowing for easy addition of new documentation sources:
 
 - **BaseIngester**: Abstract class that defines the template method pattern for ingestion
-- **Source-specific Ingesters**: Implementations for different documentation sources
+- **Source-specific Ingesters**: Implementations for different Cairo documentation sources
 - **Ingestion Process**: Downloads, processes, and stores documentation in the vector database
 
-Currently supported documentation sources:
+Currently supported documentation sources include:
 
 - Cairo Book
-- Starknet Docs
-- Starknet Foundry
-- Cairo By Example
-- OpenZeppelin Docs
+- Cairo Language Documentation
+- Cairo Standard Library Documentation
+- Cairo Examples
 
 ### Database
 
-Starknet Agent uses MongoDB Atlas with vector search capabilities for similarity search:
+Cairo Coder uses MongoDB Atlas with vector search capabilities for similarity search:
 
 - **Vector Database**: Stores document embeddings for efficient similarity search
-- **Multiple Databases**: Separate databases for different focus modes
-- **Vector Search**: Uses cosine similarity to find relevant documents
-
-### Real-time Communication
-
-The real-time communication system is implemented using WebSockets:
-
-- **WebSocket Server**: Handles real-time communication between the frontend and backend
-- **Message Handler**: Processes messages and manages the RAG pipeline
-- **Connection Manager**: Manages WebSocket connections and sessions
+- **Vector Search**: Uses cosine similarity to find relevant Cairo documentation
 
 ## Development
 
 For development, you can use the following commands:
 
-- **Start Development Server**: `turbo dev`
-- **Build for Production**: `turbo build`
-- **Run Tests**: `turbo test`
-- **Generate Embeddings**: `turbo generate-embeddings`
-- **Generate Embeddings (Non-Interactive)**: `turbo generate-embeddings:yes`
+- **Start Development Server**: `pnpm dev`
+- **Build for Production**: `pnpm build`
+- **Run Tests**: `pnpm test`
+- **Generate Embeddings**: `pnpm generate-embeddings`
+- **Generate Embeddings (Non-Interactive)**: `pnpm generate-embeddings:yes`
+- **Clean package build files**: `pnpm clean`
+- **Clean node_modules**: `pnpm clean:all`
 
 To add a new documentation source:
 
@@ -207,32 +245,6 @@ To add a new documentation source:
 3. Register the new ingester in the `IngesterFactory`
 4. Update the configuration to include the new database
 
-### Automated Embedding Generation
-
-The project includes a GitHub Actions workflow that automatically generates embeddings:
-
-- Runs weekly (Sunday at 00:00 UTC)
-- Can be manually triggered from the GitHub Actions UI
-- Uses repository secrets for configuration
-
-For more information about the CI workflows, see the [GitHub Workflows README](.github/workflows/README.md).
-
-## Upcoming Features
-
-- [✅] Expanding coverage of Starknet-related resources
-- [✅] Enhanced UI with more customization options
-- [ ] Improved search algorithms for better document retrieval
-- [ ] Adding an Autonomous Agent Mode for more precise answers
-
 ## Contribution
 
-For more information on contributing to Starknet Agent, please read the [CONTRIBUTING.md](CONTRIBUTING.md) file to learn more about the project and how you can contribute to it.
-
-We welcome contributions in the following areas:
-
-- Adding new documentation sources
-- Improving the RAG pipeline
-- Enhancing the UI
-- Adding new features
-- Fixing bugs
-- Improving documentation
+We welcome contributions to Cairo Coder! Whether you're fixing bugs, improving documentation, adding new features, or expanding our knowledge base, your help is appreciated.
