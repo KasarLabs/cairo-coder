@@ -1,4 +1,4 @@
-# 🚀 Cairo Coder - AI-Powered Cairo Code Generator
+# Cairo Coder - AI-Powered Cairo Code Generator
 
 ## Table of Contents <!-- omit in toc -->
 
