@@ -226,7 +226,7 @@ For development, you can use the following commands:
 
 - **Start Development Server**: `pnpm dev`
 - **Build for Production**: `pnpm build`
-- **Run Tests**: `pnpm test`
+- **Run Tests**: `pnpm turbo run test`
 - **Generate Embeddings**: `pnpm generate-embeddings`
 - **Generate Embeddings (Non-Interactive)**: `pnpm generate-embeddings:yes`
 - **Clean package build files**: `pnpm clean`
