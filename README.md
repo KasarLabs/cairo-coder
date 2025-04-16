@@ -92,8 +92,7 @@ There are mainly 2 ways of installing Cairo Coder - With Docker, Without Docker.
    - `OPENAI`: Your OpenAI API key. **You only need to fill this if you wish to use OpenAI's models**.
    - `ANTHROPIC`: Your Anthropic API key. **You only need to fill this if you wish to use Anthropic models**.
    - `SIMILARITY_MEASURE`: The similarity measure to use (This is filled by default; you can leave it as is if you are unsure about it.)
-   - Databases:
-     - `VECTOR_DB`: This is the database for Cairo documentation. You will need to fill this with your own database URL. example:
+   - Databases: `VECTOR_DB` is the database for Cairo documentation. You will need to fill this with your own database URL. Example:
      ```toml
          [VECTOR_DB]
          MONGODB_URI = "mongodb+srv://mongo:..."
@@ -215,9 +214,8 @@ The ingestion system is designed to be modular and extensible, allowing for easy
 Currently supported documentation sources include:
 
 - Cairo Book
-- Cairo Language Documentation
-- Cairo Standard Library Documentation
-- Cairo Examples
+- Cairo Foundry documentation
+- Cairo By Examples
 
 ### Database
 
