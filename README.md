@@ -45,7 +45,7 @@ There are mainly 2 ways of installing Cairo Coder - With Docker, Without Docker.
 2. Clone the Cairo Coder repository:
 
    ```bash
-   git clone https://github.com/yourusername/cairo-coder.git
+   git clone https://github.com/KasarLabs/cairo-coder.git
    ```
 
 3. After cloning, navigate to the directory containing the project files.
