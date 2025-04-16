@@ -1,5 +1,5 @@
 import express from 'express';
-import routes from '../api/routes';
+import routes from '../routes';
 import { logger } from '@starknet-agent/agents/utils/index';
 import { Container } from './context';
 

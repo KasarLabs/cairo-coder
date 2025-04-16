@@ -2,7 +2,7 @@
 description: Cairo Imports
 globs: *.ts,*.tsx,*.js,*.jsx
 ---
-# Imports in Starknet Agent
+# Imports in Cairo Coder
 
 ## External Libraries
 
@@ -10,9 +10,9 @@ globs: *.ts,*.tsx,*.js,*.jsx
 - `express`: Web server framework.
   - Used in: `packages/backend/src/app.ts`
   - Import: `import express from 'express';`
-- `ws`: WebSocket library for real-time communication.
-  - Used in: `packages/backend/src/websocket/`
-  - Import: `import WebSocket from 'ws';`
+- `cors`: CORS middleware for Express.
+  - Used in: `packages/backend/src/app.ts`
+  - Import: `import cors from 'cors';`
 - `mongodb`: MongoDB client for database operations.
   - Used in: `packages/agents/src/db/`
   - Import: `import { MongoClient } from 'mongodb';`
@@ -22,6 +22,9 @@ globs: *.ts,*.tsx,*.js,*.jsx
 - `openai`: OpenAI API client.
   - Used in: `packages/agents/src/lib/`
   - Import: `import OpenAI from 'openai';`
+- `@google/generative-ai`: Google AI API client.
+  - Used in: `packages/agents/src/lib/`
+  - Import: `import { GoogleGenerativeAI } from '@google/generative-ai';`
 
 ### Frontend Libraries
 - `react`: UI library.
@@ -38,27 +41,60 @@ globs: *.ts,*.tsx,*.js,*.jsx
 
 ### Agent Modules
 - `pipeline`: RAG pipeline components.
-  - Used in: `packages/agents/src/ragAgentFactory.ts`
-  - Import: `import { QueryProcessor, DocumentRetriever, ResponseGenerator } from './pipeline';`
+  - Used in: `packages/agents/src/core/ragAgentFactory.ts`
+  - Import: `import { QueryProcessor, DocumentRetriever, CodeGenerator } from './pipeline';`
 - `config`: Configuration management.
   - Used in: `packages/agents/src/`
   - Import: `import { config } from './config';`
 - `db`: Database interaction.
   - Used in: `packages/agents/src/core/`
   - Import: `import { VectorStore } from './db/vectorStore';`
+- `models`: LLM and embedding models interfaces.
+  - Used in: `packages/agents/src/core/`
+  - Import: `import { LLMProviderFactory } from './models/llmProviderFactory';`
+  - Import: `import { EmbeddingProviderFactory } from './models/embeddingProviderFactory';`
 
 ### Backend Modules
-- `websocket`: WebSocket server.
-  - Used in: `packages/backend/src/server.ts`
-  - Import: `import { setupWebSocketServer } from './websocket';`
 - `routes`: API routes.
   - Used in: `packages/backend/src/app.ts`
-  - Import: `import { apiRouter } from './routes';`
+  - Import: `import { generateRoutes } from './routes/generate';`
+  - Import: `import { modelsRoutes } from './routes/models';`
+- `handlers`: Request handlers.
+  - Used in: `packages/backend/src/routes/`
+  - Import: `import { generateHandler } from '../handlers/generateHandler';`
 
-### UI Modules
-- `components`: Reusable UI components.
-  - Used in: `packages/ui/app/`
-  - Import: `import { ChatInterface } from '../components/ChatInterface';`
-- `lib/hooks`: Custom React hooks.
-  - Used in: `packages/ui/components/`
-  - Import: `import { useChat } from '../lib/hooks/useChat';`
+### Ingester Modules
+- `baseIngester`: Abstract base class for all ingesters.
+  - Used in: `packages/ingester/src/ingesters/`
+  - Import: `import { BaseIngester } from '../BaseIngester';`
+- `ingesterFactory`: Factory for creating ingesters.
+  - Used in: `packages/ingester/src/scripts/`
+  - Import: `import { IngesterFactory } from '../IngesterFactory';`
+- `utils`: Utility functions.
+  - Used in: `packages/ingester/src/`
+  - Import: `import { downloadFile, extractArchive } from './utils/fileUtils';`
+  - Import: `import { processContent, splitMarkdown } from './utils/contentUtils';`
+
+## Common Import Patterns
+
+### For Backend API Routes
+```typescript
+import express from 'express';
+import { generateHandler } from '../handlers/generateHandler';
+import { config } from '../config';
+```
+
+### For Agent Core
+```typescript
+import { VectorStore } from './db/vectorStore';
+import { LLMProviderFactory } from './models/llmProviderFactory';
+import { EmbeddingProviderFactory } from './models/embeddingProviderFactory';
+```
+
+### For Ingesters
+```typescript
+import { BaseIngester } from '../BaseIngester';
+import { BookPageDto, ParsedSection, BookChunk } from '../types';
+import { Document } from 'langchain/document';
+import { VectorStore } from '../../agents/src/db/vectorStore';
+```
