@@ -1,6 +1,6 @@
 import dotenv from 'dotenv';
 import { createInterface } from 'readline';
-import logger from '@starknet-agent/agents/utils/logger';
+import { logger } from '@starknet-agent/agents/utils/index';
 import { VectorStore } from '@starknet-agent/agents/db/vectorStore';
 import { getVectorDbConfig } from '@starknet-agent/agents/config/settings';
 import { loadOpenAIEmbeddingsModels } from '@starknet-agent/backend/config/provider/openai';

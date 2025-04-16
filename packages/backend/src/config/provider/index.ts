@@ -6,7 +6,7 @@ import { loadDeepseekChatModels } from './deepseek';
 import {
   getHostedModeConfig,
   isHostedMode,
-} from '@starknet-agent/agents/config';
+} from '@starknet-agent/agents/config/settings';
 import { loadGeminiChatModels } from './gemini';
 
 const chatModelProviders = {
