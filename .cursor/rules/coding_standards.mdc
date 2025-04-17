@@ -1,0 +1,69 @@
+---
+description: Coding Standards
+globs: *.ts,*.tsx,*.js,*.jsx
+---
+# Coding Standards for Starknet Agent
+
+## Naming Conventions
+- Variables and functions: Use `camelCase` (e.g., `fetchData`, `generateEmbeddings`).
+- Classes and components: Use `PascalCase` (e.g., `RagAgent`, `ChatInterface`).
+- Constants: Use `UPPER_CASE` with underscores (e.g., `DEFAULT_CHAT_MODEL`).
+- Type interfaces: Use `PascalCase` with `I` prefix (e.g., `IAgentConfig`).
+- Ingester classes: Use `PascalCase` with `Ingester` suffix (e.g., `CairoBookIngester`).
+- Pipeline components: Use descriptive names ending with their role (e.g., `QueryProcessor`, `DocumentRetriever`).
+
+## Indentation and Formatting
+- Use 2 spaces for indentation (no tabs).
+- Keep lines under 100 characters where possible.
+- Place opening braces on the same line as the statement (e.g., `if (condition) {`).
+- Use Prettier for consistent formatting across the codebase.
+- Run `pnpm format:write` before committing changes.
+
+## Imports and Structure
+- Group external imports first, followed by internal modules.
+- Use barrel exports (index.ts files) to simplify imports.
+- Prefer destructured imports when importing multiple items from a single module.
+- Order imports alphabetically within their groups.
+- Use relative paths for imports within the same package, absolute paths for cross-package imports.
+
+## Comments
+- Add JSDoc comments for functions and classes, especially in the agent pipeline and ingester components.
+- Use `//` for single-line comments and `/* ... */` for multi-line comments.
+- Document ingester classes with clear descriptions of the source and processing approach.
+- Include explanations for complex algorithms or non-obvious design decisions.
+- For the RAG pipeline components, document the input/output expectations clearly.
+
+## TypeScript Usage
+- Use explicit typing for function parameters and return values.
+- Prefer interfaces over types for object definitions.
+- Use generics where appropriate, especially in the pipeline components and ingester classes.
+- Example: `function processQuery<T extends BaseQuery>(query: T): Promise<QueryResult>`
+- Use abstract classes for base implementations (e.g., `BaseIngester`).
+- Leverage type guards for safe type narrowing.
+- Use discriminated unions for state management, especially in the UI components.
+
+## Error Handling
+- Wrap async operations in `try/catch` blocks.
+- Log errors with context using the logger utility (e.g., `logger.error('Failed to retrieve documents:', error)`).
+- Use custom error classes for specific error types in the agent pipeline and ingestion process.
+- Implement proper cleanup in error handlers, especially for file operations in ingesters.
+- Ensure errors are propagated appropriately and handled at the right level of abstraction.
+- Use async/await with proper error handling rather than promise chains where possible.
+
+## Testing
+- Write unit tests for utility functions, pipeline components, and ingester classes.
+- Use Jest for testing framework.
+- Mock external dependencies (LLMs, vector stores, etc.) using jest-mock-extended.
+- Aim for high test coverage in core agent functionality and ingestion processes.
+- Test each ingester implementation separately.
+- Use descriptive test names that explain the behavior being tested.
+- Follow the AAA pattern (Arrange, Act, Assert) for test structure.
+
+## Code Organization
+- Keep files focused on a single responsibility.
+- Group related functionality in directories.
+- Separate business logic from UI components.
+- Organize ingesters by source type in dedicated directories.
+- Follow the template method pattern for ingester implementations.
+- Use the factory pattern for creating appropriate instances based on configuration.
+- Implement dependency injection for easier testing and component replacement.

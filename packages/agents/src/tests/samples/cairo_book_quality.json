@@ -1,0 +1,554 @@
+{
+  "source": "cairo_book",
+  "version": "1.0.0",
+  "metadata": {
+    "owner": "cairo-lang",
+    "repository": "cairo-book"
+  },
+  "testCases": [
+    {
+      "query": "How do you declare a mutable variable in Cairo?",
+      "expectedTopics": ["let keyword", "mut", "variables", "immutability"],
+      "type": "procedural",
+      "difficulty": "basic",
+      "tags": ["variables", "syntax"]
+    },
+    {
+      "query": "What happens if you try to reassign a variable declared without `mut`?",
+      "expectedTopics": ["immutability", "let keyword", "compile error"],
+      "type": "conceptual",
+      "difficulty": "basic",
+      "tags": ["variables", "errors"]
+    },
+    {
+      "query": "What is the default data type if no type is specified, and how does it behave with division?",
+      "expectedTopics": [
+        "felt252",
+        "field elements",
+        "division",
+        "type inference"
+      ],
+      "type": "conceptual",
+      "difficulty": "intermediate",
+      "tags": ["data types", "arithmetic"]
+    },
+    {
+      "query": "How do you declare an unsigned 8-bit integer in Cairo?",
+      "expectedTopics": ["u8", "integer types", "type annotation"],
+      "type": "procedural",
+      "difficulty": "basic",
+      "tags": ["data types", "syntax"]
+    },
+    {
+      "query": "What is the range of values for an `i128` type?",
+      "expectedTopics": ["i128", "signed integers", "range"],
+      "type": "factual",
+      "difficulty": "intermediate",
+      "tags": ["data types", "integers"]
+    },
+    {
+      "query": "How do you define a function with a generic type parameter?",
+      "expectedTopics": ["fn keyword", "generics", "type parameters"],
+      "type": "procedural",
+      "difficulty": "intermediate",
+      "tags": ["functions", "generics"]
+    },
+    {
+      "query": "What keyword is used to declare a function in Cairo?",
+      "expectedTopics": ["fn keyword", "function declaration"],
+      "type": "factual",
+      "difficulty": "basic",
+      "tags": ["functions", "syntax"]
+    },
+    {
+      "query": "How do you write a single-line comment in Cairo?",
+      "expectedTopics": ["comments", "//", "syntax"],
+      "type": "procedural",
+      "difficulty": "basic",
+      "tags": ["syntax", "documentation"]
+    },
+    {
+      "query": "How do you create an array with initial values in Cairo?",
+      "expectedTopics": ["array!", "arrays", "collections"],
+      "type": "procedural",
+      "difficulty": "basic",
+      "tags": ["arrays", "collections"]
+    },
+    {
+      "query": "Why can’t you mutate an array after it has been moved?",
+      "expectedTopics": [
+        "ownership",
+        "move semantics",
+        "arrays",
+        "immutability"
+      ],
+      "type": "conceptual",
+      "difficulty": "advanced",
+      "tags": ["ownership", "arrays"]
+    },
+    {
+      "query": "How do you safely access the first element of an array in Cairo?",
+      "expectedTopics": ["get", "Option", "arrays"],
+      "type": "procedural",
+      "difficulty": "intermediate",
+      "tags": ["arrays", "safety"]
+    },
+    {
+      "query": "What is the purpose of the `Felt252Dict` type in Cairo?",
+      "expectedTopics": ["Felt252Dict", "dictionaries", "mutable data"],
+      "type": "conceptual",
+      "difficulty": "intermediate",
+      "tags": ["dictionaries", "collections"]
+    },
+    {
+      "query": "How do you insert a key-value pair into a `Felt252Dict`?",
+      "expectedTopics": ["insert", "Felt252Dict", "key-value"],
+      "type": "procedural",
+      "difficulty": "intermediate",
+      "tags": ["dictionaries", "collections"]
+    },
+    {
+      "query": "What happens when you access a non-existent key in a `Felt252Dict`?",
+      "expectedTopics": ["get", "Felt252Dict", "default value"],
+      "type": "conceptual",
+      "difficulty": "intermediate",
+      "tags": ["dictionaries", "collections"]
+    },
+    {
+      "query": "How do you use a `for` loop to iterate over a range in Cairo?",
+      "expectedTopics": ["for", "range", "iteration"],
+      "type": "procedural",
+      "difficulty": "basic",
+      "tags": ["loops", "control flow"]
+    },
+    {
+      "query": "What is the difference between `loop` and `while` in Cairo?",
+      "expectedTopics": ["loop", "while", "control flow", "break"],
+      "type": "conceptual",
+      "difficulty": "intermediate",
+      "tags": ["loops", "control flow"]
+    },
+    {
+      "query": "How do you define a struct with two fields in Cairo?",
+      "expectedTopics": ["struct", "fields", "data structure"],
+      "type": "procedural",
+      "difficulty": "basic",
+      "tags": ["structs", "syntax"]
+    },
+    {
+      "query": "What does the `#[derive(Copy, Drop)]` attribute do in Cairo?",
+      "expectedTopics": ["derive", "Copy", "Drop", "traits"],
+      "type": "conceptual",
+      "difficulty": "intermediate",
+      "tags": ["structs", "traits"]
+    },
+    {
+      "query": "How do you define a method for a struct in Cairo?",
+      "expectedTopics": ["impl", "method syntax", "self"],
+      "type": "procedural",
+      "difficulty": "intermediate",
+      "tags": ["structs", "methods"]
+    },
+    {
+      "query": "How do you declare a Starknet smart contract in Cairo?",
+      "expectedTopics": [
+        "#[starknet::contract]",
+        "mod",
+        "smart contracts",
+        "Starknet"
+      ],
+      "expectedContent": "A Starknet smart contract is declared using the `#[starknet::contract]` attribute above a module (`mod`). For example: `#[starknet::contract] mod MyContract { ... }`. This marks the module as a contract, enabling Starknet-specific features like storage and entry points.",
+      "type": "procedural",
+      "difficulty": "basic",
+      "tags": ["smart contracts", "syntax"]
+    },
+    {
+      "query": "What is the purpose of the `#[storage]` attribute in a Starknet contract?",
+      "expectedTopics": ["#[storage]", "struct", "state", "smart contracts"],
+      "expectedContent": "The `#[storage]` attribute defines a `Storage` struct in a Starknet contract, which holds persistent state variables. For example: `#[storage] struct Storage { value: u128 }`. These variables are stored on the blockchain and accessed via contract functions.",
+      "type": "conceptual",
+      "difficulty": "intermediate",
+      "tags": ["smart contracts", "storage"]
+    },
+    {
+      "query": "How do you define an external function in a Starknet contract?",
+      "expectedTopics": [
+        "#[external(v0)]",
+        "#[abi(embed_v0)]",
+        "impl",
+        "smart contracts"
+      ],
+      "expectedContent": "External functions are defined in an `impl` block with `#[abi(embed_v0)]` or directly with `#[external(v0)]`. Example: `#[abi(embed_v0)] impl MyContractImpl of IMyContract<ContractState> { fn set_value(ref self: ContractState, x: u128) { self.value.write(x); } }`. These are callable entry points from outside the contract.",
+      "type": "procedural",
+      "difficulty": "intermediate",
+      "tags": ["smart contracts", "functions"]
+    },
+    {
+      "query": "What is the role of `ContractState` in a Starknet contract?",
+      "expectedTopics": ["ContractState", "state", "smart contracts"],
+      "expectedContent": "`ContractState` represents a contract’s state and is passed as a parameter (e.g., `self: ContractState`) to functions accessing or modifying storage. It provides methods like `self.value.read()` to interact with the `Storage` struct safely.",
+      "type": "conceptual",
+      "difficulty": "intermediate",
+      "tags": ["smart contracts", "state"]
+    },
+    {
+      "query": "How do you define an interface for a Starknet contract?",
+      "expectedTopics": [
+        "#[starknet::interface]",
+        "trait",
+        "smart contracts",
+        "ABI"
+      ],
+      "expectedContent": "An interface is defined with a `trait` annotated by `#[starknet::interface]`. Example: `#[starknet::interface] trait IMyContract<TContractState> { fn get_value(self: @TContractState) -> u128; }`. It specifies the contract’s public ABI for external calls.",
+      "type": "procedural",
+      "difficulty": "intermediate",
+      "tags": ["smart contracts", "interfaces"]
+    },
+    {
+      "query": "What happens if you omit `ref` in a function that modifies storage?",
+      "expectedTopics": ["ref", "ContractState", "storage", "compile error"],
+      "expectedContent": "Omitting `ref` in a function modifying storage (e.g., `self.value.write(x)`) causes a compile-time error. Cairo requires `ref self: ContractState` to explicitly allow state mutation.",
+      "type": "conceptual",
+      "difficulty": "intermediate",
+      "tags": ["smart contracts", "errors"]
+    },
+    {
+      "query": "How do you emit an event in a Starknet contract?",
+      "expectedTopics": ["#[event]", "emit", "smart contracts", "Starknet"],
+      "expectedContent": "Define an event struct with `#[event]` and emit it using `self.emit()`. Example: `#[derive(Drop, starknet::Event)] struct ValueSet { value: u128 }`, then `self.emit(ValueSet { value: x });`. This logs the event on Starknet.",
+      "type": "procedural",
+      "difficulty": "intermediate",
+      "tags": ["smart contracts", "events"]
+    },
+    {
+      "query": "What is the difference between a Cairo program and a Starknet smart contract?",
+      "expectedTopics": [
+        "Cairo program",
+        "smart contract",
+        "state",
+        "Starknet"
+      ],
+      "expectedContent": "A Cairo program is stateless, running a computation with a `main()` entry point, while a Starknet smart contract is stateful, using `#[starknet::contract]` to manage persistent data on the blockchain via `Storage`.",
+      "type": "conceptual",
+      "difficulty": "basic",
+      "tags": ["smart contracts", "concepts"]
+    },
+    {
+      "query": "How do you call another contract’s function from a Starknet contract?",
+      "expectedTopics": [
+        "contract address",
+        "dispatcher",
+        "interfaces",
+        "smart contracts"
+      ],
+      "expectedContent": "Use the target contract’s interface and address with a dispatcher. Example: `IMyContractDispatcher { contract_address: addr }.get_value()`. This requires importing the interface and knowing the contract address.",
+      "type": "procedural",
+      "difficulty": "advanced",
+      "tags": ["smart contracts", "interoperability"]
+    },
+    {
+      "query": "What is the purpose of the `#[generate_trait]` attribute?",
+      "expectedTopics": ["#[generate_trait]", "traits", "code generation"],
+      "expectedContent": "`#[generate_trait]` on an `impl` block auto-generates a corresponding trait, reducing boilerplate by defining the trait based on the implemented methods.",
+      "type": "conceptual",
+      "difficulty": "intermediate",
+      "tags": ["traits", "syntax"]
+    },
+    {
+      "query": "How do you make a function in a module visible to other modules?",
+      "expectedTopics": ["pub", "modules", "visibility"],
+      "expectedContent": "Use the `pub` keyword before the function, e.g., `pub fn my_function()`. This makes it accessible outside the module.",
+      "type": "procedural",
+      "difficulty": "basic",
+      "tags": ["modules", "visibility"]
+    },
+    {
+      "query": "What is the purpose of the `use` keyword in Cairo?",
+      "expectedTopics": ["use", "import", "scope"],
+      "type": "conceptual",
+      "difficulty": "basic",
+      "tags": ["modules", "syntax"]
+    },
+    {
+      "query": "How do you create a generic struct in Cairo?",
+      "expectedTopics": ["struct", "generics", "type parameters"],
+      "type": "procedural",
+      "difficulty": "intermediate",
+      "tags": ["structs", "generics"]
+    },
+    {
+      "query": "How do you implement a trait for a generic type in Cairo?",
+      "expectedTopics": ["impl", "trait", "generics", "trait bounds"],
+      "type": "procedural",
+      "difficulty": "advanced",
+      "tags": ["traits", "generics"]
+    },
+    {
+      "query": "What is the difference between snapshots and references in Cairo?",
+      "expectedTopics": [
+        "snapshots",
+        "references",
+        "ownership",
+        "immutability"
+      ],
+      "type": "conceptual",
+      "difficulty": "advanced",
+      "tags": ["ownership", "references"]
+    },
+    {
+      "query": "What is the difference between a contract call and a library call in Starknet?",
+      "expectedTopics": [
+        "contract call",
+        "library call",
+        "state",
+        "class hash"
+      ],
+      "type": "conceptual",
+      "difficulty": "advanced",
+      "tags": ["smart contracts", "execution"]
+    },
+    {
+      "query": "What is the purpose of a constructor in a Starknet contract, and how is it defined?",
+      "expectedTopics": [
+        "constructor",
+        "#[constructor]",
+        "state initialization"
+      ],
+      "expectedContent": "A constructor initializes a contract’s storage during deployment. It’s defined with `#[constructor]` and takes `ref self: ContractState`. Example: `#[constructor] fn constructor(ref self: ContractState, initial_value: u128) { self.value.write(initial_value); }`.",
+      "type": "conceptual",
+      "difficulty": "intermediate",
+      "tags": ["smart contracts", "deployment"]
+    },
+    {
+      "query": "What are the visibility modifiers for functions in a Starknet contract?",
+      "expectedTopics": [
+        "visibility",
+        "#[external(v0)]",
+        "#[abi(embed_v0)]",
+        "internal"
+      ],
+      "expectedContent": "Functions with `#[external(v0)]` or in an `#[abi(embed_v0)]` impl are public and callable externally. Without modifiers, functions are internal, callable only within the contract.",
+      "type": "conceptual",
+      "difficulty": "intermediate",
+      "tags": ["smart contracts", "visibility"]
+    },
+    {
+      "query": "What is a negative implementation, and when is it useful?",
+      "expectedTopics": ["negative impl", "traits", "type constraints"],
+      "expectedContent": "A negative implementation (`impl !Trait for Type`) specifies that a type does not implement a trait. It’s useful for excluding specific types from generic default behavior.",
+      "type": "conceptual",
+      "difficulty": "advanced",
+      "tags": ["traits", "generics"]
+    },
+    {
+      "query": "What are associated items in a Cairo trait?",
+      "expectedTopics": [
+        "associated items",
+        "traits",
+        "associated types",
+        "associated functions"
+      ],
+      "expectedContent": "Associated items in traits include types, functions, and constants defined within the trait. Cairo supports associated types and functions, enabling flexible trait definitions.",
+      "type": "conceptual",
+      "difficulty": "advanced",
+      "tags": ["traits"]
+    },
+    {
+      "query": "What is a storage node in Cairo, and how is it used?",
+      "expectedTopics": ["storage node", "struct", "storage", "mappings"],
+      "expectedContent": "A storage node is a struct within a contract’s `Storage` that can include types like `Map` or `Vec`, organizing complex state data efficiently.",
+      "type": "conceptual",
+      "difficulty": "advanced",
+      "tags": ["storage", "structs"]
+    },
+    {
+      "query": "What are the benefits of using components in a Starknet contract?",
+      "expectedTopics": ["components", "reusability", "modularity"],
+      "expectedContent": "Components enhance modularity and reusability by encapsulating logic, storage, and events, allowing contracts to share functionality without redundant code.",
+      "type": "conceptual",
+      "difficulty": "intermediate",
+      "tags": ["smart contracts", "components"]
+    },
+    {
+      "query": "How do you integrate a component into a Starknet contract?",
+      "expectedTopics": ["component!()", "storage", "events"],
+      "expectedContent": "Use the `component!()` macro to integrate a component, adding its storage and events to the contract’s `Storage` and `Event` structs, and alias its impl for use.",
+      "type": "procedural",
+      "difficulty": "advanced",
+      "tags": ["smart contracts", "components"]
+    },
+    {
+      "query": "How do you call a component’s function within a contract?",
+      "expectedTopics": ["component", "dispatcher", "ComponentState"],
+      "expectedContent": "Use `get_dep_component!` or `get_dep_component_mut!` to access the component’s `ComponentState`, then call its methods via the defined impl alias.",
+      "type": "procedural",
+      "difficulty": "advanced",
+      "tags": ["smart contracts", "components"]
+    },
+    {
+      "query": "What are the steps to upgrade a Starknet contract?",
+      "expectedTopics": ["upgrade", "replace_class_syscall", "class hash"],
+      "expectedContent": "Implement `replace_class_syscall` in an external function and call it with the new class hash to replace the contract’s code during an upgrade.",
+      "type": "procedural",
+      "difficulty": "intermediate",
+      "tags": ["smart contracts", "upgrades"]
+    },
+    {
+      "query": "What does the `?` operator do in Cairo?",
+      "expectedTopics": ["?", "Result", "Option", "error propagation"],
+      "expectedContent": "The `?` operator propagates errors from `Result` or unwraps `Option` values, simplifying error handling in functions.",
+      "type": "conceptual",
+      "difficulty": "intermediate",
+      "tags": ["error handling", "syntax"]
+    },
+    {
+      "query": "How does `#[should_panic]` work in Cairo testing?",
+      "expectedTopics": ["#[should_panic]", "testing", "panic"],
+      "expectedContent": "`#[should_panic]` marks a test that should pass only if it panics, optionally with an expected message: `#[should_panic(expected: \"message\")]`.",
+      "type": "procedural",
+      "difficulty": "basic",
+      "tags": ["testing", "panic"]
+    },
+    {
+      "query": "What is the purpose of the `#[cfg(test)]` attribute?",
+      "expectedTopics": ["#[cfg(test)]", "testing", "conditional compilation"],
+      "expectedContent": "`#[cfg(test)]` compiles code only during `scarb test`, keeping test-specific code out of the final artifact.",
+      "type": "conceptual",
+      "difficulty": "basic",
+      "tags": ["testing", "syntax"]
+    },
+    {
+      "query": "What is the difference between unit tests and integration tests in Cairo?",
+      "expectedTopics": ["unit tests", "integration tests", "testing"],
+      "expectedContent": "Unit tests focus on individual components in isolation, while integration tests verify interactions between components or contracts via public interfaces.",
+      "type": "conceptual",
+      "difficulty": "intermediate",
+      "tags": ["testing"]
+    },
+    {
+      "query": "How can you test private functions in Cairo?",
+      "expectedTopics": ["private functions", "testing", "module visibility"],
+      "expectedContent": "Private functions can be tested in unit tests within the same module or by making parent modules accessible to the test module.",
+      "type": "procedural",
+      "difficulty": "intermediate",
+      "tags": ["testing", "visibility"]
+    },
+    {
+      "query": "How do you test a Starknet contract by deploying and interacting with it?",
+      "expectedTopics": ["deploy", "testing", "dispatcher", "Foundry"],
+      "expectedContent": "Using Starknet Foundry, declare the contract class, deploy it with serialized constructor calldata, then use a dispatcher to call and test its entry points.",
+      "type": "procedural",
+      "difficulty": "advanced",
+      "tags": ["testing", "smart contracts"]
+    },
+    {
+      "query": "How do you add a dependency to a Cairo project?",
+      "expectedTopics": ["Scarb.toml", "dependencies", "package manager"],
+      "expectedContent": "Add dependencies in `Scarb.toml` under `[dependencies]`, e.g., `my_crate = { version = \"1.0.0\" }`.",
+      "type": "procedural",
+      "difficulty": "basic",
+      "tags": ["Scarb", "dependencies"]
+    },
+    {
+      "query": "How are storage slots identified in a Starknet contract?",
+      "expectedTopics": ["storage", "storage slot", "storage address"],
+      "expectedContent": "Storage slots are identified by a `felt252` storage address, computed from the variable name and, for complex types, additional parameters.",
+      "type": "factual",
+      "difficulty": "intermediate",
+      "tags": ["smart contracts", "storage"]
+    },
+    {
+      "query": "What are the benefits of using a ZK-ISA in Cairo?",
+      "expectedTopics": ["ZK-ISA", "STARKs", "efficiency"],
+      "expectedContent": "A ZK-ISA optimizes for zero-knowledge proofs (e.g., STARKs), enabling faster proof generation and smaller proof sizes for scalable applications.",
+      "type": "conceptual",
+      "difficulty": "advanced",
+      "tags": ["Cairo VM", "zero-knowledge"]
+    },
+    {
+      "query": "What types of procedural macros exist in Cairo?",
+      "expectedTopics": [
+        "procedural macros",
+        "derive macros",
+        "attribute-like macros",
+        "function-like macros"
+      ],
+      "expectedContent": "Cairo supports derive macros (e.g., `#[derive]`), attribute-like macros (e.g., `#[generate_trait]`), and function-like macros (e.g., `array!`).",
+      "type": "factual",
+      "difficulty": "intermediate",
+      "tags": ["macros", "syntax"]
+    },
+    {
+      "query": "How do you pack multiple small integers into a larger integer in Cairo?",
+      "expectedTopics": [
+        "bit-packing",
+        "bitwise operators",
+        "storage optimization"
+      ],
+      "expectedContent": "Use bitwise operators (shift, AND, OR) to combine smaller integers into a larger type, optimizing storage usage.",
+      "type": "procedural",
+      "difficulty": "advanced",
+      "tags": ["data types", "optimization"]
+    },
+    {
+      "query": "When should you use bit-packing in a Starknet contract?",
+      "expectedTopics": ["bit-packing", "storage optimization", "gas costs"],
+      "expectedContent": "Use bit-packing for small integers fitting within a `felt252` slot to reduce storage and gas costs.",
+      "type": "conceptual",
+      "difficulty": "intermediate",
+      "tags": ["smart contracts", "optimization"]
+    },
+    {
+      "query": "How does the `#[flat]` attribute affect events in Starknet?",
+      "expectedTopics": ["#[flat]", "events", "composability"],
+      "expectedContent": "`#[flat]` flattens event variants, omitting variant names in serialization, aiding composability across components.",
+      "type": "procedural",
+      "difficulty": "intermediate",
+      "tags": ["events", "components"]
+    },
+    {
+      "query": "What is the role of the `#[key]` attribute in Starknet events?",
+      "expectedTopics": ["#[key]", "events", "indexed fields"],
+      "expectedContent": "`#[key]` marks event fields as indexed, improving query efficiency on the blockchain.",
+      "type": "procedural",
+      "difficulty": "intermediate",
+      "tags": ["events", "Starknet"]
+    },
+    {
+      "query": "How does the Cairo compiler enforce `nopanic` function safety?",
+      "expectedTopics": ["nopanic", "compile-time checks", "panic"],
+      "expectedContent": "The compiler statically ensures `nopanic` functions only call other `nopanic` functions, preventing operations that could panic.",
+      "type": "conceptual",
+      "difficulty": "advanced",
+      "tags": ["functions", "safety"]
+    },
+    {
+      "query": "How does Cairo’s write-once memory model affect mutable data structures?",
+      "expectedTopics": [
+        "immutable memory",
+        "mutable data structures",
+        "Felt252Dict"
+      ],
+      "expectedContent": "Cairo’s write-once memory prevents overwrites, so mutability is simulated with structures like `Felt252Dict`, which creates new entries for updates.",
+      "type": "conceptual",
+      "difficulty": "advanced",
+      "tags": ["memory", "dictionaries"]
+    },
+    {
+      "query": "What is the role of `ComponentState` in Starknet components?",
+      "expectedTopics": ["ComponentState", "components", "storage access"],
+      "expectedContent": "`ComponentState<TContractState>` provides components access to contract storage and functions, ensuring consistent state interaction.",
+      "type": "conceptual",
+      "difficulty": "advanced",
+      "tags": ["components", "smart contracts"]
+    },
+    {
+      "query": "When should you use a library call instead of a contract call?",
+      "expectedTopics": ["library call", "contract call", "state", "gas costs"],
+      "expectedContent": "Library calls execute in the caller's context (storage changes, environment variables, etc.), while contract calls execute in the called contract's context.",
+      "type": "conceptual",
+      "difficulty": "advanced",
+      "tags": ["smart contracts", "execution"]
+    }
+  ]
+}

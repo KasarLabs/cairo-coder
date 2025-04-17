@@ -1,0 +1,30 @@
+[API_KEYS]
+OPENAI = ""
+GROQ = ""
+ANTHROPIC = ""
+DEEPSEEK = ""
+GEMINI = ""
+
+
+[VECTOR_DB]
+MONGODB_URI = ""
+DB_NAME = ""
+COLLECTION_NAME = ""
+
+[GENERAL]
+PORT = 3_001
+SIMILARITY_MEASURE = "cosine"
+
+[HOSTED_MODE]
+# deepseek | anthropic | openai | gemini
+DEFAULT_CHAT_PROVIDER = "gemini"
+# Claude 3.5 Sonnet | DeepSeek Chat | Gemini Flash
+DEFAULT_CHAT_MODEL = "Gemini Flash"
+DEFAULT_FAST_CHAT_PROVIDER = "gemini"
+DEFAULT_FAST_CHAT_MODEL = "Gemini Flash"
+DEFAULT_EMBEDDING_PROVIDER = "openai"
+DEFAULT_EMBEDDING_MODEL = "Text embedding 3 large"
+
+[VERSIONS]
+STARKNET_FOUNDRY = "0.37.0"
+SCARB = "2.9.2"

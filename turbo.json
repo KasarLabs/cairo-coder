@@ -1,0 +1,44 @@
+{
+  "$schema": "https://turborepo.org/schema.json",
+  "tasks": {
+    "topo": {
+      "dependsOn": ["^topo"]
+    },
+    "check-types": {
+      "dependsOn": ["topo"]
+    },
+    "build": {
+      "dependsOn": ["^build"],
+      "outputs": ["dist/**", "build/**", "out/**", ".next/**"]
+    },
+    "dev": {
+      "cache": false,
+      "persistent": true
+    },
+    "lint": {},
+    "test": {
+      "dependsOn": ["^build"],
+      "outputs": []
+    },
+    "start": {
+      "dependsOn": ["build"],
+      "cache": false,
+      "persistent": true,
+      "inputs": ["dist/**", "build/**", "out/**", ".next/**"]
+    },
+    "generate-embeddings": {
+      "dependsOn": ["build"],
+      "cache": false,
+      "interactive": true,
+      "persistent": true
+    },
+    "generate-embeddings:yes": {
+      "dependsOn": ["build"],
+      "inputs": ["dist/**", "build/**", "out/**", ".next/**"],
+      "cache": false,
+      "interactive": false,
+      "persistent": true
+    }
+  },
+  "ui": "tui"
+}
