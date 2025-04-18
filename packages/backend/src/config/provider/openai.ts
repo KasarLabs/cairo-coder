@@ -54,13 +54,13 @@ export const loadOpenAIEmbeddingsModels = async () => {
         openAIApiKey,
         modelName: 'text-embedding-3-small',
         batchSize: 512,
-        dimensions: 2048,
+        dimensions: 1536,
       }),
       'Text embedding 3 large': new OpenAIEmbeddings({
         openAIApiKey,
         modelName: 'text-embedding-3-large',
         batchSize: 512,
-        dimensions: 2048,
+        dimensions: 1536,
       }),
     };
 

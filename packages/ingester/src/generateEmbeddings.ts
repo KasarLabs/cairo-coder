@@ -1,7 +1,7 @@
 import dotenv from 'dotenv';
 import { createInterface } from 'readline';
 import { logger } from '@starknet-agent/agents/utils/index';
-import { VectorStore } from '@starknet-agent/agents/db/vectorStore';
+import { VectorStore } from '@starknet-agent/agents/db/postgresVectorStore';
 import { getVectorDbConfig } from '@starknet-agent/agents/config/settings';
 import { loadOpenAIEmbeddingsModels } from '@starknet-agent/backend/config/provider/openai';
 import { DocumentSource } from '@starknet-agent/agents/types/index';
@@ -37,10 +37,12 @@ async function setupVectorStore(): Promise<VectorStore> {
   try {
     // Get database configuration
     const dbConfig = getVectorDbConfig();
-
+    logger.debug('dbConfig', dbConfig);
     // Load embedding models
     const embeddingModels = await loadOpenAIEmbeddingsModels();
+    logger.debug('embeddingModels', embeddingModels);
     const textEmbedding3Large = embeddingModels['Text embedding 3 large'];
+    logger.debug('textEmbedding3Large', textEmbedding3Large);
 
     if (!textEmbedding3Large) {
       throw new Error('Text embedding 3 large model not found');

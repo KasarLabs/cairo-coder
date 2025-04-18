@@ -1,6 +1,6 @@
 import { Document } from '@langchain/core/documents';
 import { createInterface } from 'readline';
-import { VectorStore } from '@starknet-agent/agents/db/vectorStore';
+import { VectorStore } from '@starknet-agent/agents/db/postgresVectorStore';
 import {
   BookChunk,
   DocumentSource,
@@ -121,7 +121,7 @@ export async function updateVectorStore(
   if (chunksToUpdate.length > 0) {
     await vectorStore.addDocuments(
       chunksToUpdate,
-      chunksToUpdate.map((chunk) => chunk.metadata.uniqueId),
+      { ids: chunksToUpdate.map((chunk) => chunk.metadata.uniqueId) }
     );
   }
 

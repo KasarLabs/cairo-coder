@@ -2,7 +2,7 @@ import eventEmitter from 'events';
 import { BaseMessage } from '@langchain/core/messages';
 import { Embeddings } from '@langchain/core/embeddings';
 import { LLMConfig } from '@starknet-agent/agents/types/index';
-import { VectorStore } from '@starknet-agent/agents/db/vectorStore';
+import { VectorStore } from '@starknet-agent/agents/db/postgresVectorStore';
 import { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import { CorsOptions } from 'cors';
 import { Express } from 'express';

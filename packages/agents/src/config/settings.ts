@@ -3,7 +3,7 @@
 import fs from 'fs';
 import path from 'path';
 import toml from '@iarna/toml';
-import { Config, RecursivePartial } from '../types';
+import { Config, RecursivePartial, PostgresVectorStoreConfig, MongoVectorStoreConfig } from '../types';
 
 const configFileName = 'config.toml';
 
@@ -43,7 +43,31 @@ export const getDeepseekApiKey = () => loadConfig().API_KEYS.DEEPSEEK;
 
 export const getGeminiApiKey = () => loadConfig().API_KEYS.GEMINI;
 
-export const getVectorDbConfig = () => loadConfig().VECTOR_DB;
+export const getVectorDbConfig = () => {
+  const config = loadConfig();
+  const dbType = 'postgres';
+  
+  if (dbType === 'postgres') {
+    return {
+      type: 'postgres',
+      COLLECTION_NAME: config.VECTOR_DB.COLLECTION_NAME || 'documents',
+    } as PostgresVectorStoreConfig;
+  } else {
+    // Default to MongoDB
+    return {
+      type: 'mongodb',
+      MONGODB_URI: config.VECTOR_DB.MONGODB_URI || '',
+      DB_NAME: config.VECTOR_DB.DB_NAME || '',
+      COLLECTION_NAME: config.VECTOR_DB.COLLECTION_NAME || 'chunks',
+    } as MongoVectorStoreConfig;
+  }
+};
+
+// Check if we're using PostgreSQL
+export const isPostgresDb = () => {
+  const config = loadConfig();
+  return config.VECTOR_DB.DB_TYPE === 'postgres';
+};
 
 export const updateConfig = (config: RecursivePartial<Config>) => {
   const currentConfig = loadConfig();

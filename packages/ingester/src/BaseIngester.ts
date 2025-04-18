@@ -1,5 +1,5 @@
 import { Document } from '@langchain/core/documents';
-import { VectorStore } from '@starknet-agent/agents/db/vectorStore';
+import { VectorStore } from '@starknet-agent/agents/db/postgresVectorStore';
 import {
   DocumentSource,
   BookChunk,

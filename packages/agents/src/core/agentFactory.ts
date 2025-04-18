@@ -3,7 +3,7 @@ import { Embeddings } from '@langchain/core/embeddings';
 import { getAgentConfig } from '../config/agent';
 import EventEmitter from 'events';
 import { RagPipeline } from './pipeline/ragPipeline';
-import { VectorStore } from '../db/vectorStore';
+import { VectorStore } from '../db/postgresVectorStore';
 import { LLMConfig } from '../types';
 
 export class RagAgentFactory {
