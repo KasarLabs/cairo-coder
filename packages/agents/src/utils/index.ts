@@ -17,7 +17,7 @@ export const parseXMLContent = (xml: string, tag: string): string[] => {
 };
 
 export const logger = winston.createLogger({
-  level: process.env.LOG_LEVEL || 'info',
+  level: process.env.LOG_LEVEL || 'debug',
   transports: [
     new winston.transports.Console({
       format: winston.format.combine(

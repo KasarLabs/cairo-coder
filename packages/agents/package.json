@@ -19,8 +19,10 @@
     "commander": "^11.1.0",
     "compute-cosine-similarity": "^1.1.0",
     "compute-dot": "^1.1.0",
+    "dotenv": "^16.4.7",
     "mongodb": "^6.13.1",
     "node-fetch": "^3.3.2",
+    "pg": "^8.14.1",
     "winston": "^3.17.0"
   },
   "exports": {

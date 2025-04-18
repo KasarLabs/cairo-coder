@@ -1,6 +1,6 @@
 import { BaseMessage } from '@langchain/core/messages';
 import { Document } from '@langchain/core/documents';
-import { VectorStore } from '../db/vectorStore';
+import { VectorStore } from '../db/postgresVectorStore';
 import { BaseChatModel } from '@langchain/core/language_models/chat_models';
 
 export type AvailableAgents = 'cairoCoder';
@@ -10,9 +10,24 @@ export interface LLMConfig {
   fastLLM?: BaseChatModel;
 }
 
-export interface VectorStoreConfig {
+export interface MongoVectorStoreConfig {
+  type: 'mongodb';
   MONGODB_URI: string;
   DB_NAME: string;
+  COLLECTION_NAME: string;
+}
+
+export interface PostgresVectorStoreConfig {
+  type: 'postgres';
+  COLLECTION_NAME: string;
+}
+
+export type VectorStoreConfig = MongoVectorStoreConfig | PostgresVectorStoreConfig;
+
+export interface VectorDBConfig {
+  DB_TYPE: 'mongodb' | 'postgres';
+  MONGODB_URI?: string;
+  DB_NAME?: string;
   COLLECTION_NAME: string;
 }
 
@@ -21,7 +36,7 @@ export interface Config {
     PORT: number;
     SIMILARITY_MEASURE: string;
   };
-  VECTOR_DB: VectorStoreConfig;
+  VECTOR_DB: VectorDBConfig;
   API_KEYS: {
     OPENAI: string;
     GROQ: string;

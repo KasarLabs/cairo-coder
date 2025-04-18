@@ -1,7 +1,7 @@
 import { basicContractTemplate } from './templates/contractTemplate';
 import { cairoCoderPrompts } from './prompts';
 import { basicTestTemplate } from './templates/testTemplate';
-import { VectorStore } from '../db/vectorStore';
+import { VectorStore } from '../db/postgresVectorStore';
 import { DocumentSource, RagSearchConfig } from '../types';
 
 export const getAgentConfig = (
