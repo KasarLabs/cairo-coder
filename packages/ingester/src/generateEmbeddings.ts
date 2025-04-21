@@ -1,4 +1,3 @@
-import dotenv from 'dotenv';
 import { createInterface } from 'readline';
 import { logger } from '@starknet-agent/agents/utils/index';
 import { VectorStore } from '@starknet-agent/agents/db/postgresVectorStore';
@@ -7,10 +6,6 @@ import { loadOpenAIEmbeddingsModels } from '@starknet-agent/backend/config/provi
 import { DocumentSource } from '@starknet-agent/agents/types/index';
 import { IngesterFactory } from './IngesterFactory';
 
-/**
- * Initialize environment variables
- */
-dotenv.config();
 
 /**
  * Global vector store instance
@@ -38,12 +33,8 @@ async function setupVectorStore(): Promise<VectorStore> {
     // Get database configuration
     const dbConfig = getVectorDbConfig();
 
-    logger.debug('dbConfig', dbConfig);
-    // Load embedding models
     const embeddingModels = await loadOpenAIEmbeddingsModels();
-    logger.debug('embeddingModels', embeddingModels);
     const textEmbedding3Large = embeddingModels['Text embedding 3 large'];
-    logger.debug('textEmbedding3Large', textEmbedding3Large);
 
     if (!textEmbedding3Large) {
       throw new Error('Text embedding 3 large model not found');

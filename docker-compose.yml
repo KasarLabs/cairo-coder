@@ -30,17 +30,16 @@ services:
     networks:
       - cairo_coder_network
   
-  # ingester:
-  #   build:
-  #     context: .
-  #     dockerfile: ingest.dockerfile
-  #   env_file:
-  #     - .env
-  #   depends_on:
-  #     postgres:
-  #       condition: service_started
-  #   networks:
-  #     - cairo_coder_network
+  ingester:
+    build:
+      context: .
+      dockerfile: ingest.dockerfile
+    profiles: ["ingester"]
+    depends_on:
+      postgres:
+        condition: service_started
+    networks:
+      - cairo_coder_network
 
 networks:
   cairo_coder_network:

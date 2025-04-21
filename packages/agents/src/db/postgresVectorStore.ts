@@ -114,23 +114,16 @@ export class VectorStore {
     embeddings: Embeddings,
   ): Promise<VectorStore> {
     if (!VectorStore.instance) {
-      logger.debug('config DB :', config);
-      logger.debug('config.POSTGRES_USER : ', config.POSTGRES_USER);
-      logger.debug('config.POSTGRES_HOST : ', config.POSTGRES_HOST);
-      logger.debug('config.POSTGRES_ROOT_DB : ', config.POSTGRES_ROOT_DB);
-      logger.debug('config.POSTGRES_PASSWORD : ', config.POSTGRES_PASSWORD);
-      logger.debug('config.POSTGRES_PORT : ', config.POSTGRES_PORT);
-      
       const pool = new Pool({
         user: config.POSTGRES_USER, 
         host: config.POSTGRES_HOST,
         database: config.POSTGRES_ROOT_DB,
         password: config.POSTGRES_PASSWORD,
-        port: parseInt(config.POSTGRES_PORT || '5432'),
+        port: parseInt(config.POSTGRES_PORT),
         max: 10,
         min: 5,
       });
-      logger.debug('pool', pool);
+
       pool.on('error', (err) => {
         logger.error('Postgres pool error:', err);
       });
@@ -141,7 +134,6 @@ export class VectorStore {
       
       // Create instance first, then initialize DB
       VectorStore.instance = new VectorStore(pool, embeddings, tableName);
-      logger.debug('VectorStore.instance', VectorStore.instance);
       await VectorStore.instance.initializeDb();
     }
     return VectorStore.instance;
@@ -156,7 +148,6 @@ export class VectorStore {
       try {
         // Enable vector extension
         await client.query('CREATE EXTENSION IF NOT EXISTS vector;');
-        logger.debug('CREATE EXTENSION IF NOT EXISTS vector;');
         // Create documents table if it doesn't exist
         await client.query(`
           CREATE TABLE IF NOT EXISTS ${this.tableName} (
@@ -170,18 +161,17 @@ export class VectorStore {
             UNIQUE(uniqueId)
           );
         `);
-        logger.debug('CREATE TABLE IF NOT EXISTS ${this.tableName} (id SERIAL PRIMARY KEY, content TEXT NOT NULL, metadata JSONB NOT NULL, embedding vector(1536) NOT NULL, uniqueId VARCHAR(255), contentHash VARCHAR(255), source VARCHAR(50), UNIQUE(uniqueId));');
+    
         // Create index on source for filtering
         await client.query(`
-          CREATE INDEX IF NOT EXISTS idx_${this.tableName}_source ON ${this.tableName} (source);
+          CREATE INDEX IF NOT EXISTS idxlogger.debug('CREATE INDEX IF NOT EXISTS idx_${this.tableName}_embedding ON ${this.tableName} USING ivfflat (embedding vector_cosine_ops) WITH (lists = 100);');_${this.tableName}_source ON ${this.tableName} (source);
         `);
-        logger.debug('CREATE INDEX IF NOT EXISTS idx_${this.tableName}_source ON ${this.tableName} (source);');
+
         // Create vector index for similarity search
         await client.query(`
           CREATE INDEX IF NOT EXISTS idx_${this.tableName}_embedding ON ${this.tableName} USING ivfflat (embedding vector_cosine_ops)
           WITH (lists = 100);
         `);
-        logger.debug('CREATE INDEX IF NOT EXISTS idx_${this.tableName}_embedding ON ${this.tableName} USING ivfflat (embedding vector_cosine_ops) WITH (lists = 100);');
         logger.info('PostgreSQL database initialized');
       } finally {
         client.release();
