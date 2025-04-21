@@ -101,12 +101,6 @@ export class VectorStore {
     this.pool = pool;
     this.embeddings = embeddings;
     this.tableName = tableName;
-
-    // Register vector type parser to handle vector data types
-    const vectorOid = 16428; // pgvector's OID, may need to be adjusted
-    pg.types.setTypeParser(vectorOid, (val) => {
-      return val ? JSON.parse(val) : null;
-    });
   }
 
   static async getInstance(
