@@ -3,7 +3,7 @@ version: '3.8'
 services:
   postgres:
     image: pgvector/pgvector:pg17
-    container_name: "posgresql"
+    container_name: "postgresql"
     shm_size: 1g
     ports:
       - 5432:5432
@@ -23,14 +23,25 @@ services:
       - 3001:3001
     extra_hosts:
       - host.docker.internal:host-gateway
-    env_file:
-      - .env
     depends_on:
       postgres:
         condition: service_started
     restart: unless-stopped
     networks:
       - cairo_coder_network
+  
+  # ingester:
+  #   build:
+  #     context: .
+  #     dockerfile: ingest.dockerfile
+  #   env_file:
+  #     - .env
+  #   depends_on:
+  #     postgres:
+  #       condition: service_started
+  #   networks:
+  #     - cairo_coder_network
+
 networks:
   cairo_coder_network:
 

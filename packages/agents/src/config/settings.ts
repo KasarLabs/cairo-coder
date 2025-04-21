@@ -3,7 +3,7 @@
 import fs from 'fs';
 import path from 'path';
 import toml from '@iarna/toml';
-import { Config, RecursivePartial, PostgresVectorStoreConfig, MongoVectorStoreConfig } from '../types';
+import { Config, RecursivePartial, VectorStoreConfig } from '../types';
 
 const configFileName = 'config.toml';
 
@@ -45,28 +45,14 @@ export const getGeminiApiKey = () => loadConfig().API_KEYS.GEMINI;
 
 export const getVectorDbConfig = () => {
   const config = loadConfig();
-  const dbType = 'postgres';
-  
-  if (dbType === 'postgres') {
-    return {
-      type: 'postgres',
-      COLLECTION_NAME: config.VECTOR_DB.COLLECTION_NAME || 'documents',
-    } as PostgresVectorStoreConfig;
-  } else {
-    // Default to MongoDB
-    return {
-      type: 'mongodb',
-      MONGODB_URI: config.VECTOR_DB.MONGODB_URI || '',
-      DB_NAME: config.VECTOR_DB.DB_NAME || '',
-      COLLECTION_NAME: config.VECTOR_DB.COLLECTION_NAME || 'chunks',
-    } as MongoVectorStoreConfig;
-  }
-};
 
-// Check if we're using PostgreSQL
-export const isPostgresDb = () => {
-  const config = loadConfig();
-  return config.VECTOR_DB.DB_TYPE === 'postgres';
+  return {
+    POSTGRES_USER: config.VECTOR_DB.POSTGRES_USER || '',
+    POSTGRES_PASSWORD: config.VECTOR_DB.POSTGRES_PASSWORD || '',
+    POSTGRES_ROOT_DB: config.VECTOR_DB.POSTGRES_ROOT_DB || '',
+    POSTGRES_HOST: config.VECTOR_DB.POSTGRES_HOST || '',
+    POSTGRES_PORT: config.VECTOR_DB.POSTGRES_PORT || '',
+  } as VectorStoreConfig;
 };
 
 export const updateConfig = (config: RecursivePartial<Config>) => {

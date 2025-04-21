@@ -173,7 +173,7 @@ router.post('/', async (req, res) => {
       }
     });
   } catch (error) {
-    logger.error('Error in /v1/chat/completions:', error);
+    logger.error('Error in /generate:', error);
 
     // Map common errors to OpenAI error format
     if (error instanceof Error) {

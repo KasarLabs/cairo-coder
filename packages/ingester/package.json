@@ -8,10 +8,11 @@
     "generate-embeddings:yes": "node ./dist/src/generateEmbeddings.js -y"
   },
   "dependencies": {
-    "@starknet-agent/agents": "workspace:*",
     "@antora/lunr-extension": "1.0.0-alpha.10",
     "@asciidoctor/tabs": "1.0.0-beta.6",
+    "@iarna/toml": "^2.2.5",
     "@langchain/core": "^0.2.36",
+    "@starknet-agent/agents": "workspace:*",
     "@starknet-agent/backend": "workspace:*",
     "adm-zip": "^0.5.16",
     "asciidoctor": "^3.0.4",

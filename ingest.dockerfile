@@ -1,17 +1,25 @@
-FROM node:18
+FROM node:20
 
 WORKDIR /app
 
-# Copy package.json and package-lock.json (if you have one)
-COPY package.json package-lock.json* ./
+# Copy root workspace files
+COPY pnpm-workspace.yaml ./
+COPY package.json ./
+COPY pnpm-lock.yaml ./
+COPY turbo.json ./
 
-# Copy the rest of your application code
-COPY . .
+# Copy backend & agents packages
+COPY packages/backend ./packages/backend
+COPY packages/ingester ./packages/ingester
+COPY packages/agents ./packages/agents
 
-# Install dependencies
-RUN yarn install
-# Compile TypeScript to JavaScript
-RUN yarn build
+# Copy shared TypeScript config
+COPY packages/typescript-config ./packages/typescript-config
+
+RUN npm install -g pnpm@9.10.0
+RUN pnpm install --frozen-lockfile
+RUN npm install -g turbo
 
 # Set the command to run your script
-CMD ["node", "dist/scripts/generateEmbeddings.js"]
+# Ensure this path is correct relative to the WORKDIR after build
+CMD ["turbo", "run", "generate-embeddings:yes"]

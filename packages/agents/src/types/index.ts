@@ -10,25 +10,12 @@ export interface LLMConfig {
   fastLLM?: BaseChatModel;
 }
 
-export interface MongoVectorStoreConfig {
-  type: 'mongodb';
-  MONGODB_URI: string;
-  DB_NAME: string;
-  COLLECTION_NAME: string;
-}
-
-export interface PostgresVectorStoreConfig {
-  type: 'postgres';
-  COLLECTION_NAME: string;
-}
-
-export type VectorStoreConfig = MongoVectorStoreConfig | PostgresVectorStoreConfig;
-
-export interface VectorDBConfig {
-  DB_TYPE: 'mongodb' | 'postgres';
-  MONGODB_URI?: string;
-  DB_NAME?: string;
-  COLLECTION_NAME: string;
+export interface VectorStoreConfig {
+  POSTGRES_USER: string;
+  POSTGRES_PASSWORD: string;
+  POSTGRES_ROOT_DB: string;
+  POSTGRES_HOST: string;
+  POSTGRES_PORT: string;
 }
 
 export interface Config {
@@ -36,7 +23,7 @@ export interface Config {
     PORT: number;
     SIMILARITY_MEASURE: string;
   };
-  VECTOR_DB: VectorDBConfig;
+  VECTOR_DB: VectorStoreConfig;
   API_KEYS: {
     OPENAI: string;
     GROQ: string;

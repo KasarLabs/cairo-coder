@@ -114,18 +114,19 @@ export class VectorStore {
     embeddings: Embeddings,
   ): Promise<VectorStore> {
     if (!VectorStore.instance) {
-      logger.debug('config', config);
-      logger.debug('process.env.POSTGRES_USER', process.env.POSTGRES_USER);
-      logger.debug('process.env.POSTGRES_HOST', process.env.POSTGRES_HOST);
-      logger.debug('process.env.POSTGRES_ROOT_DB', process.env.POSTGRES_ROOT_DB);
-      logger.debug('process.env.POSTGRES_PASSWORD', process.env.POSTGRES_PASSWORD);
-      logger.debug('process.env.POSTGRES_PORT', process.env.POSTGRES_PORT);
+      logger.debug('config DB :', config);
+      logger.debug('config.POSTGRES_USER : ', config.POSTGRES_USER);
+      logger.debug('config.POSTGRES_HOST : ', config.POSTGRES_HOST);
+      logger.debug('config.POSTGRES_ROOT_DB : ', config.POSTGRES_ROOT_DB);
+      logger.debug('config.POSTGRES_PASSWORD : ', config.POSTGRES_PASSWORD);
+      logger.debug('config.POSTGRES_PORT : ', config.POSTGRES_PORT);
+      
       const pool = new Pool({
-        user: process.env.POSTGRES_USER,
-        host: process.env.POSTGRES_HOST,
-        database: process.env.POSTGRES_ROOT_DB,
-        password: process.env.POSTGRES_PASSWORD,
-        port: parseInt(process.env.POSTGRES_PORT || '5432'),
+        user: config.POSTGRES_USER, 
+        host: config.POSTGRES_HOST,
+        database: config.POSTGRES_ROOT_DB,
+        password: config.POSTGRES_PASSWORD,
+        port: parseInt(config.POSTGRES_PORT || '5432'),
         max: 10,
         min: 5,
       });

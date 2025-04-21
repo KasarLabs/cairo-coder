@@ -37,6 +37,7 @@ async function setupVectorStore(): Promise<VectorStore> {
   try {
     // Get database configuration
     const dbConfig = getVectorDbConfig();
+
     logger.debug('dbConfig', dbConfig);
     // Load embedding models
     const embeddingModels = await loadOpenAIEmbeddingsModels();
