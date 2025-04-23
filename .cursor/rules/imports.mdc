@@ -84,7 +84,7 @@ globs: *.ts,*.tsx,*.js,*.jsx
   - Used in: `packages/ingester/src/ingesters/MarkdownIngester.ts`
   - Import: `import { BaseIngester } from '../BaseIngester';`
 - `IngesterFactory`: Factory for creating ingesters.
-  - Used in: `packages/ingester/src/generateEmbeddings.ts`
+  - Used in: `packages/ingester/src/chat/completionsEmbeddings.ts`
   - Import: `import { IngesterFactory } from './IngesterFactory';`
 - `utils`: Utility functions for ingestion.
   - Used in: `packages/ingester/src/ingesters/MarkdownIngester.ts`

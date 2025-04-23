@@ -121,7 +121,7 @@ There are mainly 2 ways of installing Cairo Coder - With Docker, Without Docker.
    docker-compose up --build
    ```
 
-8. The API will be available at http://localhost:3000/generate.
+8. The API will be available at http://localhost:3000/chat/completions.
 
 ## Running the Ingester
 
@@ -140,7 +140,7 @@ Cairo Coder provides a simple REST API compatible with the OpenAI format for eas
 ### Endpoint
 
 ```
-POST /generate
+POST /chat/completions
 ```
 
 ### Request Format

@@ -71,7 +71,7 @@ The Cairo Coder codebase is organized as a monorepo with multiple packages:
 - **To understand the RAG process**: Follow the pipeline components in `packages/agents/src/core/pipeline/`
 - **To see how user queries are processed**: Start at the API handlers in `packages/backend/src/api/cairocoder.ts`
 - **To understand data ingestion**: Check the ingester implementations in `packages/ingester/src/ingesters/`
-- **To modify embeddings generation**: Look at `packages/ingester/src/generateEmbeddings.ts`
+- **To modify embeddings generation**: Look at `packages/ingester/src/chat/completionsEmbeddings.ts`
 
 ## Key Files for Common Tasks
 
@@ -89,12 +89,12 @@ The Cairo Coder codebase is organized as a monorepo with multiple packages:
 2. Implement handlers in `packages/backend/src/api/cairocoder.ts` or add new handlers
 
 ### Running Ingestion
-1. Use the script at `packages/ingester/src/generateEmbeddings.ts`
+1. Use the script at `packages/ingester/src/chat/completionsEmbeddings.ts`
 2. Or run `pnpm generate-embeddings` from the project root
 
 ## Key Endpoints
 
-- `/generate`: Main endpoint for Cairo code generation
+- `/chat/completions`: Main endpoint for Cairo code generation
   - Accepts POST requests with messages array in OpenAI format
   - Returns generated Cairo code
 

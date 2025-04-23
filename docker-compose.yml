@@ -13,7 +13,7 @@ services:
       - ./data:/var/lib/postgresql/data
     restart: unless-stopped
     networks:
-      - cairo_coder_network
+      - cairo_coder
 
   backend:
     build:
@@ -28,7 +28,7 @@ services:
         condition: service_started
     restart: unless-stopped
     networks:
-      - cairo_coder_network
+      - cairo_coder
   
   ingester:
     build:
@@ -39,10 +39,10 @@ services:
       postgres:
         condition: service_started
     networks:
-      - cairo_coder_network
+      - cairo_coder
 
 networks:
-  cairo_coder_network:
+  cairo_coder:
 
 volumes:
   postgres_data:
