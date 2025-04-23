@@ -1,5 +1,5 @@
 {
-  "name": "@starknet-agent/agents",
+  "name": "@cairo-coder/agents",
   "version": "1.0.0",
   "private": true,
   "scripts": {
@@ -36,7 +36,7 @@
     }
   },
   "devDependencies": {
-    "@starknet-agent/typescript-config": "workspace:*",
+    "@cairo-coder/typescript-config": "workspace:*",
     "@types/jest": "^29.5.14",
     "@types/supertest": "^6.0.2",
     "jest": "^29.7.0",

@@ -9,9 +9,9 @@ import {
   logger,
   RagAgentFactory,
   LLMConfig,
- } from '@starknet-agent/agents';
+ } from '@cairo-coder/agents';
 import { ChatCompletionRequest } from '../types';
-import { VectorStore } from '@starknet-agent/agents/db/postgresVectorStore';
+import { VectorStore } from '@cairo-coder/agents/db/postgresVectorStore';
 
 const router: Router = express.Router();
 

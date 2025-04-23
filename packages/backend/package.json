@@ -1,5 +1,5 @@
 {
-  "name": "@starknet-agent/backend",
+  "name": "@cairo-coder/backend",
   "version": "1.0.0",
   "private": true,
   "scripts": {
@@ -18,7 +18,7 @@
     "@langchain/core": "^0.2.36",
     "@langchain/google-genai": "^0.1.8",
     "@langchain/openai": "^0.0.25",
-    "@starknet-agent/agents": "workspace:*",
+    "@cairo-coder/agents": "workspace:*",
     "@types/node": "^20",
     "cors": "^2.8.5",
     "express": "^4.21.2",
@@ -34,7 +34,7 @@
     }
   },
   "devDependencies": {
-    "@starknet-agent/typescript-config": "workspace:*",
+    "@cairo-coder/typescript-config": "workspace:*",
     "@types/cors": "^2.8.17",
     "@types/express": "^4.17.21",
     "@types/jest": "^29.5.14",

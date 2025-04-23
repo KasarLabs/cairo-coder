@@ -1,5 +1,5 @@
 import { createApplication } from './server';
-import { logger } from '@starknet-agent/agents/utils/index';
+import { logger } from '@cairo-coder/agents/utils/index';
 
 // Error handling for uncaught exceptions
 process.on('uncaughtException', (err, origin) => {

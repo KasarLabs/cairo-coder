@@ -53,11 +53,11 @@ globs:
 - Add new documentation sources by extending the `BaseIngester` class and registering in `IngesterFactory`
 
 ## Commands
-- **Build**: `pnpm build`, `pnpm --filter @starknet-agent/agents build`
+- **Build**: `pnpm build`, `pnpm --filter @cairo-coder/agents build`
 - **Dev**: `pnpm dev` (starts all services with auto-reload)
-- **Test**: `pnpm --filter @starknet-agent/agents test`
-- **Single test**: `pnpm --filter @starknet-agent/agents test -- -t "test name pattern"`
-- **Type check**: `pnpm --filter @starknet-agent/backend check-types`
+- **Test**: `pnpm --filter @cairo-coder/agents test`
+- **Single test**: `pnpm --filter @cairo-coder/agents test -- -t "test name pattern"`
+- **Type check**: `pnpm --filter @cairo-coder/backend check-types`
 
 ## Testing
 - Jest is used for all testing

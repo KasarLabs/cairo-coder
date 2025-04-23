@@ -2,7 +2,7 @@ import { loadGroqChatModels } from './groq';
 import { loadOpenAIChatModels, loadOpenAIEmbeddingsModels } from './openai';
 import { loadAnthropicChatModels } from './anthropic';
 import { loadDeepseekChatModels } from './deepseek';
-import { getHostedModeConfig } from '@starknet-agent/agents/config/settings';
+import { getHostedModeConfig } from '@cairo-coder/agents/config/settings';
 import { loadGeminiChatModels } from './gemini';
 
 const chatModelProviders = {

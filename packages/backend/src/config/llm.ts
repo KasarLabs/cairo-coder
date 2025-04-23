@@ -2,8 +2,8 @@ import {
   getAvailableEmbeddingModelProviders,
   getAvailableChatModelProviders,
 } from './provider';
-import { getHostedModeConfig } from '@starknet-agent/agents/config/settings';
-import { logger } from '@starknet-agent/agents/utils/index';
+import { getHostedModeConfig } from '@cairo-coder/agents/config/settings';
+import { logger } from '@cairo-coder/agents/utils/index';
 import { ModelConfig } from '../types';
 let modelConfig: ModelConfig | null = null;
 

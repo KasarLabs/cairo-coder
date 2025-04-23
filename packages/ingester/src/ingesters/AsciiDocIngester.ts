@@ -5,7 +5,7 @@ import { Document } from '@langchain/core/documents';
 import {
   BookChunk,
   DocumentSource,
-} from '@starknet-agent/agents/types/index';
+} from '@cairo-coder/agents/types/index';
 import { BaseIngester } from '../BaseIngester';
 import {
   BookConfig,
@@ -19,7 +19,7 @@ import {
   createAnchor,
 } from '../utils/contentUtils';
 import { processDocFiles } from '../utils/fileUtils';
-import { logger } from '@starknet-agent/agents/utils/index';
+import { logger } from '@cairo-coder/agents/utils/index';
 import { execSync } from 'child_process';
 import * as fsSync from 'fs';
 

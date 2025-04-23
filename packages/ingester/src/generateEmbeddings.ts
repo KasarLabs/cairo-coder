@@ -1,9 +1,9 @@
 import { createInterface } from 'readline';
-import { logger } from '@starknet-agent/agents/utils/index';
-import { VectorStore } from '@starknet-agent/agents/db/postgresVectorStore';
-import { getVectorDbConfig } from '@starknet-agent/agents/config/settings';
-import { loadOpenAIEmbeddingsModels } from '@starknet-agent/backend/config/provider/openai';
-import { DocumentSource } from '@starknet-agent/agents/types/index';
+import { logger } from '@cairo-coder/agents/utils/index';
+import { VectorStore } from '@cairo-coder/agents/db/postgresVectorStore';
+import { getVectorDbConfig } from '@cairo-coder/agents/config/settings';
+import { loadOpenAIEmbeddingsModels } from '@cairo-coder/backend/config/provider/openai';
+import { DocumentSource } from '@cairo-coder/agents/types/index';
 import { IngesterFactory } from './IngesterFactory';
 
 

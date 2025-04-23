@@ -1,7 +1,7 @@
 import { BookPageDto, isInsideCodeBlock } from '../src/shared';
 import { Document } from '@langchain/core/documents';
 import { MarkdownIngester } from '../src/ingesters/MarkdownIngester';
-import { DocumentSource } from '@starknet-agent/agents/types/index';
+import { DocumentSource } from '@cairo-coder/agents/types/index';
 
 // Create a concrete implementation of the abstract MarkdownIngester for testing
 class TestMarkdownIngester extends MarkdownIngester {

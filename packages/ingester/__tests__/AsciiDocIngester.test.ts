@@ -1,5 +1,5 @@
 import { Document } from '@langchain/core/documents';
-import { BookChunk, DocumentSource } from '@starknet-agent/agents/types/index';
+import { BookChunk, DocumentSource } from '@cairo-coder/agents/types/index';
 import {
   AsciiDocIngester,
   AsciiDocIngesterConfig,

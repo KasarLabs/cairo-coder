@@ -6,7 +6,7 @@ import { Document } from '@langchain/core/documents';
 import {
   BookChunk,
   DocumentSource,
-} from '@starknet-agent/agents/types/index';
+} from '@cairo-coder/agents/types/index';
 import { BaseIngester } from '../BaseIngester';
 import { BookConfig, BookPageDto, ParsedSection } from '../utils/types';
 import { processDocFiles } from '../utils/fileUtils';
@@ -16,7 +16,7 @@ import {
   createAnchor,
   addSectionWithSizeLimit,
 } from '../utils/contentUtils';
-import { logger } from '@starknet-agent/agents/utils/index';
+import { logger } from '@cairo-coder/agents/utils/index';
 
 /**
  * Abstract ingester for Markdown-based documentation

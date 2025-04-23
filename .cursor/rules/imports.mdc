@@ -65,7 +65,7 @@ globs: *.ts,*.tsx,*.js,*.jsx
   - Import: `import { LLMConfig } from '../types';`
 - `utils`: Utility functions.
   - Used in: `packages/backend/src/app.ts`
-  - Import: `import { logger } from '@starknet-agent/agents/utils/index';`
+  - Import: `import { logger } from '@cairo-coder/agents/utils/index';`
 
 ### Backend Modules
 - `routes`: API route definitions.
@@ -74,7 +74,7 @@ globs: *.ts,*.tsx,*.js,*.jsx
 - `config`: Server configuration.
   - Used in: `packages/backend/src/server.ts`
   - Import: `import { initializeLLMConfig } from './config/llm';`
-  - Import: `import { getPort } from '@starknet-agent/agents/config/settings';`
+  - Import: `import { getPort } from '@cairo-coder/agents/config/settings';`
 - `cairocoder`: Main endpoint handler.
   - Used in: `packages/backend/src/routes/index.ts`
   - Import: `import cairocoderRouter from './cairocoder';`
@@ -104,7 +104,7 @@ import {
   RagAgentFactory,
   LLMConfig,
   VectorStore,
-} from '@starknet-agent/agents';
+} from '@cairo-coder/agents';
 ```
 
 ### For Agent Core
@@ -122,7 +122,7 @@ import { LLMConfig } from '../types';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import { Document } from '@langchain/core/documents';
-import { BookChunk, DocumentSource } from '@starknet-agent/agents/types/index';
+import { BookChunk, DocumentSource } from '@cairo-coder/agents/types/index';
 import { BaseIngester } from '../BaseIngester';
 import { BookConfig, BookPageDto, ParsedSection } from '../utils/types';
 ```
