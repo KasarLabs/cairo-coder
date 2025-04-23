@@ -4,9 +4,6 @@ import { logger } from '../utils';
 import { VectorStoreConfig, DocumentSource } from '../types';
 import pg, { Pool, PoolClient } from 'pg';
 import { DatabaseError as PgError } from 'pg';
-import * as dotenv from 'dotenv';
-import * as path from 'path';
-import * as fs from 'fs';
 
 
 /**
@@ -158,7 +155,7 @@ export class VectorStore {
     
         // Create index on source for filtering
         await client.query(`
-          CREATE INDEX IF NOT EXISTS idxlogger.debug('CREATE INDEX IF NOT EXISTS idx_${this.tableName}_embedding ON ${this.tableName} USING ivfflat (embedding vector_cosine_ops) WITH (lists = 100);');_${this.tableName}_source ON ${this.tableName} (source);
+          CREATE INDEX IF NOT EXISTS idx_${this.tableName}_source ON ${this.tableName} (source);
         `);
 
         // Create vector index for similarity search
