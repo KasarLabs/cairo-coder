@@ -106,6 +106,6 @@ jobs:
           POSTGRES_PASSWORD = "${{ secrets.POSTGRES_PASSWORD }}"
           POSTGRES_PORT = "${{ secrets.POSTGRES_PORT }}"
           EOL
-          
+
       - name: Generate embeddings
         run: turbo generate-embeddings:yes

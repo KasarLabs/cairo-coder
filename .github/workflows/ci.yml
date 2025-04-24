@@ -121,7 +121,7 @@ jobs:
           STARKNET_FOUNDRY = "${{ secrets.STARKNET_FOUNDRY_VERSION }}"
           SCARB = "${{ secrets.SCARB_VERSION }}"
           EOL
-        
+
       - name: Create env file
         run: |
           mkdir -p packages/agents
