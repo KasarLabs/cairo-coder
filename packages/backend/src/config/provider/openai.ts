@@ -1,6 +1,6 @@
 import { ChatOpenAI, OpenAIEmbeddings } from '@langchain/openai';
-import { getOpenaiApiKey } from '@starknet-agent/agents/config/settings';
-import { logger } from '@starknet-agent/agents/utils/index';
+import { getOpenaiApiKey } from '@cairo-coder/agents/config/settings';
+import { logger } from '@cairo-coder/agents/utils/index';
 
 export const loadOpenAIChatModels = async () => {
   const openAIApiKey = getOpenaiApiKey();
@@ -54,13 +54,13 @@ export const loadOpenAIEmbeddingsModels = async () => {
         openAIApiKey,
         modelName: 'text-embedding-3-small',
         batchSize: 512,
-        dimensions: 2048,
+        dimensions: 1536,
       }),
       'Text embedding 3 large': new OpenAIEmbeddings({
         openAIApiKey,
         modelName: 'text-embedding-3-large',
         batchSize: 512,
-        dimensions: 2048,
+        dimensions: 1536,
       }),
     };
 

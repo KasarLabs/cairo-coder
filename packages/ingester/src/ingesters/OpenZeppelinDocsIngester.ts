@@ -5,9 +5,9 @@ import { Document } from '@langchain/core/documents';
 import {
   BookChunk,
   DocumentSource,
-} from '@starknet-agent/agents/types/index';
+} from '@cairo-coder/agents/types/index';
 import { BookConfig, BookPageDto } from '../utils/types';
-import { logger } from '@starknet-agent/agents/utils/index';
+import { logger } from '@cairo-coder/agents/utils/index';
 import { AsciiDocIngesterConfig } from './AsciiDocIngester';
 import { AsciiDocIngester } from './AsciiDocIngester';
 

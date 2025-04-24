@@ -1,12 +1,12 @@
 import { Document } from '@langchain/core/documents';
-import { VectorStore } from '@starknet-agent/agents/db/vectorStore';
+import { VectorStore } from '@cairo-coder/agents/db/postgresVectorStore';
 import {
   DocumentSource,
   BookChunk,
-} from '@starknet-agent/agents/types/index';
+} from '@cairo-coder/agents/types/index';
 import { BookConfig, BookPageDto, ParsedSection } from './utils/types';
 import { updateVectorStore as updateVectorStoreUtil } from './utils/vectorStoreUtils';
-import { logger } from '@starknet-agent/agents/utils/index';
+import { logger } from '@cairo-coder/agents/utils/index';
 
 /**
  * Abstract base class for all document ingesters

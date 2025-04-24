@@ -1,5 +1,5 @@
-import { getDeepseekApiKey } from '@starknet-agent/agents/config/settings';
-import { logger } from '@starknet-agent/agents/utils/index';
+import { getDeepseekApiKey } from '@cairo-coder/agents/config/settings';
+import { logger } from '@cairo-coder/agents/utils/index';
 import { ChatOpenAI, OpenAI } from '@langchain/openai';
 
 export const loadDeepseekChatModels = async () => {

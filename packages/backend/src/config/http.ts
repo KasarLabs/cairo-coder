@@ -1,6 +1,6 @@
 import express from 'express';
 import routes from '../routes';
-import { logger } from '@starknet-agent/agents/utils/index';
+import { logger } from '@cairo-coder/agents/utils/index';
 import { Container } from './context';
 
 export function initializeHTTP(app: express.Application, container: Container) {

@@ -1,5 +1,21 @@
+version: '3.8'
+
 services:
-  starknet-agent-backend:
+  postgres:
+    image: pgvector/pgvector:pg17
+    container_name: "postgresql"
+    shm_size: 1g
+    env_file:
+      - .env
+    ports:
+      - 5432:5432
+    volumes:
+      - ./data:/var/lib/postgresql/data
+    restart: unless-stopped
+    networks:
+      - cairo_coder
+
+  backend:
     build:
       context: .
       dockerfile: backend.dockerfile
@@ -7,8 +23,27 @@ services:
       - 3001:3001
     extra_hosts:
       - host.docker.internal:host-gateway
+    depends_on:
+      postgres:
+        condition: service_started
     restart: unless-stopped
-    environment:
-      - NODE_ENV=production
+    networks:
+      - cairo_coder
+  
+  ingester:
+    build:
+      context: .
+      dockerfile: ingest.dockerfile
+    profiles: ["ingester"]
+    depends_on:
+      postgres:
+        condition: service_started
+    networks:
+      - cairo_coder
 
+networks:
+  cairo_coder:
+
+volumes:
+  postgres_data:
 

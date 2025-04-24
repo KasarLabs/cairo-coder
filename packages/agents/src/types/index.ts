@@ -1,6 +1,6 @@
 import { BaseMessage } from '@langchain/core/messages';
 import { Document } from '@langchain/core/documents';
-import { VectorStore } from '../db/vectorStore';
+import { VectorStore } from '../db/postgresVectorStore';
 import { BaseChatModel } from '@langchain/core/language_models/chat_models';
 
 export type AvailableAgents = 'cairoCoder';
@@ -11,9 +11,11 @@ export interface LLMConfig {
 }
 
 export interface VectorStoreConfig {
-  MONGODB_URI: string;
-  DB_NAME: string;
-  COLLECTION_NAME: string;
+  POSTGRES_USER: string;
+  POSTGRES_PASSWORD: string;
+  POSTGRES_ROOT_DB: string;
+  POSTGRES_HOST: string;
+  POSTGRES_PORT: string;
 }
 
 export interface Config {

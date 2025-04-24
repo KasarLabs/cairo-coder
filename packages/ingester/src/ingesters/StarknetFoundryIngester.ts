@@ -6,10 +6,10 @@ import { Document } from '@langchain/core/documents';
 import {
   BookChunk,
   DocumentSource,
-} from '@starknet-agent/agents/types/index';
+} from '@cairo-coder/agents/types/index';
 import { BookConfig, BookPageDto, ParsedSection } from '../utils/types';
 import { processDocFiles } from '../utils/fileUtils';
-import { logger } from '@starknet-agent/agents/utils/index';
+import { logger } from '@cairo-coder/agents/utils/index';
 import { exec as execCallback } from 'child_process';
 import { promisify } from 'util';
 import { MarkdownIngester } from './MarkdownIngester';

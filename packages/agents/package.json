@@ -1,5 +1,5 @@
 {
-  "name": "@starknet-agent/agents",
+  "name": "@cairo-coder/agents",
   "version": "1.0.0",
   "private": true,
   "scripts": {
@@ -19,8 +19,10 @@
     "commander": "^11.1.0",
     "compute-cosine-similarity": "^1.1.0",
     "compute-dot": "^1.1.0",
+    "dotenv": "^16.4.7",
     "mongodb": "^6.13.1",
     "node-fetch": "^3.3.2",
+    "pg": "^8.14.1",
     "winston": "^3.17.0"
   },
   "exports": {
@@ -34,7 +36,7 @@
     }
   },
   "devDependencies": {
-    "@starknet-agent/typescript-config": "workspace:*",
+    "@cairo-coder/typescript-config": "workspace:*",
     "@types/jest": "^29.5.14",
     "@types/supertest": "^6.0.2",
     "jest": "^29.7.0",

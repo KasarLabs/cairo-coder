@@ -9,9 +9,9 @@ import {
   logger,
   RagAgentFactory,
   LLMConfig,
-  VectorStore,
- } from '@starknet-agent/agents';
+ } from '@cairo-coder/agents';
 import { ChatCompletionRequest } from '../types';
+import { VectorStore } from '@cairo-coder/agents/db/postgresVectorStore';
 
 const router: Router = express.Router();
 
@@ -173,7 +173,7 @@ router.post('/', async (req, res) => {
       }
     });
   } catch (error) {
-    logger.error('Error in /v1/chat/completions:', error);
+    logger.error('Error in /chat/completions:', error);
 
     // Map common errors to OpenAI error format
     if (error instanceof Error) {

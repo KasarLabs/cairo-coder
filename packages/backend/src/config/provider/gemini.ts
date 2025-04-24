@@ -1,5 +1,5 @@
-import { getGeminiApiKey } from '@starknet-agent/agents/config/settings';
-import { logger } from '@starknet-agent/agents/utils/index';
+import { getGeminiApiKey } from '@cairo-coder/agents/config/settings';
+import { logger } from '@cairo-coder/agents/utils/index';
 import { ChatGoogleGenerativeAI } from '@langchain/google-genai';
 
 export const loadGeminiChatModels = async () => {

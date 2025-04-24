@@ -1,109 +1,105 @@
----
-description: 
-globs: 
----
-# Navigation Rules for Starknet Agent Codebase
+# Navigation Rules for Cairo Coder Codebase
 
 ## Project Structure Overview
 
-The Starknet Agent codebase is organized as a monorepo with multiple packages:
+The Cairo Coder codebase is organized as a monorepo with multiple packages:
 
-- `packages/agents`: Contains the core agent logic for RAG-based search and response generation
-- `packages/backend`: Express-based server handling WebSocket connections and API endpoints
-- `packages/ui`: Next.js frontend application
-- `packages/ingester`: Tools for ingesting and processing data for the vector database
+- `packages/agents`: Contains the core agent logic for RAG-based Cairo code generation
+- `packages/backend`: Express-based server handling API endpoints for code generation
+- `packages/ingester`: Tools for ingesting and processing Cairo documentation for the vector database
 - `packages/typescript-config`: Shared TypeScript configuration
 
 ## Key Directories and Files
 
 ### Agent Logic
-- `packages/agents/src/pipeline`: Contains the RAG pipeline implementation
+- `packages/agents/src/core/pipeline`: Contains the RAG pipeline implementation
+  - `ragPipeline.ts`: Orchestrates the entire RAG process
+  - `queryProcessor.ts`: Processes and reformulates user queries
+  - `documentRetriever.ts`: Retrieves relevant documents from vector database
+  - `answerGenerator.ts`: Generates Cairo code based on retrieved documents
 - `packages/agents/src/core`: Core agent functionality
-- `packages/agents/src/config`: Configuration handling
+  - `agentFactory.ts`: Factory for creating RAG agents
 - `packages/agents/src/db`: Database interaction logic
+- `packages/agents/src/config`: Configuration handling
 - `packages/agents/src/utils`: Utility functions
-- `packages/agents/src/lib`: Shared libraries
-- `packages/agents/src/ragAgentFactory.ts`: Factory for creating RAG agents
-- `packages/agents/src/suggestionGeneratorAgent.ts`: Agent for generating search suggestions
+- `packages/agents/src/types`: TypeScript type definitions
 
 ### Backend
-- `packages/backend/src/websocket`: WebSocket server implementation
-- `packages/backend/src/routes`: API route definitions
+- `packages/backend/src/api`: API routes and handlers
+  - `cairocoder.ts`: Main handler for the Cairo code generation endpoint
+  - `routes.ts`: API route definitions
+  - `config.ts`: API configuration
 - `packages/backend/src/app.ts`: Express application setup
 - `packages/backend/src/server.ts`: Server initialization
 - `packages/backend/src/config`: Server configuration
-- `packages/backend/src/utils`: Utility functions
 
-### Frontend
-- `packages/ui/app`: Next.js app directory with page components
-- `packages/ui/components`: Reusable UI components
-- `packages/ui/lib`: Frontend utilities and helpers
-- `packages/ui/public`: Static assets
-
-### Data Ingestion
-- `packages/ingester/scripts`: Scripts for data ingestion and embedding generation
+### Ingestion System
+- `packages/ingester/src/`: Source code for the ingester package
+  - `BaseIngester.ts`: Abstract base class for all ingesters
+  - `IngesterFactory.ts`: Factory for creating ingesters based on source
+  - `generateEmbeddings.ts`: Main script for generating embeddings
+  - `ingesters/`: Source-specific ingester implementations
+    - `CairoBookIngester.ts`: Ingester for Cairo Book
+    - `CairoByExampleIngester.ts`: Ingester for Cairo By Example
+    - `StarknetDocsIngester.ts`: Ingester for Starknet Docs (may be used for Cairo docs)
+    - `StarknetFoundryIngester.ts`: Ingester for Starknet Foundry
+    - `OpenZeppelinDocsIngester.ts`: Ingester for OpenZeppelin Docs
+    - `MarkdownIngester.ts`: Base ingester for Markdown format docs
+    - `AsciiDocIngester.ts`: Base ingester for AsciiDoc format docs
+  - `utils/`: Utility functions for ingestion
+  - `shared.ts`: Shared types and interfaces
 
 ## Navigation Patterns
 
 1. **Following the RAG Pipeline Flow**:
-   - Start at `packages/agents/src/ragAgentFactory.ts`
-   - Explore the pipeline components in `packages/agents/src/pipeline`
-   - Understand how results are sent back via `packages/backend/src/websocket`
+   - Start at `packages/agents/src/core/agentFactory.ts`
+   - Explore the pipeline components in `packages/agents/src/core/pipeline/`
+   - See how code generation happens in `packages/agents/src/core/pipeline/answerGenerator.ts`
 
 2. **Understanding API Endpoints**:
    - Start at `packages/backend/src/app.ts`
-   - Follow through to `packages/backend/src/routes`
-   - See how they connect to agent functionality
+   - Follow through to `packages/backend/src/api/routes.ts`
+   - Examine the main handler in `packages/backend/src/api/cairocoder.ts`
 
-3. **Exploring the UI Flow**:
-   - Start at `packages/ui/app/page.tsx` (main entry point)
-   - Look at the chat interface components
-   - Understand how the UI connects to the backend via WebSockets
-
-4. **Configuration Flow**:
-   - Check `packages/agents/config.toml` for agent configuration
-   - See how configuration is loaded in `packages/agents/src/config.ts`
+3. **Configuration Flow**:
+   - Look for configuration files in the root directory
+   - Check `packages/agents/src/config/` for agent configuration
+   - See how configuration is loaded in backend via `packages/backend/src/config/`
 
 ## Common Navigation Tasks
 
-- **To understand the RAG process**: Follow the pipeline components in `packages/agents/src/pipeline`
-- **To see how user queries are processed**: Start at the WebSocket handlers in `packages/backend/src/websocket`
-- **To explore the UI components**: Look at the components in `packages/ui/components`
-- **To understand data ingestion**: Check the scripts in `packages/ingester/scripts`
-
-## Ingester Package
-- `packages/ingester/src/`: Source code for the ingester package
-  - `BaseIngester.ts`: Abstract base class for all ingesters
-  - `IngesterFactory.ts`: Factory for creating ingesters based on source
-  - `ingesters/`: Source-specific ingester implementations
-    - `CairoBookIngester.ts`: Ingester for Cairo Book
-    - `StarknetDocsIngester.ts`: Ingester for Starknet Docs
-    - `StarknetFoundryIngester.ts`: Ingester for Starknet Foundry
-    - `CairoByExampleIngester.ts`: Ingester for Cairo By Example
-    - `OpenZeppelinDocsIngester.ts`: Ingester for OpenZeppelin Docs
-  - `utils/`: Utility functions
-    - `fileUtils.ts`: File operations
-    - `contentUtils.ts`: Content processing
-    - `vectorStoreUtils.ts`: Vector store operations
-  - `types.ts`: Common types and interfaces
-  - `scripts/`: Scripts for running ingestion
-    - `generateEmbeddings.ts`: Main script for generating embeddings
+- **To understand the RAG process**: Follow the pipeline components in `packages/agents/src/core/pipeline/`
+- **To see how user queries are processed**: Start at the API handlers in `packages/backend/src/api/cairocoder.ts`
+- **To understand data ingestion**: Check the ingester implementations in `packages/ingester/src/ingesters/`
+- **To modify embeddings generation**: Look at `packages/ingester/src/chat/completionsEmbeddings.ts`
 
 ## Key Files for Common Tasks
 
 ### Adding a New Documentation Source
 1. Create a new ingester in `packages/ingester/src/ingesters/`
 2. Update `IngesterFactory.ts` to include the new source
-3. Update the `DocumentSource` type in `packages/agents/src/types.ts`
+3. Update the document source types in `packages/agents/src/types/`
 
 ### Modifying the RAG Pipeline
-1. Update the relevant component in `packages/agents/src/pipeline/`
-2. Adjust the configuration in `packages/agents/config.toml` if needed
+1. Update the relevant component in `packages/agents/src/core/pipeline/`
+2. Adjust the pipeline configuration in `packages/agents/src/core/agentFactory.ts` if needed
 
-### Updating the UI
-1. Modify the relevant component in `packages/ui/components/`
-2. Update styles in `packages/ui/styles/` if needed
+### Adding or Modifying API Endpoints
+1. Update route definitions in `packages/backend/src/api/routes.ts`
+2. Implement handlers in `packages/backend/src/api/cairocoder.ts` or add new handlers
 
 ### Running Ingestion
-1. Use the script at `packages/ingester/src/scripts/generateEmbeddings.ts`
-2. Or run `pnpm run generate-embeddings` from the project root
+1. Use the script at `packages/ingester/src/chat/completionsEmbeddings.ts`
+2. Or run `pnpm generate-embeddings` from the project root
+
+## Key Endpoints
+
+- `/chat/completions`: Main endpoint for Cairo code generation
+  - Accepts POST requests with messages array in OpenAI format
+  - Returns generated Cairo code
+
+## Docker and Deployment Files
+
+- `docker-compose.yml`: Main Docker Compose configuration
+- `backend.dockerfile`: Dockerfile for the backend service
+- `ingest.dockerfile`: Dockerfile for running ingestion tasks

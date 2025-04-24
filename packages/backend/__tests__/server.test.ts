@@ -14,7 +14,7 @@ describe('Server', () => {
   }));
 
   // Mock config to avoid the getStarknetFoundryVersion issue
-  jest.mock('@starknet-agent/agents/config/settings', () => ({
+  jest.mock('@cairo-coder/agents/config/settings', () => ({
     getPort: jest.fn().mockReturnValue(3001),
     getStarknetFoundryVersion: jest.fn().mockReturnValue('0.1.0'),
     getScarbVersion: jest.fn().mockReturnValue('0.1.0'),

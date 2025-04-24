@@ -4,7 +4,7 @@ import { BookConfig, BookPageDto, ParsedSection } from '../utils/types';
 import { AsciiDocIngester, AsciiDocIngesterConfig } from './AsciiDocIngester';
 import { processDocFiles } from '../utils/fileUtils';
 import * as fs from 'fs';
-import { BookChunk, DocumentSource } from '@starknet-agent/agents/types/index';
+import { BookChunk, DocumentSource } from '@cairo-coder/agents/types/index';
 
 /**
  * Ingester for the Starknet documentation

@@ -1,16 +1,11 @@
-import dotenv from 'dotenv';
 import { createInterface } from 'readline';
-import { logger } from '@starknet-agent/agents/utils/index';
-import { VectorStore } from '@starknet-agent/agents/db/vectorStore';
-import { getVectorDbConfig } from '@starknet-agent/agents/config/settings';
-import { loadOpenAIEmbeddingsModels } from '@starknet-agent/backend/config/provider/openai';
-import { DocumentSource } from '@starknet-agent/agents/types/index';
+import { logger } from '@cairo-coder/agents/utils/index';
+import { VectorStore } from '@cairo-coder/agents/db/postgresVectorStore';
+import { getVectorDbConfig } from '@cairo-coder/agents/config/settings';
+import { loadOpenAIEmbeddingsModels } from '@cairo-coder/backend/config/provider/openai';
+import { DocumentSource } from '@cairo-coder/agents/types/index';
 import { IngesterFactory } from './IngesterFactory';
 
-/**
- * Initialize environment variables
- */
-dotenv.config();
 
 /**
  * Global vector store instance
@@ -38,7 +33,6 @@ async function setupVectorStore(): Promise<VectorStore> {
     // Get database configuration
     const dbConfig = getVectorDbConfig();
 
-    // Load embedding models
     const embeddingModels = await loadOpenAIEmbeddingsModels();
     const textEmbedding3Large = embeddingModels['Text embedding 3 large'];
 

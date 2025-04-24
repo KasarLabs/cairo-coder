@@ -41,3 +41,5 @@ Thumbs.db
 
 packages/**/node_modules
 packages/**/dist
+
+/data

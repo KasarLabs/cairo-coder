@@ -1,6 +1,6 @@
 import { ChatAnthropic } from '@langchain/anthropic';
-import { getAnthropicApiKey } from '@starknet-agent/agents/config/settings';
-import { logger } from '@starknet-agent/agents/utils/index';
+import { getAnthropicApiKey } from '@cairo-coder/agents/config/settings';
+import { logger } from '@cairo-coder/agents/utils/index';
 
 export const loadAnthropicChatModels = async () => {
   const anthropicApiKey = getAnthropicApiKey();

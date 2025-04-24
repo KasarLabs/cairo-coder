@@ -1,5 +1,5 @@
 {
-  "name": "starknet-agent",
+  "name": "cairo-coder",
   "private": true,
   "version": "0.0.0",
   "scripts": {
@@ -10,7 +10,7 @@
     "generate-embeddings": "turbo run generate-embeddings",
     "generate-embeddings:yes": "turbo run generate-embeddings:yes",
     "clean": "find packages -type d -name 'dist' -exec rm -rf {} +; find packages -type d -name '.turbo' -exec rm -rf {} +",
-    "clean:all": "npm run clean && find packages -type d -name 'node_modules' -exec rm -rf {} + && rm -rf node_modules"
+    "clean:all": "npm run clean && find packages -type d -name 'node_modules' -exec rm -rf {} + && rm -rf node_modules && pnpm clean"
   },
   "devDependencies": {
     "turbo": "latest",

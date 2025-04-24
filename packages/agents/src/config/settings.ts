@@ -3,7 +3,7 @@
 import fs from 'fs';
 import path from 'path';
 import toml from '@iarna/toml';
-import { Config, RecursivePartial } from '../types';
+import { Config, RecursivePartial, VectorStoreConfig } from '../types';
 
 const configFileName = 'config.toml';
 
@@ -43,7 +43,17 @@ export const getDeepseekApiKey = () => loadConfig().API_KEYS.DEEPSEEK;
 
 export const getGeminiApiKey = () => loadConfig().API_KEYS.GEMINI;
 
-export const getVectorDbConfig = () => loadConfig().VECTOR_DB;
+export const getVectorDbConfig = () => {
+  const config = loadConfig();
+
+  return {
+    POSTGRES_USER: config.VECTOR_DB.POSTGRES_USER || '',
+    POSTGRES_PASSWORD: config.VECTOR_DB.POSTGRES_PASSWORD || '',
+    POSTGRES_ROOT_DB: config.VECTOR_DB.POSTGRES_ROOT_DB || '',
+    POSTGRES_HOST: config.VECTOR_DB.POSTGRES_HOST || '',
+    POSTGRES_PORT: config.VECTOR_DB.POSTGRES_PORT || '',
+  } as VectorStoreConfig;
+};
 
 export const updateConfig = (config: RecursivePartial<Config>) => {
   const currentConfig = loadConfig();

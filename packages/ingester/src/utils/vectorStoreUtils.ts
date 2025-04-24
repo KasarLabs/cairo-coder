@@ -1,11 +1,11 @@
 import { Document } from '@langchain/core/documents';
 import { createInterface } from 'readline';
-import { VectorStore } from '@starknet-agent/agents/db/vectorStore';
+import { VectorStore } from '@cairo-coder/agents/db/postgresVectorStore';
 import {
   BookChunk,
   DocumentSource,
-} from '@starknet-agent/agents/types/index';
-import { logger } from '@starknet-agent/agents/utils/index';
+} from '@cairo-coder/agents/types/index';
+import { logger } from '@cairo-coder/agents/utils/index';
 import { YES_MODE } from '../generateEmbeddings';
 
 /**
@@ -121,7 +121,7 @@ export async function updateVectorStore(
   if (chunksToUpdate.length > 0) {
     await vectorStore.addDocuments(
       chunksToUpdate,
-      chunksToUpdate.map((chunk) => chunk.metadata.uniqueId),
+      { ids: chunksToUpdate.map((chunk) => chunk.metadata.uniqueId) }
     );
   }
 

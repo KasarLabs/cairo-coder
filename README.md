@@ -60,41 +60,12 @@ There are mainly 2 ways of installing Cairo Coder - With Docker, Without Docker.
    pnpm install
    ```
 
-5. Setup your database on [MongoDB Atlas](https://www.mongodb.com/products/platform/atlas-vector-search).
 
-   - Create a new cluster.
-   - Create a new database, e.g. `cairo-coder`.
-   - Create a new collection inside the database that will store the embeddings. e.g. `chunks`.
-   - Create a vectorSearch index named **default** on the collection (tab `Atlas Search`). Example index configuration:
-     ```json
-     {
-       "fields": [
-         {
-           "numDimensions": 2048,
-           "path": "embedding",
-           "similarity": "cosine",
-           "type": "vector"
-         },
-         {
-           "path": "source",
-           "type": "filter"
-         }
-       ]
-     }
-     ```
-
-6. Inside the packages/agents package, copy the `sample.config.toml` file to a `config.toml`. For development setups, you need only fill in the following fields:
+5. Inside the packages/agents package, copy the `sample.config.toml` file to a `config.toml`. For development setups, you need only fill in the following fields:
 
    - `OPENAI`: Your OpenAI API key. **You only need to fill this if you wish to use OpenAI's models**.
    - `ANTHROPIC`: Your Anthropic API key. **You only need to fill this if you wish to use Anthropic models**.
    - `SIMILARITY_MEASURE`: The similarity measure to use (This is filled by default; you can leave it as is if you are unsure about it.)
-   - Databases: `VECTOR_DB` is the database for Cairo documentation. You will need to fill this with your own database URL. Example:
-     ```toml
-         [VECTOR_DB]
-         MONGODB_URI = "mongodb+srv://mongo:..."
-         DB_NAME = "cairo-coder"
-         COLLECTION_NAME = "chunks"
-     ```
    - Models: The `[HOSTED_MODE]` table defines the underlying LLM model used. We recommend using:
 
    ```toml
@@ -105,21 +76,62 @@ There are mainly 2 ways of installing Cairo Coder - With Docker, Without Docker.
       DEFAULT_EMBEDDING_MODEL = "Text embedding 3 large"
    ```
 
-7. Generate the embeddings for the databases. You can do this by running `pnpm generate-embeddings`. If you followed the example above, you will need to run the script with option `6 (Everything)` to generate embeddings for all the documentation sources.
+6. **Configure PostgreSQL Database**
 
-   ```bash
-   pnpm generate-embeddings
+   Cairo Coder uses PostgreSQL with pgvector for storing and retrieving vector embeddings. You need to configure both the database initialization and the application connection settings:
+
+   **a. Database Container Initialization** (`.env` file):
+   
+   Create a `.env` file in the root directory with the following PostgreSQL configuration:
+   
    ```
+   POSTGRES_USER="YOUR_POSTGRES_USER"
+   POSTGRES_PASSWORD="YOUR_POSTGRES_PASSWORD"
+   POSTGRES_ROOT_DB="YOUR_POSTGRES_ROOT_DB"
+   POSTGRES_HOST="localhost"
+   POSTGRES_PORT="5432"
+   ```
+   
+   This file is used by Docker to initialize the PostgreSQL container when it first starts. 
+   The `POSTGRES_HOST` is set to "localhost" because this is from the database's own perspective.
+
+   **b. Application Connection Settings** (`config.toml` file):
+   
+   In the `packages/agents/config.toml` file, configure the database connection section:
+   
+   ```toml
+    [VECTOR_DB]
+    POSTGRES_USER="YOUR_POSTGRES_USER"
+    POSTGRES_PASSWORD="YOUR_POSTGRES_PASSWORD"
+    POSTGRES_ROOT_DB="YOUR_POSTGRES_ROOT_DB"
+    POSTGRES_HOST="postgres"
+    POSTGRES_PORT="5432"
+   ```
+   
+   This configuration is used by the backend and ingester services to connect to the database.
+   Note that `POSTGRES_HOST` is set to "postgres", which is the service name in docker-compose.yml.
+   
+   **Important:** Make sure to use the same password in both files. The first file initializes the
+   database, while the second is used by your application to connect to it.
 
 
-8. Run the application using one of the following methods:
+7. Run the application using one of the following methods:
 
    ```bash
    docker-compose up --build
    ```
 
-9. The API will be available at http://localhost:3000/generate.
+8. The API will be available at http://localhost:3000/chat/completions.
 
+## Running the Ingester
+
+After you have the main application running, you might need to run the ingester to process and embed documentation from various sources. The ingester is configured as a separate profile in the docker-compose file and can be executed as follows:
+
+   ```bash
+   docker-compose --profile ingester up ingester
+   ```
+
+Once the ingester completes its task, the vector database will be populated with embeddings from all the supported documentation sources, making them available for RAG-based code generation requests to the API.
 
 ## API Usage
 
@@ -128,7 +140,7 @@ Cairo Coder provides a simple REST API compatible with the OpenAI format for eas
 ### Endpoint
 
 ```
-POST /generate
+POST /chat/completions
 ```
 
 ### Request Format
