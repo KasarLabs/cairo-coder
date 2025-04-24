@@ -96,18 +96,14 @@ jobs:
           cat > packages/agents/config.toml << 'EOL'
           [API_KEYS]
           OPENAI = "${{ secrets.OPENAI_API_KEY }}"
-          GROQ = "${{ secrets.GROQ_API_KEY }}"
           ANTHROPIC = "${{ secrets.ANTHROPIC_API_KEY }}"
-          DEEPSEEK = "${{ secrets.DEEPSEEK_API_KEY }}"
-          GEMINI = "${{ secrets.GEMINI_API_KEY }}"
-
-          [API_ENDPOINTS]
-          OLLAMA = "${{ secrets.OLLAMA_ENDPOINT }}"
 
           [VECTOR_DB]
-          MONGODB_URI = "${{ secrets.MONGODB_URI }}"
-          DB_NAME = "${{ secrets.DB_NAME }}"
-          COLLECTION_NAME = "${{ secrets.COLLECTION_NAME }}"
+          POSTGRES_USER = "${{ secrets.POSTGRES_USER }}"
+          POSTGRES_HOST = "postgres"
+          POSTGRES_ROOT_DB = "${{ secrets.POSTGRES_ROOT_DB }}"
+          POSTGRES_PASSWORD = "${{ secrets.POSTGRES_PASSWORD }}"
+          POSTGRES_PORT = "${{ secrets.POSTGRES_PORT }}"
 
           [GENERAL]
           PORT = 3001
@@ -124,6 +120,17 @@ jobs:
           [VERSIONS]
           STARKNET_FOUNDRY = "${{ secrets.STARKNET_FOUNDRY_VERSION }}"
           SCARB = "${{ secrets.SCARB_VERSION }}"
+          EOL
+        
+      - name: Create env file
+        run: |
+          mkdir -p packages/agents
+          cat > packages/agents/.env << 'EOL'
+          POSTGRES_USER = "${{ secrets.POSTGRES_USER }}"
+          POSTGRES_HOST = "localhost"
+          POSTGRES_ROOT_DB = "${{ secrets.POSTGRES_ROOT_DB }}"
+          POSTGRES_PASSWORD = "${{ secrets.POSTGRES_PASSWORD }}"
+          POSTGRES_PORT = "${{ secrets.POSTGRES_PORT }}"
           EOL
 
       - name: Run tests
