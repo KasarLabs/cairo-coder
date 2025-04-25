@@ -3,7 +3,7 @@ import { RagPipeline } from '../src/core/pipeline/ragPipeline';
 import { AvailableAgents, LLMConfig, DocumentSource } from '../src/types';
 import { Embeddings } from '@langchain/core/embeddings';
 import { BaseChatModel } from '@langchain/core/language_models/chat_models';
-import { VectorStore } from '../src/db/vectorStore';
+import { VectorStore } from '../src/db/postgresVectorStore';
 import { mockDeep, MockProxy } from 'jest-mock-extended';
 import { BaseMessage } from '@langchain/core/messages';
 import EventEmitter from 'events';
@@ -103,7 +103,7 @@ describe('RagAgentFactory', () => {
       // Assert
       expect(RagPipeline).toHaveBeenCalledTimes(1);
       expect(emitter).toBeInstanceOf(EventEmitter);
-      
+
       // Check streaming option is passed
       const executeSpy = (RagPipeline as jest.Mock).mock.results[0].value
         .execute;
