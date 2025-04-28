@@ -64,7 +64,6 @@ export interface AgentConfig {
 
 export interface ProcessedQuery {
   original: string;
-  s;
   transformed: string | string[]; // Single query or list of search terms
   isContractRelated?: boolean;
   isTestRelated?: boolean;
