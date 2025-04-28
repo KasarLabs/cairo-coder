@@ -116,7 +116,7 @@ jobs:
           INTEGRATION_RESULT=$?
 
           echo -e "\n=== Running database connection test via chat/completions endpoint ==="
-          ./scripts/test-chat-completions.sh
+          ./scripts/database-connection.sh
           DB_CONNECTION_RESULT=$?
 
           if [ $INTEGRATION_RESULT -ne 0 ] || [ $DB_CONNECTION_RESULT -ne 0 ]; then
