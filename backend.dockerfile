@@ -2,6 +2,9 @@ FROM node:23.7-bullseye-slim
 
 WORKDIR /app
 
+# Installation de ping pour tester la connectivité réseau
+RUN apt-get update && apt-get install -y iputils-ping && rm -rf /var/lib/apt/lists/*
+
 # Copy root workspace files
 COPY pnpm-workspace.yaml ./
 COPY package.json ./

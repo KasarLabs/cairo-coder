@@ -7,7 +7,7 @@ export type AvailableAgents = 'cairoCoder';
 
 export interface LLMConfig {
   defaultLLM: BaseChatModel;
-  fastLLM?: BaseChatModel;
+  fastLLM: BaseChatModel;
 }
 
 export interface VectorStoreConfig {

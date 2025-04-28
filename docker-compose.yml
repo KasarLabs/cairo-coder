@@ -1,9 +1,7 @@
-version: '3.8'
-
 services:
   postgres:
     image: pgvector/pgvector:pg17
-    container_name: "postgresql"
+    container_name: 'postgresql'
     shm_size: 1g
     env_file:
       - .env
@@ -16,6 +14,7 @@ services:
       - cairo_coder
 
   backend:
+    container_name: 'backend'
     build:
       context: .
       dockerfile: backend.dockerfile
@@ -29,12 +28,12 @@ services:
     restart: unless-stopped
     networks:
       - cairo_coder
-  
+
   ingester:
     build:
       context: .
       dockerfile: ingest.dockerfile
-    profiles: ["ingester"]
+    profiles: ['ingester']
     depends_on:
       postgres:
         condition: service_started
@@ -46,4 +45,3 @@ networks:
 
 volumes:
   postgres_data:
-

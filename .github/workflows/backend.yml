@@ -48,47 +48,9 @@ jobs:
 
       - name: Install turbo
         run: pnpm add turbo@latest -g
+
       - name: Build
         run: turbo build
-
-  test:
-    name: Test
-    runs-on: ubuntu-latest
-    needs: build
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v3
-        with:
-          version: 9.10.0
-
-      - name: Get pnpm store directory
-        id: pnpm-cache
-        shell: bash
-        run: |
-          echo "STORE_PATH=$(pnpm store path)" >> $GITHUB_OUTPUT
-
-      - name: Setup pnpm cache
-        uses: actions/cache@v4
-        with:
-          path: ${{ steps.pnpm-cache.outputs.STORE_PATH }}
-          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
-          restore-keys: |
-            ${{ runner.os }}-pnpm-store-
-
-      - name: Install dependencies
-        run: pnpm install
-
-      - name: Install turbo
-        run: pnpm add turbo@latest -g
 
       - name: Create config file
         run: |
@@ -97,6 +59,7 @@ jobs:
           [API_KEYS]
           OPENAI = "${{ secrets.OPENAI_API_KEY }}"
           ANTHROPIC = "${{ secrets.ANTHROPIC_API_KEY }}"
+          GEMINI = "${{ secrets.GEMINI_API_KEY }}"
 
           [VECTOR_DB]
           POSTGRES_USER = "${{ secrets.POSTGRES_USER }}"
@@ -110,16 +73,16 @@ jobs:
           SIMILARITY_MEASURE = "cosine"
 
           [HOSTED_MODE]
-          DEFAULT_CHAT_PROVIDER = "${{ secrets.DEFAULT_CHAT_PROVIDER }}"
-          DEFAULT_CHAT_MODEL = "${{ secrets.DEFAULT_CHAT_MODEL }}"
-          DEFAULT_FAST_CHAT_PROVIDER = "${{ secrets.DEFAULT_FAST_CHAT_PROVIDER }}"
-          DEFAULT_FAST_CHAT_MODEL = "${{ secrets.DEFAULT_FAST_CHAT_MODEL }}"
-          DEFAULT_EMBEDDING_PROVIDER = "${{ secrets.DEFAULT_EMBEDDING_PROVIDER }}"
-          DEFAULT_EMBEDDING_MODEL = "${{ secrets.DEFAULT_EMBEDDING_MODEL }}"
+          DEFAULT_CHAT_PROVIDER = "anthropic"
+          DEFAULT_CHAT_MODEL = "Claude 3.5 Sonnet"
+          DEFAULT_FAST_CHAT_PROVIDER = "anthropic"
+          DEFAULT_FAST_CHAT_MODEL = "Claude 3.5 Sonnet"
+          DEFAULT_EMBEDDING_PROVIDER = "openai"
+          DEFAULT_EMBEDDING_MODEL = "Text embedding 3 large"
 
           [VERSIONS]
-          STARKNET_FOUNDRY = "${{ secrets.STARKNET_FOUNDRY_VERSION }}"
-          SCARB = "${{ secrets.SCARB_VERSION }}"
+          STARKNET_FOUNDRY = "0.37.0"
+          SCARB = "2.9.2"
           EOL
 
       - name: Create env file
@@ -135,3 +98,33 @@ jobs:
 
       - name: Run tests
         run: turbo test
+
+      - name: Build docker image
+        run: docker build -t cairo-coder-backend:${{ github.sha }} -f backend.dockerfile .
+
+      - name: Integration docker connection test with Docker Compose
+        run: |
+          docker-compose up -d postgres backend
+          echo "Waiting for services to be ready..."
+          sleep 20
+
+          chmod +x ./scripts/integration-tests.sh
+          chmod +x ./scripts/test-chat-completions.sh
+
+          echo -e "\n=== Running basic integration tests ==="
+          ./scripts/integration-tests.sh
+          INTEGRATION_RESULT=$?
+
+          echo -e "\n=== Running database connection test via chat/completions endpoint ==="
+          ./scripts/test-chat-completions.sh
+          DB_CONNECTION_RESULT=$?
+
+          if [ $INTEGRATION_RESULT -ne 0 ] || [ $DB_CONNECTION_RESULT -ne 0 ]; then
+            echo "❌ Integration tests failed!"
+            exit 1
+          else
+            echo "✅ All integration tests passed!"
+          fi
+
+      # - name: Push docker image
+      #   run: docker push ${{ github.repository }}:${{ github.sha }}

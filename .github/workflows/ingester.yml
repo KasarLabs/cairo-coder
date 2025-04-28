@@ -71,6 +71,7 @@ jobs:
           [API_KEYS]
           OPENAI = "${{ secrets.OPENAI_API_KEY }}"
           ANTHROPIC = "${{ secrets.ANTHROPIC_API_KEY }}"
+          GEMINI = "${{ secrets.GEMINI_API_KEY }}"
 
           [VECTOR_DB]
           POSTGRES_USER = "${{ secrets.POSTGRES_USER }}"
@@ -84,16 +85,16 @@ jobs:
           SIMILARITY_MEASURE = "cosine"
 
           [HOSTED_MODE]
-          DEFAULT_CHAT_PROVIDER = "${{ secrets.DEFAULT_CHAT_PROVIDER }}"
-          DEFAULT_CHAT_MODEL = "${{ secrets.DEFAULT_CHAT_MODEL }}"
-          DEFAULT_FAST_CHAT_PROVIDER = "${{ secrets.DEFAULT_FAST_CHAT_PROVIDER }}"
-          DEFAULT_FAST_CHAT_MODEL = "${{ secrets.DEFAULT_FAST_CHAT_MODEL }}"
-          DEFAULT_EMBEDDING_PROVIDER = "${{ secrets.DEFAULT_EMBEDDING_PROVIDER }}"
-          DEFAULT_EMBEDDING_MODEL = "${{ secrets.DEFAULT_EMBEDDING_MODEL }}"
+          DEFAULT_CHAT_PROVIDER = "anthropic"
+          DEFAULT_CHAT_MODEL = "Claude 3.5 Sonnet"
+          DEFAULT_FAST_CHAT_PROVIDER = "anthropic"
+          DEFAULT_FAST_CHAT_MODEL = "Claude 3.5 Sonnet"
+          DEFAULT_EMBEDDING_PROVIDER = "openai"
+          DEFAULT_EMBEDDING_MODEL = "Text embedding 3 large"
 
           [VERSIONS]
-          STARKNET_FOUNDRY = "${{ secrets.STARKNET_FOUNDRY_VERSION }}"
-          SCARB = "${{ secrets.SCARB_VERSION }}"
+          STARKNET_FOUNDRY = "0.37.0"
+          SCARB = "2.9.2"
           EOL
 
       - name: Create env file
