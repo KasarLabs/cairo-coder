@@ -96,15 +96,15 @@ jobs:
           POSTGRES_PORT = "${{ secrets.POSTGRES_PORT }}"
           EOL
 
-      - name: Run tests
+      - name: Run unit tests
         run: turbo test
 
       - name: Build docker image
         run: docker build -t cairo-coder-backend:${{ github.sha }} -f backend.dockerfile .
 
-      - name: Integration docker connection test with Docker Compose
+      - name: Run integration tests
         run: |
-          docker-compose up -d postgres backend
+          docker compose up -d postgres backend
           echo "Waiting for services to be ready..."
           sleep 20
 
