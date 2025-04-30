@@ -1,4 +1,4 @@
-name: CI
+name: Backend-CI
 
 on:
   push:
@@ -57,9 +57,9 @@ jobs:
           mkdir -p packages/agents
           cat > packages/agents/config.toml << 'EOL'
           [API_KEYS]
-          OPENAI = "${{ secrets.OPENAI_API_KEY }}"
-          ANTHROPIC = "${{ secrets.ANTHROPIC_API_KEY }}"
-          GEMINI = "${{ secrets.GEMINI_API_KEY }}"
+          OPENAI = "${{ secrets.OPENAI }}"
+          ANTHROPIC = "${{ secrets.ANTHROPIC }}"
+          GEMINI = "${{ secrets.GEMINI }}"
 
           [VECTOR_DB]
           POSTGRES_USER = "${{ secrets.POSTGRES_USER }}"
