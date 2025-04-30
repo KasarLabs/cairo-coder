@@ -87,8 +87,7 @@ jobs:
 
       - name: Create env file
         run: |
-          mkdir -p packages/agents
-          cat > packages/agents/.env << 'EOL'
+          cat > .env << 'EOL'
           POSTGRES_USER = "${{ secrets.POSTGRES_USER }}"
           POSTGRES_HOST = "localhost"
           POSTGRES_ROOT_DB = "${{ secrets.POSTGRES_ROOT_DB }}"
