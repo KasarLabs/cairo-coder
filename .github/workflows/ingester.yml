@@ -40,7 +40,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ${{ steps.pnpm-cache.outputs.STORE_PATH }}
-          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('pnpm-lock.yaml') || github.sha }}
           restore-keys: |
             ${{ runner.os }}-pnpm-store-
 
@@ -69,9 +69,9 @@ jobs:
           mkdir -p packages/agents
           cat > packages/agents/config.toml << 'EOL'
           [API_KEYS]
-          OPENAI = "${{ secrets.OPENAI_API_KEY }}"
-          ANTHROPIC = "${{ secrets.ANTHROPIC_API_KEY }}"
-          GEMINI = "${{ secrets.GEMINI_API_KEY }}"
+          OPENAI = "${{ secrets.OPENAI }}"
+          ANTHROPIC = "${{ secrets.ANTHROPIC }}"
+          GEMINI = "${{ secrets.GEMINI }}"
 
           [VECTOR_DB]
           POSTGRES_USER = "${{ secrets.POSTGRES_USER }}"
