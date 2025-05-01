@@ -70,8 +70,10 @@ There are mainly 2 ways of installing Cairo Coder - With Docker, Without Docker.
 
    ```toml
       [HOSTED_MODE]
-      DEFAULT_CHAT_PROVIDER = "anthropic"
-      DEFAULT_CHAT_MODEL = "Claude 3.5 Sonnet"
+      DEFAULT_CHAT_PROVIDER = "gemini"
+      DEFAULT_CHAT_MODEL = "Gemini Flash 2.5"
+      DEFAULT_FAST_CHAT_PROVIDER = "gemini"
+      DEFAULT_FAST_CHAT_MODEL = "Gemini Flash 2.5"
       DEFAULT_EMBEDDING_PROVIDER = "openai"
       DEFAULT_EMBEDDING_MODEL = "Text embedding 3 large"
    ```
@@ -81,9 +83,9 @@ There are mainly 2 ways of installing Cairo Coder - With Docker, Without Docker.
    Cairo Coder uses PostgreSQL with pgvector for storing and retrieving vector embeddings. You need to configure both the database initialization and the application connection settings:
 
    **a. Database Container Initialization** (`.env` file):
-   
+
    Create a `.env` file in the root directory with the following PostgreSQL configuration:
-   
+
    ```
    POSTGRES_USER="YOUR_POSTGRES_USER"
    POSTGRES_PASSWORD="YOUR_POSTGRES_PASSWORD"
@@ -91,14 +93,14 @@ There are mainly 2 ways of installing Cairo Coder - With Docker, Without Docker.
    POSTGRES_HOST="localhost"
    POSTGRES_PORT="5432"
    ```
-   
-   This file is used by Docker to initialize the PostgreSQL container when it first starts. 
+
+   This file is used by Docker to initialize the PostgreSQL container when it first starts.
    The `POSTGRES_HOST` is set to "localhost" because this is from the database's own perspective.
 
    **b. Application Connection Settings** (`config.toml` file):
-   
+
    In the `packages/agents/config.toml` file, configure the database connection section:
-   
+
    ```toml
     [VECTOR_DB]
     POSTGRES_USER="YOUR_POSTGRES_USER"
@@ -107,10 +109,10 @@ There are mainly 2 ways of installing Cairo Coder - With Docker, Without Docker.
     POSTGRES_HOST="postgres"
     POSTGRES_PORT="5432"
    ```
-   
+
    This configuration is used by the backend and ingester services to connect to the database.
    Note that `POSTGRES_HOST` is set to "postgres", which is the service name in docker-compose.yml.
-   
+
    **Important:** Make sure to use the same password in both files. The first file initializes the
    database, while the second is used by your application to connect to it.
 
