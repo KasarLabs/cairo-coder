@@ -33,7 +33,7 @@ export class AnswerGenerator {
     return stream;
   }
 
-  private buildContext(retrieved: RetrievedDocuments): string {
+  public buildContext(retrieved: RetrievedDocuments): string {
     const docs = retrieved.documents;
     if (!docs.length) {
       return (

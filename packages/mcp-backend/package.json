@@ -1,0 +1,35 @@
+{
+  "name": "@cairo-coder/mcp-backend",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "dev": "LOG_LEVEL=debug nodemon src/app.ts",
+    "start": "node dist/src/app.js",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
+    "check-types": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@cairo-coder/agents": "workspace:*",
+    "@cairo-coder/backend": "workspace:*",
+    "@modelcontextprotocol/sdk": "^1.10.2",
+    "@types/node": "^20",
+    "zod": "^3.24.3"
+  },
+  "exports": {
+    "./*": {
+      "types": "./src/*.ts",
+      "default": "./dist/src/*.js"
+    }
+  },
+  "devDependencies": {
+    "@cairo-coder/typescript-config": "workspace:*",
+    "@types/jest": "^29.5.14",
+    "jest": "^29.7.0",
+    "nodemon": "^3.1.9",
+    "ts-jest": "^29.2.5",
+    "typescript": "^5.7.3"
+  }
+}
