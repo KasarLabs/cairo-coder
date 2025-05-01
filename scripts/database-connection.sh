@@ -4,7 +4,7 @@ echo "=== Testing database connection via /chat/completions endpoint ==="
 
 # Préparation des données pour l'appel API (requête simple)
 REQUEST_DATA='{
-    "model": "gemini-2.0-flash",
+    "model": "gemini-2.5-flash",
     "messages": [
       {
         "role": "user",
