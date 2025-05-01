@@ -101,21 +101,21 @@ jobs:
       - name: Build docker image
         run: docker build -t cairo-coder-backend:${{ github.sha }} -f backend.dockerfile .
 
-      - name: Run integration tests
+      - name: Run backend and database integration tests
         run: |
           docker compose up -d postgres backend
           echo "Waiting for services to be ready..."
           sleep 20
 
-          chmod +x ./scripts/integration-tests.sh
-          chmod +x ./scripts/database-connection.sh
+          chmod +x ./tests/integration-tests.sh
+          chmod +x ./tests/database-connection.sh
 
           echo -e "\n=== Running basic integration tests ==="
-          ./scripts/integration-tests.sh
+          ./tests/integration-tests.sh
           INTEGRATION_RESULT=$?
 
           echo -e "\n=== Running database connection test via chat/completions endpoint ==="
-          ./scripts/database-connection.sh
+          ./tests/database-connection.sh
           DB_CONNECTION_RESULT=$?
 
           if [ $INTEGRATION_RESULT -ne 0 ] || [ $DB_CONNECTION_RESULT -ne 0 ]; then
@@ -123,6 +123,80 @@ jobs:
             exit 1
           else
             echo "✅ All integration tests passed!"
+          fi
+      
+      - name: Build ingester image
+        run: docker compose --profile ingester build ingester
+        
+      - name: Run data ingestion
+        run: docker compose --profile ingester up -d ingester
+
+      - name: Import snak repository
+        run: |
+          git clone https://github.com/KasarLabs/snak ../snak
+          cd ../snak
+          git checkout fix/server-for-reuse
+      
+      - name: Create snak env file
+        run: |
+          cd ../snak
+          cat > .env << 'EOL'
+
+          STARKNET_PUBLIC_ADDRESS="${{ secrets.STARKNET_PUBLIC_ADDRESS }}"
+          STARKNET_PRIVATE_KEY="${{ secrets.STARKNET_PRIVATE_KEY }}"
+          STARKNET_RPC_URL="${{ secrets.STARKNET_RPC_URL }}"
+
+          AI_PROVIDER_API_KEY="${{ secrets.OPENAI }}"
+          AI_MODEL="claude-3-5-sonnet-latest"
+          AI_PROVIDER="anthropic"
+
+          NODE_ENV="development"
+
+          SERVER_API_KEY="${{ secrets.SNAK_SERVER_KEY }}"
+          SERVER_PORT="${{ secrets.SNAK_SERVER_PORT }}"
+
+          POSTGRES_USER="${{ secrets.POSTGRES_USER }}"
+          POSTGRES_PASSWORD="${{ secrets.POSTGRES_PASSWORD }}"
+          POSTGRES_ROOT_DB="${{ secrets.POSTGRES_ROOT_DB }}"
+          POSTGRES_HOST="localhost"
+          POSTGRES_PORT="${{ secrets.POSTGRES_PORT }}"
+
+          CAIRO_UPLOAD_DIR="plugins/cairocoder/uploads/"
+          CAIRO_GENERATION_API_URL="http://127.0.0.1:3001/chat/completions"
+
+          EOL
+
+      - name: Install snak dependencies
+        run: |
+          cd ../snak
+          pnpm install
+
+      - name: Start snak server
+        run: |
+          cd ../snak
+          pnpm start:server &
+          
+          echo "Waiting for server to start..."
+          sleep 30
+
+      - name: Run cairo code generation test
+        run: |
+          cd packages/backend
+          
+          export API_KEY="${{ secrets.SNAK_SERVER_KEY }}" 
+          export API_URL="http://localhost:${{ secrets.SNAK_SERVER_PORT }}"
+          
+          npx jest __tests__/compilation.test.ts --verbose
+          
+          TEST_RESULT=$?
+          
+          pkill -f "start:server" || true
+          
+          if [ $TEST_RESULT -ne 0 ]; then
+            echo "❌ API test failed!"
+            exit 1
+          else
+            echo "✅ API test passed!"
           fi
 
       # - name: Push docker image
