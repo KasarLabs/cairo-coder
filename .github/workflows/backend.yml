@@ -124,10 +124,10 @@ jobs:
           else
             echo "✅ All integration tests passed!"
           fi
-      
+
       - name: Build ingester image
         run: docker compose --profile ingester build ingester
-        
+
       - name: Run data ingestion
         run: docker compose --profile ingester up -d ingester
 
@@ -136,7 +136,7 @@ jobs:
           git clone https://github.com/KasarLabs/snak ../snak
           cd ../snak
           git checkout fix/server-for-reuse
-      
+
       - name: Create snak env file
         run: |
           cd ../snak
@@ -175,23 +175,23 @@ jobs:
         run: |
           cd ../snak
           pnpm start:server &
-          
+
           echo "Waiting for server to start..."
           sleep 30
 
       - name: Run cairo code generation test
         run: |
           cd packages/backend
-          
+
           export API_KEY="${{ secrets.SNAK_SERVER_KEY }}" 
           export API_URL="http://localhost:${{ secrets.SNAK_SERVER_PORT }}"
-          
+
           npx jest __tests__/compilation.test.ts --verbose
-          
+
           TEST_RESULT=$?
-          
+
           pkill -f "start:server" || true
-          
+
           if [ $TEST_RESULT -ne 0 ]; then
             echo "❌ API test failed!"
             exit 1
