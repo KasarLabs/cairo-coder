@@ -8,6 +8,7 @@ import { logger } from '../../utils';
 import { BaseMessage, HumanMessage } from '@langchain/core/messages';
 import { RetrievedDocuments, RagInput, RagSearchConfig } from '../../types';
 import { formatChatHistoryAsString } from '../../utils';
+import { StringOutputParser } from '@langchain/core/output_parsers';
 
 /**
  * Synthesizes a response based on retrieved documents and query context.
