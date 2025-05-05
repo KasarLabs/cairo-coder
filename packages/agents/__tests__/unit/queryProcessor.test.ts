@@ -1,22 +1,24 @@
-import { QueryProcessor } from '../src/core/pipeline/queryProcessor';
+import { QueryProcessor } from '../../src/core/pipeline/queryProcessor';
 import { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import {
   RagInput,
   RagSearchConfig,
   DocumentSource,
-} from '../src/types/index';
+} from '../../src/types/index';
 import { mockDeep, MockProxy } from 'jest-mock-extended';
 import { AIMessage } from '@langchain/core/messages';
 
 // Mock the logger
-jest.mock('../src/utils/index', () => ({
+jest.mock('../../src/utils/index', () => ({
   logger: {
     info: jest.fn(),
     debug: jest.fn(),
     error: jest.fn(),
   },
-  formatChatHistoryAsString: jest.fn((history) => 
-    history.map((message) => `${message._getType()}: ${message.content}`).join('\n')
+  formatChatHistoryAsString: jest.fn((history) =>
+    history
+      .map((message) => `${message._getType()}: ${message.content}`)
+      .join('\n'),
   ),
   parseXMLContent: jest.fn((xml, tag) => {
     const regex = new RegExp(`<${tag}>(.*?)</${tag}>`, 'gs');

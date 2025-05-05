@@ -73,10 +73,10 @@ jobs:
           SIMILARITY_MEASURE = "cosine"
 
           [HOSTED_MODE]
-          DEFAULT_CHAT_PROVIDER = "anthropic"
-          DEFAULT_CHAT_MODEL = "Claude 3.5 Sonnet"
-          DEFAULT_FAST_CHAT_PROVIDER = "anthropic"
-          DEFAULT_FAST_CHAT_MODEL = "Claude 3.5 Sonnet"
+          DEFAULT_CHAT_PROVIDER = "gemini"
+          DEFAULT_CHAT_MODEL = "Gemini Flash 2.5"
+          DEFAULT_FAST_CHAT_PROVIDER = "gemini"
+          DEFAULT_FAST_CHAT_MODEL = "Gemini Flash 2.5"
           DEFAULT_EMBEDDING_PROVIDER = "openai"
           DEFAULT_EMBEDDING_MODEL = "Text embedding 3 large"
 
@@ -96,7 +96,7 @@ jobs:
           EOL
 
       - name: Run unit tests
-        run: turbo test
+        run: pnpm run test:unit
 
       - name: Build docker image
         run: docker build -t cairo-coder-backend:${{ github.sha }} -f backend.dockerfile .
@@ -133,13 +133,14 @@ jobs:
 
       - name: Import snak repository
         run: |
-          git clone https://github.com/KasarLabs/snak ../snak
-          cd ../snak
+          mkdir -p ./snak
+          git clone https://github.com/KasarLabs/snak ./snak
+          cd ./snak
           git checkout fix/server-for-reuse
 
       - name: Create snak env file
         run: |
-          cd ../snak
+          cd ./snak
           cat > .env << 'EOL'
 
           STARKNET_PUBLIC_ADDRESS="${{ secrets.STARKNET_PUBLIC_ADDRESS }}"
@@ -165,28 +166,30 @@ jobs:
           CAIRO_GENERATION_API_URL="http://127.0.0.1:3001/chat/completions"
 
           EOL
+      - name: Cache snak node modules
+        uses: actions/cache@v4
+        with:
+          path: ./snak/node_modules
+          key: ${{ runner.os }}-snak-modules-${{ hashFiles('./snak/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-snak-modules-
 
       - name: Install snak dependencies
         run: |
-          cd ../snak
-          pnpm install
+          cd ./snak
+          pnpm install --filter="@snakagent/server..."
 
       - name: Start snak server
         run: |
-          cd ../snak
-          pnpm start:server &
+          cd ./snak
+          pnpm run build --filter="@snakagent/server..." && lerna run start --scope "@snakagent/server" &
 
           echo "Waiting for server to start..."
           sleep 30
 
       - name: Run cairo code generation test
         run: |
-          cd packages/backend
-
-          export API_KEY="${{ secrets.SNAK_SERVER_KEY }}" 
-          export API_URL="http://localhost:${{ secrets.SNAK_SERVER_PORT }}"
-
-          npx jest __tests__/compilation.test.ts --verbose
+          API_KEY="${{ secrets.SNAK_SERVER_KEY }}" API_URL="http://localhost:${{ secrets.SNAK_SERVER_PORT }}" pnpm run test:code-quality
 
           TEST_RESULT=$?
 

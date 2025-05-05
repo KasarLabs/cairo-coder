@@ -11,6 +11,10 @@
     "skipDefaultLibCheck": true,
     "types": ["node", "jest"]
   },
-  "include": ["src", "**/*.test.ts"],
+  "include": [
+    "src",
+    "**/*.test.ts",
+    "../agents/__tests__/code-quality/snak.test.ts"
+  ],
   "exclude": ["node_modules", "**/*.spec.ts"]
 }

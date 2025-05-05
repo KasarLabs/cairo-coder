@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "scripts": {
     "test": "jest",
+    "test:unit": "jest --config jest.config.js --testMatch=\"**/__tests__/unit/**/*.test.[jt]s?(x)\"",
     "build": "tsc -p tsconfig.json",
     "generate-embeddings": "node ./dist/src/generateEmbeddings.js",
     "generate-embeddings:yes": "node ./dist/src/generateEmbeddings.js -y"

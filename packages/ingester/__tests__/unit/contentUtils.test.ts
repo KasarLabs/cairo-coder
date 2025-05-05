@@ -1,4 +1,4 @@
-import { createAnchor, isInsideCodeBlock } from '../src/utils/contentUtils';
+import { createAnchor, isInsideCodeBlock } from '../../src/utils/contentUtils';
 
 describe('createAnchor', () => {
   it('should handle undefined input', () => {

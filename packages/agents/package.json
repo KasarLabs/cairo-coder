@@ -5,7 +5,9 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "test": "jest",
-    "test-doc-quality": "ts-node src/tests/testDocQuality.ts"
+    "doc-quality": "ts-node src/doc-quality/testDocQuality.ts",
+    "test:unit": "jest --config jest.config.js --testMatch=\"**/__tests__/unit/**/*.test.[jt]s?(x)\"",
+    "test:code-quality": "jest --config jest.config.js --testMatch=\"**/__tests__/code-quality/**/*.test.[jt]s?(x)\""
   },
   "dependencies": {
     "@iarna/toml": "^2.2.5",

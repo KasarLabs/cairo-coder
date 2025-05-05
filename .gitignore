@@ -19,6 +19,7 @@ yarn-error.log
 .env.development.local
 .env.test.local
 .env.production.local
+.env.test
 
 packages/ui/.env
 
@@ -43,3 +44,7 @@ packages/**/node_modules
 packages/**/dist
 
 /data
+.secrets
+.actrc
+
+.pnpm-store/

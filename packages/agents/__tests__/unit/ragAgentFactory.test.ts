@@ -1,15 +1,15 @@
-import { RagAgentFactory } from '../src/core/agentFactory';
-import { RagPipeline } from '../src/core/pipeline/ragPipeline';
-import { AvailableAgents, LLMConfig, DocumentSource } from '../src/types';
+import { RagAgentFactory } from '../../src/core/agentFactory';
+import { RagPipeline } from '../../src/core/pipeline/ragPipeline';
+import { AvailableAgents, LLMConfig, DocumentSource } from '../../src/types';
 import { Embeddings } from '@langchain/core/embeddings';
 import { BaseChatModel } from '@langchain/core/language_models/chat_models';
-import { VectorStore } from '../src/db/postgresVectorStore';
+import { VectorStore } from '../../src/db/postgresVectorStore';
 import { mockDeep, MockProxy } from 'jest-mock-extended';
 import { BaseMessage } from '@langchain/core/messages';
 import EventEmitter from 'events';
 
 // Mock the agent configuration and RagPipeline
-jest.mock('../src/config/agent', () => ({
+jest.mock('../../src/config/agent', () => ({
   getAgentConfig: jest.fn().mockImplementation(() => ({
     name: 'Cairo Coder',
     prompts: {
@@ -27,7 +27,7 @@ jest.mock('../src/config/agent', () => ({
   })),
 }));
 
-jest.mock('../src/core/pipeline/ragPipeline', () => ({
+jest.mock('../../src/core/pipeline/ragPipeline', () => ({
   RagPipeline: jest.fn().mockImplementation(() => ({
     execute: jest.fn().mockReturnValue(new EventEmitter()),
   })),

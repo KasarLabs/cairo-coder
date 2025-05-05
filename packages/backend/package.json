@@ -9,7 +9,8 @@
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
-    "check-types": "tsc --noEmit"
+    "check-types": "tsc --noEmit",
+    "test:unit": "jest --config jest.config.js --testMatch=\"**/__tests__/unit/**/*.test.[jt]s?(x)\""
   },
   "dependencies": {
     "@iarna/toml": "^2.2.5",

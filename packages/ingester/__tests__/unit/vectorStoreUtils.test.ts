@@ -1,4 +1,4 @@
-import { findChunksToUpdateAndRemove } from '../src/utils/vectorStoreUtils';
+import { findChunksToUpdateAndRemove } from '../../src/utils/vectorStoreUtils';
 import { Document } from '@langchain/core/documents';
 
 describe('findChunksToUpdateAndRemove', () => {

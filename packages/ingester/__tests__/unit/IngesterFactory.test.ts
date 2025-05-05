@@ -1,18 +1,18 @@
-import { IngesterFactory } from '../src/IngesterFactory';
-import { CairoBookIngester } from '../src/ingesters/CairoBookIngester';
-import { StarknetDocsIngester } from '../src/ingesters/StarknetDocsIngester';
-import { StarknetFoundryIngester } from '../src/ingesters/StarknetFoundryIngester';
-import { CairoByExampleIngester } from '../src/ingesters/CairoByExampleIngester';
-import { OpenZeppelinDocsIngester } from '../src/ingesters/OpenZeppelinDocsIngester';
-import { BaseIngester } from '../src/BaseIngester';
+import { IngesterFactory } from '../../src/IngesterFactory';
+import { CairoBookIngester } from '../../src/ingesters/CairoBookIngester';
+import { StarknetDocsIngester } from '../../src/ingesters/StarknetDocsIngester';
+import { StarknetFoundryIngester } from '../../src/ingesters/StarknetFoundryIngester';
+import { CairoByExampleIngester } from '../../src/ingesters/CairoByExampleIngester';
+import { OpenZeppelinDocsIngester } from '../../src/ingesters/OpenZeppelinDocsIngester';
+import { BaseIngester } from '../../src/BaseIngester';
 import { DocumentSource } from '@cairo-coder/agents/types/index';
 
 // Mock the ingesters
-jest.mock('../src/ingesters/CairoBookIngester');
-jest.mock('../src/ingesters/StarknetDocsIngester');
-jest.mock('../src/ingesters/StarknetFoundryIngester');
-jest.mock('../src/ingesters/CairoByExampleIngester');
-jest.mock('../src/ingesters/OpenZeppelinDocsIngester');
+jest.mock('../../src/ingesters/CairoBookIngester');
+jest.mock('../../src/ingesters/StarknetDocsIngester');
+jest.mock('../../src/ingesters/StarknetFoundryIngester');
+jest.mock('../../src/ingesters/CairoByExampleIngester');
+jest.mock('../../src/ingesters/OpenZeppelinDocsIngester');
 
 describe('IngesterFactory', () => {
   beforeEach(() => {
