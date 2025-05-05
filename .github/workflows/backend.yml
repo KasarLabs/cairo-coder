@@ -36,6 +36,7 @@ jobs:
           echo "STORE_PATH=$(pnpm store path)" >> $GITHUB_OUTPUT
 
       - name: Setup pnpm cache
+        if: false
         uses: actions/cache@v4
         with:
           path: ${{ steps.pnpm-cache.outputs.STORE_PATH }}
@@ -49,8 +50,23 @@ jobs:
       - name: Install turbo
         run: pnpm add turbo@latest -g
 
+      - name: Clean previous builds
+        run: |
+          rm -rf packages/*/dist
+          rm -rf packages/*/node_modules/.cache
+
       - name: Build
         run: turbo build
+
+      - name: Check files after build
+        run: |
+          find packages/backend/dist -type f | grep -i openai
+          ls -la packages/backend/dist/config/provider || echo "Directory does not exist"
+
+      - name: Debug module resolution
+        run: |
+          cd packages/ingester
+          NODE_PATH=../.. node -e "try { const path = require.resolve('@cairo-coder/backend/config/provider/openai'); console.log('Module found at:', path); } catch(e) { console.log('Module not found:', e.message); console.log('Available modules:', require('fs').readdirSync('../backend/dist/config').join(', ')); }"
 
       - name: Create config file
         run: |
