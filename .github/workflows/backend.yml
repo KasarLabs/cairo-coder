@@ -187,9 +187,19 @@ jobs:
           echo "Waiting for server to start..."
           sleep 30
 
+      - name: Create cairo code generation test env file
+        run: |
+          cd ./packages/agents
+          cat > .env.test << 'EOL'
+
+          API_KEY="${{ secrets.SNAK_SERVER_KEY }}"
+          API_URL="http://localhost:${{ secrets.SNAK_SERVER_PORT }}"
+
+          EOL
+
       - name: Run cairo code generation test
         run: |
-          API_KEY="${{ secrets.SNAK_SERVER_KEY }}" API_URL="http://localhost:${{ secrets.SNAK_SERVER_PORT }}" pnpm run test:code-quality
+          pnpm run test:code-quality
 
           TEST_RESULT=$?
 
