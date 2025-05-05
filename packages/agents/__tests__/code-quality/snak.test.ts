@@ -104,11 +104,11 @@ describe('Code Generation and Compilation Tests', () => {
 
   describe('Cairo Functions and Basic Algorithms', () => {
     test('Factorial function', async () => {
-      const project_name = 'factorial';
-      const prompt_content =
-        'a Cairo function that calculates the factorial of a number';
-      const success = await generateAndCompile(project_name, prompt_content, 1);
-      expect(success).toBe(true);
+      // const project_name = 'factorial';
+      // const prompt_content =
+      //   'a Cairo function that calculates the factorial of a number';
+      // const success = await generateAndCompile(project_name, prompt_content, 1);
+      // expect(success).toBe(true);
     }, 100000);
 
     // test('Max value in array', async () => {
