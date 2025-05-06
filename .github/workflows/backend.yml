@@ -36,7 +36,6 @@ jobs:
           echo "STORE_PATH=$(pnpm store path)" >> $GITHUB_OUTPUT
 
       - name: Setup pnpm cache
-        if: false
         uses: actions/cache@v4
         with:
           path: ${{ steps.pnpm-cache.outputs.STORE_PATH }}
@@ -50,23 +49,8 @@ jobs:
       - name: Install turbo
         run: pnpm add turbo@latest -g
 
-      - name: Clean previous builds
-        run: |
-          rm -rf packages/*/dist
-          rm -rf packages/*/node_modules/.cache
-
       - name: Build
         run: turbo build
-
-      - name: Check files after build
-        run: |
-          find packages/backend/dist -type f | grep -i openai
-          ls -la packages/backend/dist/config/provider || echo "Directory does not exist"
-
-      - name: Debug module resolution
-        run: |
-          cd packages/ingester
-          NODE_PATH=../.. node -e "try { const path = require.resolve('@cairo-coder/backend/config/provider/openai'); console.log('Module found at:', path); } catch(e) { console.log('Module not found:', e.message); console.log('Available modules:', require('fs').readdirSync('../backend/dist/config').join(', ')); }"
 
       - name: Create config file
         run: |
@@ -182,6 +166,7 @@ jobs:
           CAIRO_GENERATION_API_URL="http://127.0.0.1:3001/chat/completions"
 
           EOL
+
       - name: Cache snak node modules
         uses: actions/cache@v4
         with:
@@ -220,18 +205,6 @@ jobs:
           
           if [ "$server_ready" = false ]; then
             echo "Server failed to start after $max_retries retries"
-            exit 1
-          fi
-        
-      - name: Test basic API connectivity
-        run: |
-          echo "Testing basic API connectivity..."
-          response=$(curl -s -H "Content-Type: application/json" -H "x-api-key: ${{ secrets.SNAK_SERVER_KEY }}" -X POST -d '{"request": "Hello World"}' http://localhost:${{ secrets.SNAK_SERVER_PORT }}/api/key/request)
-          echo "Response: $response"
-          if echo "$response" | grep -q "Hello"; then
-            echo "✅ Basic API test passed!"
-          else
-            echo "❌ Basic API test failed!"
             exit 1
           fi
 

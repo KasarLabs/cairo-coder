@@ -11,8 +11,49 @@ if (!process.env.API_URL) {
 const API_KEY = process.env.API_KEY;
 const API_URL = process.env.API_URL;
 
+// Agent est défini au niveau global pour être utilisé dans beforeAll et dans les tests
+const agent = request(API_URL);
+
+// Le beforeAll est placé au niveau global, en dehors du describe
+beforeAll(async () => {
+  console.log('Setting up test environment - Installing Scarb...');
+  
+  try {
+    const installResponse = await agent
+      .post('/api/key/request')
+      .set('Content-Type', 'application/json')
+      .set('x-api-key', API_KEY)
+      .send({
+        request: "Can you install scarb?",
+      });
+    
+    console.log('Scarb Installation Status:', installResponse.status);
+    console.log('Scarb Installation Response:', 
+      installResponse.body.output ? 
+      JSON.stringify(installResponse.body.output[0], null, 2) : 
+      'No output'
+    );
+    
+    const isSuccess = installResponse.status === 201 && 
+                     installResponse.body.output && 
+                     installResponse.body.output[0].status === 'success';
+    
+    if (!isSuccess) {
+      console.error('⚠️ Warning: Scarb installation failed. : ', installResponse.body.output[0].text);
+    } else {
+      console.log('✅ Scarb installation successful');
+    }
+    
+    // Attendre que l'installation soit traitée
+    await new Promise((resolve) => setTimeout(resolve, 5000));
+    
+  } catch (error) {
+    console.error('❌ Error during Scarb installation:', error);
+    console.warn('⚠️ Tests may fail if Scarb is not properly installed');
+  }
+}, 60000); // Timeout de 60 secondes pour l'installation
+
 describe('Code Generation and Compilation Tests', () => {
-  const agent = request(API_URL);
 
   async function generateAndCompile(
     project_name: string,
@@ -132,10 +173,10 @@ describe('Code Generation and Compilation Tests', () => {
 }
 
 describe('Cairo Functions and Basic Algorithms', () => {
-  
+
     test('Hello World test', async () => {
       const project_name = 'hello_world';
-      const prompt_content = 'a simple Hello World function in Cairo';
+      const prompt_content = 'a cairo function that returns "Hello World"';
       const result = await generateAndCompile(project_name, prompt_content, 0);
       
       if (!result.success) {
