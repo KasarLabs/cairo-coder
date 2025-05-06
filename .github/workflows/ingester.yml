@@ -85,10 +85,10 @@ jobs:
           SIMILARITY_MEASURE = "cosine"
 
           [HOSTED_MODE]
-          DEFAULT_CHAT_PROVIDER = "anthropic"
-          DEFAULT_CHAT_MODEL = "Claude 3.5 Sonnet"
-          DEFAULT_FAST_CHAT_PROVIDER = "anthropic"
-          DEFAULT_FAST_CHAT_MODEL = "Claude 3.5 Sonnet"
+          DEFAULT_CHAT_PROVIDER = "gemini"
+          DEFAULT_CHAT_MODEL = "Gemini Flash 2.5"
+          DEFAULT_FAST_CHAT_PROVIDER = "gemini"
+          DEFAULT_FAST_CHAT_MODEL = "Gemini Flash 2.5"
           DEFAULT_EMBEDDING_PROVIDER = "openai"
           DEFAULT_EMBEDDING_MODEL = "Text embedding 3 large"
 
