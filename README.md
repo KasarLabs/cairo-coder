@@ -120,11 +120,11 @@ There are mainly 2 ways of installing Cairo Coder - With Docker, Without Docker.
 7. **Configure LangSmith (Optional)**
 
    Cairo Coder can use LangSmith to record and monitor LLM calls. This step is optional but recommended for development and debugging.
-
-   a. Create an account at [LangSmith](https://smith.langchain.com/)
-   b. Create a new project in the LangSmith dashboard
-   c. Retrieve your API credentials
-   d. Create a `.env` file in the `packages/backend` directory with the following variables:
+   
+    a. Create an account at [LangSmith](https://smith.langchain.com/)
+    b. Create a new project in the LangSmith dashboard
+    c. Retrieve your API credentials
+    d. Create a `.env` file in the `packages/backend` directory with the following variables:
 
    ```
    LANGSMITH_TRACING=true
