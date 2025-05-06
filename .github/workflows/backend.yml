@@ -163,7 +163,7 @@ jobs:
           STARKNET_PRIVATE_KEY="${{ secrets.STARKNET_PRIVATE_KEY }}"
           STARKNET_RPC_URL="${{ secrets.STARKNET_RPC_URL }}"
 
-          AI_PROVIDER_API_KEY="${{ secrets.OPENAI }}"
+          AI_PROVIDER_API_KEY="${{ secrets.ANTHROPIC }}"
           AI_MODEL="claude-3-5-sonnet-latest"
           AI_PROVIDER="anthropic"
 
@@ -234,7 +234,7 @@ jobs:
             echo "❌ Basic API test failed!"
             exit 1
           fi
-          
+
       - name: Create cairo code generation test env file
         run: |
           cd ./packages/agents
