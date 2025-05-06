@@ -17,36 +17,40 @@ const agent = request(API_URL);
 // Le beforeAll est placé au niveau global, en dehors du describe
 beforeAll(async () => {
   console.log('Setting up test environment - Installing Scarb...');
-  
+
   try {
     const installResponse = await agent
       .post('/api/key/request')
       .set('Content-Type', 'application/json')
       .set('x-api-key', API_KEY)
       .send({
-        request: "Can you install scarb?",
+        request: 'Can you install scarb?',
       });
-    
+
     console.log('Scarb Installation Status:', installResponse.status);
-    console.log('Scarb Installation Response:', 
-      installResponse.body.output ? 
-      JSON.stringify(installResponse.body.output[0], null, 2) : 
-      'No output'
+    console.log(
+      'Scarb Installation Response:',
+      installResponse.body.output
+        ? JSON.stringify(installResponse.body.output[0], null, 2)
+        : 'No output',
     );
-    
-    const isSuccess = installResponse.status === 201 && 
-                     installResponse.body.output && 
-                     installResponse.body.output[0].status === 'success';
-    
+
+    const isSuccess =
+      installResponse.status === 201 &&
+      installResponse.body.output &&
+      installResponse.body.output[0].status === 'success';
+
     if (!isSuccess) {
-      console.error('⚠️ Warning: Scarb installation failed. : ', installResponse.body.output[0].text);
+      console.error(
+        '⚠️ Warning: Scarb installation failed. : ',
+        installResponse.body.output[0].text,
+      );
     } else {
       console.log('✅ Scarb installation successful');
     }
-    
+
     // Attendre que l'installation soit traitée
     await new Promise((resolve) => setTimeout(resolve, 5000));
-    
   } catch (error) {
     console.error('❌ Error during Scarb installation:', error);
     console.warn('⚠️ Tests may fail if Scarb is not properly installed');
@@ -54,12 +58,11 @@ beforeAll(async () => {
 }, 60000); // Timeout de 60 secondes pour l'installation
 
 describe('Code Generation and Compilation Tests', () => {
-
   async function generateAndCompile(
     project_name: string,
     prompt_content: string,
     index: number,
-  ): Promise<{success: boolean; error?: string}> {
+  ): Promise<{ success: boolean; error?: string }> {
     console.log(`\n=== Test #${index}: ${project_name} ===`);
     console.log(`Generating code for: ${prompt_content}`);
 
@@ -90,11 +93,14 @@ describe('Code Generation and Compilation Tests', () => {
       if (generateResponse.status !== 201) {
         return {
           success: false,
-          error: `Generation HTTP request failed with status ${generateResponse.status}: ${JSON.stringify(generateResponse.body)}`
+          error: `Generation HTTP request failed with status ${generateResponse.status}: ${JSON.stringify(generateResponse.body)}`,
         };
       }
 
-      console.log('CODE GENERATION RESPONSE:', JSON.stringify(generateResponse.body.output[0], null, 2));
+      console.log(
+        'CODE GENERATION RESPONSE:',
+        JSON.stringify(generateResponse.body.output[0], null, 2),
+      );
       const sucessfulGeneration = generateResponse.body.output[0].text
         .toLowerCase()
         .includes('```cairo');
@@ -105,7 +111,7 @@ describe('Code Generation and Compilation Tests', () => {
       ) {
         return {
           success: false,
-          error: `Generation failed: ${JSON.stringify(generateResponse.body.output[0].text)}`
+          error: `Generation failed: ${JSON.stringify(generateResponse.body.output[0].text)}`,
         };
       }
 
@@ -128,34 +134,38 @@ describe('Code Generation and Compilation Tests', () => {
         .send({
           request: compilation_prompt,
         });
-      
 
       console.log('COMPILATION STATUS:', compileResponse.status);
-      
+
       if (compileResponse.status !== 201) {
         return {
           success: false,
-          error: `Compilation HTTP request failed with status ${compileResponse.status}: ${JSON.stringify(compileResponse.body)}`
+          error: `Compilation HTTP request failed with status ${compileResponse.status}: ${JSON.stringify(compileResponse.body)}`,
         };
       }
 
-      console.log('COMPILATION RESPONSE:', JSON.stringify(compileResponse.body.output[0], null, 2));
+      console.log(
+        'COMPILATION RESPONSE:',
+        JSON.stringify(compileResponse.body.output[0], null, 2),
+      );
 
       const sucessfulCompilation =
         compileResponse.body.output[0].text
           .toLowerCase()
           .includes('compilation') &&
-        !compileResponse.body.output[0].text.toLowerCase().includes('failure') &&
+        !compileResponse.body.output[0].text
+          .toLowerCase()
+          .includes('failure') &&
         !compileResponse.body.output[0].text.toLowerCase().includes('failed') &&
         !compileResponse.body.output[0].text.toLowerCase().includes('error');
-      
+
       if (
         compileResponse.body.output[0].status !== 'success' ||
         !sucessfulCompilation
       ) {
         return {
           success: false,
-          error: `Compilation failed: ${JSON.stringify(compileResponse.body.output[0].text)}`
+          error: `Compilation failed: ${JSON.stringify(compileResponse.body.output[0].text)}`,
         };
       }
 
@@ -163,38 +173,38 @@ describe('Code Generation and Compilation Tests', () => {
       await new Promise((resolve) => setTimeout(resolve, 5000));
 
       return { success: true };
-  } catch (error) {
-    console.error(`❌ Unexpected error in Test #${index}:`, error);
-    return {
-      success: false,
-      error: `Unexpected error: ${error.message}`
-    };
+    } catch (error) {
+      console.error(`❌ Unexpected error in Test #${index}:`, error);
+      return {
+        success: false,
+        error: `Unexpected error: ${error.message}`,
+      };
+    }
   }
-}
 
-describe('Cairo Functions and Basic Algorithms', () => {
-
+  describe('Cairo Functions and Basic Algorithms', () => {
     test('Hello World test', async () => {
       const project_name = 'hello_world';
       const prompt_content = 'a cairo function that returns "Hello World"';
       const result = await generateAndCompile(project_name, prompt_content, 0);
-      
+
       if (!result.success) {
         console.error(`❌ TEST FAILED: ${result.error}`);
       }
-      
+
       expect(result.success).toBe(true);
     }, 100000);
 
     test('Fibonacci function', async () => {
       const project_name = 'fibonacci';
-      const prompt_content = 'a Cairo function that calculates the Fibonacci sequence';
+      const prompt_content =
+        'a Cairo function that calculates the Fibonacci sequence';
       const result = await generateAndCompile(project_name, prompt_content, 1);
-      
+
       if (!result.success) {
         console.error(`❌ TEST FAILED: ${result.error}`);
       }
-      
+
       expect(result.success).toBe(true);
     }, 100000);
 

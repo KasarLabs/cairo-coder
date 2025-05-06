@@ -191,7 +191,7 @@ jobs:
           max_retries=10
           retry_count=0
           server_ready=false
-          
+
           while [ $retry_count -lt $max_retries ] && [ "$server_ready" = false ]; do
             if curl -s -H "x-api-key: ${{ secrets.SNAK_SERVER_KEY }}" http://localhost:${{ secrets.SNAK_SERVER_PORT }}/api/key/status > /dev/null; then
               echo "Server is up and running!"
@@ -202,7 +202,7 @@ jobs:
               retry_count=$((retry_count+1))
             fi
           done
-          
+
           if [ "$server_ready" = false ]; then
             echo "Server failed to start after $max_retries retries"
             exit 1
