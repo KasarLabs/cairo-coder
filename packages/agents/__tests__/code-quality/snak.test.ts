@@ -208,64 +208,110 @@ describe('Code Generation and Compilation Tests', () => {
       expect(result.success).toBe(true);
     }, 100000);
 
-    // test('Max value in array', async () => {
-    //   const project_name = 'max_value';
-    //   const prompt_content = "a Cairo function that finds the maximum value in an array";
-    //   const success = await generateAndCompile(project_name, prompt_content, 2);
-    //   expect(success).toBe(true);
-    // }, 100000);
+    test('Max value in array', async () => {
+      const project_name = 'max_value';
+      const prompt_content =
+        'a Cairo function that finds the maximum value in an array';
+      const result = await generateAndCompile(project_name, prompt_content, 2);
 
-    // test('Simple sorting algorithm', async () => {
-    //   const project_name = 'sorting';
-    //   const prompt_content = "a sorting algorithm";
-    //   const success = await generateAndCompile(project_name, prompt_content, 3);
-    //   expect(success).toBe(true);
-    // }, 100000);
+      if (!result.success) {
+        console.error(`❌ TEST FAILED: ${result.error}`);
+      }
+
+      expect(result.success).toBe(true);
+    }, 100000);
+
+    test('Simple sorting algorithm', async () => {
+      const project_name = 'sorting';
+      const prompt_content = 'a sorting algorithm';
+      const result = await generateAndCompile(project_name, prompt_content, 3);
+
+      if (!result.success) {
+        console.error(`❌ TEST FAILED: ${result.error}`);
+      }
+
+      expect(result.success).toBe(true);
+    }, 100000);
   });
 
-  // describe('Simple Starknet Contracts', () => {
-  //   test('Basic contract with storage', async () => {
-  //     const project_name = 'basic_contract';
-  //     const prompt_content = "a basic Starknet contract with a storage variable and getter/setter functions";
-  //     const success = await generateAndCompile(project_name, prompt_content, 4);
-  //     expect(success).toBe(true);
-  //   }, 100000);
+  describe('Simple Starknet Contracts', () => {
+    test('Basic contract with storage', async () => {
+      const project_name = 'basic_contract';
+      const prompt_content =
+        'a basic Starknet contract with a storage variable and getter/setter functions';
+      const result = await generateAndCompile(project_name, prompt_content, 4);
 
-  //   test('Counter contract', async () => {
-  //     const project_name = 'counter';
-  //     const prompt_content = "a Starknet contract that maintains a counter with increment and decrement functions";
-  //     const success = await generateAndCompile(project_name, prompt_content, 5);
-  //     expect(success).toBe(true);
-  //   }, 100000);
+      if (!result.success) {
+        console.error(`❌ TEST FAILED: ${result.error}`);
+      }
 
-  //   test('Simple voting system', async () => {
-  //     const project_name = 'voting';
-  //     const prompt_content = "a Starknet contract for a simple voting system where users can vote only once";
-  //     const success = await generateAndCompile(project_name, prompt_content, 6);
-  //     expect(success).toBe(true);
-  //   }, 100000);
-  // });
+      expect(result.success).toBe(true);
+    }, 100000);
 
-  // describe('Standard and Complex Contracts', () => {
-  //   test('ERC-20 token contract', async () => {
-  //     const project_name = 'erc20';
-  //     const prompt_content = "a minimal Starknet ERC-20 token contract";
-  //     const success = await generateAndCompile(project_name, prompt_content, 7);
-  //     expect(success).toBe(true);
-  //   }, 100000);
+    test('Counter contract', async () => {
+      const project_name = 'counter';
+      const prompt_content =
+        'a Starknet contract that maintains a counter with increment and decrement functions';
+      const result = await generateAndCompile(project_name, prompt_content, 5);
 
-  //   test('ERC-721 NFT contract', async () => {
-  //     const project_name = 'erc721';
-  //     const prompt_content = "a Starknet ERC-721 NFT contract with minting functionality";
-  //     const success = await generateAndCompile(project_name, prompt_content, 8);
-  //     expect(success).toBe(true);
-  //   }, 100000);
+      if (!result.success) {
+        console.error(`❌ TEST FAILED: ${result.error}`);
+      }
 
-  //   test('Multisig wallet contract', async () => {
-  //     const project_name = 'multisig';
-  //     const prompt_content = "a Starknet multisig wallet contract that requires multiple approvals for transactions";
-  //     const success = await generateAndCompile(project_name, prompt_content, 9);
-  //     expect(success).toBe(true);
-  //   }, 100000);
-  // });
+      expect(result.success).toBe(true);
+    }, 100000);
+
+    test('Simple voting system', async () => {
+      const project_name = 'voting';
+      const prompt_content =
+        'a Starknet contract for a simple voting system where users can vote only once';
+      const result = await generateAndCompile(project_name, prompt_content, 6);
+
+      if (!result.success) {
+        console.error(`❌ TEST FAILED: ${result.error}`);
+      }
+
+      expect(result.success).toBe(true);
+    }, 100000);
+  });
+
+  describe('Standard and Complex Contracts', () => {
+    test('ERC-20 token contract', async () => {
+      const project_name = 'erc20';
+      const prompt_content = 'a minimal Starknet ERC-20 token contract';
+      const result = await generateAndCompile(project_name, prompt_content, 7);
+
+      if (!result.success) {
+        console.error(`❌ TEST FAILED: ${result.error}`);
+      }
+
+      expect(result.success).toBe(true);
+    }, 100000);
+
+    test('ERC-721 NFT contract', async () => {
+      const project_name = 'erc721';
+      const prompt_content =
+        'a Starknet ERC-721 NFT contract with minting functionality';
+      const result = await generateAndCompile(project_name, prompt_content, 8);
+
+      if (!result.success) {
+        console.error(`❌ TEST FAILED: ${result.error}`);
+      }
+
+      expect(result.success).toBe(true);
+    }, 100000);
+
+    test('Multisig wallet contract', async () => {
+      const project_name = 'multisig';
+      const prompt_content =
+        'a Starknet multisig wallet contract that requires multiple approvals for transactions';
+      const result = await generateAndCompile(project_name, prompt_content, 9);
+
+      if (!result.success) {
+        console.error(`❌ TEST FAILED: ${result.error}`);
+      }
+
+      expect(result.success).toBe(true);
+    }, 100000);
+  });
 });
