@@ -201,7 +201,27 @@ jobs:
           pnpm run build --filter="@snakagent/server..." && lerna run start --scope "@snakagent/server" &
 
           echo "Waiting for server to start..."
-          sleep 30
+          sleep 45
+
+          max_retries=10
+          retry_count=0
+          server_ready=false
+          
+          while [ $retry_count -lt $max_retries ] && [ "$server_ready" = false ]; do
+            if curl -s http://localhost:${{ secrets.SNAK_SERVER_PORT }}/api/key/status > /dev/null; then
+              echo "Server is up and running!"
+              server_ready=true
+            else
+              echo "Server not ready yet, retrying in 5 seconds..."
+              sleep 5
+              retry_count=$((retry_count+1))
+            fi
+          done
+          
+          if [ "$server_ready" = false ]; then
+            echo "Server failed to start after $max_retries retries"
+            exit 1
+          fi
 
       - name: Create cairo code generation test env file
         run: |
