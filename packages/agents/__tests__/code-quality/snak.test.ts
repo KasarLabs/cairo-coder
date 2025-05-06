@@ -18,97 +18,130 @@ describe('Code Generation and Compilation Tests', () => {
     project_name: string,
     prompt_content: string,
     index: number,
-  ): Promise<boolean> {
-    const generation_prompt = `Test #${index}: Generate Cairo code for ${prompt_content}
+  ): Promise<{success: boolean; error?: string}> {
+    console.log(`\n=== Test #${index}: ${project_name} ===`);
+    console.log(`Generating code for: ${prompt_content}`);
 
-    1. First, register a new project named "${project_name}" using the cairocoder_register_project tool
-    2. Then, generate the Cairo code using the cairocoder_generate_code tool
-    
-    If generation is successful:
-    - Return the generated Cairo code with syntax highlighting
-    
-    If generation fails:
-    - Return only the error message from the tool
-    - Do not try to fix or retry the generation
-    
-    Do not perform any additional actions.`;
-    const generateResponse = await agent
-      .post('/api/key/request')
-      .set('Content-Type', 'application/json')
-      .set('x-api-key', API_KEY)
-      .send({
-        request: generation_prompt,
-      });
+    try {
+      const generation_prompt = `Test #${index}: Generate Cairo code for ${prompt_content}
 
-    console.log(
-      'GENERATION RESPONSE:',
-      JSON.stringify(generateResponse.body, null, 2),
-    );
-    const sucessfulGeneration = generateResponse.body.output[0].text
-      .toLowerCase()
-      .includes('```cairo');
+      1. First, register a new project named "${project_name}" using the cairocoder_register_project tool
+      2. Then, generate the Cairo code using the cairocoder_generate_code tool
+      
+      If generation is successful:
+      - Return the generated Cairo code with syntax highlighting
+      
+      If generation fails:
+      - Return only the error message from the tool
+      - Do not try to fix or retry the generation
+      
+      Do not perform any additional actions.`;
+      const generateResponse = await agent
+        .post('/api/key/request')
+        .set('Content-Type', 'application/json')
+        .set('x-api-key', API_KEY)
+        .send({
+          request: generation_prompt,
+        });
 
-    if (
-      generateResponse.body.output[0].status !== 'success' ||
-      !sucessfulGeneration
-    ) {
-      console.error('Generation failed:', generateResponse.body);
-      return false;
-    }
+      console.log('CODE GENERATION STATUS:', generateResponse.status);
 
-    console.log('Generated code successfully');
+      if (generateResponse.status !== 201) {
+        return {
+          success: false,
+          error: `Generation HTTP request failed with status ${generateResponse.status}: ${JSON.stringify(generateResponse.body)}`
+        };
+      }
 
-    const compilation_prompt = `Test #${index}: Compile the project "${project_name}" using the scarb_compile_contract tool.
-
-    After compilation, report whether it succeeded or failed.
-    
-    For successful compilation: Report "Compilation successful" and include any relevant output.
-    For failed compilation: Report "Compilation failed" and include the specific error messages.
-    
-    Only use the compilation tool and no other tools.
-    If another tool is used, instead or additionally to the compilation tool, report it as a failure.`;
-
-    const compileResponse = await agent
-      .post('/api/key/request')
-      .set('Content-Type', 'application/json')
-      .set('x-api-key', API_KEY)
-      .send({
-        request: compilation_prompt,
-      });
-
-    console.log(
-      'COMPILATION RESPONSE:',
-      JSON.stringify(compileResponse.body, null, 2),
-    );
-
-    const sucessfulCompilation =
-      compileResponse.body.output[0].text
+      console.log('CODE GENERATION RESPONSE:', JSON.stringify(generateResponse.body.output[0], null, 2));
+      const sucessfulGeneration = generateResponse.body.output[0].text
         .toLowerCase()
-        .includes('compilation') &&
-      !compileResponse.body.output[0].text.toLowerCase().includes('failure') &&
-      !compileResponse.body.output[0].text.toLowerCase().includes('failed') &&
-      !compileResponse.body.output[0].text.toLowerCase().includes('error');
-    if (
-      compileResponse.body.output[0].status !== 'success' ||
-      !sucessfulCompilation
-    ) {
-      console.error('Compilation request failed:', compileResponse.body);
-      return false;
-    }
+        .includes('```cairo');
 
-    console.log('END REQUEST ////////');
-    await new Promise((resolve) => setTimeout(resolve, 5000));
+      if (
+        generateResponse.body.output[0].status !== 'success' ||
+        !sucessfulGeneration
+      ) {
+        return {
+          success: false,
+          error: `Generation failed: ${JSON.stringify(generateResponse.body.output[0].text)}`
+        };
+      }
 
-    return true;
+      console.log('✅ Code generated successfully');
+
+      const compilation_prompt = `Test #${index}: Compile the project "${project_name}" using the scarb_compile_contract tool.
+
+      After compilation, report whether it succeeded or failed.
+      
+      For successful compilation: Report "Compilation successful" and include any relevant output.
+      For failed compilation: Report "Compilation failed" and include the specific error messages.
+      
+      Only use the compilation tool and no other tools.
+      If another tool is used, instead or additionally to the compilation tool, report it as a failure.`;
+
+      const compileResponse = await agent
+        .post('/api/key/request')
+        .set('Content-Type', 'application/json')
+        .set('x-api-key', API_KEY)
+        .send({
+          request: compilation_prompt,
+        });
+      
+
+      console.log('COMPILATION STATUS:', compileResponse.status);
+      
+      if (compileResponse.status !== 201) {
+        return {
+          success: false,
+          error: `Compilation HTTP request failed with status ${compileResponse.status}: ${JSON.stringify(compileResponse.body)}`
+        };
+      }
+
+      console.log('COMPILATION RESPONSE:', JSON.stringify(compileResponse.body.output[0], null, 2));
+
+      const sucessfulCompilation =
+        compileResponse.body.output[0].text
+          .toLowerCase()
+          .includes('compilation') &&
+        !compileResponse.body.output[0].text.toLowerCase().includes('failure') &&
+        !compileResponse.body.output[0].text.toLowerCase().includes('failed') &&
+        !compileResponse.body.output[0].text.toLowerCase().includes('error');
+      
+      if (
+        compileResponse.body.output[0].status !== 'success' ||
+        !sucessfulCompilation
+      ) {
+        return {
+          success: false,
+          error: `Compilation failed: ${JSON.stringify(compileResponse.body.output[0].text)}`
+        };
+      }
+
+      console.log('✅ Compilation successful');
+      await new Promise((resolve) => setTimeout(resolve, 5000));
+
+      return { success: true };
+  } catch (error) {
+    console.error(`❌ Unexpected error in Test #${index}:`, error);
+    return {
+      success: false,
+      error: `Unexpected error: ${error.message}`
+    };
   }
+}
 
   describe('Cairo Functions and Basic Algorithms', () => {
-    test('Factorial function', async () => {
-      // const project_name = 'factorial';
-      // const prompt_content =
-      //   'a Cairo function that calculates the factorial of a number';
-      // const success = await generateAndCompile(project_name, prompt_content, 1);
-      // expect(success).toBe(true);
+    test('Fibonacci function', async () => {
+      const project_name = 'fibonacci';
+      const prompt_content = 'a Cairo function that calculates the Fibonacci sequence';
+      const result = await generateAndCompile(project_name, prompt_content, 1);
+      
+      if (!result.success) {
+        console.error(`❌ TEST FAILED: ${result.error}`);
+      }
+      
+      expect(result.success).toBe(true);
     }, 100000);
 
     // test('Max value in array', async () => {

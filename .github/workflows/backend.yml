@@ -123,15 +123,15 @@ jobs:
           echo "Waiting for services to be ready..."
           sleep 20
 
-          chmod +x ./tests/integration-tests.sh
-          chmod +x ./tests/database-connection.sh
+          chmod +x ./scripts/integration-tests.sh
+          chmod +x ./scripts/database-connection.sh
 
           echo -e "\n=== Running basic integration tests ==="
-          ./tests/integration-tests.sh
+          ./scripts/integration-tests.sh
           INTEGRATION_RESULT=$?
 
           echo -e "\n=== Running database connection test via chat/completions endpoint ==="
-          ./tests/database-connection.sh
+          ./scripts/database-connection.sh
           DB_CONNECTION_RESULT=$?
 
           if [ $INTEGRATION_RESULT -ne 0 ] || [ $DB_CONNECTION_RESULT -ne 0 ]; then
@@ -215,18 +215,8 @@ jobs:
 
       - name: Run cairo code generation test
         run: |
-          pnpm run test:code-quality
-
-          TEST_RESULT=$?
-
-          pkill -f "start:server" || true
-
-          if [ $TEST_RESULT -ne 0 ]; then
-            echo "❌ API test failed!"
-            exit 1
-          else
-            echo "✅ API test passed!"
-          fi
+          chmod +x ./scripts/snak-test.sh
+          bash scripts/snak-test.sh
 
       # - name: Push docker image
       #   run: docker push ${{ github.repository }}:${{ github.sha }}
