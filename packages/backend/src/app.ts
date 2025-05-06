@@ -1,5 +1,8 @@
 import { createApplication } from './server';
 import { logger } from '@cairo-coder/agents/utils/index';
+import dotenv from 'dotenv';
+
+dotenv.config();
 
 // Error handling for uncaught exceptions
 process.on('uncaughtException', (err, origin) => {
