@@ -13,15 +13,16 @@
     "test:unit": "jest --config jest.config.js --testMatch=\"**/__tests__/unit/**/*.test.[jt]s?(x)\""
   },
   "dependencies": {
+    "@cairo-coder/agents": "workspace:*",
     "@iarna/toml": "^2.2.5",
     "@langchain/anthropic": "^0.2.18",
     "@langchain/community": "^0.3.32",
     "@langchain/core": "^0.2.36",
     "@langchain/google-genai": "^0.1.8",
     "@langchain/openai": "^0.0.25",
-    "@cairo-coder/agents": "workspace:*",
     "@types/node": "^20",
     "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
     "express": "^4.21.2",
     "node-fetch": "2.7.0",
     "uuid": "^11.1.0",
