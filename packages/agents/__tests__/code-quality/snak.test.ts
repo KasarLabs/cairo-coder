@@ -131,7 +131,20 @@ describe('Code Generation and Compilation Tests', () => {
   }
 }
 
-  describe('Cairo Functions and Basic Algorithms', () => {
+describe('Cairo Functions and Basic Algorithms', () => {
+  
+    test('Hello World test', async () => {
+      const project_name = 'hello_world';
+      const prompt_content = 'a simple Hello World function in Cairo';
+      const result = await generateAndCompile(project_name, prompt_content, 0);
+      
+      if (!result.success) {
+        console.error(`❌ TEST FAILED: ${result.error}`);
+      }
+      
+      expect(result.success).toBe(true);
+    }, 100000);
+
     test('Fibonacci function', async () => {
       const project_name = 'fibonacci';
       const prompt_content = 'a Cairo function that calculates the Fibonacci sequence';

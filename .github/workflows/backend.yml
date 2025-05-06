@@ -201,14 +201,14 @@ jobs:
           pnpm run build --filter="@snakagent/server..." && lerna run start --scope "@snakagent/server" &
 
           echo "Waiting for server to start..."
-          sleep 45
+          sleep 60
 
           max_retries=10
           retry_count=0
           server_ready=false
           
           while [ $retry_count -lt $max_retries ] && [ "$server_ready" = false ]; do
-            if curl -s http://localhost:${{ secrets.SNAK_SERVER_PORT }}/api/key/status > /dev/null; then
+            if curl -s -H "x-api-key: ${{ secrets.SNAK_SERVER_KEY }}" http://localhost:${{ secrets.SNAK_SERVER_PORT }}/api/key/status > /dev/null; then
               echo "Server is up and running!"
               server_ready=true
             else
@@ -222,7 +222,19 @@ jobs:
             echo "Server failed to start after $max_retries retries"
             exit 1
           fi
-
+        
+      - name: Test basic API connectivity
+        run: |
+          echo "Testing basic API connectivity..."
+          response=$(curl -s -H "Content-Type: application/json" -H "x-api-key: ${{ secrets.SNAK_SERVER_KEY }}" -X POST -d '{"request": "Hello World"}' http://localhost:${{ secrets.SNAK_SERVER_PORT }}/api/key/request)
+          echo "Response: $response"
+          if echo "$response" | grep -q "Hello"; then
+            echo "✅ Basic API test passed!"
+          else
+            echo "❌ Basic API test failed!"
+            exit 1
+          fi
+          
       - name: Create cairo code generation test env file
         run: |
           cd ./packages/agents
