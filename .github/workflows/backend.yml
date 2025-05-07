@@ -202,6 +202,3 @@ jobs:
         run: |
           chmod +x ./scripts/snak-test.sh
           bash scripts/snak-test.sh
-
-      # - name: Push docker image
-      #   run: docker push ${{ github.repository }}:${{ github.sha }}
