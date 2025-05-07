@@ -95,6 +95,10 @@ jobs:
           POSTGRES_PORT = "${{ secrets.POSTGRES_PORT }}"
           EOL
 
+      - name: Create backend env file
+        run: |
+          touch packages/backend/.env
+
       - name: Run unit tests
         run: pnpm run test:unit
 
