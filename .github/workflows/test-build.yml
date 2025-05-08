@@ -2,8 +2,6 @@ name: Create and publish a Docker image
 
 on:
   workflow_dispatch:
-  push:
-    branches: [main]
   pull_request:
     branches: [main]
 
@@ -44,53 +42,6 @@ jobs:
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
-
-      - name: Create config file
-        run: |
-          mkdir -p packages/agents
-          cat > packages/agents/config.toml << 'EOL'
-          [API_KEYS]
-          OPENAI = "${{ secrets.OPENAI }}"
-          ANTHROPIC = "${{ secrets.ANTHROPIC }}"
-          GEMINI = "${{ secrets.GEMINI }}"
-
-          [VECTOR_DB]
-          POSTGRES_USER = "${{ secrets.POSTGRES_USER }}"
-          POSTGRES_HOST = "postgres"
-          POSTGRES_ROOT_DB = "${{ secrets.POSTGRES_ROOT_DB }}"
-          POSTGRES_PASSWORD = "${{ secrets.POSTGRES_PASSWORD }}"
-          POSTGRES_PORT = "${{ secrets.POSTGRES_PORT }}"
-
-          [GENERAL]
-          PORT = 3001
-          SIMILARITY_MEASURE = "cosine"
-
-          [HOSTED_MODE]
-          DEFAULT_CHAT_PROVIDER = "gemini"
-          DEFAULT_CHAT_MODEL = "Gemini Flash 2.5"
-          DEFAULT_FAST_CHAT_PROVIDER = "gemini"
-          DEFAULT_FAST_CHAT_MODEL = "Gemini Flash 2.5"
-          DEFAULT_EMBEDDING_PROVIDER = "openai"
-          DEFAULT_EMBEDDING_MODEL = "Text embedding 3 large"
-
-          [VERSIONS]
-          STARKNET_FOUNDRY = "0.37.0"
-          SCARB = "2.9.2"
-          EOL
-
-      - name: Create env file
-        run: |
-          cat > .env << 'EOL'
-          POSTGRES_USER = "${{ secrets.POSTGRES_USER }}"
-          POSTGRES_HOST = "localhost"
-          POSTGRES_ROOT_DB = "${{ secrets.POSTGRES_ROOT_DB }}"
-          POSTGRES_PASSWORD = "${{ secrets.POSTGRES_PASSWORD }}"
-          POSTGRES_PORT = "${{ secrets.POSTGRES_PORT }}"
-          EOL
-
-      - name: Create backend env file
-        run: |
-          touch packages/backend/.env
 
       - name: Build and push Docker image
         id: push
