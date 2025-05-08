@@ -20,7 +20,7 @@ yarn-error.log
 .env.test.local
 .env.production.local
 
-packages/ui/.env
+packages/agents/.env.test
 
 # Config files
 config.toml
