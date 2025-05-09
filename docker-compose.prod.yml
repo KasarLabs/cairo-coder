@@ -1,0 +1,65 @@
+services:
+  cairo-coder-postgres:
+    image: pgvector/pgvector:pg17
+    container_name: cairo-coder-postgres
+    shm_size: 1g
+    env_file:
+      - .env
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+    networks:
+      - cairo_coder
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U yo -d cairo_coder_db']
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  cairo-coder-backend:
+    image: gchr.io/repo/cairo-coder-backend:123456
+    container_name: cairo-coder-backend
+    env_file:
+      - packages/backend/.env
+    expose:
+      - 3001
+    depends_on:
+      - postgres:
+          condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - cairo_coder
+      - services
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+    labels:
+      - 'traefik.enable=true'
+      - 'traefik.docker.network=services'
+      - 'traefik.http.routers.proxy.rule=Host(cairo-coder.kasar.io)'
+      - 'traefik.http.routers.proxy.entrypoints=websecure'
+      - 'traefik.http.routers.proxy.tls.certresolver=letsencrypt'
+      - 'traefik.http.services.proxy.loadbalancer.server.port=3001'
+
+  cairo-coder-ingester:
+    image: gchr.io/repo/cairo-coder-ingester:123456
+    container_name: cairo-coder-ingester
+    depends_on:
+      - postgres:
+          condition: service_healthy
+      - backend:
+          condition: service_started
+    restart: 'no'
+    networks:
+      - cairo_coder
+
+networks:
+  cairo_coder:
+    internal: true
+  services:
+    external: true
+
+volumes:
+  postgres_data:

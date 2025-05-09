@@ -5,13 +5,19 @@ services:
     shm_size: 1g
     env_file:
       - .env
-    ports:
-      - 5432:5432
+    expose:
+      - 5432
     volumes:
-      - ./data:/var/lib/postgresql/data
+      - postgres_data:/var/lib/postgresql/data
     restart: unless-stopped
     networks:
       - cairo_coder
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U yo -d cairo_coder_db']
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
 
   backend:
     container_name: 'backend'
@@ -26,7 +32,7 @@ services:
       - packages/backend/.env
     depends_on:
       postgres:
-        condition: service_started
+        condition: service_healthy
     restart: unless-stopped
     networks:
       - cairo_coder
@@ -38,7 +44,7 @@ services:
     profiles: ['ingester']
     depends_on:
       postgres:
-        condition: service_started
+        condition: service_healthy
     networks:
       - cairo_coder
 
