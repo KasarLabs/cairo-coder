@@ -1,7 +1,7 @@
 services:
-  postgres:
+  cairo-coder-postgres:
     image: pgvector/pgvector:pg17
-    container_name: 'postgresql'
+    container_name: 'cairo-coder-postgres'
     shm_size: 1g
     env_file:
       - .env
@@ -19,8 +19,8 @@ services:
       retries: 5
       start_period: 10s
 
-  backend:
-    container_name: 'backend'
+  cairo-coder-backend:
+    container_name: 'cairo-coder-backend'
     build:
       context: .
       dockerfile: backend.dockerfile
@@ -31,19 +31,19 @@ services:
     env_file:
       - packages/backend/.env
     depends_on:
-      postgres:
+      cairo-coder-postgres:
         condition: service_healthy
     restart: unless-stopped
     networks:
       - cairo_coder
 
-  ingester:
+  cairo-coder-ingester:
     build:
       context: .
-      dockerfile: ingest.dockerfile
+      dockerfile: ingester.dockerfile
     profiles: ['ingester']
     depends_on:
-      postgres:
+      cairo-coder-postgres:
         condition: service_healthy
     networks:
       - cairo_coder

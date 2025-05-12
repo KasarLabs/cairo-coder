@@ -28,8 +28,11 @@ export class AnswerGenerator {
     logger.debug('Final Prompt:' + prompt);
 
     // Use stream instead of invoke, and pipe through StringOutputParser
+    logger.debug('Before streaming response');
+    const startTime = Date.now();
     const stream = await this.llm.stream(prompt);
     logger.debug('Started streaming response');
+    logger.debug(`Time to stream: ${Date.now() - startTime}ms`);
     return stream;
   }
 
