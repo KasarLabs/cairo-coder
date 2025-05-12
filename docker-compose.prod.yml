@@ -18,7 +18,7 @@ services:
       start_period: 10s
 
   cairo-coder-backend:
-    image: ghcr.io/kasarlabs/cairo-coder/backend:sha-7e38821
+    image: ghcr.io/kasarlabs/cairo-coder/backend:sha-9822262
     container_name: cairo-coder-backend
     depends_on:
       cairo-coder-postgres:
@@ -42,7 +42,7 @@ services:
       - 'traefik.http.services.cairo-coder-backend.loadbalancer.server.port=3001'
 
   cairo-coder-ingester:
-    image: ghcr.io/kasarlabs/cairo-coder/ingester:sha-7e38821
+    image: ghcr.io/kasarlabs/cairo-coder/ingester:sha-9822262
     container_name: cairo-coder-ingester
     profiles: ['ingester']
     volumes:
@@ -58,7 +58,7 @@ services:
 
 networks:
   cairo_coder:
-    internal: true
+    driver: bridge
   services:
     external: true
 
