@@ -26,8 +26,6 @@ services:
       dockerfile: backend.dockerfile
     ports:
       - 3001:3001
-    extra_hosts:
-      - host.docker.internal:host-gateway
     env_file:
       - packages/backend/.env
     depends_on:
