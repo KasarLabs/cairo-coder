@@ -21,6 +21,8 @@ RUN pnpm install --frozen-lockfile
 RUN npm install -g turbo
 
 # Install Antora
+RUN apt update && apt install -y ca-certificates openssl
+
 RUN npm install -g @antora/cli @antora/site-generator
 
 # Install mdbook

@@ -1,0 +1,66 @@
+services:
+  cairo-coder-postgres:
+    image: pgvector/pgvector:pg17
+    container_name: cairo-coder-postgres
+    shm_size: 1g
+    env_file:
+      - ./config/.env
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+    networks:
+      - cairo_coder
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U yo -d cairo_coder_db']
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  cairo-coder-backend:
+    image: ghcr.io/kasarlabs/cairo-coder/backend:sha-9822262
+    container_name: cairo-coder-backend
+    depends_on:
+      cairo-coder-postgres:
+        condition: service_healthy
+    volumes:
+      - ./config/config.toml:/app/packages/agents/config.toml
+    restart: unless-stopped
+    networks:
+      - cairo_coder
+      - services
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+    labels:
+      - 'traefik.enable=true'
+      - 'traefik.docker.network=services'
+      - 'traefik.http.routers.cairo-coder-backend.rule=Host(`cairo-coder.kasar.io`)'
+      - 'traefik.http.routers.cairo-coder-backend.entrypoints=websecure'
+      - 'traefik.http.routers.cairo-coder-backend.tls.certresolver=letsencrypt'
+      - 'traefik.http.services.cairo-coder-backend.loadbalancer.server.port=3001'
+
+  cairo-coder-ingester:
+    image: ghcr.io/kasarlabs/cairo-coder/ingester:sha-9822262
+    container_name: cairo-coder-ingester
+    profiles: ['ingester']
+    volumes:
+      - ./config/config.toml:/app/packages/agents/config.toml
+    depends_on:
+      cairo-coder-postgres:
+        condition: service_healthy
+      cairo-coder-backend:
+        condition: service_started
+    restart: 'no'
+    networks:
+      - cairo_coder
+
+networks:
+  cairo_coder:
+    driver: bridge
+  services:
+    external: true
+
+volumes:
+  postgres_data:

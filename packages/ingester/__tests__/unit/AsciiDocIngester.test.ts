@@ -3,8 +3,8 @@ import { BookChunk, DocumentSource } from '@cairo-coder/agents/types/index';
 import {
   AsciiDocIngester,
   AsciiDocIngesterConfig,
-} from '../src/ingesters/AsciiDocIngester';
-import { BookConfig, BookPageDto, ParsedSection } from '../src/utils/types';
+} from '../../src/ingesters/AsciiDocIngester';
+import { BookConfig, BookPageDto, ParsedSection } from '../../src/utils/types';
 
 // Create a concrete implementation of AsciiDocIngester for testing
 class TestAsciiDocIngester extends AsciiDocIngester {

@@ -1,0 +1,208 @@
+name: Backend-CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: 9.10.0
+
+      - name: Get pnpm store directory
+        id: pnpm-cache
+        shell: bash
+        run: |
+          echo "STORE_PATH=$(pnpm store path)" >> $GITHUB_OUTPUT
+
+      - name: Setup pnpm cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.pnpm-cache.outputs.STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('pnpm-lock.yaml') || github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Install turbo
+        run: pnpm add turbo@latest -g
+
+      - name: Build
+        run: turbo build
+
+      - name: Create config file
+        run: |
+          mkdir -p packages/agents
+          cat > packages/agents/config.toml << 'EOL'
+          [API_KEYS]
+          OPENAI = "${{ secrets.OPENAI }}"
+          ANTHROPIC = "${{ secrets.ANTHROPIC }}"
+          GEMINI = "${{ secrets.GEMINI }}"
+
+          [VECTOR_DB]
+          POSTGRES_USER = "${{ secrets.POSTGRES_USER }}"
+          POSTGRES_HOST = "postgres"
+          POSTGRES_ROOT_DB = "${{ secrets.POSTGRES_ROOT_DB }}"
+          POSTGRES_PASSWORD = "${{ secrets.POSTGRES_PASSWORD }}"
+          POSTGRES_PORT = "${{ secrets.POSTGRES_PORT }}"
+
+          [GENERAL]
+          PORT = 3001
+          SIMILARITY_MEASURE = "cosine"
+
+          [HOSTED_MODE]
+          DEFAULT_CHAT_PROVIDER = "gemini"
+          DEFAULT_CHAT_MODEL = "Gemini Flash 2.5"
+          DEFAULT_FAST_CHAT_PROVIDER = "gemini"
+          DEFAULT_FAST_CHAT_MODEL = "Gemini Flash 2.5"
+          DEFAULT_EMBEDDING_PROVIDER = "openai"
+          DEFAULT_EMBEDDING_MODEL = "Text embedding 3 large"
+
+          [VERSIONS]
+          STARKNET_FOUNDRY = "0.37.0"
+          SCARB = "2.9.2"
+          EOL
+
+      - name: Create env file
+        run: |
+          cat > .env << 'EOL'
+          POSTGRES_USER = "${{ secrets.POSTGRES_USER }}"
+          POSTGRES_HOST = "localhost"
+          POSTGRES_ROOT_DB = "${{ secrets.POSTGRES_ROOT_DB }}"
+          POSTGRES_PASSWORD = "${{ secrets.POSTGRES_PASSWORD }}"
+          POSTGRES_PORT = "${{ secrets.POSTGRES_PORT }}"
+          EOL
+
+      - name: Create backend env file
+        run: |
+          touch packages/backend/.env
+
+      - name: Run unit tests
+        run: pnpm run test:unit
+
+      - name: Build docker image
+        run: docker build -t cairo-coder-backend:${{ github.sha }} -f backend.dockerfile .
+
+      - name: Run backend and database integration tests
+        run: |
+          docker compose up -d postgres backend
+          echo "Waiting for services to be ready..."
+          sleep 20
+
+          chmod +x ./scripts/integration-tests.sh
+          chmod +x ./scripts/database-connection.sh
+
+          echo -e "\n=== Running basic integration tests ==="
+          ./scripts/integration-tests.sh
+          INTEGRATION_RESULT=$?
+
+          echo -e "\n=== Running database connection test via chat/completions endpoint ==="
+          ./scripts/database-connection.sh
+          DB_CONNECTION_RESULT=$?
+
+          if [ $INTEGRATION_RESULT -ne 0 ] || [ $DB_CONNECTION_RESULT -ne 0 ]; then
+            echo "❌ Integration tests failed!"
+            exit 1
+          else
+            echo "✅ All integration tests passed!"
+          fi
+
+      - name: Build ingester image
+        run: docker compose --profile ingester build ingester
+
+      - name: Run data ingestion
+        run: docker compose --profile ingester up -d ingester
+
+      - name: Import snak repository
+        run: |
+          mkdir -p ./snak
+          git clone https://github.com/KasarLabs/snak ./snak
+          cd ./snak
+          git checkout fix/server-for-reuse
+
+      - name: Create snak env file
+        run: |
+          cd ./snak
+          cat > .env << 'EOL'
+
+          STARKNET_PUBLIC_ADDRESS="${{ secrets.STARKNET_PUBLIC_ADDRESS }}"
+          STARKNET_PRIVATE_KEY="${{ secrets.STARKNET_PRIVATE_KEY }}"
+          STARKNET_RPC_URL="${{ secrets.STARKNET_RPC_URL }}"
+
+          AI_PROVIDER_API_KEY="${{ secrets.ANTHROPIC }}"
+          AI_MODEL="claude-3-5-sonnet-latest"
+          AI_PROVIDER="anthropic"
+
+          NODE_ENV="development"
+
+          SERVER_API_KEY="${{ secrets.SNAK_SERVER_KEY }}"
+          SERVER_PORT="${{ secrets.SNAK_SERVER_PORT }}"
+
+          POSTGRES_USER="${{ secrets.POSTGRES_USER }}"
+          POSTGRES_PASSWORD="${{ secrets.POSTGRES_PASSWORD }}"
+          POSTGRES_ROOT_DB="${{ secrets.POSTGRES_ROOT_DB }}"
+          POSTGRES_HOST="localhost"
+          POSTGRES_PORT="${{ secrets.POSTGRES_PORT }}"
+
+          CAIRO_UPLOAD_DIR="plugins/cairocoder/uploads/"
+          CAIRO_GENERATION_API_URL="http://127.0.0.1:3001/chat/completions"
+
+          EOL
+
+      - name: Cache snak node modules
+        uses: actions/cache@v4
+        with:
+          path: ./snak/node_modules
+          key: ${{ runner.os }}-snak-modules-${{ hashFiles('./snak/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-snak-modules-
+
+      - name: Install snak dependencies
+        run: |
+          cd ./snak
+          pnpm install --filter="@snakagent/server..."
+
+      - name: Start snak server
+        run: |
+          cd ./snak
+          pnpm run build --filter="@snakagent/server..." && lerna run start --scope "@snakagent/server" &
+
+          echo "Waiting for server to start..."
+          sleep 120
+
+      - name: Create cairo code generation test env file
+        run: |
+          cd ./packages/agents
+          cat > .env.test << 'EOL'
+
+          API_KEY="${{ secrets.SNAK_SERVER_KEY }}"
+          API_URL="http://localhost:${{ secrets.SNAK_SERVER_PORT }}"
+
+          EOL
+
+      - name: Run cairo code generation test
+        run: |
+          chmod +x ./scripts/snak-test.sh
+          bash scripts/snak-test.sh

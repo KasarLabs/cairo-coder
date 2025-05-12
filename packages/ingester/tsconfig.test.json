@@ -1,0 +1,9 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "types": ["node", "jest"],
+    "esModuleInterop": true
+  },
+  "include": ["src", "__tests__"],
+  "exclude": ["node_modules"]
+}

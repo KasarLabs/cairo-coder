@@ -1,5 +1,10 @@
 import { Embeddings } from '@langchain/core/embeddings';
-import { RagInput, StreamHandler, RagSearchConfig, LLMConfig } from '../../types';
+import {
+  RagInput,
+  StreamHandler,
+  RagSearchConfig,
+  LLMConfig,
+} from '../../types';
 import { QueryProcessor } from './queryProcessor';
 import { DocumentRetriever } from './documentRetriever';
 import { AnswerGenerator } from './answerGenerator';
@@ -61,10 +66,13 @@ export class RagPipeline {
 
       // Step 3: Generate the answer as a stream
       const stream = await this.answerGenerator.generate(input, retrieved);
+      const startTime = Date.now();
       for await (const chunk of stream) {
         handler.emitResponse(chunk);
+        logger.debug(`Time to get chunk: ${Date.now() - startTime}ms`);
       }
       logger.debug('Stream ended');
+      logger.debug(`Total time: ${Date.now() - startTime}ms`);
       handler.emitEnd();
     } catch (error) {
       logger.error('Pipeline error:', error);
