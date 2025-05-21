@@ -73,8 +73,6 @@ describe('AsciiDocIngester', () => {
         fileExtension: '.adoc',
         chunkSize: 1000,
         chunkOverlap: 200,
-        baseUrl: 'https://example.com',
-        urlSuffix: '',
       },
       playbookPath: 'test-playbook.yml',
       outputDir: '/tmp/output',

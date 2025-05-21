@@ -103,8 +103,19 @@ export abstract class MarkdownIngester extends BaseIngester {
     const chunks: Document<BookChunk>[] = [];
 
     for (const page of pages) {
+      const localChunks = this.createChunkFromPage(page.name, page.content);
+      chunks.push(...localChunks);
+    }
+    return chunks;
+  }
+
+  /**
+   * Create a chunk from a single page
+   */
+  protected createChunkFromPage(page_name: string, page_content: string): Document<BookChunk>[] {
       // Sanitize code blocks to avoid parsing issues
-      const sanitizedContent = this.sanitizeCodeBlocks(page.content);
+      const localChunks = []
+      const sanitizedContent = this.sanitizeCodeBlocks(page_content);
 
       // Parse the page into sections
       const sections = this.parsePage(sanitizedContent, true);
@@ -112,27 +123,22 @@ export abstract class MarkdownIngester extends BaseIngester {
       // Create a document for each section
       sections.forEach((section: ParsedSection, index: number) => {
         const hash: string = calculateHash(section.content);
-        chunks.push(
-          new Document<BookChunk>({
-            pageContent: section.content,
-            metadata: {
-              name: page.name,
+        localChunks.push(new Document<BookChunk>({
+          pageContent: section.content,
+          metadata: {
+              name: page_name,
               title: section.title,
               chunkNumber: index,
               contentHash: hash,
-              uniqueId: `${page.name}-${index}`,
-              sourceLink: `${this.config.baseUrl}/${page.name}${this.config.urlSuffix}${
-                section.anchor ? '#' + section.anchor : ''
-              }`,
+              uniqueId: `${page_name}-${index}`,
+              sourceLink: ``,
               source: this.source,
             },
           }),
         );
       });
+      return localChunks;
     }
-
-    return chunks;
-  }
 
   /**
    * Clean up downloaded files

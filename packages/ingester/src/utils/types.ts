@@ -38,12 +38,6 @@ export type BookConfig = {
 
   /** The overlap between chunks in characters */
   chunkOverlap: number;
-
-  /** The base URL for the documentation */
-  baseUrl: string;
-
-  /** The suffix for the documentation files */
-  urlSuffix: string;
 };
 
 /**
