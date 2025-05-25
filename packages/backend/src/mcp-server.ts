@@ -126,7 +126,7 @@ This tool should also be called to get a better understanding of Starknet's ecos
   // Define the output schema if desired for stricter validation, or omit for flexibility
   // outputSchema: z.object({ content: z.array(z.object({ type: z.literal("text"), text: z.string() })) }),
   async ({ query, codeSnippets, history }) => {
-    // logger.info(`Tool 'retrieve_cairo_documentation' invoked with query: "${query}"`);
+    logger.info(`Tool 'assist_with_cairo' invoked with query: "${query}"`);
     const { queryProcessor, ragConfig, documentRetriever, contextSummarizer } = await initializeDependencies();
     try {
       query = query + ' ' + codeSnippets?.join(' ') + ' ' + history?.join(' ');
@@ -184,8 +184,6 @@ export const createMcpServer = async () => {
     const transport = new StdioServerTransport();
 
     await server.connect(transport);
-
-    // logger.info('MCP Cairo Coder server connected and running on stdio');
 
     process.stdin.resume();
   } catch (error) {
