@@ -19,7 +19,6 @@ export type BookConfig = {
   fileExtension: string;
   chunkSize: number;
   chunkOverlap: number;
-  baseUrl: string;
 };
 
 /**

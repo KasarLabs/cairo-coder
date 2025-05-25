@@ -29,8 +29,6 @@ export class OpenZeppelinDocsIngester extends AsciiDocIngester {
       fileExtension: '.adoc',
       chunkSize: 4096,
       chunkOverlap: 512,
-      baseUrl: 'https://docs.openzeppelin.com',
-      urlSuffix: '',
     };
 
     // Find the package root by looking for package.json
