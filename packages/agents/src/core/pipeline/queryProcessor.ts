@@ -7,7 +7,7 @@ import {
   RagInput,
   RagSearchConfig,
 } from '../../types';
-import { formatChatHistoryAsString, parseXMLContent, logger } from '../../utils';
+import { formatChatHistoryAsString, parseXMLContent, logger, TokenTracker } from '../../utils';
 /**
  * Transforms a raw user query into an actionable form (e.g., rephrased query or search terms).
  */
@@ -31,12 +31,16 @@ export class QueryProcessor {
     }
 
     const cleanedPrompt = cleanConversation(prompt);
-    logger.debug(cleanedPrompt);
-    const response = await this.fastLLM
-      .invoke(cleanedPrompt)
-      .then((res) => new StringOutputParser().parse(res.content as string));
-    logger.debug('Processed query response:', { response });
-
+    // logger.debug(cleanedPrompt);
+    
+    // Track token usage for the LLM call
+    const result = await this.fastLLM.invoke(cleanedPrompt);
+    const modelName = this.fastLLM.constructor.name || 'fastLLM';
+    const usage = TokenTracker.trackFullUsage(cleanedPrompt, result, modelName);
+    
+    const response = await new StringOutputParser().parse(result.content as string);
+    // logger.debug('Processed query response:', { response });
+    logger.info(`Tokens: ${usage.promptTokens} prompt + ${usage.responseTokens} response = ${usage.totalTokens} total`);
     return this.parseResponse(response, input.query, context);
   }
 

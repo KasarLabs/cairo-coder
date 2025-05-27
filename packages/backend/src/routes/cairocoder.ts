@@ -9,6 +9,7 @@ import {
   logger,
   RagAgentFactory,
   LLMConfig,
+  TokenTracker,
  } from '@cairo-coder/agents';
 import { ChatCompletionRequest } from '../types';
 import { VectorStore } from '@cairo-coder/agents/db/postgresVectorStore';
@@ -125,8 +126,11 @@ router.post('/', async (req, res) => {
     });
 
     handler.on('end', () => {
+      // Get token usage from the session
+      const tokenUsage = TokenTracker.getSessionTokenUsage();
+      
       if (stream) {
-        // Send final chunk with finish_reason
+        // Send final chunk with finish_reason and token usage
         const finalChunk = {
           id: uuidv4(),
           object: 'chat.completion.chunk',
@@ -139,6 +143,11 @@ router.post('/', async (req, res) => {
               finish_reason: 'stop',
             },
           ],
+          usage: {
+            prompt_tokens: tokenUsage.promptTokens,
+            completion_tokens: tokenUsage.responseTokens,
+            total_tokens: tokenUsage.totalTokens,
+          },
         };
         res.write(`data: ${JSON.stringify(finalChunk)}\n\n`);
         res.write('data: [DONE]\n\n');
@@ -162,9 +171,9 @@ router.post('/', async (req, res) => {
             },
           ],
           usage: {
-            prompt_tokens: 0,
-            completion_tokens: 0,
-            total_tokens: 0,
+            prompt_tokens: tokenUsage.promptTokens,
+            completion_tokens: tokenUsage.responseTokens,
+            total_tokens: tokenUsage.totalTokens,
           },
         };
 

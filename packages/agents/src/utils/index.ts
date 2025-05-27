@@ -47,3 +47,5 @@ export const computeSimilarity = (x: number[], y: number[]): number => {
   throw new Error('Invalid similarity measure');
 };
 
+export { TokenTracker } from './tokenTracker';
+
