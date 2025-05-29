@@ -50,9 +50,9 @@ export class IngesterFactory {
 
       case 'corelib_docs':
         const {
-          CorelibDocsIngester,
-        } = require('./ingesters/CorelibDocsIngester');
-        return new CorelibDocsIngester();
+          CoreLibDocsIngester,
+        } = require('./ingesters/CoreLibDocsIngester');
+        return new CoreLibDocsIngester();
 
       default:
         throw new Error(`Unsupported source: ${source}`);

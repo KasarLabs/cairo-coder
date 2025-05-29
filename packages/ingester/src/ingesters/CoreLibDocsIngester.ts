@@ -1,13 +1,9 @@
 import * as fs from 'fs/promises';
 import * as path from 'path';
-import axios from 'axios';
-import AdmZip from 'adm-zip';
-import { Document } from '@langchain/core/documents';
 import {
-  BookChunk,
   DocumentSource,
 } from '@cairo-coder/agents/types/index';
-import { BookConfig, BookPageDto, ParsedSection } from '../utils/types';
+import { BookConfig, BookPageDto } from '../utils/types';
 import { processDocFiles } from '../utils/fileUtils';
 import { logger } from '@cairo-coder/agents/utils/index';
 import { exec as execCallback } from 'child_process';
