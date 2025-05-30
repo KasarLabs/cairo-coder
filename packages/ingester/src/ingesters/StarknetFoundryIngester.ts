@@ -2,7 +2,6 @@ import * as fs from 'fs/promises';
 import * as path from 'path';
 import axios from 'axios';
 import AdmZip from 'adm-zip';
-import { Document } from '@langchain/core/documents';
 import {
   BookChunk,
   DocumentSource,
@@ -56,6 +55,8 @@ export class StarknetFoundryIngester extends MarkdownIngester {
   protected async downloadAndExtractDocs(): Promise<BookPageDto[]> {
     logger.info('Downloading and processing Starknet Foundry docs');
     const extractDir = this.getExtractDir();
+    // clear extract dir
+    await fs.rm(extractDir, { recursive: true, force: true });
 
     // Download and extract the repository
     await this.downloadAndExtractRepo(extractDir);
@@ -130,15 +131,8 @@ export class StarknetFoundryIngester extends MarkdownIngester {
     try {
       let bookToml = await fs.readFile(bookTomlPath, 'utf8');
 
-      // Add optional = true to [output.linkcheck] if it exists
-      if (bookToml.includes('[output.linkcheck]')) {
-        bookToml = bookToml.replace(
-          '[output.linkcheck]',
-          '[output.linkcheck]\noptional = true',
-        );
-      } else {
-        bookToml += '\n[output.linkcheck]\noptional = true\n';
-      }
+      // Remove the entire [output.linkcheck] section if it exists
+      bookToml = bookToml.replace(/\[output\.linkcheck\][\s\S]*?(?=\n\[|\n$|$)/g, '');
 
       // Add [output.markdown] if it doesn't exist
       if (!bookToml.includes('[output.markdown]')) {
