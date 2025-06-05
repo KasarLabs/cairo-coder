@@ -48,6 +48,12 @@ export class IngesterFactory {
         } = require('./ingesters/OpenZeppelinDocsIngester');
         return new OpenZeppelinDocsIngester();
 
+      case 'corelib_docs':
+        const {
+          CoreLibDocsIngester,
+        } = require('./ingesters/CoreLibDocsIngester');
+        return new CoreLibDocsIngester();
+
       default:
         throw new Error(`Unsupported source: ${source}`);
     }
@@ -65,6 +71,7 @@ export class IngesterFactory {
       DocumentSource.STARKNET_FOUNDRY,
       DocumentSource.CAIRO_BY_EXAMPLE,
       DocumentSource.OPENZEPPELIN_DOCS,
+      DocumentSource.CORELIB_DOCS,
     ];
   }
 }

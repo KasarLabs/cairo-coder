@@ -1,4 +1,7 @@
-FROM node:23.7-bullseye-slim
+FROM node:20 AS base
+ENV PNPM_HOME="/pnpm"
+ENV PATH="$PNPM_HOME:$PATH"
+RUN corepack enable
 
 WORKDIR /app
 
@@ -17,8 +20,7 @@ COPY packages/typescript-config ./packages/typescript-config
 
 RUN mkdir /app/data
 
-RUN npm install -g pnpm@9.10.0
 RUN pnpm install --frozen-lockfile
-RUN npm install -g turbo
+RUN pnpm install -g turbo
 
 CMD ["turbo", "start"]

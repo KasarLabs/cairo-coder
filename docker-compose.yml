@@ -31,8 +31,9 @@ services:
     restart: unless-stopped
     networks:
       - cairo_coder
-  
+
   ingester:
+    platform: linux/amd64
     build:
       context: .
       dockerfile: ingest.dockerfile
@@ -48,4 +49,3 @@ networks:
 
 volumes:
   postgres_data:
-
