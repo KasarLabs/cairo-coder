@@ -3,6 +3,6 @@ import cairocoderRouter from './cairocoder';
 
 const router: Router = express.Router();
 
-router.use('/chat/completions', cairocoderRouter);
+router.use('/v1/chat/completions', cairocoderRouter);
 
 export default router;
