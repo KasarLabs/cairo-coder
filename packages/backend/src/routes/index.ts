@@ -1,8 +1,8 @@
 import express, { Router } from 'express';
-import cairocoderRouter from './cairocoder';
+import v1Router from './version';
 
 const router: Router = express.Router();
 
-router.use('/v1/chat/completions', cairocoderRouter);
+router.use('/v1', v1Router);
 
 export default router;
