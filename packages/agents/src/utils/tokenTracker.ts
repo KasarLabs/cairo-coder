@@ -25,6 +25,12 @@ export class TokenTracker {
     this.sessionTotalTokens = 0;
   }
 
+  public static updateSessionCounters(promptTokens, responseTokens, totalTokens) {
+    this.sessionPromptTokens += promptTokens;
+    this.sessionResponseTokens += responseTokens;
+    this.sessionTotalTokens += totalTokens;
+  }
+
   /**
    * Retrieves the cumulative token usage for the current session.
    * @returns An object containing the total prompt, response, and overall tokens used in the session.
@@ -101,22 +107,16 @@ export class TokenTracker {
           total_tokens = 0,
         } = messageToProcess.usage_metadata;
         logger.debug("Usage metadata format");
-        logger.debug(`messageToProcess: ${messageToProcess}`);
         logger.debug(`input_tokens: ${input_tokens}, output_tokens: ${output_tokens}, total_tokens: ${total_tokens}`);
-        const finalTotalTokens = input_tokens + output_tokens;
-
-        logger.debug(
-          `Token usage for model [${modelName}]: Prompt tokens: ${input_tokens}, Response tokens: ${output_tokens}, Total tokens: ${finalTotalTokens}`
-        );
 
         this.sessionPromptTokens += input_tokens;
         this.sessionResponseTokens += output_tokens;
-        this.sessionTotalTokens += finalTotalTokens;
+        this.sessionTotalTokens += total_tokens;
 
         return {
           promptTokens: input_tokens,
           responseTokens: output_tokens,
-          totalTokens: finalTotalTokens,
+          totalTokens: total_tokens,
         };
       }
 
@@ -132,11 +132,7 @@ export class TokenTracker {
           const finalTotalTokens =
             totalTokens || promptTokens + completionTokens;
           logger.debug("OpenAI format");
-          logger.debug(`messageToProcess: ${messageToProcess}`);
           logger.debug(`promptTokens: ${promptTokens}, completionTokens: ${completionTokens}, totalTokens: ${totalTokens}`);
-          logger.debug(
-            `Token usage for model [${modelName}]: Prompt tokens: ${promptTokens}, Response tokens: ${completionTokens}, Total tokens: ${finalTotalTokens}`
-          );
 
           this.sessionPromptTokens += promptTokens;
           this.sessionResponseTokens += completionTokens;

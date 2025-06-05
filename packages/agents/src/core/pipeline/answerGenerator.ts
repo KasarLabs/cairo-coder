@@ -18,26 +18,23 @@ export class AnswerGenerator {
     private config: RagSearchConfig,
   ) {}
 
-  // Changed to return a stream instead of a single string
   async generate(
     input: RagInput,
     retrieved: RetrievedDocuments,
   ): Promise<IterableReadableStream<BaseMessage>> {
     const context = this.buildContext(retrieved);
     const prompt = await this.createPrompt(input, context);
-    // logger.debug('Final Prompt:' + prompt);
 
     const modelName = this.llm.constructor.name || 'defaultLLM';
-
-    // Passer les callbacks au stream
+    
     const stream = await this.llm.stream(prompt);
+  
     logger.debug('Started streaming response');
     
-    // Créer le wrapper stream avec les input tokens capturés
     const generator = this.createTokenTrackingStream(stream, modelName, prompt);
     return {
       [Symbol.asyncIterator]: () => generator,
-    } as IterableReadableStream<BaseMessage>; // POSSIBLE ERROR: TO CHECK LATER
+    } as IterableReadableStream<BaseMessage>;
   }
   
 
