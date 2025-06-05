@@ -31,16 +31,12 @@ export class QueryProcessor {
     }
 
     const cleanedPrompt = cleanConversation(prompt);
-    // logger.debug(cleanedPrompt);
-    
-    // Track token usage for the LLM call
+
     const result = await this.fastLLM.invoke(cleanedPrompt);
     const modelName = this.fastLLM.constructor.name || 'fastLLM';
     const usage = TokenTracker.trackFullUsage(cleanedPrompt, result, modelName);
     
     const response = await new StringOutputParser().parse(result.content as string);
-    // logger.debug('Processed query response:', { response });
-    logger.info(`Tokens: ${usage.promptTokens} prompt + ${usage.responseTokens} response = ${usage.totalTokens} total`);
     return this.parseResponse(response, input.query, context);
   }
 
@@ -61,7 +57,6 @@ export class QueryProcessor {
     context: string,
   ): ProcessedQuery {
     const resources = parseXMLContent(response, 'resource');
-    // Validate that resources are valid DocumentSource values
     const validResources = resources.filter((resource) =>
       Object.values(DocumentSource).includes(resource as DocumentSource),
     ) as DocumentSource[];

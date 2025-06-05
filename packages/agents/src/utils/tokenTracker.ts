@@ -120,9 +120,7 @@ export class TokenTracker {
         };
       }
 
-      // Then try provider-specific `response_metadata`
       if (messageToProcess.response_metadata) {
-        // OpenAI format
         if ('tokenUsage' in messageToProcess.response_metadata) {
           const {
             promptTokens = 0,
@@ -145,7 +143,6 @@ export class TokenTracker {
           };
         }
 
-        // Anthropic format
         if ('usage' in messageToProcess.response_metadata) {
           const { input_tokens = 0, output_tokens = 0 } =
             messageToProcess.response_metadata.usage;
@@ -287,7 +284,6 @@ export class TokenTracker {
           total_tokens = 0,
         } = resultObj.usage_metadata;
         
-        // Si input_tokens est 0 ou manquant, estimer à partir du prompt
         if (input_tokens === 0) {
           const promptString = typeof promptText === 'string' ? promptText : JSON.stringify(promptText);
           input_tokens = this.estimateTokensFromText(promptString);
@@ -323,7 +319,6 @@ export class TokenTracker {
             totalTokens = 0,
           } = resultObj.response_metadata.tokenUsage;
           
-          // Si promptTokens est 0 ou manquant, estimer à partir du prompt
           if (promptTokens === 0) {
             const promptString = typeof promptText === 'string' ? promptText : JSON.stringify(promptText);
             promptTokens = this.estimateTokensFromText(promptString);
@@ -355,7 +350,6 @@ export class TokenTracker {
           let { input_tokens = 0, output_tokens = 0 } =
             resultObj.response_metadata.usage;
           
-          // Si input_tokens est 0 ou manquant, estimer à partir du prompt
           if (input_tokens === 0) {
             const promptString = typeof promptText === 'string' ? promptText : JSON.stringify(promptText);
             input_tokens = this.estimateTokensFromText(promptString);
