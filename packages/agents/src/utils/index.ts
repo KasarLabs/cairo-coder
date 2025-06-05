@@ -19,12 +19,13 @@ export const parseXMLContent = (xml: string, tag: string): string[] => {
 export const logger = winston.createLogger({
   level: process.env.LOG_LEVEL || 'debug',
   transports: [
-    new winston.transports.Console({
-      format: winston.format.combine(
-        winston.format.colorize(),
-        winston.format.simple(),
-      ),
-    }),
+    // Disable stdout for MCP communuication
+    // new winston.transports.Console({
+    //   format: winston.format.combine(
+    //     winston.format.colorize(),
+    //     winston.format.simple(),
+    //   ),
+    // }),
     new winston.transports.File({
       filename: 'app.log',
       format: winston.format.combine(
@@ -46,4 +47,3 @@ export const computeSimilarity = (x: number[], y: number[]): number => {
 
   throw new Error('Invalid similarity measure');
 };
-
