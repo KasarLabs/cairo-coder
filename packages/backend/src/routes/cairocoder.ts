@@ -129,6 +129,9 @@ router.post('/', async (req, res) => {
       // Get token usage from the session
       const tokenUsage = TokenTracker.getSessionTokenUsage();
       
+      // Ajouter seulement le total des tokens dans le header
+      res.setHeader('x-total-tokens', tokenUsage.totalTokens.toString());
+      
       if (stream) {
         // Send final chunk with finish_reason and token usage
         const finalChunk = {
