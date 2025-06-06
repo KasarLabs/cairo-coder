@@ -4,7 +4,7 @@ import {
   MessagesPlaceholder,
 } from '@langchain/core/prompts';
 import { IterableReadableStream } from '@langchain/core/utils/stream';
-import { logger } from '../../utils';
+import { logger, TokenTracker } from '../../utils';
 import { BaseMessage, HumanMessage } from '@langchain/core/messages';
 import { RetrievedDocuments, RagInput, RagSearchConfig } from '../../types';
 import { formatChatHistoryAsString } from '../../utils';
@@ -18,19 +18,45 @@ export class AnswerGenerator {
     private config: RagSearchConfig,
   ) {}
 
-  // Changed to return a stream instead of a single string
   async generate(
     input: RagInput,
     retrieved: RetrievedDocuments,
   ): Promise<IterableReadableStream<BaseMessage>> {
     const context = this.buildContext(retrieved);
     const prompt = await this.createPrompt(input, context);
-    logger.debug('Final Prompt:' + prompt);
 
-    // Use stream instead of invoke, and pipe through StringOutputParser
+    const modelName = this.llm.constructor.name || 'defaultLLM';
+    
     const stream = await this.llm.stream(prompt);
+  
     logger.debug('Started streaming response');
-    return stream;
+    
+    const generator = this.createTokenTrackingStream(stream, modelName, prompt);
+    return {
+      [Symbol.asyncIterator]: () => generator,
+    } as IterableReadableStream<BaseMessage>;
+  }
+  
+
+  private async *createTokenTrackingStream(
+    stream: IterableReadableStream<BaseMessage>,
+    modelName: string,
+    prompt: string,
+  ): AsyncGenerator<BaseMessage, void, unknown> {
+    let lastMessage: BaseMessage | null = null;
+
+    try {
+      for await (const chunk of stream) {
+        lastMessage = chunk;
+        yield chunk;
+      }
+    } finally {
+      logger.info(`LLM Call [${modelName}] completed`);
+      if (lastMessage) {
+        const usage = TokenTracker.trackFullUsage(prompt, lastMessage, modelName);
+        logger.info(`Tokens: ${usage.promptTokens} prompt + ${usage.responseTokens} response = ${usage.totalTokens} total`);
+      }
+    }
   }
 
   private buildContext(retrieved: RetrievedDocuments): string {
@@ -78,3 +104,5 @@ export class AnswerGenerator {
     });
   }
 }
+
+
