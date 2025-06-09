@@ -5,4 +5,4 @@ const router: Router = express.Router();
 
 router.use('/chat/completions', cairocoderRouter);
 
-export default router; 
+export default router;

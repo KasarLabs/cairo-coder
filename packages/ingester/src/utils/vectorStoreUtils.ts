@@ -1,10 +1,7 @@
 import { Document } from '@langchain/core/documents';
 import { createInterface } from 'readline';
 import { VectorStore } from '@cairo-coder/agents/db/postgresVectorStore';
-import {
-  BookChunk,
-  DocumentSource,
-} from '@cairo-coder/agents/types/index';
+import { BookChunk, DocumentSource } from '@cairo-coder/agents/types/index';
 import { logger } from '@cairo-coder/agents/utils/index';
 import { YES_MODE } from '../generateEmbeddings';
 
@@ -119,10 +116,9 @@ export async function updateVectorStore(
 
   // Update chunks that have changed
   if (chunksToUpdate.length > 0) {
-    await vectorStore.addDocuments(
-      chunksToUpdate,
-      { ids: chunksToUpdate.map((chunk) => chunk.metadata.uniqueId) }
-    );
+    await vectorStore.addDocuments(chunksToUpdate, {
+      ids: chunksToUpdate.map((chunk) => chunk.metadata.uniqueId),
+    });
   }
 
   logger.info(

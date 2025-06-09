@@ -3,7 +3,7 @@ version: '3.8'
 services:
   postgres:
     image: pgvector/pgvector:pg17
-    container_name: "postgresql"
+    container_name: 'postgresql'
     shm_size: 1g
     env_file:
       - .env
@@ -37,7 +37,7 @@ services:
     build:
       context: .
       dockerfile: ingest.dockerfile
-    profiles: ["ingester"]
+    profiles: ['ingester']
     depends_on:
       postgres:
         condition: service_started

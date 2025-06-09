@@ -26,17 +26,16 @@ export class AnswerGenerator {
     const prompt = await this.createPrompt(input, context);
 
     const modelName = this.llm.constructor.name || 'defaultLLM';
-    
+
     const stream = await this.llm.stream(prompt);
-  
+
     logger.debug('Started streaming response');
-    
+
     const generator = this.createTokenTrackingStream(stream, modelName, prompt);
     return {
       [Symbol.asyncIterator]: () => generator,
     } as IterableReadableStream<BaseMessage>;
   }
-  
 
   private async *createTokenTrackingStream(
     stream: IterableReadableStream<BaseMessage>,
@@ -53,8 +52,14 @@ export class AnswerGenerator {
     } finally {
       logger.info(`LLM Call [${modelName}] completed`);
       if (lastMessage) {
-        const usage = TokenTracker.trackFullUsage(prompt, lastMessage, modelName);
-        logger.info(`Tokens: ${usage.promptTokens} prompt + ${usage.responseTokens} response = ${usage.totalTokens} total`);
+        const usage = TokenTracker.trackFullUsage(
+          prompt,
+          lastMessage,
+          modelName,
+        );
+        logger.info(
+          `Tokens: ${usage.promptTokens} prompt + ${usage.responseTokens} response = ${usage.totalTokens} total`,
+        );
       }
     }
   }
@@ -104,5 +109,3 @@ export class AnswerGenerator {
     });
   }
 }
-
-

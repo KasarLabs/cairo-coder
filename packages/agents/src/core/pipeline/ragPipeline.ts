@@ -1,5 +1,10 @@
 import { Embeddings } from '@langchain/core/embeddings';
-import { RagInput, StreamHandler, RagSearchConfig, LLMConfig } from '../../types';
+import {
+  RagInput,
+  StreamHandler,
+  RagSearchConfig,
+  LLMConfig,
+} from '../../types';
 import { QueryProcessor } from './queryProcessor';
 import { DocumentRetriever } from './documentRetriever';
 import { AnswerGenerator } from './answerGenerator';
@@ -48,7 +53,7 @@ export class RagPipeline {
     try {
       // Reset token counters at the start of each pipeline run
       TokenTracker.resetSessionCounters();
-      
+
       logger.info('Starting RAG pipeline', { query: input.query });
 
       // Step 1: Process the query
@@ -68,18 +73,18 @@ export class RagPipeline {
         handler.emitResponse(chunk);
       }
       logger.debug('Stream ended');
-      
+
       // Log final token usage
       const tokenUsage = TokenTracker.getSessionTokenUsage();
-      logger.info('Pipeline completed', { 
+      logger.info('Pipeline completed', {
         query: input.query,
         tokenUsage: {
           promptTokens: tokenUsage.promptTokens,
           responseTokens: tokenUsage.responseTokens,
-          totalTokens: tokenUsage.totalTokens
-        }
+          totalTokens: tokenUsage.totalTokens,
+        },
       });
-      
+
       handler.emitEnd();
     } catch (error) {
       logger.error('Pipeline error:', error);

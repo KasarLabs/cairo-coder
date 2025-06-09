@@ -5,7 +5,6 @@ import { VectorStoreConfig, DocumentSource } from '../types';
 import pg, { Pool, PoolClient } from 'pg';
 import { DatabaseError as PgError } from 'pg';
 
-
 /**
  * Custom error class for handling Postgres-specific errors
  */
@@ -106,7 +105,7 @@ export class VectorStore {
   ): Promise<VectorStore> {
     if (!VectorStore.instance) {
       const pool = new Pool({
-        user: config.POSTGRES_USER, 
+        user: config.POSTGRES_USER,
         host: config.POSTGRES_HOST,
         database: config.POSTGRES_ROOT_DB,
         password: config.POSTGRES_PASSWORD,
@@ -122,7 +121,7 @@ export class VectorStore {
       logger.info('Connected to PostgreSQL');
 
       const tableName = 'documents';
-      
+
       // Create instance first, then initialize DB
       VectorStore.instance = new VectorStore(pool, embeddings, tableName);
       await VectorStore.instance.initializeDb();
@@ -152,7 +151,7 @@ export class VectorStore {
             UNIQUE(uniqueId)
           );
         `);
-    
+
         // Create index on source for filtering
         await client.query(`
           CREATE INDEX IF NOT EXISTS idx_${this.tableName}_source ON ${this.tableName} (source);
@@ -223,7 +222,7 @@ export class VectorStore {
       const client = await this.pool.connect();
       try {
         const result = await client.query(sql, values);
-        
+
         // Convert to DocumentInterface format
         return result.rows.map((row) => ({
           pageContent: row.content,
@@ -244,9 +243,12 @@ export class VectorStore {
    * @param uniqueIds - Optional array of unique IDs for the documents
    * @returns Promise<void>
    */
-  async addDocuments(documents: DocumentInterface[], options?: { ids?: string[] }): Promise<void> {
+  async addDocuments(
+    documents: DocumentInterface[],
+    options?: { ids?: string[] },
+  ): Promise<void> {
     logger.info(`Adding ${documents.length} documents to the vector store`);
-    
+
     if (documents.length === 0) return;
 
     try {
@@ -281,13 +283,13 @@ export class VectorStore {
             JSON.stringify(embeddings[i]),
             uniqueId,
             contentHash,
-            source
+            source,
           ]);
         });
 
         await Promise.all(insertPromises);
         await client.query('COMMIT');
-        
+
         logger.info(`Successfully added ${documents.length} documents`);
       } catch (error) {
         await client.query('ROLLBACK');
@@ -312,16 +314,16 @@ export class VectorStore {
       try {
         const result = await client.query(
           `SELECT content, metadata, contentHash FROM ${this.tableName} WHERE uniqueId = $1`,
-          [name]
+          [name],
         );
-        
+
         if (result.rows.length > 0) {
           const row = result.rows[0];
           return {
-            metadata: { 
-              _id: name, 
+            metadata: {
+              _id: name,
               contentHash: row.contentHash,
-              ...JSON.parse(row.metadata)
+              ...JSON.parse(row.metadata),
             },
             pageContent: row.content,
           };
@@ -356,7 +358,7 @@ export class VectorStore {
           WHERE uniqueId = ANY($1)
           AND source = $2
         `;
-        
+
         await client.query(query, [uniqueIds, source]);
         logger.info(`Removed ${uniqueIds.length} pages from source ${source}`);
       } finally {
@@ -381,9 +383,9 @@ export class VectorStore {
       try {
         const result = await client.query(
           `SELECT uniqueId, contentHash FROM ${this.tableName} WHERE source = $1`,
-          [source]
+          [source],
         );
-        
+
         return result.rows.map((row) => ({
           uniqueId: row.uniqueid,
           contentHash: row.contenthash,
@@ -434,14 +436,14 @@ export class VectorStore {
   private async transaction<T = any>(queries: Query[]): Promise<T[]> {
     const client = await this.pool.connect();
     let result;
-    
+
     try {
       await client.query('BEGIN');
-      
+
       for (const q of queries) {
         result = await client.query(q.query, q.values);
       }
-      
+
       await client.query('COMMIT');
       return result ? result.rows : [];
     } catch (error) {
@@ -451,4 +453,4 @@ export class VectorStore {
       client.release();
     }
   }
-} 
+}

@@ -13,16 +13,17 @@ import { IterableReadableStream } from '@langchain/core/utils/stream';
 import { BaseMessage, BaseMessageChunk } from '@langchain/core/messages';
 import { BaseLanguageModelInput } from '@langchain/core/language_models/base';
 
-
 // Mock the formatChatHistoryAsString utility
 jest.mock('../src/utils/index', () => ({
   __esModule: true,
-  formatChatHistoryAsString: jest.fn().mockImplementation(() => 'mocked chat history'),
+  formatChatHistoryAsString: jest
+    .fn()
+    .mockImplementation(() => 'mocked chat history'),
   logger: {
     info: jest.fn(),
     debug: jest.fn(),
     error: jest.fn(),
-  }
+  },
 }));
 
 // No need to separately mock the logger since it's now mocked as part of utils/index

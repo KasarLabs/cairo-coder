@@ -36,7 +36,6 @@ Cairo Coder is an intelligent code generation service that makes writing Cairo s
 - **Source-Informed Generation**: Code is generated based on Cairo documentation, ensuring correctness
 - **Streaming Response**: Support for response streaming for a responsive experience
 
-
 ## Installation
 
 There are mainly 2 ways of installing Cairo Coder - With Docker, Without Docker. Using Docker is highly recommended.
@@ -59,7 +58,6 @@ There are mainly 2 ways of installing Cairo Coder - With Docker, Without Docker.
    ```bash
    pnpm install
    ```
-
 
 5. Inside the packages/agents package, copy the `sample.config.toml` file to a `config.toml`. For development setups, you need only fill in the following fields:
 
@@ -116,15 +114,15 @@ There are mainly 2 ways of installing Cairo Coder - With Docker, Without Docker.
    **Important:** Make sure to use the same password in both files. The first file initializes the
    database, while the second is used by your application to connect to it.
 
-
 7. **Configure LangSmith (Optional)**
 
    Cairo Coder can use LangSmith to record and monitor LLM calls. This step is optional but recommended for development and debugging.
-   
+
    - Create an account at [LangSmith](https://smith.langchain.com/)
    - Create a new project in the LangSmith dashboard
    - Retrieve your API credentials
    - Create a `.env` file in the `packages/backend` directory with the following variables:
+
    ```
    LANGSMITH_TRACING=true
    LANGSMITH_ENDPOINT="https://api.smith.langchain.com"
@@ -134,22 +132,21 @@ There are mainly 2 ways of installing Cairo Coder - With Docker, Without Docker.
 
    With this configuration, all LLM calls and chain executions will be logged to your LangSmith project, allowing you to debug, analyze, and improve the system's performance.
 
-
-9. Run the application using one of the following methods:
+8. Run the application using one of the following methods:
 
    ```bash
    docker-compose up --build
    ```
 
-8. The API will be available at http://localhost:3000/chat/completions.
+9. The API will be available at http://localhost:3000/chat/completions.
 
 ## Running the Ingester
 
 After you have the main application running, you might need to run the ingester to process and embed documentation from various sources. The ingester is configured as a separate profile in the docker-compose file and can be executed as follows:
 
-   ```bash
-   docker-compose --profile ingester up ingester
-   ```
+```bash
+docker-compose --profile ingester up ingester
+```
 
 Once the ingester completes its task, the vector database will be populated with embeddings from all the supported documentation sources, making them available for RAG-based code generation requests to the API.
 
@@ -178,7 +175,7 @@ POST /chat/completions
       "content": "Write a Cairo contract that implements a simple ERC-20 token."
     }
   ],
-  "temperature": 0.7,
+  "temperature": 0.7
 }
 ```
 

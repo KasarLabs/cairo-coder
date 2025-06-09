@@ -103,7 +103,7 @@ describe('RagAgentFactory', () => {
       // Assert
       expect(RagPipeline).toHaveBeenCalledTimes(1);
       expect(emitter).toBeInstanceOf(EventEmitter);
-      
+
       // Check streaming option is passed
       const executeSpy = (RagPipeline as jest.Mock).mock.results[0].value
         .execute;

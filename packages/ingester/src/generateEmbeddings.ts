@@ -6,7 +6,6 @@ import { loadOpenAIEmbeddingsModels } from '@cairo-coder/backend/config/provider
 import { DocumentSource } from '@cairo-coder/agents/types/index';
 import { IngesterFactory } from './IngesterFactory';
 
-
 /**
  * Global vector store instance
  */

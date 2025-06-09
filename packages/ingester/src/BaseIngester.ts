@@ -1,9 +1,6 @@
 import { Document } from '@langchain/core/documents';
 import { VectorStore } from '@cairo-coder/agents/db/postgresVectorStore';
-import {
-  DocumentSource,
-  BookChunk,
-} from '@cairo-coder/agents/types/index';
+import { DocumentSource, BookChunk } from '@cairo-coder/agents/types/index';
 import { BookConfig, BookPageDto, ParsedSection } from './utils/types';
 import { updateVectorStore as updateVectorStoreUtil } from './utils/vectorStoreUtils';
 import { logger } from '@cairo-coder/agents/utils/index';

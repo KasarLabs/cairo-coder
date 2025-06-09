@@ -36,7 +36,7 @@ export class CairoBookIngester extends MarkdownIngester {
   }
 
   async chunkLLMSFullFile(text: string): Promise<Document<BookChunk>[]> {
-    return super.createChunkFromPage("cairo-book", text);
+    return super.createChunkFromPage('cairo-book', text);
   }
 
   /**
