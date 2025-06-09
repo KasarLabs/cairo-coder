@@ -13,6 +13,7 @@ export class RagAgentFactory {
     llm: LLMConfig,
     embeddings: Embeddings,
     vectorStore: VectorStore,
+    mcpMode: boolean = false,
   ): EventEmitter {
     const config = getAgentConfig(vectorStore);
     const pipeline = new RagPipeline(llm, embeddings, config);
@@ -20,6 +21,7 @@ export class RagAgentFactory {
       query: message,
       chatHistory: history,
       sources: config.sources,
+      mcpMode,
     });
   }
 }
