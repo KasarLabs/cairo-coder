@@ -158,46 +158,71 @@ Cairo Coder provides a simple REST API compatible with the OpenAI format for eas
 ### Endpoint
 
 ```
-POST /chat/completions
+POST /v1/chat/completions
 ```
 
 ### Request Format
 
-```json
-{
-  "model": "gemini-2.0-flash",
-  "messages": [
-    {
-      "role": "system",
-      "content": "You are a Cairo programming expert."
-    },
-    {
-      "role": "user",
-      "content": "Write a Cairo contract that implements a simple ERC-20 token."
-    }
-  ],
-  "temperature": 0.7,
-}
+Example of a simple request:
+
+```bash
+curl -X POST http://localhost:3001/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "gemini-2.5-flash",
+    "messages": [
+      {
+        "role": "user",
+        "content": "How do I implement storage in Cairo?"
+      }
+    ]
+  }'
 ```
+
+The API accepts all standard OpenAI Chat Completions parameters.
+
+**Supported Parameters:**
+- `model`: Model identifier (string)
+- `messages`: Array of message objects with `role` and `content`
+- `temperature`: Controls randomness (0-2, default: 0.7)
+- `top_p`: Nucleus sampling parameter (0-1, default: 1)
+- `n`: Number of completions (default: 1)
+- `stream`: Enable streaming responses (boolean, default: false)
+- `max_tokens`: Maximum tokens in response
+- `stop`: Stop sequences (string or array)
+- `presence_penalty`: Penalty for token presence (-2 to 2)
+- `frequency_penalty`: Penalty for token frequency (-2 to 2)
+- `logit_bias`: Token bias adjustments
+- `user`: User identifier
+- `response_format`: Response format specification
+
 
 ### Response Format
 
+#### Standard Mode Response
+
 ```json
 {
-  "id": "gen-123456",
+  "id": "chatcmpl-123456",
   "object": "chat.completion",
   "created": 1717273561,
-  "model": "gemini-2.0-flash",
+  "model": "gemini-2.5-flash",
   "choices": [
     {
       "index": 0,
       "message": {
         "role": "assistant",
-        "content": "#[starknet::contract]\nmod ERC20 {\n    // Contract code here...\n}"
+        "content": "#[starknet::contract]\nmod ERC20 {\n    use starknet::storage::{StoragePointerReadAccess, StoragePointerWriteAccess};\n    \n    #[storage]\n    struct Storage {\n        name: felt252,\n        symbol: felt252,\n        total_supply: u256,\n        balances: Map<ContractAddress, u256>,\n    }\n    // ... contract implementation\n}"
       },
+      "logprobs": null,
       "finish_reason": "stop"
     }
-  ]
+  ],
+  "usage": {
+    "prompt_tokens": 45,
+    "completion_tokens": 120,
+    "total_tokens": 165
+  }
 }
 ```
 
