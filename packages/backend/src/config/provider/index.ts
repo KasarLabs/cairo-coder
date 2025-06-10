@@ -55,13 +55,13 @@ export const getAvailableEmbeddingModelProviders = async () => {
   }
 
   const hostedModeConfig = getHostedModeConfig();
-  const hosted_model =
+  const PROVIDERSl =
     models[hostedModeConfig.DEFAULT_EMBEDDING_PROVIDER][
       hostedModeConfig.DEFAULT_EMBEDDING_MODEL
     ];
   return {
     [hostedModeConfig.DEFAULT_EMBEDDING_PROVIDER]: {
-      [hostedModeConfig.DEFAULT_EMBEDDING_MODEL]: hosted_model,
+      [hostedModeConfig.DEFAULT_EMBEDDING_MODEL]: PROVIDERSl,
     },
   };
 };

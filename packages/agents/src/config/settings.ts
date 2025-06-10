@@ -26,7 +26,7 @@ const loadConfig = () => {
   ) as any as Config;
 };
 
-export const getHostedModeConfig = () => loadConfig().HOSTED_MODE;
+export const getHostedModeConfig = () => loadConfig().PROVIDERS;
 
 export const getPort = () => loadConfig().GENERAL.PORT;
 
@@ -49,7 +49,7 @@ export const getVectorDbConfig = () => {
   return {
     POSTGRES_USER: config.VECTOR_DB.POSTGRES_USER || '',
     POSTGRES_PASSWORD: config.VECTOR_DB.POSTGRES_PASSWORD || '',
-    POSTGRES_ROOT_DB: config.VECTOR_DB.POSTGRES_ROOT_DB || '',
+    POSTGRES_DB: config.VECTOR_DB.POSTGRES_DB || '',
     POSTGRES_HOST: config.VECTOR_DB.POSTGRES_HOST || '',
     POSTGRES_PORT: config.VECTOR_DB.POSTGRES_PORT || '',
   } as VectorStoreConfig;

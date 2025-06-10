@@ -87,7 +87,7 @@ jobs:
           PORT = 3001
           SIMILARITY_MEASURE = "cosine"
 
-          [HOSTED_MODE]
+          [PROVIDERS]
           DEFAULT_CHAT_PROVIDER = "${{ secrets.DEFAULT_CHAT_PROVIDER }}"
           DEFAULT_CHAT_MODEL = "${{ secrets.DEFAULT_CHAT_MODEL }}"
           DEFAULT_FAST_CHAT_PROVIDER = "${{ secrets.DEFAULT_FAST_CHAT_PROVIDER }}"

@@ -108,7 +108,7 @@ export class VectorStore {
       const pool = new Pool({
         user: config.POSTGRES_USER, 
         host: config.POSTGRES_HOST,
-        database: config.POSTGRES_ROOT_DB,
+        database: config.POSTGRES_DB,
         password: config.POSTGRES_PASSWORD,
         port: parseInt(config.POSTGRES_PORT),
         max: 10,
