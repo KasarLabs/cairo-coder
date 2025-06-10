@@ -43,3 +43,8 @@ packages/**/node_modules
 packages/**/dist
 
 /data
+
+.trunk
+!.trunk/trunk.yaml
+!.trunk/configs
+!.trunk/.gitignore
