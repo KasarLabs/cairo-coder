@@ -36,7 +36,7 @@ services:
     platform: linux/amd64
     build:
       context: .
-      dockerfile: ingest.dockerfile
+      dockerfile: ingester.dockerfile
     profiles: ["ingester"]
     depends_on:
       postgres:
