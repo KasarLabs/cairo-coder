@@ -1,4 +1,15 @@
-# Cairo Coder - AI-Powered Cairo Code Generator
+<div align="center">
+  <img src="./cairo-coder.png" alt="Cairo Coder MCP Logo" width="300"/>
+  
+  [![npm version](https://img.shields.io/npm/v/@kasarlabs/cairo-coder-api.svg)](https://www.npmjs.com/package/@kasarlabs/cairo-coder-api)
+  [![npm downloads](https://img.shields.io/npm/dm/@kasarlabs/cairo-coder-api.svg)](https://www.npmjs.com/package/@kasarlabs/cairo-coder-api)
+  [![GitHub stars](https://img.shields.io/github/stars/kasarlabs/cairo-coder.svg)](https://github.com/kasarlabs/cairo-coder/stargazers)
+  [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+</div>
+
+# Cairo Coder
+
+The most powerful open-source [CairoLang](https://www.cairo-lang.org/) generator.
 
 ## Table of Contents <!-- omit in toc -->
 
