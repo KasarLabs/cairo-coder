@@ -64,12 +64,12 @@ There are mainly 2 ways of installing Cairo Coder - With Docker, Without Docker.
 5. Inside the packages/agents package, copy the `sample.config.toml` file to a `config.toml`. For development setups, you need only fill in the following fields:
 
    - `OPENAI`: Your OpenAI API key. **You only need to fill this if you wish to use OpenAI's models**.
-   - `ANTHROPIC`: Your Anthropic API key. **You only need to fill this if you wish to use Anthropic models**.
+   - `GEMINI`: Your Gemini API key. **You only need to fill this if you wish to use Gemini models**.
    - `SIMILARITY_MEASURE`: The similarity measure to use (This is filled by default; you can leave it as is if you are unsure about it.)
-   - Models: The `[HOSTED_MODE]` table defines the underlying LLM model used. We recommend using:
+   - Models: The `[PROVIDERS]` table defines the underlying LLM model used. We recommend using:
 
    ```toml
-      [HOSTED_MODE]
+      [PROVIDERS]
       DEFAULT_CHAT_PROVIDER = "gemini"
       DEFAULT_CHAT_MODEL = "Gemini Flash 2.5"
       DEFAULT_FAST_CHAT_PROVIDER = "gemini"
@@ -89,13 +89,10 @@ There are mainly 2 ways of installing Cairo Coder - With Docker, Without Docker.
    ```
    POSTGRES_USER="YOUR_POSTGRES_USER"
    POSTGRES_PASSWORD="YOUR_POSTGRES_PASSWORD"
-   POSTGRES_ROOT_DB="YOUR_POSTGRES_ROOT_DB"
-   POSTGRES_HOST="localhost"
-   POSTGRES_PORT="5432"
+   POSTGRES_DB="YOUR_POSTGRES_DB"
    ```
 
    This file is used by Docker to initialize the PostgreSQL container when it first starts.
-   The `POSTGRES_HOST` is set to "localhost" because this is from the database's own perspective.
 
    **b. Application Connection Settings** (`config.toml` file):
 
@@ -105,15 +102,15 @@ There are mainly 2 ways of installing Cairo Coder - With Docker, Without Docker.
     [VECTOR_DB]
     POSTGRES_USER="YOUR_POSTGRES_USER"
     POSTGRES_PASSWORD="YOUR_POSTGRES_PASSWORD"
-    POSTGRES_ROOT_DB="YOUR_POSTGRES_ROOT_DB"
+    POSTGRES_ROOT_DB="YOUR_POSTGRES_DB"
     POSTGRES_HOST="postgres"
     POSTGRES_PORT="5432"
    ```
 
    This configuration is used by the backend and ingester services to connect to the database.
-   Note that `POSTGRES_HOST` is set to "postgres", which is the service name in docker-compose.yml.
+   Note that `POSTGRES_HOST` is set to "postgres" and `POSTGRES_PORT` to "5432", which is the container's name and port in docker-compose.yml.
 
-   **Important:** Make sure to use the same password in both files. The first file initializes the
+   **Important:** Make sure to use the same password, username and db's name in both files. The first file initializes the
    database, while the second is used by your application to connect to it.
 
 
@@ -131,6 +128,7 @@ There are mainly 2 ways of installing Cairo Coder - With Docker, Without Docker.
    LANGSMITH_API_KEY="<your-api-key>"
    LANGCHAIN_PROJECT="<your-project-name>"
    ```
+   - Add the `.env` in an env_file section in the backend service of the docker-compose.yml 
 
    With this configuration, all LLM calls and chain executions will be logged to your LangSmith project, allowing you to debug, analyze, and improve the system's performance.
 
@@ -138,17 +136,17 @@ There are mainly 2 ways of installing Cairo Coder - With Docker, Without Docker.
 9. Run the application using one of the following methods:
 
    ```bash
-   docker-compose up --build
+   docker-compose up postgres backend
    ```
 
-8. The API will be available at http://localhost:3000/chat/completions.
+8. The API will be available at http://localhost:3001/v1/chat/completions.
 
 ## Running the Ingester
 
 After you have the main application running, you might need to run the ingester to process and embed documentation from various sources. The ingester is configured as a separate profile in the docker-compose file and can be executed as follows:
 
    ```bash
-   docker-compose --profile ingester up ingester
+   docker-compose up ingester
    ```
 
 Once the ingester completes its task, the vector database will be populated with embeddings from all the supported documentation sources, making them available for RAG-based code generation requests to the API.

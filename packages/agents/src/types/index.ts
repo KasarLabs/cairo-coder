@@ -31,7 +31,7 @@ export interface Config {
     DEEPSEEK: string;
     GEMINI: string;
   };
-  HOSTED_MODE?: {
+  PROVIDERS?: {
     DEFAULT_CHAT_PROVIDER: string;
     DEFAULT_CHAT_MODEL: string;
     DEFAULT_FAST_CHAT_PROVIDER: string;
