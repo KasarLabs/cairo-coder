@@ -3,8 +3,6 @@ name: Build and push docker images
 on:
   workflow_call:
   workflow_dispatch:
-  pull_request:
-    branches: [main]
 
 permissions:
   contents: read
