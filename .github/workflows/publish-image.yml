@@ -18,7 +18,7 @@ jobs:
     strategy:
       matrix:
         component: [backend, ingester]
-        
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
