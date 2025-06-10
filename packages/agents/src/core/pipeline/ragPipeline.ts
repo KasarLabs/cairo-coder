@@ -10,9 +10,9 @@ import { logger, TokenTracker } from '../../utils';
  * Orchestrates the RAG process in a clear, sequential flow.
  */
 export class RagPipeline {
-  private queryProcessor: QueryProcessor;
-  private documentRetriever: DocumentRetriever;
-  private answerGenerator: AnswerGenerator;
+  protected queryProcessor: QueryProcessor;
+  protected documentRetriever: DocumentRetriever;
+  protected answerGenerator: AnswerGenerator;
 
   constructor(
     private llmConfig: LLMConfig,
@@ -41,7 +41,7 @@ export class RagPipeline {
     return emitter;
   }
 
-  private async runPipeline(
+  protected async runPipeline(
     input: RagInput,
     handler: StreamHandler,
   ): Promise<void> {
