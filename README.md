@@ -14,9 +14,7 @@
   - [Project Structure](#project-structure)
   - [RAG Pipeline](#rag-pipeline)
   - [Ingestion System](#ingestion-system)
-  - [Database](#database)
 - [Development](#development)
-- [Upcoming Features](#upcoming-features)
 - [Contribution](#contribution)
 
 ## Credits
@@ -34,7 +32,6 @@ Cairo Coder is an intelligent code generation service that makes writing Cairo s
 - **OpenAI Compatible API**: Interface compatible with the OpenAI API format for easy integration
 - **Multiple LLM Support**: Works with OpenAI, Anthropic, and Google models
 - **Source-Informed Generation**: Code is generated based on Cairo documentation, ensuring correctness
-- **Streaming Response**: Support for response streaming for a responsive experience
 
 
 ## Installation
@@ -83,7 +80,6 @@ There are mainly 2 ways of installing Cairo Coder - With Docker, Without Docker.
    Cairo Coder uses PostgreSQL with pgvector for storing and retrieving vector embeddings. You need to configure both the database initialization and the application connection settings:
 
    **a. Database Container Initialization** (`.env` file):
-
    Create a `.env` file in the root directory with the following PostgreSQL configuration:
 
    ```
@@ -108,10 +104,9 @@ There are mainly 2 ways of installing Cairo Coder - With Docker, Without Docker.
    ```
 
    This configuration is used by the backend and ingester services to connect to the database.
-   Note that `POSTGRES_HOST` is set to "postgres" and `POSTGRES_PORT` to "5432", which is the container's name and port in docker-compose.yml.
+   Note that `POSTGRES_HOST` is set to ```"postgres"``` and `POSTGRES_PORT` to ```"5432"```, which are the container's name and port in docker-compose.yml.
 
-   **Important:** Make sure to use the same password, username and db's name in both files. The first file initializes the
-   database, while the second is used by your application to connect to it.
+   **Important:** Make sure to use the same password, username and db's name in both files. The first file initializes the database, while the second is used by your application to connect to it.
 
 
 7. **Configure LangSmith (Optional)**
@@ -136,17 +131,17 @@ There are mainly 2 ways of installing Cairo Coder - With Docker, Without Docker.
 9. Run the application using one of the following methods:
 
    ```bash
-   docker-compose up postgres backend
+   docker compose up postgres backend
    ```
 
-8. The API will be available at http://localhost:3001/v1/chat/completions.
+8. The API will be available at http://localhost:3001/v1/chat/completions
 
 ## Running the Ingester
 
 After you have the main application running, you might need to run the ingester to process and embed documentation from various sources. The ingester is configured as a separate profile in the docker-compose file and can be executed as follows:
 
    ```bash
-   docker-compose up ingester
+   docker compose up ingester
    ```
 
 Once the ingester completes its task, the vector database will be populated with embeddings from all the supported documentation sources, making them available for RAG-based code generation requests to the API.
@@ -267,13 +262,6 @@ Currently supported documentation sources include:
 - Cairo Book
 - Cairo Foundry documentation
 - Cairo By Examples
-
-### Database
-
-Cairo Coder uses MongoDB Atlas with vector search capabilities for similarity search:
-
-- **Vector Database**: Stores document embeddings for efficient similarity search
-- **Vector Search**: Uses cosine similarity to find relevant Cairo documentation
 
 ## Development
 
