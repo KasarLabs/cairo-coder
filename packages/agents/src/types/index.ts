@@ -13,7 +13,7 @@ export interface LLMConfig {
 export interface VectorStoreConfig {
   POSTGRES_USER: string;
   POSTGRES_PASSWORD: string;
-  POSTGRES_ROOT_DB: string;
+  POSTGRES_DB: string;
   POSTGRES_HOST: string;
   POSTGRES_PORT: string;
 }
@@ -31,7 +31,7 @@ export interface Config {
     DEEPSEEK: string;
     GEMINI: string;
   };
-  HOSTED_MODE?: {
+  PROVIDERS?: {
     DEFAULT_CHAT_PROVIDER: string;
     DEFAULT_CHAT_MODEL: string;
     DEFAULT_FAST_CHAT_PROVIDER: string;
