@@ -8,7 +8,7 @@ GEMINI = ""
 [VECTOR_DB]
 POSTGRES_USER="cairocoder"
 POSTGRES_PASSWORD="cairocoder"
-POSTGRES_ROOT_DB="cairocoder"
+POSTGRES_DB="cairocoder"
 POSTGRES_HOST="postgres"
 POSTGRES_PORT="5432"
 

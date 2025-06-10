@@ -13,7 +13,7 @@ export interface LLMConfig {
 export interface VectorStoreConfig {
   POSTGRES_USER: string;
   POSTGRES_PASSWORD: string;
-  POSTGRES_ROOT_DB: string;
+  POSTGRES_DB: string;
   POSTGRES_HOST: string;
   POSTGRES_PORT: string;
 }

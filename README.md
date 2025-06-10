@@ -102,7 +102,7 @@ There are mainly 2 ways of installing Cairo Coder - With Docker, Without Docker.
     [VECTOR_DB]
     POSTGRES_USER="YOUR_POSTGRES_USER"
     POSTGRES_PASSWORD="YOUR_POSTGRES_PASSWORD"
-    POSTGRES_ROOT_DB="YOUR_POSTGRES_DB"
+    POSTGRES_DB="YOUR_POSTGRES_DB"
     POSTGRES_HOST="postgres"
     POSTGRES_PORT="5432"
    ```
