@@ -79,7 +79,6 @@ export interface RagInput {
   query: string;
   chatHistory: BaseMessage[];
   sources: DocumentSource | DocumentSource[];
-  mcpMode?: boolean; // When true, skip answer generation and return raw documents
 }
 
 export interface StreamHandler {

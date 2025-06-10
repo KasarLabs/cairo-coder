@@ -10,9 +10,9 @@ import { logger, TokenTracker } from '../../utils';
  * Orchestrates the RAG process in a clear, sequential flow.
  */
 export class RagPipeline {
-  private queryProcessor: QueryProcessor;
-  private documentRetriever: DocumentRetriever;
-  private answerGenerator: AnswerGenerator;
+  protected queryProcessor: QueryProcessor;
+  protected documentRetriever: DocumentRetriever;
+  protected answerGenerator: AnswerGenerator;
 
   constructor(
     private llmConfig: LLMConfig,
@@ -41,7 +41,7 @@ export class RagPipeline {
     return emitter;
   }
 
-  private async runPipeline(
+  protected async runPipeline(
     input: RagInput,
     handler: StreamHandler,
   ): Promise<void> {
@@ -62,25 +62,10 @@ export class RagPipeline {
       );
       handler.emitSources(retrieved.documents);
 
-      // Step 3: Check if MCP mode is enabled
-      if (input.mcpMode) {
-        // In MCP mode, return documents directly without answer generation
-        logger.info('MCP mode enabled - returning raw documents');
-        
-        const rawDocuments = retrieved.documents.map(doc => ({
-          pageContent: doc.pageContent,
-          metadata: doc.metadata
-        }));
-
-        handler.emitResponse({
-          content: JSON.stringify(rawDocuments, null, 2),
-        } as any);
-      } else {
-        // Step 3: Generate the answer as a stream (normal mode)
-        const stream = await this.answerGenerator.generate(input, retrieved);
-        for await (const chunk of stream) {
-          handler.emitResponse(chunk);
-        }
+      // Step 3: Generate the answer as a stream
+      const stream = await this.answerGenerator.generate(input, retrieved);
+      for await (const chunk of stream) {
+        handler.emitResponse(chunk);
       }
       logger.debug('Stream ended');
       
