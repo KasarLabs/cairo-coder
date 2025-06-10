@@ -4,6 +4,8 @@ name: Build and Publish Docker Images
 on:
   workflow_call:
   workflow_dispatch:
+  pull_request:
+    branches: [main]
 
 permissions:
   contents: read
