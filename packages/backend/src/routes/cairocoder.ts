@@ -52,6 +52,9 @@ router.post('/', async (req, res) => {
       });
     }
 
+    // Check for MCP mode header
+    const mcpMode = req.headers['mcp'] === 'true';
+
     // Convert messages to LangChain format
     const langChainMessages = convertToLangChainMessages(messages);
 
@@ -86,6 +89,7 @@ router.post('/', async (req, res) => {
       llmConfig,
       embeddings,
       vectorStore,
+      mcpMode,
     );
 
     if (stream) {
