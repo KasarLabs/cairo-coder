@@ -2,6 +2,12 @@ name: Build and push docker images
 
 on:
   workflow_call:
+    inputs:
+      release-tag:
+        description: 'Release tag to add to images'
+        required: false
+        type: string
+        default: ''
   workflow_dispatch:
 
 permissions:
@@ -42,6 +48,7 @@ jobs:
             type=ref,event=branch
             type=sha,format=short
             type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
+            type=raw,value=${{ inputs.release-tag }},enable=${{ inputs.release-tag != '' }}
 
       - name: Build and push Docker image
         uses: docker/build-push-action@v6

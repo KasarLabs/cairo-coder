@@ -1,0 +1,74 @@
+name: Release Cairo Coder
+
+on:
+  workflow_dispatch:
+    inputs:
+      release-type:
+        description: Type of release
+        required: true
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+        default: minor
+
+permissions:
+  contents: write
+  packages: write
+
+jobs:
+  update-version:
+    runs-on: ubuntu-latest
+    outputs:
+      new-version: ${{ steps.version.outputs.new-version }}
+      new-tag: ${{ steps.version.outputs.new-tag }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Update version and create tag
+        id: version
+        run: |
+          npm version ${{ inputs.release-type }} --no-git-tag-version
+          NEW_VERSION=$(node -p "require('./package.json').version")
+
+          echo "new-version=$NEW_VERSION" >> $GITHUB_OUTPUT
+          echo "new-tag=v$NEW_VERSION" >> $GITHUB_OUTPUT
+
+          echo "NEW_VERSION=$NEW_VERSION"
+          echo "NEW_TAG=v$NEW_VERSION"
+
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add package.json
+          git commit -m "release: v$NEW_VERSION"
+          git tag "v$NEW_VERSION"
+          git push origin HEAD --tags
+
+  build-new-image:
+    needs: update-version
+    uses: ./.github/workflows/publish-image.yml
+    with:
+      release-tag: ${{ needs.update-version.outputs.new-tag }}
+    secrets: inherit
+
+  create-release:
+    needs: [update-version, build-new-image]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Create draft release
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const script = require('./.github/scripts/create-release.js');
+            await script({ github, context });
+        env:
+          NEW_TAG: ${{ needs.update-version.outputs.new-tag }}
+          REPOSITORY: ${{ github.repository }}
