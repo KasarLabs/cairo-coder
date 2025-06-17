@@ -138,9 +138,7 @@ async function main() {
     if (target === 'Everything') {
       // Ingest all sources
       const sources = IngesterFactory.getAvailableSources();
-      for (const source of sources) {
-        await ingestSource(source);
-      }
+      await Promise.all(sources.map(source => ingestSource(source)));
     } else {
       // Ingest specific source
       await ingestSource(target);

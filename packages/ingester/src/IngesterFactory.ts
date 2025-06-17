@@ -54,6 +54,12 @@ export class IngesterFactory {
         } = require('./ingesters/CoreLibDocsIngester');
         return new CoreLibDocsIngester();
 
+      case 'scarb_docs':
+        const {
+          ScarbDocsIngester,
+        } = require('./ingesters/ScarbDocsIngester');
+        return new ScarbDocsIngester();
+
       default:
         throw new Error(`Unsupported source: ${source}`);
     }
@@ -72,6 +78,7 @@ export class IngesterFactory {
       DocumentSource.CAIRO_BY_EXAMPLE,
       DocumentSource.OPENZEPPELIN_DOCS,
       DocumentSource.CORELIB_DOCS,
+      DocumentSource.SCARB_DOCS,
     ];
   }
 }

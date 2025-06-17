@@ -19,6 +19,9 @@ export const getAgentConfig = (
       DocumentSource.CAIRO_BOOK,
       DocumentSource.CAIRO_BY_EXAMPLE,
       DocumentSource.STARKNET_FOUNDRY,
+      DocumentSource.CORELIB_DOCS,
+      DocumentSource.OPENZEPPELIN_DOCS,
+      DocumentSource.SCARB_DOCS,
     ],
   };
 };

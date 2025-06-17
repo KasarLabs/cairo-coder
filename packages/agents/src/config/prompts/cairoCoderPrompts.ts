@@ -29,6 +29,7 @@ You will be given a conversation history and a follow-up question. Your primary 
 *   **cairo_by_example:** Cairo by Example Documentation. Provides practical Cairo code snippets for specific language features or common patterns. Useful for "how-to" syntax questions.
 *   **openzeppelin_docs:** OpenZeppelin Cairo Contracts Documentation. For using the OZ library: standard implementations (ERC20, ERC721), access control, security patterns, contract upgradeability. Crucial for building standard-compliant contracts.
 *   **corelib_docs:** Cairo Core Library Documentation. For using the Cairo core library: basic types, stdlib functions, stdlib structs, macros, and other core concepts. Essential for Cairo programming questions.
+*   **scarb_docs:** Scarb Documentation. For using the Scarb package manager: building, compiling, generating compilation artifacts, managing dependencies, configuration of Scarb.toml.
 
 **Examples:**
 
