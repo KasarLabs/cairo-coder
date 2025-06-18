@@ -54,7 +54,11 @@ export class DocumentRetriever {
     ].map(
       (content) => results.flat().find((doc) => doc.pageContent === content)!,
     );
-    logger.debug('Retrieved documents:', { count: uniqueDocs.length });
+    const sourceSet = new Set(uniqueDocs.map((doc) => doc.metadata.source));
+    logger.debug('Retrieved documents:', {
+      count: uniqueDocs.length,
+      sources: Array.from(sourceSet),
+    });
     return uniqueDocs;
   }
 
