@@ -1,3 +1,4 @@
+# checkov:skip=CKV_GHA_7:No user inputs in this workflow, false positive
 name: Trunk check
 
 on:
