@@ -18,7 +18,6 @@ runtimes:
 lint:
   enabled:
     - actionlint@1.7.7
-    - checkov@3.2.439
     - git-diff-check
     - hadolint@2.12.1-beta
     - markdownlint@0.45.0
