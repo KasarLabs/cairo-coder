@@ -46,8 +46,8 @@ export class McpPipeline extends RagPipeline {
         tokenUsage: {
           promptTokens: tokenUsage.promptTokens,
           responseTokens: tokenUsage.responseTokens,
-          totalTokens: tokenUsage.totalTokens
-        }
+          totalTokens: tokenUsage.totalTokens,
+        },
       });
 
       handler.emitEnd();
@@ -67,9 +67,7 @@ export class McpPipeline extends RagPipeline {
     }
 
     // Concatenate all document content into a single string
-    let context = docs
-      .map(doc => doc.pageContent)
-      .join('\n\n');
+    let context = docs.map((doc) => doc.pageContent).join('\n\n');
 
     // Add contract and test templates at the end if applicable
     const { isContractRelated, isTestRelated } = retrieved.processedQuery;
@@ -82,5 +80,4 @@ export class McpPipeline extends RagPipeline {
 
     return context;
   }
-
 }

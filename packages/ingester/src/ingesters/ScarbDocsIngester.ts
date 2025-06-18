@@ -1,7 +1,5 @@
 import * as path from 'path';
-import {
-  DocumentSource,
-} from '@cairo-coder/agents/types/index';
+import { DocumentSource } from '@cairo-coder/agents/types/index';
 import { BookConfig, BookPageDto } from '../utils/types';
 import { processDocFiles } from '../utils/fileUtils';
 import { logger } from '@cairo-coder/agents/utils/index';

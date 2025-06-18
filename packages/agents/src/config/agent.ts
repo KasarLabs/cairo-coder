@@ -4,9 +4,7 @@ import { basicTestTemplate } from './templates/testTemplate';
 import { VectorStore } from '../db/postgresVectorStore';
 import { DocumentSource, RagSearchConfig } from '../types';
 
-export const getAgentConfig = (
-  vectorStore: VectorStore,
-): RagSearchConfig => {
+export const getAgentConfig = (vectorStore: VectorStore): RagSearchConfig => {
   return {
     name: 'Cairo Coder',
     prompts: cairoCoderPrompts,

@@ -55,9 +55,7 @@ export class IngesterFactory {
         return new CoreLibDocsIngester();
 
       case 'scarb_docs':
-        const {
-          ScarbDocsIngester,
-        } = require('./ingesters/ScarbDocsIngester');
+        const { ScarbDocsIngester } = require('./ingesters/ScarbDocsIngester');
         return new ScarbDocsIngester();
 
       default:
