@@ -19,7 +19,7 @@ lint:
   ignore:
     - linters: [checkov]
       paths:
-        - .github/workflows/trunk-check.yml
+        - .github/workflows/trunk-check.yaml
 
   enabled:
     - actionlint@1.7.7
