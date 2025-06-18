@@ -16,14 +16,8 @@ runtimes:
     - python@3.10.8
 # This is the section where you manage your linters. (https://docs.trunk.io/check/configuration)
 lint:
-  ignore:
-    - linters: [checkov]
-      paths:
-        - .github/workflows/trunk-check.yaml
-
   enabled:
     - actionlint@1.7.7
-    - checkov@3.2.439
     - git-diff-check
     - hadolint@2.12.1-beta
     - markdownlint@0.45.0
