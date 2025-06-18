@@ -9,17 +9,21 @@ module.exports = async ({ github, context }) => {
   });
 
   const dockerInfo = `
-As with all our previous releases, you can find the Docker images:
+
+---
+  As with all our previous releases, you can find the Docker images:
 - [Backend](https://ghcr.io/${repository}/backend:${newTag})
 - [Ingester](https://ghcr.io/${repository}/ingester:${newTag})
-`;
+
+
+${data.body}`;
 
   await github.rest.repos.createRelease({
     owner: context.repo.owner,
     repo: context.repo.repo,
     tag_name: newTag,
     name: data.name,
-    body: data.body + dockerInfo,
+    body: dockerInfo,
     draft: true,
     prerelease: false,
   });
