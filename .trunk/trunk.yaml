@@ -20,8 +20,7 @@ lint:
     - linters: [checkov]
       paths:
         - .github/workflows/trunk-check.yml
-      what: CKV_GHA_7
-      
+
   enabled:
     - actionlint@1.7.7
     - checkov@3.2.439
