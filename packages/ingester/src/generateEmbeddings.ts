@@ -6,7 +6,6 @@ import { loadOpenAIEmbeddingsModels } from '@cairo-coder/backend/config/provider
 import { DocumentSource } from '@cairo-coder/agents/types/index';
 import { IngesterFactory } from './IngesterFactory';
 
-
 /**
  * Global vector store instance
  */
@@ -138,9 +137,7 @@ async function main() {
     if (target === 'Everything') {
       // Ingest all sources
       const sources = IngesterFactory.getAvailableSources();
-      for (const source of sources) {
-        await ingestSource(source);
-      }
+      await Promise.all(sources.map((source) => ingestSource(source)));
     } else {
       // Ingest specific source
       await ingestSource(target);

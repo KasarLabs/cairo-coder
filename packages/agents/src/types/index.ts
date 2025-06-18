@@ -103,6 +103,7 @@ export enum DocumentSource {
   CAIRO_BY_EXAMPLE = 'cairo_by_example',
   OPENZEPPELIN_DOCS = 'openzeppelin_docs',
   CORELIB_DOCS = 'corelib_docs',
+  SCARB_DOCS = 'scarb_docs',
 }
 
 export type BookChunk = {
