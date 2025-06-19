@@ -80,10 +80,9 @@ router.post('/', async (req, res) => {
     //TODO: this should likely not be done here
     const dbConfig = getVectorDbConfig();
     const vectorStore = await VectorStore.getInstance(dbConfig, embeddings);
-    let response_text = '';
 
-    // Stream the response
-    const handler = RagAgentFactory.createAgent(
+    // Get the response from the agent
+    const result = await RagAgentFactory.createAgent(
       lastUserMessage.content,
       langChainMessages,
       llmConfig,
@@ -92,99 +91,35 @@ router.post('/', async (req, res) => {
       mcpMode,
     );
 
-    if (stream) {
-      // Set streaming headers
-      res.setHeader('Content-Type', 'text/event-stream');
-      res.setHeader('Cache-Control', 'no-cache');
-      res.setHeader('Connection', 'keep-alive');
-      res.setHeader('Transfer-Encoding', 'chunked');
-    }
+    const tokenUsage = TokenTracker.getSessionTokenUsage();
+    
+    res.setHeader('x-total-tokens', tokenUsage.totalTokens.toString());
 
-    handler.on('data', (data) => {
-      const parsed = JSON.parse(data);
-
-      if (parsed.type === 'response') {
-        response_text += parsed.data;
-
-        // If streaming and we have content to send
-        if (stream && parsed.data) {
-          const chunk = {
-            id: uuidv4(),
-            object: 'chat.completion.chunk',
-            created: Date.now(),
-            model: model,
-            choices: [
-              {
-                index: 0,
-                delta: {
-                  role: 'assistant',
-                  content: parsed.data,
-                },
-                finish_reason: null,
-              },
-            ],
-          };
-          res.write(`data: ${JSON.stringify(chunk)}\n\n`);
-        }
-      }
-    });
-
-    handler.on('end', () => {
-      const tokenUsage = TokenTracker.getSessionTokenUsage();
-      
-      res.setHeader('x-total-tokens', tokenUsage.totalTokens.toString());
-      
-      if (stream) {
-        const finalChunk = {
-          id: uuidv4(),
-          object: 'chat.completion.chunk',
-          created: Date.now(),
-          model: model,
-          choices: [
-            {
-              index: 0,
-              delta: {},
-              finish_reason: 'stop',
-            },
-          ],
-          usage: {
-            prompt_tokens: tokenUsage.promptTokens,
-            completion_tokens: tokenUsage.responseTokens,
-            total_tokens: tokenUsage.totalTokens,
+    // Build the response object in OpenAI API-compatible format
+    const responsePayload = {
+      id: uuidv4(),
+      object: 'chat.completion',
+      created: Date.now(),
+      model: model,
+      choices: [
+        {
+          index: 0,
+          message: {
+            role: 'assistant',
+            content: result.answer,
           },
-        };
-        res.write(`data: ${JSON.stringify(finalChunk)}\n\n`);
-        res.write('data: [DONE]\n\n');
-        res.end();
-      } else {
-        // Build the response object in OpenAI API-compatible format
-        const responsePayload = {
-          id: uuidv4(),
-          object: 'chat.completion',
-          created: Date.now(),
-          model: model,
-          choices: [
-            {
-              index: 0,
-              message: {
-                role: 'assistant',
-                content: response_text,
-              },
-              logprobs: null,
-              finish_reason: 'stop',
-            },
-          ],
-          usage: {
-            prompt_tokens: tokenUsage.promptTokens,
-            completion_tokens: tokenUsage.responseTokens,
-            total_tokens: tokenUsage.totalTokens,
-          },
-        };
+          logprobs: null,
+          finish_reason: 'stop',
+        },
+      ],
+      usage: {
+        prompt_tokens: tokenUsage.promptTokens,
+        completion_tokens: tokenUsage.responseTokens,
+        total_tokens: tokenUsage.totalTokens,
+      },
+    };
 
-        res.json(responsePayload);
-        return;
-      }
-    });
+    res.json(responsePayload);
   } catch (error) {
     logger.error('Error in /chat/completions:', error);
 

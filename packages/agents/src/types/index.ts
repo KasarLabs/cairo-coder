@@ -81,13 +81,6 @@ export interface RagInput {
   sources: DocumentSource | DocumentSource[];
 }
 
-export interface StreamHandler {
-  emitSources(docs: Document[]): void;
-  emitResponse(chunk: BaseMessage): void;
-  emitEnd(): void;
-  emitError(error: string): void;
-}
-
 export interface RagSearchConfig extends AgentConfig {
   contractTemplate?: string;
   testTemplate?: string;

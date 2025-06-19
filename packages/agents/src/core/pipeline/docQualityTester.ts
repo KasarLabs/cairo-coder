@@ -279,60 +279,38 @@ export class DocQualityTester {
    * @returns Results for this test case
    */
   private async executeTestCase(testCase: TestCase): Promise<TestCaseResult> {
-    logger.info(`Executing test case: "${testCase.query}"`, {
-      type: testCase.type,
-      difficulty: testCase.difficulty,
-    });
-
     try {
-      // Prepare input for RAG pipeline
-      const config_sources = this.config.sources;
+      logger.debug(`Executing test case: "${testCase.query}"`);
+
+      // Create input for the pipeline
       const input: RagInput = {
         query: testCase.query,
-        chatHistory: [
-          new HumanMessage(
-            `You are a helpful assistant. Answer the question "${testCase.query}" based on the following context`,
-          ),
-        ],
-        sources: config_sources,
+        chatHistory: [],
+        sources: this.config.sources || [DocumentSource.CAIRO_BOOK],
       };
 
-      // Custom execution to capture intermediates
-      const processedQuery =
-        await this.pipeline['queryProcessor'].process(input);
-      const retrieved = await this.pipeline['documentRetriever'].retrieve(
-        processedQuery,
-        input.sources,
-      );
-
-      // Generate answer
-      let answer = '';
-      const stream = await this.pipeline['answerGenerator'].generate(
-        input,
-        retrieved,
-      );
-      for await (const chunk of stream) {
-        answer += chunk.content;
-      }
+      // Execute the pipeline to get documents and answer
+      const result = await this.pipeline.execute(input);
+      const answer = result.answer;
 
       // Calculate metrics
       const metrics = await this.calculateMetrics(
         testCase,
-        retrieved.documents,
+        result.sources,
         answer,
       );
 
       // Generate recommendations specific to this test case
       const recommendations = await this.generateTestCaseRecommendations(
         testCase,
-        retrieved.documents,
+        result.sources,
         answer,
         metrics,
       );
 
       return {
         query: testCase.query,
-        retrievedDocuments: retrieved.documents,
+        retrievedDocuments: result.sources,
         answer,
         metrics,
         recommendations,

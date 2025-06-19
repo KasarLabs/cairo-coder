@@ -3,7 +3,6 @@ import {
   ChatPromptTemplate,
   MessagesPlaceholder,
 } from '@langchain/core/prompts';
-import { IterableReadableStream } from '@langchain/core/utils/stream';
 import { logger, TokenTracker } from '../../utils';
 import { BaseMessage, HumanMessage } from '@langchain/core/messages';
 import { RetrievedDocuments, RagInput, RagSearchConfig } from '../../types';
@@ -21,42 +20,21 @@ export class AnswerGenerator {
   async generate(
     input: RagInput,
     retrieved: RetrievedDocuments,
-  ): Promise<IterableReadableStream<BaseMessage>> {
+  ): Promise<BaseMessage> {
     const context = this.buildContext(retrieved);
     const prompt = await this.createPrompt(input, context);
 
     const modelName = this.llm.constructor.name || 'defaultLLM';
     
-    const stream = await this.llm.stream(prompt);
-  
-    logger.debug('Started streaming response');
+    logger.debug('Starting LLM invocation');
     
-    const generator = this.createTokenTrackingStream(stream, modelName, prompt);
-    return {
-      [Symbol.asyncIterator]: () => generator,
-    } as IterableReadableStream<BaseMessage>;
-  }
-  
-
-  private async *createTokenTrackingStream(
-    stream: IterableReadableStream<BaseMessage>,
-    modelName: string,
-    prompt: string,
-  ): AsyncGenerator<BaseMessage, void, unknown> {
-    let lastMessage: BaseMessage | null = null;
-
-    try {
-      for await (const chunk of stream) {
-        lastMessage = chunk;
-        yield chunk;
-      }
-    } finally {
-      logger.info(`LLM Call [${modelName}] completed`);
-      if (lastMessage) {
-        const usage = TokenTracker.trackFullUsage(prompt, lastMessage, modelName);
-        logger.info(`Tokens: ${usage.promptTokens} prompt + ${usage.responseTokens} response = ${usage.totalTokens} total`);
-      }
-    }
+    const result = await this.llm.invoke(prompt);
+    
+    logger.info(`LLM Call [${modelName}] completed`);
+    const usage = TokenTracker.trackFullUsage(prompt, result, modelName);
+    logger.info(`Tokens: ${usage.promptTokens} prompt + ${usage.responseTokens} response = ${usage.totalTokens} total`);
+    
+    return result;
   }
 
   private buildContext(retrieved: RetrievedDocuments): string {

@@ -1,4 +1,3 @@
-import eventEmitter from 'events';
 import { BaseMessage } from '@langchain/core/messages';
 import { Embeddings } from '@langchain/core/embeddings';
 import { LLMConfig } from '@cairo-coder/agents/types/index';
@@ -27,14 +26,6 @@ export interface ServerContext {
 export interface HandlerOptions {
   vectorStore?: VectorStore;
 }
-
-export type SearchHandler = (
-  content: string,
-  history: BaseMessage[],
-  llm: LLMConfig,
-  embeddings: Embeddings,
-  options: HandlerOptions,
-) => eventEmitter;
 
 export interface ChatCompletionRequest {
   model: string;

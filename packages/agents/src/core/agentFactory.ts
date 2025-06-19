@@ -1,21 +1,20 @@
 import { BaseMessage } from '@langchain/core/messages';
 import { Embeddings } from '@langchain/core/embeddings';
 import { getAgentConfig } from '../config/agent';
-import EventEmitter from 'events';
 import { RagPipeline } from './pipeline/ragPipeline';
 import { McpPipeline } from './pipeline/mcpPipeline';
 import { VectorStore } from '../db/postgresVectorStore';
 import { LLMConfig } from '../types';
 
 export class RagAgentFactory {
-  static createAgent(
+  static async createAgent(
     message: string,
     history: BaseMessage[],
     llm: LLMConfig,
     embeddings: Embeddings,
     vectorStore: VectorStore,
     mcpMode: boolean = false,
-  ): EventEmitter {
+  ): Promise<{ answer: string; sources: any[] }> {
     const config = getAgentConfig(vectorStore);
     const pipeline = mcpMode 
       ? new McpPipeline(llm, embeddings, config)

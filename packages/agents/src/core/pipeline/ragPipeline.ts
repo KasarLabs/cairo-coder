@@ -1,9 +1,8 @@
 import { Embeddings } from '@langchain/core/embeddings';
-import { RagInput, StreamHandler, RagSearchConfig, LLMConfig } from '../../types';
+import { RagInput, RagSearchConfig, LLMConfig } from '../../types';
 import { QueryProcessor } from './queryProcessor';
 import { DocumentRetriever } from './documentRetriever';
 import { AnswerGenerator } from './answerGenerator';
-import EventEmitter from 'events';
 import { logger, TokenTracker } from '../../utils';
 
 /**
@@ -24,27 +23,7 @@ export class RagPipeline {
     this.answerGenerator = new AnswerGenerator(llmConfig.defaultLLM, config);
   }
 
-  execute(input: RagInput): EventEmitter {
-    const emitter = new EventEmitter();
-    this.runPipeline(input, {
-      emitSources: (docs) =>
-        emitter.emit('data', JSON.stringify({ type: 'sources', data: docs })),
-      emitResponse: (chunk) =>
-        emitter.emit(
-          'data',
-          JSON.stringify({ type: 'response', data: chunk.content }),
-        ),
-      emitEnd: () => emitter.emit('end'),
-      emitError: (error) =>
-        emitter.emit('error', JSON.stringify({ data: error })),
-    });
-    return emitter;
-  }
-
-  protected async runPipeline(
-    input: RagInput,
-    handler: StreamHandler,
-  ): Promise<void> {
+  async execute(input: RagInput): Promise<{ answer: string; sources: any[] }> {
     try {
       // Reset token counters at the start of each pipeline run
       TokenTracker.resetSessionCounters();
@@ -60,14 +39,11 @@ export class RagPipeline {
         processedQuery,
         input.sources,
       );
-      handler.emitSources(retrieved.documents);
 
-      // Step 3: Generate the answer as a stream
-      const stream = await this.answerGenerator.generate(input, retrieved);
-      for await (const chunk of stream) {
-        handler.emitResponse(chunk);
-      }
-      logger.debug('Stream ended');
+      // Step 3: Generate the answer
+      const result = await this.answerGenerator.generate(input, retrieved);
+      
+      logger.debug('Answer generation completed');
       
       // Log final token usage
       const tokenUsage = TokenTracker.getSessionTokenUsage();
@@ -80,10 +56,13 @@ export class RagPipeline {
         }
       });
       
-      handler.emitEnd();
+      return {
+        answer: typeof result.content === 'string' ? result.content : JSON.stringify(result.content),
+        sources: retrieved.documents
+      };
     } catch (error) {
       logger.error('Pipeline error:', error);
-      handler.emitError('An error occurred while processing your request');
+      throw new Error('An error occurred while processing your request');
     }
   }
 }
