@@ -27,7 +27,7 @@ export class RagPipeline {
     try {
       // Reset token counters at the start of each pipeline run
       TokenTracker.resetSessionCounters();
-      
+
       logger.info('Starting RAG pipeline', { query: input.query });
 
       // Step 1: Process the query
@@ -42,23 +42,26 @@ export class RagPipeline {
 
       // Step 3: Generate the answer
       const result = await this.answerGenerator.generate(input, retrieved);
-      
+
       logger.debug('Answer generation completed');
-      
+
       // Log final token usage
       const tokenUsage = TokenTracker.getSessionTokenUsage();
-      logger.info('Pipeline completed', { 
+      logger.info('Pipeline completed', {
         query: input.query,
         tokenUsage: {
           promptTokens: tokenUsage.promptTokens,
           responseTokens: tokenUsage.responseTokens,
-          totalTokens: tokenUsage.totalTokens
-        }
+          totalTokens: tokenUsage.totalTokens,
+        },
       });
-      
+
       return {
-        answer: typeof result.content === 'string' ? result.content : JSON.stringify(result.content),
-        sources: retrieved.documents
+        answer:
+          typeof result.content === 'string'
+            ? result.content
+            : JSON.stringify(result.content),
+        sources: retrieved.documents,
       };
     } catch (error) {
       logger.error('Pipeline error:', error);

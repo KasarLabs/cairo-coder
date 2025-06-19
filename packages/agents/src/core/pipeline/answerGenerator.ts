@@ -25,15 +25,17 @@ export class AnswerGenerator {
     const prompt = await this.createPrompt(input, context);
 
     const modelName = this.llm.constructor.name || 'defaultLLM';
-    
+
     logger.debug('Starting LLM invocation');
-    
+
     const result = await this.llm.invoke(prompt);
-    
+
     logger.info(`LLM Call [${modelName}] completed`);
     const usage = TokenTracker.trackFullUsage(prompt, result, modelName);
-    logger.info(`Tokens: ${usage.promptTokens} prompt + ${usage.responseTokens} response = ${usage.totalTokens} total`);
-    
+    logger.info(
+      `Tokens: ${usage.promptTokens} prompt + ${usage.responseTokens} response = ${usage.totalTokens} total`,
+    );
+
     return result;
   }
 
@@ -82,5 +84,3 @@ export class AnswerGenerator {
     });
   }
 }
-
-

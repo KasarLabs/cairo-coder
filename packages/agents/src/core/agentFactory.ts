@@ -16,7 +16,7 @@ export class RagAgentFactory {
     mcpMode: boolean = false,
   ): Promise<{ answer: string; sources: any[] }> {
     const config = getAgentConfig(vectorStore);
-    const pipeline = mcpMode 
+    const pipeline = mcpMode
       ? new McpPipeline(llm, embeddings, config)
       : new RagPipeline(llm, embeddings, config);
     return pipeline.execute({

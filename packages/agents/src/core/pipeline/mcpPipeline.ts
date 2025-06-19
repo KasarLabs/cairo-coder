@@ -44,7 +44,7 @@ export class McpPipeline extends RagPipeline {
 
       return {
         answer: JSON.stringify(context, null, 2),
-        sources: retrieved.documents
+        sources: retrieved.documents,
       };
     } catch (error) {
       logger.error('MCP Pipeline error:', error);

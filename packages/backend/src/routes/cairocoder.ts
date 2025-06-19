@@ -4,13 +4,13 @@ import { HumanMessage } from '@langchain/core/messages';
 import { SystemMessage } from '@langchain/core/messages';
 import { BaseMessage } from '@langchain/core/messages';
 import { v4 as uuidv4 } from 'uuid';
-import { 
+import {
   getVectorDbConfig,
   logger,
   RagAgentFactory,
   LLMConfig,
   TokenTracker,
- } from '@cairo-coder/agents';
+} from '@cairo-coder/agents';
 import { ChatCompletionRequest } from '../types';
 import { VectorStore } from '@cairo-coder/agents/db/postgresVectorStore';
 
@@ -92,7 +92,7 @@ router.post('/', async (req, res) => {
     );
 
     const tokenUsage = TokenTracker.getSessionTokenUsage();
-    
+
     res.setHeader('x-total-tokens', tokenUsage.totalTokens.toString());
 
     // Build the response object in OpenAI API-compatible format
