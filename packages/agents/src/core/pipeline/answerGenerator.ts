@@ -8,6 +8,7 @@ import { logger, TokenTracker } from '../../utils';
 import { BaseMessage, HumanMessage } from '@langchain/core/messages';
 import { RetrievedDocuments, RagInput, RagSearchConfig } from '../../types';
 import { formatChatHistoryAsString } from '../../utils';
+import { StreamEvent } from "@langchain/core/tracers/log_stream";
 
 /**
  * Synthesizes a response based on retrieved documents and query context.
@@ -21,41 +22,38 @@ export class AnswerGenerator {
   async generate(
     input: RagInput,
     retrieved: RetrievedDocuments,
-  ): Promise<IterableReadableStream<BaseMessage>> {
+  ): Promise<IterableReadableStream<StreamEvent>> {
     const context = this.buildContext(retrieved);
     const prompt = await this.createPrompt(input, context);
 
     const modelName = this.llm.constructor.name || 'defaultLLM';
     
-    const stream = await this.llm.stream(prompt);
+    const eventStream = this.llm.streamEvents(prompt, { version: 'v1' });
   
     logger.debug('Started streaming response');
     
-    const generator = this.createTokenTrackingStream(stream, modelName, prompt);
+    const generator = this.createTokenTrackingStream(eventStream, modelName, prompt);
     return {
       [Symbol.asyncIterator]: () => generator,
-    } as IterableReadableStream<BaseMessage>;
+    } as IterableReadableStream<StreamEvent>;
   }
   
 
   private async *createTokenTrackingStream(
-    stream: IterableReadableStream<BaseMessage>,
+    eventStream: IterableReadableStream<StreamEvent>,
     modelName: string,
     prompt: string,
-  ): AsyncGenerator<BaseMessage, void, unknown> {
-    let lastMessage: BaseMessage | null = null;
-
+  ): AsyncGenerator<StreamEvent, void, unknown> {
     try {
-      for await (const chunk of stream) {
-        lastMessage = chunk;
-        yield chunk;
+      for await (const event of eventStream) {
+        if (event.event === 'on_llm_end') {
+          TokenTracker.trackFullUsage(prompt, event.data?.output?.generations?.[0]?.[0]?.message, modelName);
+        }
+        
+        yield event;
       }
     } finally {
       logger.info(`LLM Call [${modelName}] completed`);
-      if (lastMessage) {
-        const usage = TokenTracker.trackFullUsage(prompt, lastMessage, modelName);
-        logger.info(`Tokens: ${usage.promptTokens} prompt + ${usage.responseTokens} response = ${usage.totalTokens} total`);
-      }
     }
   }
 

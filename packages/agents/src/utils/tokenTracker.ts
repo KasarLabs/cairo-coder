@@ -288,24 +288,19 @@ export class TokenTracker {
           const promptString = typeof promptText === 'string' ? promptText : JSON.stringify(promptText);
           input_tokens = this.estimateTokensFromText(promptString);
         }
-        
-        const finalTotalTokens = input_tokens + output_tokens;
+
         logger.debug("Usage metadata format");
         logger.debug(`resultObj: ${resultObj}`);
         logger.debug(`input_tokens: ${input_tokens}, output_tokens: ${output_tokens}, total_tokens: ${total_tokens}`);
 
-        logger.debug(
-          `Token usage for model [${modelName}]: Prompt tokens: ${input_tokens}, Response tokens: ${output_tokens}, Total tokens: ${finalTotalTokens}`
-        );
-
         this.sessionPromptTokens += input_tokens;
         this.sessionResponseTokens += output_tokens;
-        this.sessionTotalTokens += finalTotalTokens;
+        this.sessionTotalTokens += total_tokens;
 
         return {
           promptTokens: input_tokens,
           responseTokens: output_tokens,
-          totalTokens: finalTotalTokens,
+          totalTokens: total_tokens,
         };
       }
 
@@ -423,6 +418,7 @@ export class TokenTracker {
    * @returns The estimated number of tokens.
    */
   private static estimateTokensFromText(text: string): number {
+    logger.debug(`ESTIMATION TIMEEEEE`);
     if (!text) return 0;
     const wordCount = text.split(/\s+/).filter(Boolean).length;
     const specialChars = (text.match(/[^a-zA-Z0-9\s]/g) || []).length;
