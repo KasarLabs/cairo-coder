@@ -44,7 +44,6 @@ Cairo Coder is an intelligent code generation service that makes writing Cairo s
 - **Multiple LLM Support**: Works with OpenAI, Anthropic, and Google models
 - **Source-Informed Generation**: Code is generated based on Cairo documentation, ensuring correctness
 
-
 ## Installation
 
 There are mainly 2 ways of installing Cairo Coder - With Docker, Without Docker. Using Docker is highly recommended.
@@ -67,7 +66,6 @@ There are mainly 2 ways of installing Cairo Coder - With Docker, Without Docker.
    ```bash
    pnpm install
    ```
-
 
 5. Inside the packages/agents package, copy the `sample.config.toml` file to a `config.toml`. For development setups, you need only fill in the following fields:
 
@@ -115,45 +113,45 @@ There are mainly 2 ways of installing Cairo Coder - With Docker, Without Docker.
    ```
 
    This configuration is used by the backend and ingester services to connect to the database.
-   Note that `POSTGRES_HOST` is set to ```"postgres"``` and `POSTGRES_PORT` to ```"5432"```, which are the container's name and port in docker-compose.yml.
+   Note that `POSTGRES_HOST` is set to `"postgres"` and `POSTGRES_PORT` to `"5432"`, which are the container's name and port in docker-compose.yml.
 
    **Important:** Make sure to use the same password, username and db's name in both files. The first file initializes the database, while the second is used by your application to connect to it.
-
 
 7. **Configure LangSmith (Optional)**
 
    Cairo Coder can use LangSmith to record and monitor LLM calls. This step is optional but recommended for development and debugging.
-   
+
    - Create an account at [LangSmith](https://smith.langchain.com/)
    - Create a new project in the LangSmith dashboard
    - Retrieve your API credentials
    - Create a `.env` file in the `packages/backend` directory with the following variables:
+
    ```
    LANGCHAIN_TRACING=true
    LANGCHAIN_ENDPOINT="https://api.smith.langchain.com"
    LANGCHAIN_API_KEY="<your-api-key>"
    LANGCHAIN_PROJECT="<your-project-name>"
    ```
-   - Add the `packages/backend/.env` in an env_file section in the backend service of the docker-compose.yml 
+
+   - Add the `packages/backend/.env` in an env_file section in the backend service of the docker-compose.yml
 
    With this configuration, all LLM calls and chain executions will be logged to your LangSmith project, allowing you to debug, analyze, and improve the system's performance.
 
-
-9. Run the application using one of the following methods:
+8. Run the application using one of the following methods:
 
    ```bash
    docker compose up postgres backend
    ```
 
-8. The API will be available at http://localhost:3001/v1/chat/completions
+9. The API will be available at http://localhost:3001/v1/chat/completions
 
 ## Running the Ingester
 
 After you have the main application running, you might need to run the ingester to process and embed documentation from various sources. The ingester is configured as a separate profile in the docker-compose file and can be executed as follows:
 
-   ```bash
-   docker compose up ingester
-   ```
+```bash
+docker compose up ingester
+```
 
 Once the ingester completes its task, the vector database will be populated with embeddings from all the supported documentation sources, making them available for RAG-based code generation requests to the API.
 
@@ -188,6 +186,7 @@ curl -X POST http://localhost:3001/v1/chat/completions \
 The API accepts all standard OpenAI Chat Completions parameters.
 
 **Supported Parameters:**
+
 - `model`: Model identifier (string)
 - `messages`: Array of message objects with `role` and `content`
 - `temperature`: Controls randomness (0-2, default: 0.7)
@@ -201,7 +200,6 @@ The API accepts all standard OpenAI Chat Completions parameters.
 - `logit_bias`: Token bias adjustments
 - `user`: User identifier
 - `response_format`: Response format specification
-
 
 ### Response Format
 
