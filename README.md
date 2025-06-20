@@ -129,12 +129,12 @@ There are mainly 2 ways of installing Cairo Coder - With Docker, Without Docker.
    - Retrieve your API credentials
    - Create a `.env` file in the `packages/backend` directory with the following variables:
    ```
-   LANGSMITH_TRACING=true
-   LANGSMITH_ENDPOINT="https://api.smith.langchain.com"
-   LANGSMITH_API_KEY="<your-api-key>"
+   LANGCHAIN_TRACING=true
+   LANGCHAIN_ENDPOINT="https://api.smith.langchain.com"
+   LANGCHAIN_API_KEY="<your-api-key>"
    LANGCHAIN_PROJECT="<your-project-name>"
    ```
-   - Add the `.env` in an env_file section in the backend service of the docker-compose.yml 
+   - Add the `packages/backend/.env` in an env_file section in the backend service of the docker-compose.yml 
 
    With this configuration, all LLM calls and chain executions will be logged to your LangSmith project, allowing you to debug, analyze, and improve the system's performance.
 

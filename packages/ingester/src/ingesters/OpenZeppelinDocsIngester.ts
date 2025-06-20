@@ -125,6 +125,6 @@ export class OpenZeppelinDocsIngester extends AsciiDocIngester {
   protected async createChunks(
     pages: BookPageDto[],
   ): Promise<Document<BookChunk>[]> {
-    return super.createChunks(pages, false);
+    return super.createChunks(pages, true);
   }
 }
