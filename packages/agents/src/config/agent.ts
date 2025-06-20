@@ -1,25 +1,41 @@
-import { basicContractTemplate } from './templates/contractTemplate';
-import { cairoCoderPrompts } from './prompts';
-import { basicTestTemplate } from './templates/testTemplate';
 import { VectorStore } from '../db/postgresVectorStore';
-import { DocumentSource, RagSearchConfig } from '../types';
+import { RagSearchConfig } from '../types';
+import { getAgent, getDefaultAgent } from './agents';
 
+// Legacy function for backward compatibility
 export const getAgentConfig = (vectorStore: VectorStore): RagSearchConfig => {
+  const agent = getDefaultAgent();
   return {
-    name: 'Cairo Coder',
-    prompts: cairoCoderPrompts,
+    name: agent.name,
+    prompts: agent.prompts,
     vectorStore,
-    contractTemplate: basicContractTemplate,
-    testTemplate: basicTestTemplate,
-    maxSourceCount: 15,
-    similarityThreshold: 0.4,
-    sources: [
-      DocumentSource.CAIRO_BOOK,
-      DocumentSource.CAIRO_BY_EXAMPLE,
-      DocumentSource.STARKNET_FOUNDRY,
-      DocumentSource.CORELIB_DOCS,
-      DocumentSource.OPENZEPPELIN_DOCS,
-      DocumentSource.SCARB_DOCS,
-    ],
+    contractTemplate: agent.templates?.contract,
+    testTemplate: agent.templates?.test,
+    maxSourceCount: agent.parameters.maxSourceCount,
+    similarityThreshold: agent.parameters.similarityThreshold,
+    sources: agent.sources,
+  };
+};
+
+// Get agent configuration by ID
+export const getAgentConfigById = async (
+  agentId: string,
+  vectorStore: VectorStore,
+): Promise<RagSearchConfig> => {
+  const agentConfig = getAgent(agentId);
+
+  if (!agentConfig) {
+    throw new Error(`Agent configuration not found: ${agentId}`);
+  }
+
+  return {
+    name: agentConfig.name,
+    prompts: agentConfig.prompts,
+    vectorStore,
+    contractTemplate: agentConfig.templates?.contract,
+    testTemplate: agentConfig.templates?.test,
+    maxSourceCount: agentConfig.parameters.maxSourceCount,
+    similarityThreshold: agentConfig.parameters.similarityThreshold,
+    sources: agentConfig.sources,
   };
 };

@@ -12,7 +12,7 @@ permissions:
 
 jobs:
   build:
-    name: Build
+    name: Build and Test
     runs-on: ubuntu-latest
 
     steps:
@@ -51,3 +51,9 @@ jobs:
 
       - name: Build
         run: turbo build
+
+      - name: Setup test environment
+        run: cp packages/agents/sample.config.toml packages/agents/config.toml
+
+      - name: Test
+        run: turbo test
