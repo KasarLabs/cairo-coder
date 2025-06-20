@@ -52,5 +52,8 @@ jobs:
       - name: Build
         run: turbo build
 
+      - name: Setup test environment
+        run: cp packages/agents/sample.config.toml packages/agents/config.toml
+
       - name: Test
         run: turbo test
