@@ -305,17 +305,21 @@ export class DocQualityTester {
         input.sources,
       );
 
-
       let answer = '';
-      const stream = await this.pipeline['answerGenerator'].generate(input, retrieved);
+      const stream = await this.pipeline['answerGenerator'].generate(
+        input,
+        retrieved,
+      );
       for await (const event of stream) {
         if (event.event === 'on_llm_stream') {
-          const content = event.data?.output?.generations?.[0]?.[0]?.message?.content || '';
+          const content =
+            event.data?.output?.generations?.[0]?.[0]?.message?.content || '';
           if (content) {
             answer += content;
           }
         } else if (event.event === 'on_llm_end') {
-          const content = event.data?.output?.generations?.[0]?.[0]?.message?.content || '';
+          const content =
+            event.data?.output?.generations?.[0]?.[0]?.message?.content || '';
           if (content) {
             answer += content;
           }

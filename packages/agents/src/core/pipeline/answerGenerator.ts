@@ -8,7 +8,7 @@ import { logger, TokenTracker } from '../../utils';
 import { BaseMessage, HumanMessage } from '@langchain/core/messages';
 import { RetrievedDocuments, RagInput, RagSearchConfig } from '../../types';
 import { formatChatHistoryAsString } from '../../utils';
-import { StreamEvent } from "@langchain/core/tracers/log_stream";
+import { StreamEvent } from '@langchain/core/tracers/log_stream';
 
 /**
  * Synthesizes a response based on retrieved documents and query context.
@@ -27,17 +27,20 @@ export class AnswerGenerator {
     const prompt = await this.createPrompt(input, context);
 
     const modelName = this.llm.constructor.name || 'defaultLLM';
-    
+
     const eventStream = this.llm.streamEvents(prompt, { version: 'v1' });
-  
+
     logger.debug('Started streaming response');
-    
-    const generator = this.createTokenTrackingStream(eventStream, modelName, prompt);
+
+    const generator = this.createTokenTrackingStream(
+      eventStream,
+      modelName,
+      prompt,
+    );
     return {
       [Symbol.asyncIterator]: () => generator,
     } as IterableReadableStream<StreamEvent>;
   }
-  
 
   private async *createTokenTrackingStream(
     eventStream: IterableReadableStream<StreamEvent>,
@@ -47,9 +50,13 @@ export class AnswerGenerator {
     try {
       for await (const event of eventStream) {
         if (event.event === 'on_llm_end') {
-          TokenTracker.trackFullUsage(prompt, event.data?.output?.generations?.[0]?.[0]?.message, modelName);
+          TokenTracker.trackFullUsage(
+            prompt,
+            event.data?.output?.generations?.[0]?.[0]?.message,
+            modelName,
+          );
         }
-        
+
         yield event;
       }
     } finally {
@@ -102,5 +109,3 @@ export class AnswerGenerator {
     });
   }
 }
-
-

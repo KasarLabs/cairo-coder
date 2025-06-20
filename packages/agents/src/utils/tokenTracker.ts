@@ -25,7 +25,11 @@ export class TokenTracker {
     this.sessionTotalTokens = 0;
   }
 
-  public static updateSessionCounters(promptTokens, responseTokens, totalTokens) {
+  public static updateSessionCounters(
+    promptTokens,
+    responseTokens,
+    totalTokens,
+  ) {
     this.sessionPromptTokens += promptTokens;
     this.sessionResponseTokens += responseTokens;
     this.sessionTotalTokens += totalTokens;
@@ -60,12 +64,12 @@ export class TokenTracker {
    */
   public static trackCall(
     result: any,
-    modelName: string = 'unknown_model'
+    modelName: string = 'unknown_model',
   ): { promptTokens: number; responseTokens: number; totalTokens: number } {
     // Handle null or undefined result early
     if (result == null) {
       logger.warn(
-        `trackCall received null or undefined result for model [${modelName}]. Returning zero tokens.`
+        `trackCall received null or undefined result for model [${modelName}]. Returning zero tokens.`,
       );
       return { promptTokens: 0, responseTokens: 0, totalTokens: 0 };
     }
@@ -106,8 +110,10 @@ export class TokenTracker {
           output_tokens = 0,
           total_tokens = 0,
         } = messageToProcess.usage_metadata;
-        logger.debug("Usage metadata format");
-        logger.debug(`input_tokens: ${input_tokens}, output_tokens: ${output_tokens}, total_tokens: ${total_tokens}`);
+        logger.debug('Usage metadata format');
+        logger.debug(
+          `input_tokens: ${input_tokens}, output_tokens: ${output_tokens}, total_tokens: ${total_tokens}`,
+        );
 
         this.sessionPromptTokens += input_tokens;
         this.sessionResponseTokens += output_tokens;
@@ -129,8 +135,10 @@ export class TokenTracker {
           } = messageToProcess.response_metadata.tokenUsage;
           const finalTotalTokens =
             totalTokens || promptTokens + completionTokens;
-          logger.debug("OpenAI format");
-          logger.debug(`promptTokens: ${promptTokens}, completionTokens: ${completionTokens}, totalTokens: ${totalTokens}`);
+          logger.debug('OpenAI format');
+          logger.debug(
+            `promptTokens: ${promptTokens}, completionTokens: ${completionTokens}, totalTokens: ${totalTokens}`,
+          );
 
           this.sessionPromptTokens += promptTokens;
           this.sessionResponseTokens += completionTokens;
@@ -149,7 +157,7 @@ export class TokenTracker {
           const total_tokens = input_tokens + output_tokens;
 
           logger.debug(
-            `Token usage for model [${modelName}]: Prompt tokens: ${input_tokens}, Response tokens: ${output_tokens}, Total tokens: ${total_tokens}`
+            `Token usage for model [${modelName}]: Prompt tokens: ${input_tokens}, Response tokens: ${output_tokens}, Total tokens: ${total_tokens}`,
           );
 
           this.sessionPromptTokens += input_tokens;
@@ -166,7 +174,7 @@ export class TokenTracker {
     }
 
     logger.warn(
-      `No token usage information available for model [${modelName}], using fallback estimation.`
+      `No token usage information available for model [${modelName}], using fallback estimation.`,
     );
     const estimation = this.estimateTokensFromResult(result);
 
@@ -176,7 +184,7 @@ export class TokenTracker {
 
     logger.debug(
       `Token estimation fallback for model [${modelName}]: ` +
-        `Response tokens: ~${estimation.responseTokens} (prompt unknown)`
+        `Response tokens: ~${estimation.responseTokens} (prompt unknown)`,
     );
 
     return estimation;
@@ -206,7 +214,7 @@ export class TokenTracker {
             ? typeof msg.content === 'string'
               ? msg.content
               : JSON.stringify(msg.content)
-            : ''
+            : '',
         )
         .join(' ');
     } else if (result && typeof result === 'object') {
@@ -242,7 +250,7 @@ export class TokenTracker {
   public static trackFullUsage(
     promptText: any,
     resultObj: any,
-    modelName: string = 'unknown_model'
+    modelName: string = 'unknown_model',
   ): { promptTokens: number; responseTokens: number; totalTokens: number } {
     // Prioritize explicit token usage data if available
     if (resultObj.llmOutput?.tokenUsage) {
@@ -254,7 +262,7 @@ export class TokenTracker {
       const finalTotalTokens = totalTokens || promptTokens + completionTokens;
 
       logger.debug(
-        `Token usage for model [${modelName}]: Prompt tokens: ${promptTokens}, Response tokens: ${completionTokens}, Total tokens: ${finalTotalTokens}`
+        `Token usage for model [${modelName}]: Prompt tokens: ${promptTokens}, Response tokens: ${completionTokens}, Total tokens: ${finalTotalTokens}`,
       );
 
       this.sessionPromptTokens += promptTokens;
@@ -283,15 +291,20 @@ export class TokenTracker {
           output_tokens = 0,
           total_tokens = 0,
         } = resultObj.usage_metadata;
-        
+
         if (input_tokens === 0) {
-          const promptString = typeof promptText === 'string' ? promptText : JSON.stringify(promptText);
+          const promptString =
+            typeof promptText === 'string'
+              ? promptText
+              : JSON.stringify(promptText);
           input_tokens = this.estimateTokensFromText(promptString);
         }
 
-        logger.debug("Usage metadata format");
+        logger.debug('Usage metadata format');
         logger.debug(`resultObj: ${resultObj}`);
-        logger.debug(`input_tokens: ${input_tokens}, output_tokens: ${output_tokens}, total_tokens: ${total_tokens}`);
+        logger.debug(
+          `input_tokens: ${input_tokens}, output_tokens: ${output_tokens}, total_tokens: ${total_tokens}`,
+        );
 
         this.sessionPromptTokens += input_tokens;
         this.sessionResponseTokens += output_tokens;
@@ -313,20 +326,25 @@ export class TokenTracker {
             completionTokens = 0,
             totalTokens = 0,
           } = resultObj.response_metadata.tokenUsage;
-          
+
           if (promptTokens === 0) {
-            const promptString = typeof promptText === 'string' ? promptText : JSON.stringify(promptText);
+            const promptString =
+              typeof promptText === 'string'
+                ? promptText
+                : JSON.stringify(promptText);
             promptTokens = this.estimateTokensFromText(promptString);
           }
-          
+
           const finalTotalTokens =
             totalTokens || promptTokens + completionTokens;
-          logger.debug("OpenAI format");
+          logger.debug('OpenAI format');
           logger.debug(`resultObj: ${resultObj}`);
-          logger.debug(`promptTokens: ${promptTokens}, completionTokens: ${completionTokens}, totalTokens: ${totalTokens}`);
+          logger.debug(
+            `promptTokens: ${promptTokens}, completionTokens: ${completionTokens}, totalTokens: ${totalTokens}`,
+          );
 
           logger.debug(
-            `Token usage for model [${modelName}]: Prompt tokens: ${promptTokens}, Response tokens: ${completionTokens}, Total tokens: ${finalTotalTokens}`
+            `Token usage for model [${modelName}]: Prompt tokens: ${promptTokens}, Response tokens: ${completionTokens}, Total tokens: ${finalTotalTokens}`,
           );
 
           this.sessionPromptTokens += promptTokens;
@@ -344,16 +362,19 @@ export class TokenTracker {
         if ('usage' in resultObj.response_metadata) {
           let { input_tokens = 0, output_tokens = 0 } =
             resultObj.response_metadata.usage;
-          
+
           if (input_tokens === 0) {
-            const promptString = typeof promptText === 'string' ? promptText : JSON.stringify(promptText);
+            const promptString =
+              typeof promptText === 'string'
+                ? promptText
+                : JSON.stringify(promptText);
             input_tokens = this.estimateTokensFromText(promptString);
           }
-          
+
           const total_tokens = input_tokens + output_tokens;
 
           logger.debug(
-            `Token usage for model [${modelName}]: Prompt tokens: ${input_tokens}, Response tokens: ${output_tokens}, Total tokens: ${total_tokens}`
+            `Token usage for model [${modelName}]: Prompt tokens: ${input_tokens}, Response tokens: ${output_tokens}, Total tokens: ${total_tokens}`,
           );
 
           this.sessionPromptTokens += input_tokens;
@@ -399,7 +420,7 @@ export class TokenTracker {
 
     logger.warn(
       `[FALLBACK ESTIMATE - FULL] Token usage for model [${modelName}]: ` +
-        `Prompt tokens: ~${promptTokens}, Response tokens: ~${responseTokens}, Total tokens: ~${totalTokens}`
+        `Prompt tokens: ~${promptTokens}, Response tokens: ~${responseTokens}, Total tokens: ~${totalTokens}`,
     );
 
     this.sessionPromptTokens += promptTokens;
@@ -425,7 +446,7 @@ export class TokenTracker {
 
     return Math.ceil(
       wordCount * this.TOKENS_PER_WORD +
-        specialChars * this.TOKENS_PER_SPECIAL_CHAR
+        specialChars * this.TOKENS_PER_SPECIAL_CHAR,
     );
   }
-} 
+}
