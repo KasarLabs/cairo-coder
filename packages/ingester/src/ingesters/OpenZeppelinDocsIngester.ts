@@ -2,10 +2,7 @@ import * as fs from 'fs';
 import * as fsPromises from 'fs/promises';
 import * as path from 'path';
 import { Document } from '@langchain/core/documents';
-import {
-  BookChunk,
-  DocumentSource,
-} from '@cairo-coder/agents/types/index';
+import { BookChunk, DocumentSource } from '@cairo-coder/agents/types/index';
 import { BookConfig, BookPageDto } from '../utils/types';
 import { logger } from '@cairo-coder/agents/utils/index';
 import { AsciiDocIngesterConfig } from './AsciiDocIngester';
@@ -125,6 +122,6 @@ export class OpenZeppelinDocsIngester extends AsciiDocIngester {
   protected async createChunks(
     pages: BookPageDto[],
   ): Promise<Document<BookChunk>[]> {
-    return super.createChunks(pages, false);
+    return super.createChunks(pages, true);
   }
 }
