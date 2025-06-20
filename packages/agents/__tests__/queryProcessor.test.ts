@@ -1,10 +1,6 @@
 import { QueryProcessor } from '../src/core/pipeline/queryProcessor';
 import { BaseChatModel } from '@langchain/core/language_models/chat_models';
-import {
-  RagInput,
-  RagSearchConfig,
-  DocumentSource,
-} from '../src/types/index';
+import { RagInput, RagSearchConfig, DocumentSource } from '../src/types/index';
 import { mockDeep, MockProxy } from 'jest-mock-extended';
 import { AIMessage } from '@langchain/core/messages';
 
@@ -15,14 +11,23 @@ jest.mock('../src/utils/index', () => ({
     debug: jest.fn(),
     error: jest.fn(),
   },
-  formatChatHistoryAsString: jest.fn((history) => 
-    history.map((message) => `${message._getType()}: ${message.content}`).join('\n')
+  formatChatHistoryAsString: jest.fn((history) =>
+    history
+      .map((message) => `${message._getType()}: ${message.content}`)
+      .join('\n'),
   ),
   parseXMLContent: jest.fn((xml, tag) => {
     const regex = new RegExp(`<${tag}>(.*?)</${tag}>`, 'gs');
     const matches = [...xml.matchAll(regex)];
     return matches.map((match) => match[1].trim());
   }),
+  TokenTracker: {
+    trackFullUsage: jest.fn().mockReturnValue({
+      promptTokens: 100,
+      completionTokens: 50,
+      totalTokens: 150,
+    }),
+  },
 }));
 
 describe('QueryProcessor', () => {

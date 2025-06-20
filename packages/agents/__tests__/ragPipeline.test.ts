@@ -28,7 +28,20 @@ jest.mock('../src/utils/index', () => ({
     info: jest.fn(),
     debug: jest.fn(),
     error: jest.fn(),
-  }
+  },
+  TokenTracker: {
+    resetSessionCounters: jest.fn(),
+    getSessionTokenUsage: jest.fn().mockReturnValue({
+      promptTokens: 100,
+      responseTokens: 50,
+      totalTokens: 150,
+    }),
+    trackFullUsage: jest.fn().mockReturnValue({
+      promptTokens: 100,
+      completionTokens: 50,
+      totalTokens: 150,
+    }),
+  },
 }));
 
 describe('RagPipeline', () => {
