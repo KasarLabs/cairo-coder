@@ -24,9 +24,11 @@ export class AnswerGenerator {
     retrieved: RetrievedDocuments,
   ): Promise<IterableReadableStream<StreamEvent>> {
     const context = this.buildContext(retrieved);
-    const prompt = await this.createPrompt(input, context);
+    const promptString = await this.createPrompt(input, context);
 
     const modelName = this.llm.constructor.name || 'defaultLLM';
+
+    const prompt = [new HumanMessage(promptString)];
 
     const eventStream = this.llm.streamEvents(prompt, { version: 'v1' });
 
@@ -35,7 +37,7 @@ export class AnswerGenerator {
     const generator = this.createTokenTrackingStream(
       eventStream,
       modelName,
-      prompt,
+      promptString,
     );
     return {
       [Symbol.asyncIterator]: () => generator,

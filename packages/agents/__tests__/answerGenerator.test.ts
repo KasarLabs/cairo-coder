@@ -10,8 +10,9 @@ import {
 import { Document } from '@langchain/core/documents';
 import { mockDeep, MockProxy } from 'jest-mock-extended';
 import { IterableReadableStream } from '@langchain/core/utils/stream';
-import { BaseMessage, BaseMessageChunk } from '@langchain/core/messages';
+import { StreamEvent } from '@langchain/core/tracers/log_stream';
 import { BaseLanguageModelInput } from '@langchain/core/language_models/base';
+import { AIMessageChunk } from '@langchain/core/messages'; // ✅ AJOUTÉ
 
 // Mock the formatChatHistoryAsString utility
 jest.mock('../src/utils/index', () => ({
@@ -61,23 +62,21 @@ describe('AnswerGenerator', () => {
       testTemplate: '<test_template>Example test template</test_template>',
     };
 
-    // Mock the LLM stream method to return simulated stream
-    mockLLM.stream.mockImplementation(
-      (
-        input: BaseLanguageModelInput,
-      ): Promise<IterableReadableStream<BaseMessageChunk>> => {
-        return Promise.resolve({
-          [Symbol.asyncIterator]: async function* () {
-            yield {
-              content: 'This is a test response about Cairo.',
-              type: 'ai',
-              name: 'AI',
-              additional_kwargs: {},
-            };
+    // ✅ CHANGÉ: streamEvents au lieu de stream
+    (mockLLM.streamEvents as any) = jest.fn().mockReturnValue({
+      [Symbol.asyncIterator]: async function* () {
+        yield {
+          event: 'on_llm_stream',
+          data: { 
+            chunk: { content: 'This is a test response about Cairo.' }
           },
-        } as unknown as IterableReadableStream<BaseMessageChunk>);
+          run_id: 'test-run-123',
+          name: 'TestLLM',
+          tags: [],
+          metadata: {}
+        } as StreamEvent;
       },
-    );
+    } as IterableReadableStream<StreamEvent>);
 
     // Create the AnswerGenerator instance
     answerGenerator = new AnswerGenerator(mockLLM, mockConfig);
@@ -122,17 +121,18 @@ describe('AnswerGenerator', () => {
       const result = await answerGenerator.generate(input, retrievedDocs);
 
       // Assert
-      expect(mockLLM.stream).toHaveBeenCalled();
+      expect(mockLLM.streamEvents).toHaveBeenCalled(); // ✅ CHANGÉ: streamEvents
 
       // Collect the stream results
-      const messages: any[] = [];
-      for await (const message of result) {
-        messages.push(message);
+      const events: StreamEvent[] = [];
+      for await (const event of result) {
+        events.push(event);
       }
 
-      // Check that we got the expected message
-      expect(messages.length).toBe(1);
-      expect(messages[0].content).toBe('This is a test response about Cairo.');
+      // Check that we got the expected events
+      expect(events.length).toBe(1);
+      expect(events[0].event).toBe('on_llm_stream');
+      expect(events[0].data.chunk.content).toBe('This is a test response about Cairo.');
     });
 
     it('should include contract template when query is contract-related', async () => {
@@ -169,27 +169,35 @@ describe('AnswerGenerator', () => {
         processedQuery,
       };
 
-      // Create a spy on the LLM stream method to capture the actual prompt
+      // Create a spy on the LLM streamEvents method to capture the actual prompt
       let capturedPrompt: string | null = null;
-      mockLLM.stream.mockImplementation((prompt) => {
-        capturedPrompt = prompt as string;
-        return Promise.resolve({
-          [Symbol.asyncIterator]: async function* () {
-            yield {
-              content: 'This is a test response about Cairo contracts.',
-              type: 'ai',
-              name: 'AI',
-              additional_kwargs: {},
-            };
-          },
-        } as unknown as IterableReadableStream<BaseMessageChunk>);
+      const mockReturnValue = {
+        [Symbol.asyncIterator]: async function* () {
+          yield {
+            event: 'on_llm_stream',
+            data: { 
+              chunk: { content: 'This is a test response about Cairo contracts.' }
+            },
+            run_id: 'test-run-123',
+            name: 'TestLLM',
+            tags: [],
+            metadata: {}
+          } as StreamEvent;
+        },
+      } as IterableReadableStream<StreamEvent>;
+
+      (mockLLM.streamEvents as any) = jest.fn().mockImplementation((...args) => {
+        capturedPrompt = args[0] as string;
+        return mockReturnValue;
       });
 
       // Act
       await answerGenerator.generate(input, retrievedDocs);
 
       // Assert
-      expect(capturedPrompt).toContain(
+      expect(capturedPrompt).toBeDefined();
+      const promptString = JSON.stringify(capturedPrompt);
+      expect(promptString).toContain(
         '<contract_template>Example template</contract_template>',
       );
     });
@@ -229,27 +237,35 @@ describe('AnswerGenerator', () => {
         processedQuery,
       };
 
-      // Create a spy on the LLM stream method to capture the actual prompt
+      // Create a spy on the LLM streamEvents method to capture the actual prompt
       let capturedPrompt: string | null = null;
-      mockLLM.stream.mockImplementation((prompt) => {
-        capturedPrompt = prompt as string;
-        return Promise.resolve({
-          [Symbol.asyncIterator]: async function* () {
-            yield {
-              content: 'This is a test response about testing Cairo contracts.',
-              type: 'ai',
-              name: 'AI',
-              additional_kwargs: {},
-            };
-          },
-        } as unknown as IterableReadableStream<BaseMessageChunk>);
+      const mockReturnValue = {
+        [Symbol.asyncIterator]: async function* () {
+          yield {
+            event: 'on_llm_stream',
+            data: { 
+              chunk: { content: 'This is a test response about testing Cairo contracts.' }
+            },
+            run_id: 'test-run-123',
+            name: 'TestLLM',
+            tags: [],
+            metadata: {}
+          } as StreamEvent;
+        },
+      } as IterableReadableStream<StreamEvent>;
+
+      (mockLLM.streamEvents as any) = jest.fn().mockImplementation((...args) => {
+        capturedPrompt = args[0] as string;
+        return mockReturnValue;
       });
 
       // Act
       await answerGenerator.generate(input, retrievedDocs);
 
       // Assert
-      expect(capturedPrompt).toContain(
+      expect(capturedPrompt).toBeDefined();
+      const promptString = JSON.stringify(capturedPrompt);
+      expect(promptString).toContain(
         '<test_template>Example test template</test_template>',
       );
     });
@@ -273,27 +289,35 @@ describe('AnswerGenerator', () => {
         processedQuery,
       };
 
-      // Create a spy on the LLM stream method to capture the actual prompt
+      // Create a spy on the LLM streamEvents method to capture the actual prompt
       let capturedPrompt: string | null = null;
-      mockLLM.stream.mockImplementation((prompt) => {
-        capturedPrompt = prompt as string;
-        return Promise.resolve({
-          [Symbol.asyncIterator]: async function* () {
-            yield {
-              content: 'I cannot find any relevant information.',
-              type: 'ai',
-              name: 'AI',
-              additional_kwargs: {},
-            };
-          },
-        } as unknown as IterableReadableStream<BaseMessageChunk>);
+      const mockReturnValue = {
+        [Symbol.asyncIterator]: async function* () {
+          yield {
+            event: 'on_llm_stream',
+            data: { 
+              chunk: { content: 'I cannot find any relevant information.' }
+            },
+            run_id: 'test-run-123',
+            name: 'TestLLM',
+            tags: [],
+            metadata: {}
+          } as StreamEvent;
+        },
+      } as IterableReadableStream<StreamEvent>;
+
+      (mockLLM.streamEvents as any) = jest.fn().mockImplementation((...args) => {
+        capturedPrompt = args[0] as string;
+        return mockReturnValue;
       });
 
       // Act
       await answerGenerator.generate(input, retrievedDocs);
 
       // Assert
-      expect(capturedPrompt).toContain(
+      expect(capturedPrompt).toBeDefined();
+      const promptString = JSON.stringify(capturedPrompt);
+      expect(promptString).toContain(
         'Sorry, no relevant information was found.',
       );
     });
