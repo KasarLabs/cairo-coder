@@ -67,13 +67,13 @@ describe('AnswerGenerator', () => {
       [Symbol.asyncIterator]: async function* () {
         yield {
           event: 'on_llm_stream',
-          data: { 
-            chunk: { content: 'This is a test response about Cairo.' }
+          data: {
+            chunk: { content: 'This is a test response about Cairo.' },
           },
           run_id: 'test-run-123',
           name: 'TestLLM',
           tags: [],
-          metadata: {}
+          metadata: {},
         } as StreamEvent;
       },
     } as IterableReadableStream<StreamEvent>);
@@ -132,7 +132,9 @@ describe('AnswerGenerator', () => {
       // Check that we got the expected events
       expect(events.length).toBe(1);
       expect(events[0].event).toBe('on_llm_stream');
-      expect(events[0].data.chunk.content).toBe('This is a test response about Cairo.');
+      expect(events[0].data.chunk.content).toBe(
+        'This is a test response about Cairo.',
+      );
     });
 
     it('should include contract template when query is contract-related', async () => {
@@ -175,21 +177,25 @@ describe('AnswerGenerator', () => {
         [Symbol.asyncIterator]: async function* () {
           yield {
             event: 'on_llm_stream',
-            data: { 
-              chunk: { content: 'This is a test response about Cairo contracts.' }
+            data: {
+              chunk: {
+                content: 'This is a test response about Cairo contracts.',
+              },
             },
             run_id: 'test-run-123',
             name: 'TestLLM',
             tags: [],
-            metadata: {}
+            metadata: {},
           } as StreamEvent;
         },
       } as IterableReadableStream<StreamEvent>;
 
-      (mockLLM.streamEvents as any) = jest.fn().mockImplementation((...args) => {
-        capturedPrompt = args[0] as string;
-        return mockReturnValue;
-      });
+      (mockLLM.streamEvents as any) = jest
+        .fn()
+        .mockImplementation((...args) => {
+          capturedPrompt = args[0] as string;
+          return mockReturnValue;
+        });
 
       // Act
       await answerGenerator.generate(input, retrievedDocs);
@@ -243,21 +249,26 @@ describe('AnswerGenerator', () => {
         [Symbol.asyncIterator]: async function* () {
           yield {
             event: 'on_llm_stream',
-            data: { 
-              chunk: { content: 'This is a test response about testing Cairo contracts.' }
+            data: {
+              chunk: {
+                content:
+                  'This is a test response about testing Cairo contracts.',
+              },
             },
             run_id: 'test-run-123',
             name: 'TestLLM',
             tags: [],
-            metadata: {}
+            metadata: {},
           } as StreamEvent;
         },
       } as IterableReadableStream<StreamEvent>;
 
-      (mockLLM.streamEvents as any) = jest.fn().mockImplementation((...args) => {
-        capturedPrompt = args[0] as string;
-        return mockReturnValue;
-      });
+      (mockLLM.streamEvents as any) = jest
+        .fn()
+        .mockImplementation((...args) => {
+          capturedPrompt = args[0] as string;
+          return mockReturnValue;
+        });
 
       // Act
       await answerGenerator.generate(input, retrievedDocs);
@@ -295,21 +306,23 @@ describe('AnswerGenerator', () => {
         [Symbol.asyncIterator]: async function* () {
           yield {
             event: 'on_llm_stream',
-            data: { 
-              chunk: { content: 'I cannot find any relevant information.' }
+            data: {
+              chunk: { content: 'I cannot find any relevant information.' },
             },
             run_id: 'test-run-123',
             name: 'TestLLM',
             tags: [],
-            metadata: {}
+            metadata: {},
           } as StreamEvent;
         },
       } as IterableReadableStream<StreamEvent>;
 
-      (mockLLM.streamEvents as any) = jest.fn().mockImplementation((...args) => {
-        capturedPrompt = args[0] as string;
-        return mockReturnValue;
-      });
+      (mockLLM.streamEvents as any) = jest
+        .fn()
+        .mockImplementation((...args) => {
+          capturedPrompt = args[0] as string;
+          return mockReturnValue;
+        });
 
       // Act
       await answerGenerator.generate(input, retrievedDocs);

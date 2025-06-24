@@ -132,20 +132,22 @@ describe('RagPipeline', () => {
       };
 
       // Create a mock response stream
-    const mockStream = {
-      [Symbol.asyncIterator]: async function* () {
-        yield {
-          event: 'on_llm_stream',
-          data: { 
-            chunk: { content: 'This is a test answer about Cairo contracts.' }
-          },
-          run_id: 'test-run-123',
-          name: 'TestLLM',
-          tags: [],
-          metadata: {}
-        } as StreamEvent;
-      },
-    } as IterableReadableStream<StreamEvent>;
+      const mockStream = {
+        [Symbol.asyncIterator]: async function* () {
+          yield {
+            event: 'on_llm_stream',
+            data: {
+              chunk: {
+                content: 'This is a test answer about Cairo contracts.',
+              },
+            },
+            run_id: 'test-run-123',
+            name: 'TestLLM',
+            tags: [],
+            metadata: {},
+          } as StreamEvent;
+        },
+      } as IterableReadableStream<StreamEvent>;
       // Setup mock behavior
       mockQueryProcessor.process.mockResolvedValue(processedQuery);
       mockDocumentRetriever.retrieve.mockResolvedValue(retrievedDocs);
