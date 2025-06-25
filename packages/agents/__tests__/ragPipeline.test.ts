@@ -1,3 +1,4 @@
+import { StreamEvent } from '@langchain/core/tracers/log_stream';
 import { RagPipeline } from '../src/core/pipeline/ragPipeline';
 import { QueryProcessor } from '../src/core/pipeline/queryProcessor';
 import { DocumentRetriever } from '../src/core/pipeline/documentRetriever';
@@ -13,8 +14,8 @@ import {
 import { Document } from '@langchain/core/documents';
 import { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import { IterableReadableStream } from '@langchain/core/utils/stream';
-import { BaseMessage, AIMessage } from '@langchain/core/messages';
 import { mockDeep, MockProxy } from 'jest-mock-extended';
+import { AIMessage } from '@langchain/core/messages';
 import EventEmitter from 'events';
 
 // Mock the dependencies at the module level
@@ -133,10 +134,20 @@ describe('RagPipeline', () => {
       // Create a mock response stream
       const mockStream = {
         [Symbol.asyncIterator]: async function* () {
-          yield new AIMessage('This is a test answer about Cairo contracts.');
+          yield {
+            event: 'on_llm_stream',
+            data: {
+              chunk: {
+                content: 'This is a test answer about Cairo contracts.',
+              },
+            },
+            run_id: 'test-run-123',
+            name: 'TestLLM',
+            tags: [],
+            metadata: {},
+          } as StreamEvent;
         },
-      } as IterableReadableStream<BaseMessage>;
-
+      } as IterableReadableStream<StreamEvent>;
       // Setup mock behavior
       mockQueryProcessor.process.mockResolvedValue(processedQuery);
       mockDocumentRetriever.retrieve.mockResolvedValue(retrievedDocs);
