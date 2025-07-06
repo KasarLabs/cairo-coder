@@ -8,6 +8,7 @@
     "test-doc-quality": "ts-node src/testDocQuality.ts"
   },
   "dependencies": {
+    "@ax-llm/ax": "^12.0.23",
     "@iarna/toml": "^2.2.5",
     "@langchain/anthropic": "^0.2.18",
     "@langchain/community": "^0.3.32",

@@ -34,6 +34,16 @@ export async function initializeLLMConfig(): Promise<ModelConfig> {
       ];
 
     // Embedding model setup
+    // TODO(migrate-ax): this should be an AxAI service for embeddings.
+    // We should create a new AxAI service for embeddings.
+    // Example from doc:
+    //     // Initialize the AI service with your API key
+    // const embeddings = new AxAI({
+    //   name: 'openai', // You can use 'anthropic', 'google-gemini', etc.
+    //   apiKey: process.env.OPENAI_APIKEY as string,
+    // })
+    // Replace with the right hostedmodeconfig.
+
     const embeddingModelProvider =
       embeddingModelProviders[hostedModeConfig.DEFAULT_EMBEDDING_PROVIDER];
     const embeddings =

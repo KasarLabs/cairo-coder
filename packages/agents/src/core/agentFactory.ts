@@ -1,11 +1,11 @@
 import { BaseMessage } from '@langchain/core/messages';
-import { Embeddings } from '@langchain/core/embeddings';
+import { AxMultiServiceRouter } from '@ax-llm/ax';
 import { getAgentConfig, getAgentConfigById } from '../config/agent';
 import EventEmitter from 'events';
 import { RagPipeline } from './pipeline/ragPipeline';
 import { McpPipeline } from './pipeline/mcpPipeline';
 import { VectorStore } from '../db/postgresVectorStore';
-import { LLMConfig, RagSearchConfig } from '../types';
+import { RagSearchConfig } from '../types';
 import { getAgent } from '../config/agents';
 
 export class RagAgentFactory {
@@ -13,15 +13,14 @@ export class RagAgentFactory {
   static createAgent(
     message: string,
     history: BaseMessage[],
-    llm: LLMConfig,
-    embeddings: Embeddings,
+    axRouter: AxMultiServiceRouter,
     vectorStore: VectorStore,
     mcpMode: boolean = false,
   ): EventEmitter {
     const config = getAgentConfig(vectorStore);
     const pipeline = mcpMode
-      ? new McpPipeline(llm, embeddings, config)
-      : new RagPipeline(llm, embeddings, config);
+      ? new McpPipeline(axRouter, config)
+      : new RagPipeline(axRouter, config);
     return pipeline.execute({
       query: message,
       chatHistory: history,
@@ -34,8 +33,7 @@ export class RagAgentFactory {
     message: string,
     history: BaseMessage[],
     agentId: string,
-    llm: LLMConfig,
-    embeddings: Embeddings,
+    axRouter: AxMultiServiceRouter,
     vectorStore: VectorStore,
     mcpMode: boolean = false,
   ): Promise<EventEmitter> {
@@ -52,7 +50,7 @@ export class RagAgentFactory {
     );
 
     // Create pipeline based on agent configuration or MCP mode
-    const pipeline = this.createPipeline(mcpMode, llm, embeddings, config);
+    const pipeline = this.createPipeline(mcpMode, axRouter, config);
 
     return pipeline.execute({
       query: message,
@@ -63,14 +61,13 @@ export class RagAgentFactory {
 
   private static createPipeline(
     mcpMode: boolean,
-    llm: LLMConfig,
-    embeddings: Embeddings,
+    axRouter: AxMultiServiceRouter,
     config: RagSearchConfig,
   ): RagPipeline | McpPipeline {
     // MCP mode overrides pipeline type
     if (mcpMode) {
-      return new McpPipeline(llm, embeddings, config);
+      return new McpPipeline(axRouter, config);
     }
-    return new RagPipeline(llm, embeddings, config);
+    return new RagPipeline(axRouter, config);
   }
 }

@@ -1,5 +1,5 @@
-import { Embeddings } from '@langchain/core/embeddings';
 import { DocumentInterface } from '@langchain/core/documents';
+import { AxMultiServiceRouter } from '@ax-llm/ax';
 import { logger } from '../utils';
 import { VectorStoreConfig, DocumentSource } from '../types';
 import pg, { Pool, PoolClient } from 'pg';
@@ -90,18 +90,22 @@ class Query {
 export class VectorStore {
   private static instance: VectorStore | null = null;
   private pool: Pool;
-  private embeddings: Embeddings;
+  private axRouter: AxMultiServiceRouter;
   private tableName: string;
 
-  private constructor(pool: Pool, embeddings: Embeddings, tableName: string) {
+  private constructor(
+    pool: Pool,
+    axRouter: AxMultiServiceRouter,
+    tableName: string,
+  ) {
     this.pool = pool;
-    this.embeddings = embeddings;
+    this.axRouter = axRouter;
     this.tableName = tableName;
   }
 
   static async getInstance(
     config: VectorStoreConfig,
-    embeddings: Embeddings,
+    axRouter: AxMultiServiceRouter,
   ): Promise<VectorStore> {
     if (!VectorStore.instance) {
       const pool = new Pool({
@@ -123,7 +127,7 @@ export class VectorStore {
       const tableName = 'documents';
 
       // Create instance first, then initialize DB
-      VectorStore.instance = new VectorStore(pool, embeddings, tableName);
+      VectorStore.instance = new VectorStore(pool, axRouter, tableName);
       await VectorStore.instance.initializeDb();
     }
     return VectorStore.instance;
@@ -186,7 +190,8 @@ export class VectorStore {
   ): Promise<DocumentInterface[]> {
     try {
       // Generate embedding for the query
-      const embedding = await this.embeddings.embedQuery(query);
+      const embedResult = await this.axRouter.embed({ texts: [query] });
+      const embedding = embedResult.embeddings[0];
 
       // Build SQL query
       let sql = `
@@ -264,7 +269,10 @@ export class VectorStore {
 
       // Process all batches
       const batchEmbeddings = await Promise.all(
-        documentBatches.map((batch) => this.embeddings.embedDocuments(batch)),
+        documentBatches.map(async (batch) => {
+          const result = await this.axRouter.embed({ texts: batch });
+          return result.embeddings;
+        }),
       );
 
       // Merge all embeddings

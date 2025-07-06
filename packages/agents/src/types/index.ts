@@ -1,14 +1,8 @@
 import { BaseMessage } from '@langchain/core/messages';
 import { Document } from '@langchain/core/documents';
 import { VectorStore } from '../db/postgresVectorStore';
-import { BaseChatModel } from '@langchain/core/language_models/chat_models';
 
 export type AvailableAgents = 'cairoCoder';
-
-export interface LLMConfig {
-  defaultLLM: BaseChatModel;
-  fastLLM?: BaseChatModel;
-}
 
 export interface VectorStoreConfig {
   POSTGRES_USER: string;

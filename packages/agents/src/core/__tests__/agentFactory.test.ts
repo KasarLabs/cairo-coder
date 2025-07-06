@@ -1,8 +1,7 @@
 import { RagAgentFactory } from '../agentFactory';
 import { BaseMessage } from '@langchain/core/messages';
-import { Embeddings } from '@langchain/core/embeddings';
+import { AxMultiServiceRouter } from '@ax-llm/ax';
 import { VectorStore } from '../../db/postgresVectorStore';
-import { LLMConfig } from '../../types';
 import EventEmitter from 'events';
 
 // Mock dependencies
@@ -66,8 +65,7 @@ jest.mock('../../config/agent', () => ({
 describe('RagAgentFactory', () => {
   const mockMessage = 'Test query';
   const mockHistory: BaseMessage[] = [];
-  const mockLLM: LLMConfig = {} as LLMConfig;
-  const mockEmbeddings = {} as Embeddings;
+  const mockAxRouter = {} as AxMultiServiceRouter;
   const mockVectorStore = {} as VectorStore;
 
   beforeEach(() => {
@@ -80,8 +78,7 @@ describe('RagAgentFactory', () => {
         mockMessage,
         mockHistory,
         'cairo-coder',
-        mockLLM,
-        mockEmbeddings,
+        mockAxRouter,
         mockVectorStore,
         false,
       );
@@ -95,8 +92,7 @@ describe('RagAgentFactory', () => {
           mockMessage,
           mockHistory,
           'non-existent',
-          mockLLM,
-          mockEmbeddings,
+          mockAxRouter,
           mockVectorStore,
           false,
         ),

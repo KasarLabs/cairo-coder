@@ -1,5 +1,5 @@
-import { Embeddings } from '@langchain/core/embeddings';
 import { Document } from '@langchain/core/documents';
+import { AxMultiServiceRouter } from '@ax-llm/ax';
 import {
   ProcessedQuery,
   RetrievedDocuments,
@@ -13,7 +13,7 @@ import { computeSimilarity, logger } from '../../utils';
  */
 export class DocumentRetriever {
   constructor(
-    private embeddings: Embeddings,
+    private axRouter: AxMultiServiceRouter,
     private config: RagSearchConfig,
   ) {}
 
@@ -75,14 +75,20 @@ export class DocumentRetriever {
 
     const validDocs = docs.filter((doc) => doc.pageContent?.length > 0);
     const queryText = Array.isArray(query) ? query.join(' ') : query;
-    const [docEmbeddings, queryEmbedding] = await Promise.all([
-      this.embeddings.embedDocuments(validDocs.map((doc) => doc.pageContent)),
-      this.embeddings.embedQuery(queryText),
+    const [docEmbeddingsResult, queryEmbeddingResult] = await Promise.all([
+      this.axRouter.embed({
+        texts: validDocs.map((doc) => doc.pageContent),
+        embedModel: 'embeddings',
+      }),
+      this.axRouter.embed({ texts: [queryText], embedModel: 'embeddings' }),
     ]);
+
+    const docEmbeddings = docEmbeddingsResult.embeddings;
+    const queryEmbedding = queryEmbeddingResult.embeddings[0];
 
     const similarities = docEmbeddings.map((docEmbedding, i) => ({
       index: i,
-      similarity: computeSimilarity(queryEmbedding, docEmbedding),
+      similarity: computeSimilarity([...queryEmbedding], [...docEmbedding]),
     }));
 
     return similarities

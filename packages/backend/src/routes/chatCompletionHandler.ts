@@ -8,10 +8,10 @@ import {
 import {
   RagAgentFactory,
   TokenTracker,
-  LLMConfig,
   getVectorDbConfig,
 } from '@cairo-coder/agents';
 import { VectorStore } from '@cairo-coder/agents/db/postgresVectorStore';
+import { getAxRouter } from '@cairo-coder/agents/config/llm';
 import { ChatCompletionRequest } from '../types';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -48,9 +48,8 @@ export async function handleChatCompletion(
   // Get dependencies from app locals (backward compatibility)
   const chatModel = req.app.locals.defaultLLM;
   const fastChatModel = req.app.locals.fastLLM;
-  const embeddings = req.app.locals.embeddings;
 
-  if (!chatModel || !fastChatModel || !embeddings) {
+  if (!chatModel || !fastChatModel) {
     return res.status(500).json({
       error: {
         message: 'Internal Server Error: Models not initialized',
@@ -91,15 +90,12 @@ export async function handleChatCompletion(
   const mcp =
     req.headers['mcp'] === 'true' || req.headers['x-mcp-mode'] === 'true';
 
-  // Set up LLM config
-  const llmConfig: LLMConfig = {
-    defaultLLM: chatModel,
-    fastLLM: fastChatModel,
-  };
+  // Get the ax router instance
+  const axRouter = getAxRouter();
 
   // Get vector store
   const dbConfig = getVectorDbConfig();
-  const vectorStore = await VectorStore.getInstance(dbConfig, embeddings);
+  const vectorStore = await VectorStore.getInstance(dbConfig, axRouter);
 
   try {
     // Create agent based on whether agentId is provided
@@ -108,19 +104,11 @@ export async function handleChatCompletion(
           query,
           history,
           agentId,
-          llmConfig,
-          embeddings,
+          axRouter,
           vectorStore,
           mcp,
         )
-      : RagAgentFactory.createAgent(
-          query,
-          history,
-          llmConfig,
-          embeddings,
-          vectorStore,
-          mcp,
-        );
+      : RagAgentFactory.createAgent(query, history, axRouter, vectorStore, mcp);
 
     if (stream) {
       // Set up SSE headers

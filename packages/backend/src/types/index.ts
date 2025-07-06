@@ -1,7 +1,6 @@
 import eventEmitter from 'events';
 import { BaseMessage } from '@langchain/core/messages';
 import { Embeddings } from '@langchain/core/embeddings';
-import { LLMConfig } from '@cairo-coder/agents/types/index';
 import { VectorStore } from '@cairo-coder/agents/db/postgresVectorStore';
 import { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import { CorsOptions } from 'cors';
@@ -16,6 +15,7 @@ export interface ServerConfig {
 export interface ModelConfig {
   defaultLLM: BaseChatModel;
   fastLLM: BaseChatModel;
+  // TODO(migrate-ax): this should be an AxAI service for embeddings.
   embeddings: Embeddings;
 }
 
@@ -31,7 +31,6 @@ export interface HandlerOptions {
 export type SearchHandler = (
   content: string,
   history: BaseMessage[],
-  llm: LLMConfig,
   embeddings: Embeddings,
   options: HandlerOptions,
 ) => eventEmitter;

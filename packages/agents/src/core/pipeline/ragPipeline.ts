@@ -1,10 +1,5 @@
-import { Embeddings } from '@langchain/core/embeddings';
-import {
-  RagInput,
-  StreamHandler,
-  RagSearchConfig,
-  LLMConfig,
-} from '../../types';
+import { AxMultiServiceRouter } from '@ax-llm/ax';
+import { RagInput, StreamHandler, RagSearchConfig } from '../../types';
 import { QueryProcessor } from './queryProcessor';
 import { DocumentRetriever } from './documentRetriever';
 import { AnswerGenerator } from './answerGenerator';
@@ -20,13 +15,12 @@ export class RagPipeline {
   protected answerGenerator: AnswerGenerator;
 
   constructor(
-    private llmConfig: LLMConfig,
-    private embeddings: Embeddings,
+    private axRouter: AxMultiServiceRouter,
     public config: RagSearchConfig,
   ) {
-    this.queryProcessor = new QueryProcessor(llmConfig.fastLLM, config);
-    this.documentRetriever = new DocumentRetriever(embeddings, config);
-    this.answerGenerator = new AnswerGenerator(llmConfig.defaultLLM, config);
+    this.queryProcessor = new QueryProcessor(axRouter, config);
+    this.documentRetriever = new DocumentRetriever(axRouter, config);
+    this.answerGenerator = new AnswerGenerator(undefined as any, config);
   }
 
   execute(input: RagInput): EventEmitter {

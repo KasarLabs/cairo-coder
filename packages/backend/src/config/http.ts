@@ -6,9 +6,11 @@ import { Container } from './context';
 export function initializeHTTP(app: express.Application, container: Container) {
   const context = container.getContext();
 
+  // TODO: is this still required for "backward compatibility"?
   // Store models in app.locals for backward compatibility
   app.locals.defaultLLM = context.config.models.defaultLLM;
   app.locals.fastLLM = context.config.models.fastLLM;
+  // TODO(migrate-ax): this should be an AxAI service for embeddings.
   app.locals.embeddings = context.config.models.embeddings;
 
   // Mount routes
