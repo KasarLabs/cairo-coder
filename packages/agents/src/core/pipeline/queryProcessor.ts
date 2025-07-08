@@ -1,8 +1,5 @@
 import { AxMultiServiceRouter } from '@ax-llm/ax';
-import {
-  retrievalInstructions,
-  retrievalProgram,
-} from '../programs/retrieval.program';
+import { retrievalProgram } from '../programs/retrieval.program';
 import {
   DocumentSource,
   ProcessedQuery,
@@ -34,8 +31,6 @@ export class QueryProcessor {
       const result = await retrievalProgram.forward(
         this.axRouter,
         {
-          // TODO(ax-migration): we should not be injecting prompts here in the inputs, it should be smarter, handled by ax.
-          instructions: this.config.prompts.searchRetrieverPrompt,
           chat_history: context,
           query: input.query,
         },

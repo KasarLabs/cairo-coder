@@ -1,27 +1,18 @@
-import {
-  CAIROCODER_NO_SOURCE_PROMPT,
-  CAIROCODER_RESPONSE_PROMPT,
-  CAIROCODER_RETRIEVER_PROMPT,
-} from './cairoCoderPrompts';
-
-import {
-  SCARB_NO_SOURCE_PROMPT,
-  SCARB_RESPONSE_PROMPT,
-  SCARB_RETRIEVER_PROMPT,
-} from './scarbPrompts';
-
 import { AgentPrompts } from '../../types';
 
+// These prompts are no longer used as we've migrated to ax-native programs
+// Keeping them as empty strings to maintain backward compatibility
+// TODO(ax-migration): remove this once we've migrated to ax-native programs
 export const cairoCoderPrompts: AgentPrompts = {
-  searchRetrieverPrompt: CAIROCODER_RETRIEVER_PROMPT,
-  searchResponsePrompt: CAIROCODER_RESPONSE_PROMPT,
-  noSourceFoundPrompt: CAIROCODER_NO_SOURCE_PROMPT,
+  searchRetrieverPrompt: '', // Now handled by retrievalProgram with embedded instructions
+  searchResponsePrompt: '', // Now handled by generationProgram with embedded instructions
+  noSourceFoundPrompt: '', // Now handled by generationProgram demos
 };
 
 export const scarbPrompts: AgentPrompts = {
-  searchRetrieverPrompt: SCARB_RETRIEVER_PROMPT,
-  searchResponsePrompt: SCARB_RESPONSE_PROMPT,
-  noSourceFoundPrompt: SCARB_NO_SOURCE_PROMPT,
+  searchRetrieverPrompt: '', // Now handled by scarbRetrievalProgram with embedded instructions
+  searchResponsePrompt: '', // Now handled by scarbGenerationProgram with embedded instructions
+  noSourceFoundPrompt: '', // Now handled by scarbGenerationProgram demos
 };
 
 // Helper function to inject dynamic values into prompts

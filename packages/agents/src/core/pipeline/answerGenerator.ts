@@ -28,15 +28,14 @@ export class AnswerGenerator {
       input.chatHistory || [new HumanMessage('You are a helpful assistant.')],
     );
 
-    const promptString = `${this.config.prompts.searchResponsePrompt}\n\n${chatHistory}\n\nUser: ${input.query}\n\nContext:\n${context}`;
+    // TODO(ax-migration): we should not be injecting prompts here in the inputs, it should be smarter, handled by ax.
+    const promptString = `${chatHistory}\n\nUser: ${input.query}\n\nContext:\n${context}`;
 
     // Use streamingForward for streaming response
     const modelKey = getModelForTask('fast');
     const stream = generationProgram.streamingForward(
       this.axRouter,
       {
-        // TODO(ax-migration): we should not be injecting prompts here in the inputs, it should be smarter, handled by ax.
-        system_prompt: this.config.prompts.searchResponsePrompt,
         chat_history: chatHistory,
         query: input.query,
         context: context,
@@ -91,10 +90,7 @@ export class AnswerGenerator {
   private buildContext(retrieved: RetrievedDocuments): string {
     const docs = retrieved.documents;
     if (!docs.length) {
-      return (
-        this.config.prompts.noSourceFoundPrompt ||
-        'No relevant information found.'
-      );
+      return 'No relevant documentation found for this query.';
     }
 
     let context = docs
