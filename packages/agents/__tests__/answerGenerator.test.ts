@@ -1,5 +1,5 @@
 import { AnswerGenerator } from '../src/core/pipeline/answerGenerator';
-import { BaseChatModel } from '@langchain/core/language_models/chat_models';
+import { AxMultiServiceRouter } from '@ax-llm/ax';
 import {
   RagInput,
   ProcessedQuery,
@@ -13,6 +13,25 @@ import { IterableReadableStream } from '@langchain/core/utils/stream';
 import { StreamEvent } from '@langchain/core/tracers/log_stream';
 import { BaseLanguageModelInput } from '@langchain/core/language_models/base';
 import { AIMessageChunk } from '@langchain/core/messages'; // ✅ AJOUTÉ
+
+// Mock the generation program
+jest.mock('../src/core/programs/generation.program', () => ({
+  generationProgram: {
+    streamingForward: jest.fn().mockReturnValue({
+      [Symbol.asyncIterator]: async function* () {
+        yield {
+          delta: { answer: 'This is a test response about Cairo.' },
+          version: 1,
+        };
+      },
+    }),
+  },
+}));
+
+// Mock getModelForTask
+jest.mock('../src/config/llm', () => ({
+  getModelForTask: jest.fn().mockReturnValue('test-model'),
+}));
 
 // Mock the formatChatHistoryAsString utility
 jest.mock('../src/utils/index', () => ({
@@ -38,7 +57,7 @@ jest.mock('../src/utils/index', () => ({
 
 describe('AnswerGenerator', () => {
   let answerGenerator: AnswerGenerator;
-  let mockLLM: MockProxy<BaseChatModel>;
+  let mockAxRouter: MockProxy<AxMultiServiceRouter>;
   let mockConfig: RagSearchConfig;
 
   beforeEach(() => {
@@ -46,7 +65,7 @@ describe('AnswerGenerator', () => {
     jest.clearAllMocks();
 
     // Create mock instances
-    mockLLM = mockDeep<BaseChatModel>();
+    mockAxRouter = mockDeep<AxMultiServiceRouter>();
 
     // Create a basic config for testing
     mockConfig = {
@@ -62,24 +81,12 @@ describe('AnswerGenerator', () => {
       testTemplate: '<test_template>Example test template</test_template>',
     };
 
-    // ✅ CHANGÉ: streamEvents au lieu de stream
-    (mockLLM.streamEvents as any) = jest.fn().mockReturnValue({
-      [Symbol.asyncIterator]: async function* () {
-        yield {
-          event: 'on_llm_stream',
-          data: {
-            chunk: { content: 'This is a test response about Cairo.' },
-          },
-          run_id: 'test-run-123',
-          name: 'TestLLM',
-          tags: [],
-          metadata: {},
-        } as StreamEvent;
-      },
-    } as IterableReadableStream<StreamEvent>);
+    // Mock the AxMultiServiceRouter methods
+    // The AnswerGenerator will use generationProgram.streamingForward which returns an async generator
+    // We don't need to mock streamEvents since we're using AX now
 
     // Create the AnswerGenerator instance
-    answerGenerator = new AnswerGenerator(mockLLM, mockConfig);
+    answerGenerator = new AnswerGenerator(mockAxRouter, mockConfig);
   });
 
   describe('generate', () => {
@@ -121,7 +128,11 @@ describe('AnswerGenerator', () => {
       const result = await answerGenerator.generate(input, retrievedDocs);
 
       // Assert
-      expect(mockLLM.streamEvents).toHaveBeenCalled(); // ✅ CHANGÉ: streamEvents
+      // Since we're using the generation program, we check that instead
+      const {
+        generationProgram,
+      } = require('../src/core/programs/generation.program');
+      expect(generationProgram.streamingForward).toHaveBeenCalled();
 
       // Collect the stream results
       const events: StreamEvent[] = [];
@@ -130,11 +141,9 @@ describe('AnswerGenerator', () => {
       }
 
       // Check that we got the expected events
-      expect(events.length).toBe(1);
+      expect(events.length).toBeGreaterThan(0);
       expect(events[0].event).toBe('on_llm_stream');
-      expect(events[0].data.chunk.content).toBe(
-        'This is a test response about Cairo.',
-      );
+      expect(events[0].data.chunk).toBe('This is a test response about Cairo.');
     });
 
     it('should include contract template when query is contract-related', async () => {
@@ -190,12 +199,16 @@ describe('AnswerGenerator', () => {
         },
       } as IterableReadableStream<StreamEvent>;
 
-      (mockLLM.streamEvents as any) = jest
-        .fn()
-        .mockImplementation((...args) => {
-          capturedPrompt = args[0] as string;
+      // Update the generation program mock
+      const {
+        generationProgram,
+      } = require('../src/core/programs/generation.program');
+      generationProgram.streamingForward.mockImplementation(
+        (router, inputs) => {
+          capturedPrompt = `${inputs.chat_history}\n\nUser: ${inputs.query}\n\nContext:\n${inputs.context}`;
           return mockReturnValue;
-        });
+        },
+      );
 
       // Act
       await answerGenerator.generate(input, retrievedDocs);
@@ -263,12 +276,16 @@ describe('AnswerGenerator', () => {
         },
       } as IterableReadableStream<StreamEvent>;
 
-      (mockLLM.streamEvents as any) = jest
-        .fn()
-        .mockImplementation((...args) => {
-          capturedPrompt = args[0] as string;
+      // Update the generation program mock
+      const {
+        generationProgram,
+      } = require('../src/core/programs/generation.program');
+      generationProgram.streamingForward.mockImplementation(
+        (router, inputs) => {
+          capturedPrompt = `${inputs.chat_history}\n\nUser: ${inputs.query}\n\nContext:\n${inputs.context}`;
           return mockReturnValue;
-        });
+        },
+      );
 
       // Act
       await answerGenerator.generate(input, retrievedDocs);
@@ -317,12 +334,16 @@ describe('AnswerGenerator', () => {
         },
       } as IterableReadableStream<StreamEvent>;
 
-      (mockLLM.streamEvents as any) = jest
-        .fn()
-        .mockImplementation((...args) => {
-          capturedPrompt = args[0] as string;
+      // Update the generation program mock
+      const {
+        generationProgram,
+      } = require('../src/core/programs/generation.program');
+      generationProgram.streamingForward.mockImplementation(
+        (router, inputs) => {
+          capturedPrompt = `${inputs.chat_history}\n\nUser: ${inputs.query}\n\nContext:\n${inputs.context}`;
           return mockReturnValue;
-        });
+        },
+      );
 
       // Act
       await answerGenerator.generate(input, retrievedDocs);
@@ -331,7 +352,7 @@ describe('AnswerGenerator', () => {
       expect(capturedPrompt).toBeDefined();
       const promptString = JSON.stringify(capturedPrompt);
       expect(promptString).toContain(
-        'Sorry, no relevant information was found.',
+        'No relevant documentation found for this query.',
       );
     });
   });

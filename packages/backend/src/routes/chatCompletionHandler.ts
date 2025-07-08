@@ -45,19 +45,7 @@ export async function handleChatCompletion(
     });
   }
 
-  // Get dependencies from app locals (backward compatibility)
-  const chatModel = req.app.locals.defaultLLM;
-  const fastChatModel = req.app.locals.fastLLM;
-
-  if (!chatModel || !fastChatModel) {
-    return res.status(500).json({
-      error: {
-        message: 'Internal Server Error: Models not initialized',
-        type: 'server_error',
-        code: 'models_not_initialized',
-      },
-    });
-  }
+  // Models are now handled by the AxMultiServiceRouter in the agents package
 
   // Convert messages to BaseMessage format
   const history: BaseMessage[] = messages.map((msg: MessageType) => {

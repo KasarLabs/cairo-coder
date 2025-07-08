@@ -22,11 +22,6 @@ describe('Container', () => {
     const container = Container.getInstance();
     const mockConfig: ServerConfig = {
       port: 3000,
-      models: {
-        defaultLLM: {} as any,
-        fastLLM: {} as any,
-        embeddings: {} as any,
-      },
       cors: {
         origin: '*',
       },
@@ -49,11 +44,6 @@ describe('Container', () => {
     const container = Container.getInstance();
     const initialConfig: ServerConfig = {
       port: 3000,
-      models: {
-        defaultLLM: {} as any,
-        fastLLM: {} as any,
-        embeddings: {} as any,
-      },
       cors: {
         origin: '*',
       },

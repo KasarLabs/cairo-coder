@@ -3,7 +3,7 @@ import { RagPipeline } from '../src/core/pipeline/ragPipeline';
 import { QueryProcessor } from '../src/core/pipeline/queryProcessor';
 import { DocumentRetriever } from '../src/core/pipeline/documentRetriever';
 import { AnswerGenerator } from '../src/core/pipeline/answerGenerator';
-import { Embeddings } from '@langchain/core/embeddings';
+import { AxMultiServiceRouter } from '@ax-llm/ax';
 import {
   BookChunk,
   DocumentSource,
@@ -12,7 +12,6 @@ import {
   RetrievedDocuments,
 } from '../src/types/index';
 import { Document } from '@langchain/core/documents';
-import { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import { IterableReadableStream } from '@langchain/core/utils/stream';
 import { mockDeep, MockProxy } from 'jest-mock-extended';
 import { AIMessage } from '@langchain/core/messages';
@@ -47,11 +46,7 @@ jest.mock('../src/utils/index', () => ({
 
 describe('RagPipeline', () => {
   let ragPipeline: RagPipeline;
-  let mockLLMConfig: {
-    defaultLLM: MockProxy<BaseChatModel>;
-    fastLLM: MockProxy<BaseChatModel>;
-  };
-  let mockEmbeddings: MockProxy<Embeddings>;
+  let mockAxRouter: MockProxy<AxMultiServiceRouter>;
   let mockConfig: RagSearchConfig;
   let mockQueryProcessor: MockProxy<QueryProcessor>;
   let mockDocumentRetriever: MockProxy<DocumentRetriever>;
@@ -62,11 +57,7 @@ describe('RagPipeline', () => {
     jest.clearAllMocks();
 
     // Create mock instances
-    mockLLMConfig = {
-      defaultLLM: mockDeep<BaseChatModel>(),
-      fastLLM: mockDeep<BaseChatModel>(),
-    };
-    mockEmbeddings = mockDeep<Embeddings>();
+    mockAxRouter = mockDeep<AxMultiServiceRouter>();
 
     // Define a basic config for testing
     mockConfig = {
@@ -93,7 +84,7 @@ describe('RagPipeline', () => {
     jest.mocked(AnswerGenerator).mockImplementation(() => mockAnswerGenerator);
 
     // Instantiate the RagPipeline with mocks
-    ragPipeline = new RagPipeline(mockLLMConfig, mockEmbeddings, mockConfig);
+    ragPipeline = new RagPipeline(mockAxRouter, mockConfig);
   });
 
   describe('execute', () => {

@@ -1,8 +1,24 @@
 import { QueryProcessor } from '../src/core/pipeline/queryProcessor';
-import { BaseChatModel } from '@langchain/core/language_models/chat_models';
+import { AxMultiServiceRouter } from '@ax-llm/ax';
 import { RagInput, RagSearchConfig, DocumentSource } from '../src/types/index';
 import { mockDeep, MockProxy } from 'jest-mock-extended';
 import { AIMessage } from '@langchain/core/messages';
+
+// Mock the retrieval program
+jest.mock('../src/core/programs/retrieval.program', () => ({
+  retrievalProgram: {
+    forward: jest.fn().mockResolvedValue({
+      search_terms: ['cairo contract', 'starknet'],
+      resources: ['cairo_book', 'starknet_docs'],
+    }),
+  },
+  retrievalInstructions: 'Mock instructions',
+}));
+
+// Mock getModelForTask
+jest.mock('../src/config/llm', () => ({
+  getModelForTask: jest.fn().mockReturnValue('test-model'),
+}));
 
 // Mock the logger
 jest.mock('../src/utils/index', () => ({
@@ -32,7 +48,7 @@ jest.mock('../src/utils/index', () => ({
 
 describe('QueryProcessor', () => {
   let queryProcessor: QueryProcessor;
-  let mockLLM: MockProxy<BaseChatModel>;
+  let mockAxRouter: MockProxy<AxMultiServiceRouter>;
   let mockConfig: RagSearchConfig;
 
   beforeEach(() => {
@@ -40,7 +56,7 @@ describe('QueryProcessor', () => {
     jest.clearAllMocks();
 
     // Create mock instances
-    mockLLM = mockDeep<BaseChatModel>();
+    mockAxRouter = mockDeep<AxMultiServiceRouter>();
 
     // Create a basic config for testing
     mockConfig = {
@@ -53,15 +69,11 @@ describe('QueryProcessor', () => {
       vectorStore: mockDeep(),
     };
 
-    // Mock the LLM invoke method to return a simulated response
-    // Using a simple object that has the content property
-    mockLLM.invoke.mockResolvedValue({
-      content:
-        '<term>cairo contract</term><term>starknet</term><resources><resource>cairo_book</resource><resource>starknet_docs</resource></resources>',
-    } as any);
+    // Mock the retrieval program forward method
+    // The QueryProcessor now uses the retrieval program instead of direct LLM calls
 
     // Create the QueryProcessor instance
-    queryProcessor = new QueryProcessor(mockLLM, mockConfig);
+    queryProcessor = new QueryProcessor(mockAxRouter, mockConfig);
   });
 
   describe('process', () => {
@@ -77,7 +89,11 @@ describe('QueryProcessor', () => {
       const result = await queryProcessor.process(input);
 
       // Assert
-      expect(mockLLM.invoke).toHaveBeenCalled();
+      // Since we're using the retrieval program, we check that instead
+      const {
+        retrievalProgram,
+      } = require('../src/core/programs/retrieval.program');
+      expect(retrievalProgram.forward).toHaveBeenCalled();
 
       // Check that result contains the extracted terms
       expect(result).toEqual(
@@ -127,10 +143,14 @@ describe('QueryProcessor', () => {
         sources: [DocumentSource.CAIRO_BOOK],
       };
 
-      // Mock LLM to return a test-related response
-      mockLLM.invoke.mockResolvedValue({
-        content: '<term>cairo test</term><term>starknet foundry</term>',
-      } as any);
+      // Update the mock to return test-related response
+      const {
+        retrievalProgram,
+      } = require('../src/core/programs/retrieval.program');
+      retrievalProgram.forward.mockResolvedValue({
+        search_terms: ['cairo test', 'starknet foundry'],
+        resources: [],
+      });
 
       // Act
       const result = await queryProcessor.process(input);
@@ -147,10 +167,14 @@ describe('QueryProcessor', () => {
         sources: [DocumentSource.CAIRO_BOOK],
       };
 
-      // Mock LLM to return a direct answer instead of terms
-      mockLLM.invoke.mockResolvedValue({
-        content: '<response>How to develop contracts on Starknet?</response>',
-      } as any);
+      // Update the mock to return a different response
+      const {
+        retrievalProgram,
+      } = require('../src/core/programs/retrieval.program');
+      retrievalProgram.forward.mockResolvedValue({
+        search_terms: ['How to develop contracts on Starknet?'],
+        resources: [],
+      });
 
       // Act
       const result = await queryProcessor.process(input);
@@ -159,8 +183,9 @@ describe('QueryProcessor', () => {
       expect(result).toEqual(
         expect.objectContaining({
           original: input.query,
-          transformed: 'How to develop contracts on Starknet?',
+          transformed: [input.query, 'How to develop contracts on Starknet?'],
           isContractRelated: true, // because "contract" is in the transformed query
+          resources: [],
         }),
       );
     });

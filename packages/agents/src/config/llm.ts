@@ -132,8 +132,8 @@ export const getAxRouter = (): AxMultiServiceRouter => {
 };
 
 // Helper function to get the appropriate model based on config
-// TODO: this function sucks, we should not be using it anyway (at least not this way? or just return provider-fast / provider-default)
-// TODO: fix the names to return the proper names
+// TODO(ax-migration): this function sucks, we should not be using it anyway (at least not this way? or just return provider-fast / provider-default)
+// TODO(ax-migration): fix the names to return the proper names
 export const getModelForTask = (
   taskType: 'default' | 'fast' = 'default',
 ): string => {

@@ -5,14 +5,6 @@ import { Server } from 'http';
 import supertest from 'supertest';
 
 describe('Server', () => {
-  jest.mock('../src/config/llm', () => ({
-    initializeLLMConfig: jest.fn().mockResolvedValue({
-      defaultLLM: {},
-      fastLLM: {},
-      embeddings: {},
-    }),
-  }));
-
   // Mock config to avoid the getStarknetFoundryVersion issue
   jest.mock('@cairo-coder/agents/config/settings', () => ({
     getPort: jest.fn().mockReturnValue(3001),
@@ -24,7 +16,6 @@ describe('Server', () => {
     getStarknetFoundryDbConfig: jest.fn().mockReturnValue({}),
     getCairoByExampleDbConfig: jest.fn().mockReturnValue({}),
   }));
-
 
   // Mock HTTP handling to avoid actual initialization
   jest.mock('../src/config/http', () => ({
@@ -43,11 +34,6 @@ describe('Server', () => {
     container.setContext({
       config: {
         port: 3001,
-        models: {
-          defaultLLM: {} as any,
-          fastLLM: {} as any,
-          embeddings: {} as any,
-        },
         cors: {
           origin: '*',
         },

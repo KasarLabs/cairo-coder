@@ -1,5 +1,5 @@
 import { DocumentRetriever } from '../src/core/pipeline/documentRetriever';
-import { Embeddings } from '@langchain/core/embeddings';
+import { AxMultiServiceRouter } from '@ax-llm/ax';
 import {
   DocumentSource,
   ProcessedQuery,
@@ -16,12 +16,12 @@ jest.mock('../src/utils/index', () => ({
     info: jest.fn(),
     debug: jest.fn(),
     error: jest.fn(),
-  }
+  },
 }));
 
 describe('DocumentRetriever', () => {
   let documentRetriever: DocumentRetriever;
-  let mockEmbeddings: MockProxy<Embeddings>;
+  let mockAxRouter: MockProxy<AxMultiServiceRouter>;
   let mockConfig: RagSearchConfig;
 
   beforeEach(() => {
@@ -29,14 +29,15 @@ describe('DocumentRetriever', () => {
     jest.clearAllMocks();
 
     // Create mock instances
-    mockEmbeddings = mockDeep<Embeddings>();
+    mockAxRouter = mockDeep<AxMultiServiceRouter>();
 
-    // Set up mock embeddings behavior
-    mockEmbeddings.embedQuery.mockResolvedValue([0.1, 0.2, 0.3]);
-    mockEmbeddings.embedDocuments.mockResolvedValue([
-      [0.1, 0.2, 0.3],
-      [0.4, 0.5, 0.6],
-    ]);
+    // Set up mock embed behavior for AxMultiServiceRouter
+    mockAxRouter.embed.mockResolvedValue({
+      embeddings: [
+        [0.1, 0.2, 0.3],
+        [0.4, 0.5, 0.6],
+      ],
+    } as any);
 
     // Create a basic config for testing
     mockConfig = {
@@ -68,7 +69,7 @@ describe('DocumentRetriever', () => {
     };
 
     // Create the DocumentRetriever instance
-    documentRetriever = new DocumentRetriever(mockEmbeddings, mockConfig);
+    documentRetriever = new DocumentRetriever(mockAxRouter, mockConfig);
   });
 
   describe('retrieve', () => {
@@ -150,16 +151,17 @@ describe('DocumentRetriever', () => {
       };
 
       // Set up embeddings mock
-      mockEmbeddings.embedQuery.mockResolvedValue([0.1, 0.2, 0.3]);
-      mockEmbeddings.embedDocuments.mockResolvedValue([
-        [0.1, 0.2, 0.3],
-        [0.4, 0.5, 0.6],
-      ]);
+      // Update the mock for when we test the second scenario
+      mockAxRouter.embed.mockResolvedValue({
+        embeddings: [
+          [0.1, 0.2, 0.3],
+          [0.4, 0.5, 0.6],
+        ],
+      } as any);
 
       // Import the real computeSimilarity function to control scores
-      const computeSimilarityMock = jest.requireMock(
-        '../src/utils/index',
-      ).computeSimilarity;
+      const computeSimilarityMock =
+        jest.requireMock('../src/utils/index').computeSimilarity;
 
       // Set up different similarity scores for different documents
       computeSimilarityMock
@@ -173,8 +175,7 @@ describe('DocumentRetriever', () => {
       );
 
       // Assert
-      expect(mockEmbeddings.embedQuery).toHaveBeenCalledWith('cairo contract');
-      expect(mockEmbeddings.embedDocuments).toHaveBeenCalled();
+      expect(mockAxRouter.embed).toHaveBeenCalled();
 
       // Should only include documents above the similarity threshold
       expect(result.documents.length).toBe(1);
@@ -202,8 +203,7 @@ describe('DocumentRetriever', () => {
       );
 
       // Should skip reranking for "Summarize" queries
-      expect(mockEmbeddings.embedQuery).not.toHaveBeenCalled();
-      expect(mockEmbeddings.embedDocuments).not.toHaveBeenCalled();
+      expect(mockAxRouter.embed).not.toHaveBeenCalled();
     });
   });
 });

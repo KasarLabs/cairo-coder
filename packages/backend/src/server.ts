@@ -1,7 +1,6 @@
 import express from 'express';
 import http from 'http';
 import cors from 'cors';
-import { initializeLLMConfig } from './config/llm';
 import { getPort } from '@cairo-coder/agents/config/settings';
 import { logger } from '@cairo-coder/agents/utils/index';
 import { initializeHTTP } from './config/http';
@@ -13,13 +12,9 @@ export async function createApplication() {
     // Initialize container
     const container = Container.getInstance();
 
-    // Initialize LLM models
-    const models = await initializeLLMConfig();
-
     // Create config
     const config = {
       port: getPort(),
-      models,
       cors: {
         origin: '*',
       },
