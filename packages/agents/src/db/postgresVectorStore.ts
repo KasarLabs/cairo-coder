@@ -190,7 +190,10 @@ export class VectorStore {
   ): Promise<DocumentInterface[]> {
     try {
       // Generate embedding for the query
-      const embedResult = await this.axRouter.embed({ texts: [query] });
+      const embedResult = await this.axRouter.embed({
+        texts: [query],
+        embedModel: 'openai-embeddings',
+      });
       const embedding = embedResult.embeddings[0];
 
       // Build SQL query

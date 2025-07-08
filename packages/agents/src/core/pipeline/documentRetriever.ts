@@ -78,9 +78,12 @@ export class DocumentRetriever {
     const [docEmbeddingsResult, queryEmbeddingResult] = await Promise.all([
       this.axRouter.embed({
         texts: validDocs.map((doc) => doc.pageContent),
-        embedModel: 'embeddings',
+        embedModel: 'openai-embeddings',
       }),
-      this.axRouter.embed({ texts: [queryText], embedModel: 'embeddings' }),
+      this.axRouter.embed({
+        texts: [queryText],
+        embedModel: 'openai-embeddings',
+      }),
     ]);
 
     const docEmbeddings = docEmbeddingsResult.embeddings;

@@ -15,6 +15,7 @@ import {
   getGeminiApiKey,
   getHostedModeConfig,
 } from './settings';
+import { logger } from '../utils';
 
 // Initialize AxAI instances for each provider
 const initializeOpenAI = () => {
@@ -26,17 +27,17 @@ const initializeOpenAI = () => {
     apiKey,
     models: [
       {
-        key: 'fast',
+        key: 'openai-fast',
         model: AxAIOpenAIModel.GPT4OMini,
         description: 'Model for simple tasks and fast responses',
       },
       {
-        key: 'default',
+        key: 'openai-default',
         model: AxAIOpenAIModel.GPT4O,
         description: 'Model for complex tasks like code generation',
       },
       {
-        key: 'embeddings',
+        key: 'openai-embeddings',
         embedModel: AxAIOpenAIEmbedModel.TextEmbedding3Large,
         description: 'Model for embeddings',
       },
@@ -53,7 +54,7 @@ const initializeAnthropic = () => {
     apiKey,
     models: [
       {
-        key: 'default',
+        key: 'anthropic-default',
         model: AxAIAnthropicModel.Claude4Sonnet,
         description: 'Model for complex reasoning and code generation',
       },
@@ -70,12 +71,12 @@ const initializeGemini = () => {
     apiKey,
     models: [
       {
-        key: 'fast',
+        key: 'gemini-fast',
         model: AxAIGoogleGeminiModel.Gemini25Flash,
         description: 'Fast model for simple tasks',
       },
       {
-        key: 'default',
+        key: 'gemini-default',
         model: AxAIGoogleGeminiModel.Gemini25Pro,
         description: 'Advanced model for complex tasks',
       },
@@ -131,25 +132,25 @@ export const getAxRouter = (): AxMultiServiceRouter => {
 };
 
 // Helper function to get the appropriate model based on config
+// TODO: this function sucks, we should not be using it anyway (at least not this way? or just return provider-fast / provider-default)
 // TODO: fix the names to return the proper names
 export const getModelForTask = (
   taskType: 'default' | 'fast' = 'default',
 ): string => {
   const config = getHostedModeConfig();
 
+  logger.debug('Config:', config);
+
   if (taskType === 'fast' && config.DEFAULT_FAST_CHAT_PROVIDER) {
     // Map provider + model to router key
     const provider = config.DEFAULT_FAST_CHAT_PROVIDER;
     const model = config.DEFAULT_FAST_CHAT_MODEL;
 
-    if (provider === 'groq') return 'fast';
-    if (provider === 'anthropic') return 'default';
-    if (provider === 'openai' && model?.includes('mini')) return 'fast';
-    if (
-      (provider === 'google-gemini' || provider === 'gemini') &&
-      model?.includes('flash')
-    )
-      return 'fast';
+    if (provider === 'anthropic') return 'anthropic-default';
+    if (provider === 'openai') return 'openai-fast';
+    if (provider === 'google-gemini' || provider === 'gemini')
+      return 'gemini-fast';
+    if (provider === 'deepseek') return 'deepseek-fast';
   }
 
   // Default model selection based on provider config

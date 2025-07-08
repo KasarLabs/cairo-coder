@@ -1,5 +1,8 @@
 import { AxMultiServiceRouter } from '@ax-llm/ax';
-import { retrievalProgram } from '../programs/retrieval.program';
+import {
+  retrievalInstructions,
+  retrievalProgram,
+} from '../programs/retrieval.program';
 import {
   DocumentSource,
   ProcessedQuery,
@@ -26,10 +29,13 @@ export class QueryProcessor {
 
     try {
       // Use the AxGen program to get structured output
+      // TODO(ax-migration): this is a bit of a hack, we should not be using the model key here. the router should be smarter?
       const modelKey = getModelForTask('fast');
       const result = await retrievalProgram.forward(
         this.axRouter,
         {
+          // TODO(ax-migration): we should not be injecting prompts here in the inputs, it should be smarter, handled by ax.
+          instructions: this.config.prompts.searchRetrieverPrompt,
           chat_history: context,
           query: input.query,
         },

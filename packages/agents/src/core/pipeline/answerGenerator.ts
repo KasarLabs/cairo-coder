@@ -1,66 +1,88 @@
-import { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import {
-  ChatPromptTemplate,
-  MessagesPlaceholder,
-} from '@langchain/core/prompts';
-import { IterableReadableStream } from '@langchain/core/utils/stream';
+  AxAIService,
+  AxGenStreamingOut,
+  AxMultiServiceRouter,
+} from '@ax-llm/ax';
 import { logger, TokenTracker } from '../../utils';
-import { BaseMessage, HumanMessage } from '@langchain/core/messages';
+import { HumanMessage } from '@langchain/core/messages';
 import { RetrievedDocuments, RagInput, RagSearchConfig } from '../../types';
 import { formatChatHistoryAsString } from '../../utils';
-import { StreamEvent } from '@langchain/core/tracers/log_stream';
+import { getModelForTask } from '../../config/llm';
+import { generationProgram } from '../programs/generation.program';
 
 /**
  * Synthesizes a response based on retrieved documents and query context.
  */
 export class AnswerGenerator {
   constructor(
-    private llm: BaseChatModel,
+    private axRouter: AxMultiServiceRouter,
     private config: RagSearchConfig,
   ) {}
 
   async generate(
     input: RagInput,
     retrieved: RetrievedDocuments,
-  ): Promise<IterableReadableStream<StreamEvent>> {
+  ): Promise<AsyncGenerator<any>> {
     const context = this.buildContext(retrieved);
-    const promptString = await this.createPrompt(input, context);
-
-    const modelName = this.llm.constructor.name || 'defaultLLM';
-
-    const prompt = [new HumanMessage(promptString)];
-
-    const eventStream = this.llm.streamEvents(prompt, { version: 'v1' });
-
-    logger.debug('Started streaming response');
-
-    const generator = this.createTokenTrackingStream(
-      eventStream,
-      modelName,
-      promptString,
+    const chatHistory = formatChatHistoryAsString(
+      input.chatHistory || [new HumanMessage('You are a helpful assistant.')],
     );
-    return {
-      [Symbol.asyncIterator]: () => generator,
-    } as IterableReadableStream<StreamEvent>;
+
+    const promptString = `${this.config.prompts.searchResponsePrompt}\n\n${chatHistory}\n\nUser: ${input.query}\n\nContext:\n${context}`;
+
+    // Use streamingForward for streaming response
+    const modelKey = getModelForTask('fast');
+    const stream = generationProgram.streamingForward(
+      this.axRouter,
+      {
+        // TODO(ax-migration): we should not be injecting prompts here in the inputs, it should be smarter, handled by ax.
+        system_prompt: this.config.prompts.searchResponsePrompt,
+        chat_history: chatHistory,
+        query: input.query,
+        context: context,
+      },
+      { model: modelKey },
+    );
+
+    // Convert AX streaming format to the expected format
+    return this.createTokenTrackingStream(stream, modelKey, promptString);
   }
 
   private async *createTokenTrackingStream(
-    eventStream: IterableReadableStream<StreamEvent>,
+    stream: AxGenStreamingOut<{ answer: string }>,
     modelName: string,
     prompt: string,
-  ): AsyncGenerator<StreamEvent, void, unknown> {
+  ): AsyncGenerator<any, void, unknown> {
     try {
-      for await (const event of eventStream) {
-        if (event.event === 'on_llm_end') {
-          TokenTracker.trackFullUsage(
-            prompt,
-            event.data?.output?.generations?.[0]?.[0]?.message,
-            modelName,
-          );
-        }
+      let fullAnswer = '';
 
-        yield event;
+      for await (const chunk of stream) {
+        // Convert AX streaming format to expected format
+        if (chunk.delta?.answer) {
+          fullAnswer += chunk.delta.answer;
+
+          // Emit in a format compatible with the frontend
+          yield {
+            event: 'on_llm_stream',
+            data: {
+              chunk: chunk.delta.answer,
+            },
+          };
+        }
       }
+
+      // Track token usage at the end
+      TokenTracker.trackFullUsage(prompt, { content: fullAnswer }, modelName);
+
+      // Emit final event
+      yield {
+        event: 'on_llm_end',
+        data: {
+          output: {
+            generations: [[{ message: { content: fullAnswer } }]],
+          },
+        },
+      };
     } finally {
       logger.info(`LLM Call [${modelName}] completed`);
     }
@@ -90,24 +112,5 @@ export class AnswerGenerator {
       context += this.config.testTemplate;
     }
     return context;
-  }
-
-  private async createPrompt(
-    input: RagInput,
-    context: string,
-  ): Promise<string> {
-    if (!input.chatHistory || input.chatHistory.length === 0) {
-      input.chatHistory = [new HumanMessage('You are a helpful assistant.')];
-    }
-    const promptTemplate = ChatPromptTemplate.fromMessages([
-      ['system', this.config.prompts.searchResponsePrompt],
-      new MessagesPlaceholder('chat_history'),
-      ['user', '{query}\n\nContext:\n{context}'],
-    ]);
-    return promptTemplate.format({
-      query: input.query,
-      chat_history: formatChatHistoryAsString(input.chatHistory),
-      context,
-    });
   }
 }

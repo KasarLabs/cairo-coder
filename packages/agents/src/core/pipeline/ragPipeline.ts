@@ -20,7 +20,7 @@ export class RagPipeline {
   ) {
     this.queryProcessor = new QueryProcessor(axRouter, config);
     this.documentRetriever = new DocumentRetriever(axRouter, config);
-    this.answerGenerator = new AnswerGenerator(undefined as any, config);
+    this.answerGenerator = new AnswerGenerator(axRouter, config);
   }
 
   execute(input: RagInput): EventEmitter {
@@ -66,13 +66,8 @@ export class RagPipeline {
       for await (const event of stream) {
         if (event.event === 'on_llm_stream') {
           const chunk = event.data?.chunk;
-          if (chunk && chunk.content !== undefined && chunk.content !== '') {
-            handler.emitResponse({ content: chunk.content } as any);
-          }
-        } else if (event.event === 'on_llm_end') {
-          const content = event.data?.output?.content || '';
-          if (content) {
-            handler.emitResponse({ content } as any);
+          if (chunk !== undefined && chunk !== '') {
+            handler.emitResponse({ content: chunk } as any);
           }
         }
       }

@@ -11,7 +11,7 @@ const AVAILABLE_RESOURCES = [
   'scarb_docs',
 ];
 
-const instructions = `You are analyzing a Cairo programming query. Your task is to:
+export const retrievalInstructions = `You are analyzing a Cairo programming query. Your task is to:
 
 1. Analyze Coding Need: Examine the conversation and query to identify the specific Cairo programming problem, smart contract requirement, debugging issue, or concept clarification needed.
 
@@ -37,18 +37,21 @@ Resource Descriptions (Focus on Coding Relevance):
 Now analyze the provided conversation history and query to generate appropriate search terms and resources.
 `;
 
-export const retrievalProgram = ax`
-  ${f.string(instructions)} \n
-  chat_history:${f.string("Previous messages from this conversation, used to infer context and intent of the user's query.")} ->
-  query:${f.string('The users query that must be sanitized and classified. This is the main query that will be used to retrieve relevant documentation or code examples.')}
-  ->
-  search_terms:${f.array(f.string('A list of search terms that will be used to retrieve relevant documentation or code examples. Typically, keywords related to the query, linked to Cairo, Starknet, and programming in general.'))}
+export const retrievalProgram: AxGen<
+  { instructions: string; chat_history: string; query: string },
+  { search_terms: string[]; resources: string[] }
+> = ax`
+  instructions:${f.string('Program instructions')},
+  chat_history:${f.string("Previous messages from this conversation, used to infer context and intent of the user's query.")},
+  query:${f.string('The users query that must be sanitized and classified. This is the main query that will be used to retrieve relevant documentation or code examples.')} ->
+  search_terms:${f.array(f.string('A list of search terms that will be used to retrieve relevant documentation or code examples. Typically, keywords related to the query, linked to Cairo, Starknet, and programming in general.'))},
   resources:${f.array(f.string('A list of resources that will be used to retrieve relevant documentation or code examples.'))}
 `;
 
 // Set examples after creation
 retrievalProgram.setExamples([
   {
+    instructions: retrievalInstructions,
     chat_history: '',
     query:
       'How do I make a contract that keeps track of user scores using a map?',
@@ -63,6 +66,7 @@ retrievalProgram.setExamples([
     resources: ['cairo_book', 'starknet_docs', 'cairo_by_example'],
   },
   {
+    instructions: retrievalInstructions,
     chat_history: 'Discussion about tokens',
     query: 'I want to make my ERC20 token mintable only by the owner.',
     search_terms: [
@@ -77,6 +81,7 @@ retrievalProgram.setExamples([
     resources: ['openzeppelin_docs', 'starknet_docs', 'cairo_book'],
   },
   {
+    instructions: retrievalInstructions,
     chat_history: '',
     query:
       'My test fails when calling another contract. How do I mock contract calls in Foundry?',
