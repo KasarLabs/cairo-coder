@@ -5,6 +5,7 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  workflow_dispatch:
 
 jobs:
   starklings-benchmark:
@@ -30,19 +31,108 @@ jobs:
         with:
           version: 9
       
-      - name: Clone Starklings
-        run: git clone https://github.com/starknet-edu/starklings.git
-      
       - name: Install dependencies
         run: pnpm install
       
       - name: Build Cairo Coder
         run: pnpm build
       
+      - name: Setup PostgreSQL
+        uses: harmon758/postgresql-action@v1
+        with:
+          postgresql version: '15'
+          postgresql db: 'cairo_coder_test'
+          postgresql user: 'test_user'
+          postgresql password: 'test_password'
+      
+      - name: Install PostgreSQL client and pgvector
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client-15
+          sudo -u postgres psql -c "CREATE EXTENSION IF NOT EXISTS vector;"
+      
+      - name: Setup test configuration
+        run: |
+          mkdir -p packages/agents
+          cat > packages/agents/config.toml << 'EOL'
+          [API_KEYS]
+          OPENAI = "${{ secrets.OPENAI_API_KEY }}"
+          ANTHROPIC = "${{ secrets.ANTHROPIC_API_KEY }}"
+          GEMINI = "${{ secrets.GEMINI_API_KEY }}"
+
+          [VECTOR_DB]
+          POSTGRES_USER = "test_user"
+          POSTGRES_HOST = "localhost"
+          POSTGRES_DB = "cairo_coder_test"
+          POSTGRES_PASSWORD = "test_password"
+          POSTGRES_PORT = "5432"
+
+          [GENERAL]
+          PORT = 3001
+          SIMILARITY_MEASURE = "cosine"
+
+          [PROVIDERS]
+          DEFAULT_CHAT_PROVIDER = "gemini"
+          DEFAULT_CHAT_MODEL = "Gemini Flash 2.5"
+          DEFAULT_FAST_CHAT_PROVIDER = "gemini"
+          DEFAULT_FAST_CHAT_MODEL = "Gemini Flash 2.5"
+          DEFAULT_EMBEDDING_PROVIDER = "openai"
+          DEFAULT_EMBEDDING_MODEL = "Text embedding 3 large"
+
+          [VERSIONS]
+          STARKNET_FOUNDRY = "0.37.0"
+          SCARB = "2.9.2"
+          EOL
+      
+      - name: Create env file
+        run: |
+          cat > .env << 'EOL'
+          POSTGRES_USER=test_user
+          POSTGRES_HOST=localhost
+          POSTGRES_DB=cairo_coder_test
+          POSTGRES_PASSWORD=test_password
+          POSTGRES_PORT=5432
+          EOL
+      
+      - name: Clone Starklings
+        run: |
+          if [ ! -d "starklings" ]; then
+            git clone https://github.com/starknet-edu/starklings.git
+          fi
+      
+      - name: Install Scarb
+        run: |
+          curl --proto '=https' --tlsv1.2 -sSf https://docs.swmansion.com/scarb/install.sh | sh
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+      
       - name: Start Cairo Coder (background)
         run: |
           pnpm start &
-          sleep 30  # Attendre que le serveur démarre
+          # Attendre que le serveur démarre
+          for i in {1..30}; do
+            if curl -s http://localhost:3001/ > /dev/null; then
+              echo "Server is ready"
+              break
+            fi
+            echo "Waiting for server... ($i/30)"
+            sleep 2
+          done
+          
+          # Vérifier si le serveur est vraiment prêt
+          if ! curl -s http://localhost:3001/ > /dev/null; then
+            echo "Server failed to start"
+            exit 1
+          fi
       
       - name: Run Starklings Evaluation
-        run: node scripts/evaluate-with-starklings.js
+        run: node .github/scripts/starklings-evaluate.js
+        timeout-minutes: 30
+      
+      - name: Upload results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: starklings-results
+          path: |
+            starklings/
+            *.log
