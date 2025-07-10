@@ -1,5 +1,5 @@
 import { RagAgentFactory } from '../src/core/agentFactory';
-import { CairoCoderFlow } from '../src/core/pipeline/cairoCoderFlow';
+import { RagPipeline } from '../src/core/pipeline/ragPipeline';
 import { AvailableAgents, DocumentSource } from '../src/types';
 import { AxMultiServiceRouter } from '@ax-llm/ax';
 import { mockDeep, MockProxy } from 'jest-mock-extended';
@@ -7,7 +7,7 @@ import { BaseMessage } from '@langchain/core/messages';
 import EventEmitter from 'events';
 import { VectorStore } from '../src/db/postgresVectorStore';
 
-// Mock the agent configuration and CairoCoderFlow
+// Mock the agent configuration and RagPipeline
 jest.mock('../src/config/agent', () => ({
   getAgentConfig: jest.fn().mockImplementation(() => ({
     name: 'Cairo Coder',
@@ -26,8 +26,8 @@ jest.mock('../src/config/agent', () => ({
   })),
 }));
 
-jest.mock('../src/core/pipeline/cairoCoderFlow', () => ({
-  CairoCoderFlow: jest.fn().mockImplementation(() => ({
+jest.mock('../src/core/pipeline/ragPipeline', () => ({
+  RagPipeline: jest.fn().mockImplementation(() => ({
     execute: jest.fn().mockReturnValue(new EventEmitter()),
   })),
 }));
@@ -61,11 +61,11 @@ describe('RagAgentFactory', () => {
       );
 
       // Assert
-      expect(CairoCoderFlow).toHaveBeenCalledTimes(1);
+      expect(RagPipeline).toHaveBeenCalledTimes(1);
       expect(emitter).toBeInstanceOf(EventEmitter);
 
       // Check that the pipeline execute method was called with the right parameters
-      const executeSpy = (CairoCoderFlow as jest.Mock).mock.results[0].value
+      const executeSpy = (RagPipeline as jest.Mock).mock.results[0].value
         .execute;
       expect(executeSpy).toHaveBeenCalledWith(
         {
@@ -96,11 +96,11 @@ describe('RagAgentFactory', () => {
       );
 
       // Assert
-      expect(CairoCoderFlow).toHaveBeenCalledTimes(1);
+      expect(RagPipeline).toHaveBeenCalledTimes(1);
       expect(emitter).toBeInstanceOf(EventEmitter);
 
       // Check that the execute method was called with the right parameters
-      const executeSpy = (CairoCoderFlow as jest.Mock).mock.results[0].value
+      const executeSpy = (RagPipeline as jest.Mock).mock.results[0].value
         .execute;
       expect(executeSpy).toHaveBeenCalledWith(
         {

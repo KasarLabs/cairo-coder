@@ -1,7 +1,7 @@
 import { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import { AxMultiServiceRouter } from '@ax-llm/ax';
 import { Document } from '@langchain/core/documents';
-import { CairoCoderFlow } from './cairoCoderFlow';
+import { RagPipeline } from './ragPipeline';
 import {
   DocTestSet,
   TestCase,
@@ -27,7 +27,7 @@ import {
  * and evaluating the results to provide quality metrics and recommendations
  */
 export class DocQualityTester {
-  private pipeline: CairoCoderFlow;
+  private pipeline: RagPipeline;
   private evaluationLLM: BaseChatModel;
   private config: RagSearchConfig;
 
@@ -36,7 +36,7 @@ export class DocQualityTester {
     evaluationLLM: BaseChatModel,
     config: RagSearchConfig,
   ) {
-    this.pipeline = new CairoCoderFlow(axRouter, config);
+    this.pipeline = new RagPipeline(axRouter, config);
     this.evaluationLLM = evaluationLLM;
     this.config = config;
   }

@@ -6,8 +6,8 @@ import EventEmitter from 'events';
 
 // Mock dependencies
 jest.mock('../../db/postgresVectorStore');
-jest.mock('../pipeline/cairoCoderFlow', () => ({
-  CairoCoderFlow: jest.fn().mockImplementation(() => ({
+jest.mock('../pipeline/ragPipeline', () => ({
+  RagPipeline: jest.fn().mockImplementation(() => ({
     execute: jest.fn().mockReturnValue(new EventEmitter()),
   })),
 }));

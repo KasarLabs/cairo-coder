@@ -8,6 +8,10 @@ import {
 } from '../src/types/index';
 import { Document } from '@langchain/core/documents';
 import { mockDeep, MockProxy } from 'jest-mock-extended';
+import {
+  mockRetrievalProgram,
+  mockGenerationProgram,
+} from './mocks/mockPrograms';
 
 // Mock all utils including computeSimilarity and logger
 jest.mock('../src/utils/index', () => ({
@@ -46,10 +50,8 @@ describe('DocumentRetrieverProgram', () => {
     // Create a basic config for testing
     mockConfig = {
       name: 'Test Agent',
-      prompts: {
-        searchRetrieverPrompt: 'test retriever prompt',
-        searchResponsePrompt: 'test response prompt',
-      },
+      retrievalProgram: mockRetrievalProgram,
+      generationProgram: mockGenerationProgram,
       vectorStore: {
         similaritySearch: jest.fn().mockResolvedValue([
           new Document({

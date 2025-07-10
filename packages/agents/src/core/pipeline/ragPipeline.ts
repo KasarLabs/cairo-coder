@@ -10,15 +10,13 @@ import {
 } from '../../types';
 import { formatChatHistoryAsString, logger, TokenTracker } from '../../utils';
 import EventEmitter from 'events';
-import { getModelForTask } from '../../config/llm';
-import { generationProgram } from '../programs/generation.program';
 import { AxFlow } from '@ax-llm/ax';
 import { QueryProcessorProgram } from '../programs/queryProcessor.program';
 import { DocumentRetrieverProgram } from '../programs/documentRetriever.program';
-import { retrievalProgram } from '../programs/retrieval.program';
 import { Document } from '@langchain/core/documents';
+import { GET_DEFAULT_FAST_CHAT_MODEL } from '../../config/llm';
 
-export class CairoCoderFlow {
+export class RagPipeline {
   private retrievalFlow: AxFlow<
     { input: RagInput },
     {
@@ -34,7 +32,7 @@ export class CairoCoderFlow {
     private axRouter: AxMultiServiceRouter,
     private config: RagSearchConfig,
   ) {
-    const queryProg = new QueryProcessorProgram();
+    const queryProg = new QueryProcessorProgram(this.config.retrievalProgram);
     const retrieveProg = new DocumentRetrieverProgram(
       this.axRouter,
       this.config,
@@ -100,7 +98,7 @@ export class CairoCoderFlow {
   ): Promise<void> {
     try {
       TokenTracker.resetSessionCounters();
-      logger.info('Starting CairoCoderFlow pipeline', { query: input.query });
+      logger.info('Starting RagPipeline', { query: input.query });
 
       const state = await this.retrievalFlow.forward(
         this.axRouter,
@@ -124,9 +122,9 @@ export class CairoCoderFlow {
         const context = this.buildContext(retrieved);
         const chat_history = formatChatHistoryAsString(input.chatHistory);
         const query = input.query;
-        const modelKey = getModelForTask('fast');
+        const modelKey = GET_DEFAULT_FAST_CHAT_MODEL();
         // Note: not using the generationFlow here because streamingForward is not supported in AxFlow.
-        const stream = generationProgram.streamingForward(
+        const stream = this.config.generationProgram.streamingForward(
           this.axRouter,
           { chat_history, query, context },
           { model: modelKey },
@@ -189,10 +187,7 @@ export class CairoCoderFlow {
   private assembleDocuments(retrieved: RetrievedDocuments): string {
     const docs = retrieved.documents;
     if (!docs.length) {
-      return (
-        this.config.prompts.noSourceFoundPrompt ||
-        'No relevant information found.'
-      );
+      return 'No relevant information found.';
     }
 
     let context = docs.map((doc) => doc.pageContent).join('\n\n');
@@ -228,8 +223,8 @@ export class CairoCoderFlow {
     const context = this.buildContext(retrieved);
     const chat_history = formatChatHistoryAsString(input.chatHistory);
     const query = input.query;
-    const modelKey = getModelForTask('fast');
-    const answerStream = generationProgram.streamingForward(
+    const modelKey = GET_DEFAULT_FAST_CHAT_MODEL();
+    const answerStream = this.config.generationProgram.streamingForward(
       this.axRouter,
       { chat_history, query, context },
       { model: modelKey },

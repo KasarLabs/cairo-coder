@@ -2,7 +2,7 @@ import { BaseMessage } from '@langchain/core/messages';
 import { AxMultiServiceRouter } from '@ax-llm/ax';
 import { getAgentConfig, getAgentConfigById } from '../config/agent';
 import EventEmitter from 'events';
-import { CairoCoderFlow } from './pipeline/cairoCoderFlow';
+import { RagPipeline } from './pipeline/ragPipeline';
 import { VectorStore } from '../db/postgresVectorStore';
 import { RagSearchConfig } from '../types';
 import { getAgent } from '../config/agents';
@@ -17,7 +17,7 @@ export class RagAgentFactory {
     mcpMode: boolean = false,
   ): EventEmitter {
     const config = getAgentConfig(vectorStore);
-    const flow = new CairoCoderFlow(axRouter, config);
+    const flow = new RagPipeline(axRouter, config);
     return flow.execute(
       {
         query: message,
@@ -49,8 +49,8 @@ export class RagAgentFactory {
       vectorStore,
     );
 
-    // Create CairoCoderFlow with the configuration
-    const flow = new CairoCoderFlow(axRouter, config);
+    // Create RagPipeline with the configuration
+    const flow = new RagPipeline(axRouter, config);
 
     return flow.execute(
       {

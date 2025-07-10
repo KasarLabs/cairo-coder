@@ -1,6 +1,7 @@
 import { BaseMessage } from '@langchain/core/messages';
 import { Document } from '@langchain/core/documents';
 import { VectorStore } from '../db/postgresVectorStore';
+import { AxGen } from '@ax-llm/ax';
 
 export type AvailableAgents = 'cairoCoder';
 
@@ -43,15 +44,8 @@ export type RecursivePartial<T> = {
   [P in keyof T]?: RecursivePartial<T[P]>;
 };
 
-export interface AgentPrompts {
-  searchRetrieverPrompt: string;
-  searchResponsePrompt: string;
-  noSourceFoundPrompt?: string;
-}
-
 export interface AgentConfig {
   name: string;
-  prompts: AgentPrompts;
   vectorStore: VectorStore;
   preprocessDocs?: (docs: Document[]) => Promise<Document[]>;
 }
@@ -88,6 +82,8 @@ export interface RagSearchConfig extends AgentConfig {
   maxSourceCount?: number;
   similarityThreshold?: number;
   sources?: DocumentSource | DocumentSource[];
+  retrievalProgram: AxGen<any, any>;
+  generationProgram: AxGen<any, any>;
 }
 
 export enum DocumentSource {

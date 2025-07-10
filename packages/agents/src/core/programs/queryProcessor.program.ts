@@ -1,13 +1,13 @@
 import { AxAIService, AxGen, AxProgram } from '@ax-llm/ax';
-import { retrievalProgram, validateResources } from './retrieval.program';
-import { getModelForTask } from '../../config/llm';
+import { validateResources } from './retrieval.program';
 import { ProcessedQuery, DocumentSource } from '../../types';
+import { GET_DEFAULT_FAST_CHAT_MODEL } from '../../config/llm';
 
 export class QueryProcessorProgram extends AxGen<
   { chat_history: string; query: string },
   { processedQuery: ProcessedQuery }
 > {
-  constructor() {
+  constructor(private retrievalProgram: AxGen<any, any>) {
     super(`chat_history:string, query:string -> processedQuery:json`);
   }
 
@@ -15,10 +15,11 @@ export class QueryProcessorProgram extends AxGen<
     ai: AxAIService,
     { chat_history, query }: { chat_history: string; query: string },
   ): Promise<{ processedQuery: ProcessedQuery }> {
-    const result = await retrievalProgram.forward(
+    const modelKey = GET_DEFAULT_FAST_CHAT_MODEL();
+    const result = await this.retrievalProgram.forward(
       ai,
       { chat_history, query },
-      { model: getModelForTask('fast') },
+      { model: modelKey },
     );
 
     const searchTerms = result.search_terms as string[];

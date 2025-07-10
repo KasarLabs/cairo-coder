@@ -1,4 +1,4 @@
-import { CairoCoderFlow } from '../src/core/pipeline/cairoCoderFlow';
+import { RagPipeline } from '../src/core/pipeline/ragPipeline';
 import { AxMultiServiceRouter } from '@ax-llm/ax';
 import {
   BookChunk,
@@ -9,6 +9,10 @@ import {
 import { Document } from '@langchain/core/documents';
 import { mockDeep, MockProxy } from 'jest-mock-extended';
 import EventEmitter from 'events';
+import {
+  mockRetrievalProgram,
+  mockGenerationProgram,
+} from './mocks/mockPrograms';
 
 // Mock the utils including logger
 jest.mock('../src/utils/index', () => ({
@@ -38,12 +42,12 @@ jest.mock('../src/config/llm', () => ({
   getModelForTask: jest.fn().mockReturnValue('test-model'),
 }));
 
-// Mock CairoCoderFlow to avoid AxFlow complexity in tests
-jest.mock('../src/core/pipeline/cairoCoderFlow', () => {
+// Mock RagPipeline to avoid AxFlow complexity in tests
+jest.mock('../src/core/pipeline/ragPipeline', () => {
   const EventEmitter = require('events');
 
   return {
-    CairoCoderFlow: jest.fn().mockImplementation(() => ({
+    RagPipeline: jest.fn().mockImplementation(() => ({
       execute: jest.fn().mockReturnValue(new EventEmitter()),
       executeRetrievalForTesting: jest.fn().mockResolvedValue({
         processedQuery: {
@@ -71,7 +75,7 @@ jest.mock('../src/core/pipeline/cairoCoderFlow', () => {
   };
 });
 
-describe('CairoCoderFlow', () => {
+describe('RagPipeline', () => {
   let cairoCoderFlow: any;
   let mockAxRouter: MockProxy<AxMultiServiceRouter>;
   let mockConfig: RagSearchConfig;
@@ -86,20 +90,18 @@ describe('CairoCoderFlow', () => {
     // Define a basic config for testing
     mockConfig = {
       name: 'Test Agent',
-      prompts: {
-        searchRetrieverPrompt: 'test retriever prompt',
-        searchResponsePrompt: 'test response prompt',
-      },
       vectorStore: mockDeep(),
       maxSourceCount: 5,
       similarityThreshold: 0.5,
+      retrievalProgram: mockRetrievalProgram,
+      generationProgram: mockGenerationProgram,
     };
 
-    // Get the mocked CairoCoderFlow constructor
-    const { CairoCoderFlow } = require('../src/core/pipeline/cairoCoderFlow');
+    // Get the mocked RagPipeline constructor
+    const { RagPipeline } = require('../src/core/pipeline/ragPipeline');
 
-    // Instantiate the mocked CairoCoderFlow
-    cairoCoderFlow = new CairoCoderFlow(mockAxRouter, mockConfig);
+    // Instantiate the mocked RagPipeline
+    cairoCoderFlow = new RagPipeline(mockAxRouter, mockConfig);
   });
 
   describe('execute', () => {

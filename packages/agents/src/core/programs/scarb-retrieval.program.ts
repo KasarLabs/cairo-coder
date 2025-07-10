@@ -1,7 +1,7 @@
 import { ax, AxGen, f } from '@ax-llm/ax';
-import { AVAILABLE_RESOURCES } from './retrieval.program';
+import { RESOURCE_DESCRIPTIONS_STRING } from './retrieval.program';
 
-const RETRIEVAL_INSTRUCTIONS = `Analyze the user's Scarb build tool query to generate search terms for Scarb documentation.
+const SEARCH_TERMS_INSTRUCTIONS = `A list of search terms that will be used to retrieve relevant documentation or code examples through vector search.
 
 Instructions:
 1. Identify specific Scarb features, commands, configuration issues, or troubleshooting needs
@@ -11,15 +11,15 @@ Instructions:
 5. Return empty arrays for non-Scarb queries
 `;
 
-const RESOURCES_SELECTION_INSTRUCTIONS = `Select relevant documentation resources from: ${AVAILABLE_RESOURCES.join(', ')}`;
+const RESOURCES_SELECTION_INSTRUCTIONS = `Select relevant documentation resources from: ${RESOURCE_DESCRIPTIONS_STRING}`;
 
 export const scarbRetrievalProgram: AxGen<
   { chat_history: string; query: string },
   { search_terms: string[]; resources: string[] }
 > = ax`
   chat_history:${f.string('Previous messages from this conversation')},
-  query:${f.string('The users Scarb-related query')} ->
-  search_terms:${f.array(f.string(RETRIEVAL_INSTRUCTIONS))},
+  query:${f.string("The user's query that must be sanitized and classified. This is the main query that will be used to retrieve relevant documentation or code examples.")} ->
+  search_terms:${f.array(f.string(SEARCH_TERMS_INSTRUCTIONS))},
   resources:${f.array(f.string(RESOURCES_SELECTION_INSTRUCTIONS))}
 `;
 

@@ -17,6 +17,66 @@ import {
 } from './settings';
 import { logger } from '../utils';
 
+export const GET_DEFAULT_FAST_CHAT_MODEL = () => {
+  const config = getHostedModeConfig();
+  const provider = config.DEFAULT_FAST_CHAT_PROVIDER;
+  const model = config.DEFAULT_FAST_CHAT_MODEL;
+
+  // Map provider and model to the corresponding key
+  if (provider === 'gemini' && model === 'Gemini Flash 2.5') {
+    return 'gemini-fast';
+  }
+  if (provider === 'openai' && model === 'GPT-4o Mini') {
+    return 'openai-fast';
+  }
+  if (provider === 'openai' && model === 'GPT-4o') {
+    return 'openai-default';
+  }
+  if (provider === 'anthropic' && model === 'Claude 4 Sonnet') {
+    return 'anthropic-default';
+  }
+
+  // Default fallback
+  return 'gemini-fast';
+};
+
+export const GET_DEFAULT_CHAT_MODEL = () => {
+  const config = getHostedModeConfig();
+  const provider = config.DEFAULT_CHAT_PROVIDER;
+  const model = config.DEFAULT_CHAT_MODEL;
+
+  // Map provider and model to the corresponding key
+  if (provider === 'gemini' && model === 'Gemini Flash 2.5') {
+    return 'gemini-fast';
+  }
+  if (provider === 'openai' && model === 'GPT-4o Mini') {
+    return 'openai-fast';
+  }
+  if (provider === 'openai' && model === 'GPT-4o') {
+    return 'openai-default';
+  }
+  if (provider === 'anthropic' && model === 'Claude 4 Sonnet') {
+    return 'anthropic-default';
+  }
+
+  // Default fallback
+  return 'gemini-fast';
+};
+
+const GET_DEFAULT_EMBEDDING_MODEL = () => {
+  const config = getHostedModeConfig();
+  const provider = config.DEFAULT_EMBEDDING_PROVIDER;
+  const model = config.DEFAULT_EMBEDDING_MODEL;
+
+  // Map provider and model to the corresponding key
+  if (provider === 'openai' && model === 'Text embedding 3 large') {
+    return 'openai-embeddings';
+  }
+
+  // Default fallback
+  return 'openai-embeddings';
+};
+
 // Initialize AxAI instances for each provider
 const initializeOpenAI = () => {
   const apiKey = getOpenaiApiKey();
@@ -84,16 +144,6 @@ const initializeGemini = () => {
   });
 };
 
-const initializeGroq = () => {
-  const apiKey = getGroqApiKey();
-  return null;
-};
-
-const initializeDeepSeek = () => {
-  const apiKey = getDeepseekApiKey();
-  return null;
-};
-
 // Create and export the singleton router instance
 let axRouter: AxMultiServiceRouter | null = null;
 
@@ -112,13 +162,6 @@ export const getAxRouter = (): AxMultiServiceRouter => {
   const gemini = initializeGemini();
   if (gemini) services.push(gemini);
 
-  // TODO(migrate-ax): remove dead code
-  const groq = initializeGroq();
-  if (groq) services.push(groq);
-
-  const deepseek = initializeDeepSeek();
-  if (deepseek) services.push(deepseek);
-
   if (services.length === 0) {
     throw new Error(
       'No LLM providers configured. Please set at least one API key in config.toml',
@@ -129,39 +172,4 @@ export const getAxRouter = (): AxMultiServiceRouter => {
   axRouter = new AxMultiServiceRouter(services);
 
   return axRouter;
-};
-
-// Helper function to get the appropriate model based on config
-// TODO(ax-migration): this function sucks, we should not be using it anyway (at least not this way? or just return provider-fast / provider-default)
-// TODO(ax-migration): fix the names to return the proper names
-export const getModelForTask = (
-  taskType: 'default' | 'fast' = 'default',
-): string => {
-  const config = getHostedModeConfig();
-
-  logger.debug('Config:', config);
-
-  if (taskType === 'fast' && config.DEFAULT_FAST_CHAT_PROVIDER) {
-    // Map provider + model to router key
-    const provider = config.DEFAULT_FAST_CHAT_PROVIDER;
-    const model = config.DEFAULT_FAST_CHAT_MODEL;
-
-    if (provider === 'anthropic') return 'anthropic-default';
-    if (provider === 'openai') return 'openai-fast';
-    if (provider === 'google-gemini' || provider === 'gemini')
-      return 'gemini-fast';
-    if (provider === 'deepseek') return 'deepseek-fast';
-  }
-
-  // Default model selection based on provider config
-  const defaultProvider = config.DEFAULT_CHAT_PROVIDER;
-
-  if (defaultProvider === 'openai') return 'default';
-  if (defaultProvider === 'anthropic') return 'default';
-  if (defaultProvider === 'google-genai' || defaultProvider === 'gemini')
-    return 'default';
-  if (defaultProvider === 'deepseek') return 'default';
-
-  // Fallback to any available model
-  return 'default';
 };

@@ -2,15 +2,10 @@ import { QueryProcessorProgram } from '../src/core/programs/queryProcessor.progr
 import { AxAIService } from '@ax-llm/ax';
 import { DocumentSource } from '../src/types/index';
 import { mockDeep, MockProxy } from 'jest-mock-extended';
+import { mockRetrievalProgram } from './mocks/mockPrograms';
 
 // Mock the retrieval program
 jest.mock('../src/core/programs/retrieval.program', () => ({
-  retrievalProgram: {
-    forward: jest.fn().mockResolvedValue({
-      search_terms: ['cairo contract', 'starknet'],
-      resources: ['cairo_book', 'starknet_docs'],
-    }),
-  },
   validateResources: jest.fn((resources) =>
     resources.filter((r) =>
       Object.values(DocumentSource).includes(r as DocumentSource),
@@ -21,6 +16,7 @@ jest.mock('../src/core/programs/retrieval.program', () => ({
 // Mock getModelForTask
 jest.mock('../src/config/llm', () => ({
   getModelForTask: jest.fn().mockReturnValue('test-model'),
+  GET_DEFAULT_FAST_CHAT_MODEL: jest.fn().mockReturnValue('test-model'),
 }));
 
 describe('QueryProcessorProgram', () => {
@@ -34,8 +30,14 @@ describe('QueryProcessorProgram', () => {
     // Create mock instances
     mockAI = mockDeep<AxAIService>();
 
+    // Configure mock retrieval program
+    mockRetrievalProgram.forward = jest.fn().mockResolvedValue({
+      search_terms: ['cairo contract', 'starknet'],
+      resources: ['cairo_book', 'starknet_docs'],
+    });
+
     // Create the QueryProcessorProgram instance
-    queryProcessorProgram = new QueryProcessorProgram();
+    queryProcessorProgram = new QueryProcessorProgram(mockRetrievalProgram);
   });
 
   describe('forward', () => {
@@ -50,10 +52,7 @@ describe('QueryProcessorProgram', () => {
       const result = await queryProcessorProgram.forward(mockAI, input);
 
       // Assert
-      const {
-        retrievalProgram,
-      } = require('../src/core/programs/retrieval.program');
-      expect(retrievalProgram.forward).toHaveBeenCalledWith(mockAI, input, {
+      expect(mockRetrievalProgram.forward).toHaveBeenCalledWith(mockAI, input, {
         model: 'test-model',
       });
 
@@ -78,10 +77,7 @@ describe('QueryProcessorProgram', () => {
       };
 
       // Update the mock to return test-related response
-      const {
-        retrievalProgram,
-      } = require('../src/core/programs/retrieval.program');
-      retrievalProgram.forward.mockResolvedValueOnce({
+      mockRetrievalProgram.forward = jest.fn().mockResolvedValue({
         search_terms: ['cairo testing', 'starknet foundry'],
         resources: ['starknet_foundry'],
       });
@@ -109,10 +105,7 @@ describe('QueryProcessorProgram', () => {
       };
 
       // Update the mock to return empty search terms
-      const {
-        retrievalProgram,
-      } = require('../src/core/programs/retrieval.program');
-      retrievalProgram.forward.mockResolvedValueOnce({
+      mockRetrievalProgram.forward = jest.fn().mockResolvedValue({
         search_terms: [],
         resources: [],
       });
@@ -138,10 +131,7 @@ describe('QueryProcessorProgram', () => {
       };
 
       // Update the mock to return some invalid resources
-      const {
-        retrievalProgram,
-      } = require('../src/core/programs/retrieval.program');
-      retrievalProgram.forward.mockResolvedValueOnce({
+      mockRetrievalProgram.forward = jest.fn().mockResolvedValue({
         search_terms: ['cairo usage'],
         resources: ['cairo_book', 'invalid_resource', 'starknet_docs'],
       });
@@ -164,10 +154,7 @@ describe('QueryProcessorProgram', () => {
       };
 
       // Update the mock to return contract-related terms
-      const {
-        retrievalProgram,
-      } = require('../src/core/programs/retrieval.program');
-      retrievalProgram.forward.mockResolvedValueOnce({
+      mockRetrievalProgram.forward = jest.fn().mockResolvedValue({
         search_terms: ['storage mapping', 'smart contract storage'],
         resources: ['cairo_book'],
       });

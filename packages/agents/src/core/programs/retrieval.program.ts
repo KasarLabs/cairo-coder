@@ -12,7 +12,7 @@ export const AVAILABLE_RESOURCES = [
 ] as const;
 
 // Resource descriptions for internal reference (kept for demos)
-const RESOURCE_DESCRIPTIONS = {
+export const RESOURCE_DESCRIPTIONS = {
   cairo_book:
     'The Cairo Programming Language Book. Essential for core language syntax, semantics, types (felt252, structs, enums, Vec), traits, generics, control flow, memory management, writing tests, organizing a project, standard library usage, starknet interactions. Crucial for smart contract structure, storage, events, ABI, syscalls, contract deployment, interaction, L1<>L2 messaging, Starknet-specific attributes.',
   starknet_docs:
@@ -28,6 +28,12 @@ const RESOURCE_DESCRIPTIONS = {
   scarb_docs:
     'Scarb Documentation. For using the Scarb package manager: building, compiling, generating compilation artifacts, managing dependencies, configuration of Scarb.toml.',
 };
+
+export const RESOURCE_DESCRIPTIONS_STRING = Object.entries(
+  RESOURCE_DESCRIPTIONS,
+)
+  .map(([key, value]) => `${key}: ${value}`)
+  .join(', ');
 
 const RETRIEVAL_INSTRUCTIONS = `Analyze the user's Cairo/Starknet query to generate search terms and select documentation resources.
 
