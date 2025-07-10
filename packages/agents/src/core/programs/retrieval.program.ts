@@ -125,7 +125,15 @@ retrievalProgram.setExamples([
   },
 ]);
 
-const retrieverDemos = JSON.parse(fs.readFileSync(path.join(__dirname, '../../optimizers/optimized-retrieval-demos.json'), 'utf8'));
+const retrieverDemos = JSON.parse(
+  fs.readFileSync(
+    path.join(
+      __dirname,
+      '../../../src/optimizers/optimized-retrieval-demos.json',
+    ),
+    'utf8',
+  ),
+);
 retrievalProgram.setDemos(retrieverDemos);
 
 // Helper function to validate resources

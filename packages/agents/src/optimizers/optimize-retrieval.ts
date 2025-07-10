@@ -1,12 +1,22 @@
-import { AxAI, AxAIGoogleGeminiModel, AxBootstrapFewShot, AxMiPRO, type AxMetricFn, AxDefaultCostTracker } from '@ax-llm/ax';
+import {
+  AxAI,
+  AxAIGoogleGeminiModel,
+  AxBootstrapFewShot,
+  AxMiPRO,
+  type AxMetricFn,
+  AxDefaultCostTracker,
+} from '@ax-llm/ax';
 import { retrievalProgram } from '../core/programs/retrieval.program';
-import { retrievalDataset, type RetrievalExample } from './datasets/retrieval.dataset';
+import {
+  retrievalDataset,
+  type RetrievalExample,
+} from './datasets/retrieval.dataset';
 import { getAxRouter } from '../config/llm';
 import { getGeminiApiKey, logger } from '..';
 
 // Helper for Jaccard Index
 const jaccard = <T>(setA: Set<T>, setB: Set<T>): number => {
-  const intersection = new Set([...setA].filter(x => setB.has(x)));
+  const intersection = new Set([...setA].filter((x) => setB.has(x)));
   const union = new Set([...setA, ...setB]);
   if (union.size === 0) {
     return 1; // Both sets are empty, perfect match
@@ -14,14 +24,21 @@ const jaccard = <T>(setA: Set<T>, setB: Set<T>): number => {
   return intersection.size / union.size;
 };
 
-export const retrievalMetricFn: AxMetricFn = async ({ prediction, example }) => {
+export const retrievalMetricFn: AxMetricFn = async ({
+  prediction,
+  example,
+}) => {
   // Convert arrays to sets for comparison
 
   const predictedResources = new Set(prediction.resources as string[]);
-  const expectedResources = new Set((example.expected as any).resources as string[]);
+  const expectedResources = new Set(
+    (example.expected as any).resources as string[],
+  );
 
   const predictedSearchTerms = new Set(prediction.search_terms as string[]);
-  const expectedSearchTerms = new Set((example.expected as any).search_terms as string[]);
+  const expectedSearchTerms = new Set(
+    (example.expected as any).search_terms as string[],
+  );
 
   // Calculate Jaccard score for both fields
   const resourcesScore = jaccard(predictedResources, expectedResources);
@@ -54,9 +71,9 @@ const studentAI = new AxAI({
 });
 
 const costTracker = new AxDefaultCostTracker({
-  maxTokens: 200000,  // Stop after 10K tokens
-  maxCost: 0.5,        // Stop after $0.5
-})
+  maxTokens: 200000, // Stop after 10K tokens
+  maxCost: 0.5, // Stop after $0.5
+});
 
 // 2. Instantiate Optimizer
 const optimizer = new AxMiPRO({
@@ -66,7 +83,9 @@ const optimizer = new AxMiPRO({
   verbose: true,
   costTracker,
   options: {
-  }
+    maxBootstrappedDemos: 15,
+    maxLabeledDemos: 10,
+  },
 });
 
 // 3. Main execution function
@@ -91,7 +110,7 @@ const main = async () => {
     // Dump demos to file
     const fs = require('fs');
     const path = require('path');
-    const outputPath = path.join(__dirname, 'optimized-retrieval-demos.json');
+    const outputPath = path.join(__dirname, 'optimized-retrieval-demos2.json');
     fs.writeFileSync(outputPath, JSON.stringify(result.demos, null, 2));
     console.log(`📁 Demos saved to: ${outputPath}`);
   }
