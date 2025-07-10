@@ -5,7 +5,8 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "test": "jest",
-    "test-doc-quality": "ts-node src/testDocQuality.ts"
+    "test-doc-quality": "ts-node src/testDocQuality.ts",
+    "optimize-retrieval": "bun run src/optimizers/optimize-retrieval.ts"
   },
   "dependencies": {
     "@ax-llm/ax": "^12.0.23",

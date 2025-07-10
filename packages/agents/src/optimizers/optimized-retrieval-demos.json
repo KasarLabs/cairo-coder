@@ -1,0 +1,1298 @@
+[
+  {
+    "traces": [
+      {
+        "query": "Can you show how to use bitwise operations for packing data in storage to save gas?",
+        "chat_history": "Optimizing a contract with many small uints.",
+        "expected": {
+          "search_terms": [
+            "bitwise packing Cairo",
+            "storage optimization gas",
+            "bit shift AND OR"
+          ],
+          "resources": [
+            "cairo_book",
+            "cairo_by_example",
+            "starknet_docs"
+          ]
+        },
+        "search_terms": [
+          "Cairo bitwise operations",
+          "Starknet storage packing",
+          "Cairo gas optimization",
+          "Cairo data packing",
+          "Cairo uint packing"
+        ],
+        "resources": [
+          "cairo_book",
+          "starknet_docs",
+          "cairo_by_example",
+          "corelib_docs"
+        ]
+      },
+      {
+        "query": "Implement reentrancy protection in a contract using OZ ReentrancyGuard.",
+        "chat_history": "Worried about reentrancy attacks.",
+        "expected": {
+          "search_terms": [
+            "ReentrancyGuardComponent",
+            "non_reentrant modifier",
+            "security reentrancy"
+          ],
+          "resources": [
+            "openzeppelin_docs",
+            "cairo_book"
+          ]
+        },
+        "search_terms": [
+          "reentrancy protection Cairo",
+          "reentrancy attack Starknet",
+          "OpenZeppelin ReentrancyGuard Cairo",
+          "implement ReentrancyGuard Starknet contract",
+          "smart contract security Cairo"
+        ],
+        "resources": [
+          "openzeppelin_docs",
+          "cairo_book",
+          "starknet_docs"
+        ]
+      },
+      {
+        "query": "What's the best way to handle errors in a Cairo function that interacts with Starknet storage?",
+        "chat_history": "I've been getting panics when reading non-existent keys.",
+        "expected": {
+          "search_terms": [
+            "error handling Cairo",
+            "Result Option types",
+            "storage read panic",
+            "Felt252Dict errors"
+          ],
+          "resources": [
+            "cairo_book",
+            "corelib_docs",
+            "starknet_docs"
+          ]
+        },
+        "search_terms": [
+          "Cairo error handling",
+          "Starknet storage error",
+          "Cairo Result type",
+          "Cairo Option type",
+          "Cairo panic",
+          "Starknet storage read",
+          "Cairo contract storage",
+          "get storage value"
+        ],
+        "resources": [
+          "cairo_book",
+          "starknet_docs",
+          "corelib_docs",
+          "cairo_by_example"
+        ]
+      },
+      {
+        "query": "What's the withdrawal limit mechanism in StarkGate for security?",
+        "chat_history": "Concerned about bridge risks.",
+        "expected": {
+          "search_terms": [
+            "StarkGate withdrawal limits",
+            "bridge security measures",
+            "L2 to L1 limits"
+          ],
+          "resources": [
+            "starknet_docs"
+          ]
+        },
+        "search_terms": [
+          "StarkGate withdrawal limit",
+          "StarkGate security",
+          "StarkGate bridge mechanism",
+          "Starknet bridge security",
+          "Starknet withdrawal limits"
+        ],
+        "resources": [
+          "starknet_docs"
+        ]
+      },
+      {
+        "query": "Can you show how to use bitwise operations for packing data in storage to save gas?",
+        "chat_history": "Optimizing a contract with many small uints.",
+        "expected": {
+          "search_terms": [
+            "bitwise packing Cairo",
+            "storage optimization gas",
+            "bit shift AND OR"
+          ],
+          "resources": [
+            "cairo_book",
+            "cairo_by_example",
+            "starknet_docs"
+          ]
+        },
+        "search_terms": [
+          "Cairo bitwise operations",
+          "Starknet data packing",
+          "Cairo storage optimization",
+          "gas saving Starknet",
+          "Cairo bit packing",
+          "Cairo storage layout"
+        ],
+        "resources": [
+          "cairo_book",
+          "starknet_docs",
+          "cairo_by_example",
+          "corelib_docs"
+        ]
+      },
+      {
+        "query": "Create a custom trait for a generic enum and implement it for multiple types.",
+        "chat_history": "Working with enums in traits.",
+        "expected": {
+          "search_terms": [
+            "generic trait enum",
+            "impl for enum",
+            "trait bounds generics"
+          ],
+          "resources": [
+            "cairo_book",
+            "cairo_by_example"
+          ]
+        },
+        "search_terms": [
+          "Cairo trait",
+          "Cairo enum",
+          "Cairo generic",
+          "Cairo implement trait",
+          "Cairo custom trait",
+          "Cairo trait for enum",
+          "Cairo generic enum",
+          "Cairo multiple implementations"
+        ],
+        "resources": [
+          "cairo_book",
+          "cairo_by_example",
+          "corelib_docs"
+        ]
+      },
+      {
+        "query": "How can I implement a custom ERC20 token with minting capabilities using OpenZeppelin, and test it with Foundry?",
+        "chat_history": "I'm building a token contract on Starknet.",
+        "expected": {
+          "search_terms": [
+            "ERC20 mintable",
+            "OpenZeppelin ERC20Component",
+            "mint function",
+            "testing ERC20 Foundry",
+            "deploy token test"
+          ],
+          "resources": [
+            "openzeppelin_docs",
+            "starknet_foundry",
+            "cairo_book"
+          ]
+        },
+        "search_terms": [
+          "ERC20 Cairo",
+          "minting token Starknet",
+          "OpenZeppelin Contracts Cairo",
+          "Starknet Foundry testing",
+          "custom token contract"
+        ],
+        "resources": [
+          "openzeppelin_docs",
+          "starknet_foundry",
+          "cairo_book",
+          "starknet_docs"
+        ]
+      },
+      {
+        "query": "What's the withdrawal limit mechanism in StarkGate for security?",
+        "chat_history": "Concerned about bridge risks.",
+        "expected": {
+          "search_terms": [
+            "StarkGate withdrawal limits",
+            "bridge security measures",
+            "L2 to L1 limits"
+          ],
+          "resources": [
+            "starknet_docs"
+          ]
+        },
+        "search_terms": [
+          "StarkGate",
+          "withdrawal limit",
+          "security mechanism",
+          "bridge security",
+          "Starknet bridge"
+        ],
+        "resources": [
+          "starknet_docs"
+        ]
+      },
+      {
+        "query": "How can I implement a custom ERC20 token with minting capabilities using OpenZeppelin, and test it with Foundry?",
+        "chat_history": "I'm building a token contract on Starknet.",
+        "expected": {
+          "search_terms": [
+            "ERC20 mintable",
+            "OpenZeppelin ERC20Component",
+            "mint function",
+            "testing ERC20 Foundry",
+            "deploy token test"
+          ],
+          "resources": [
+            "openzeppelin_docs",
+            "starknet_foundry",
+            "cairo_book"
+          ]
+        },
+        "search_terms": [
+          "ERC20 Cairo",
+          "minting Cairo",
+          "OpenZeppelin Contracts Cairo",
+          "Starknet Foundry testing",
+          "custom ERC20 OpenZeppelin",
+          "ERC20 mintable"
+        ],
+        "resources": [
+          "openzeppelin_docs",
+          "starknet_foundry",
+          "cairo_book",
+          "starknet_docs"
+        ]
+      },
+      {
+        "query": "Implement reentrancy protection in a contract using OZ ReentrancyGuard.",
+        "chat_history": "Worried about reentrancy attacks.",
+        "expected": {
+          "search_terms": [
+            "ReentrancyGuardComponent",
+            "non_reentrant modifier",
+            "security reentrancy"
+          ],
+          "resources": [
+            "openzeppelin_docs",
+            "cairo_book"
+          ]
+        },
+        "search_terms": [
+          "reentrancy protection Cairo",
+          "ReentrancyGuard OpenZeppelin Cairo",
+          "Cairo smart contract security",
+          "reentrancy attack prevention Starknet",
+          "OpenZeppelin Contracts Cairo"
+        ],
+        "resources": [
+          "openzeppelin_docs",
+          "cairo_book",
+          "starknet_docs"
+        ]
+      },
+      {
+        "query": "How to configure Scarb for custom build profiles and optimization levels.",
+        "chat_history": "Optimizing for gas.",
+        "expected": {
+          "search_terms": [
+            "Scarb build profiles",
+            "optimization flags",
+            "Scarb.toml build config"
+          ],
+          "resources": [
+            "scarb_docs"
+          ]
+        },
+        "search_terms": [
+          "Scarb",
+          "build profiles",
+          "optimization levels",
+          "gas optimization",
+          "Cairo"
+        ],
+        "resources": [
+          "scarb_docs"
+        ]
+      },
+      {
+        "query": "How to emit indexed events with keys for efficient querying.",
+        "chat_history": "Need better event filtering.",
+        "expected": {
+          "search_terms": [
+            "#[key] event attribute",
+            "indexed events Starknet",
+            "query events keys"
+          ],
+          "resources": [
+            "cairo_book",
+            "starknet_docs"
+          ]
+        },
+        "search_terms": [
+          "Cairo events",
+          "Starknet events",
+          "indexed events Cairo",
+          "event keys Starknet",
+          "event filtering Starknet",
+          "emit event Cairo",
+          "contract events Cairo",
+          "data indexing Starknet"
+        ],
+        "resources": [
+          "starknet_docs",
+          "cairo_book",
+          "openzeppelin_docs",
+          "cairo_by_example"
+        ]
+      },
+      {
+        "query": "Can you show how to use bitwise operations for packing data in storage to save gas?",
+        "chat_history": "Optimizing a contract with many small uints.",
+        "expected": {
+          "search_terms": [
+            "bitwise packing Cairo",
+            "storage optimization gas",
+            "bit shift AND OR"
+          ],
+          "resources": [
+            "cairo_book",
+            "cairo_by_example",
+            "starknet_docs"
+          ]
+        },
+        "search_terms": [
+          "bitwise operations Cairo",
+          "data packing storage Cairo",
+          "storage optimization Cairo",
+          "gas optimization Starknet",
+          "uint packing Cairo",
+          "bit manipulation Cairo"
+        ],
+        "resources": [
+          "cairo_book",
+          "starknet_docs",
+          "cairo_by_example"
+        ]
+      },
+      {
+        "query": "How to bridge ETH to Starknet using StarkGate and then swap it in a contract call?",
+        "chat_history": "New to bridging.",
+        "expected": {
+          "search_terms": [
+            "StarkGate deposit ETH",
+            "bridge L1 to L2",
+            "contract call after bridge"
+          ],
+          "resources": [
+            "starknet_docs"
+          ]
+        },
+        "search_terms": [
+          "bridge ETH Starknet",
+          "StarkGate",
+          "swap tokens Starknet",
+          "contract call Starknet"
+        ],
+        "resources": [
+          "starknet_docs"
+        ]
+      },
+      {
+        "query": "Can you show how to use bitwise operations for packing data in storage to save gas?",
+        "chat_history": "Optimizing a contract with many small uints.",
+        "expected": {
+          "search_terms": [
+            "bitwise packing Cairo",
+            "storage optimization gas",
+            "bit shift AND OR"
+          ],
+          "resources": [
+            "cairo_book",
+            "cairo_by_example",
+            "starknet_docs"
+          ]
+        },
+        "search_terms": [
+          "Cairo bitwise operations",
+          "Starknet storage optimization",
+          "Cairo data packing",
+          "gas efficiency Cairo",
+          "Cairo uint packing",
+          "storage layout Cairo"
+        ],
+        "resources": [
+          "cairo_book",
+          "starknet_docs"
+        ]
+      },
+      {
+        "query": "How to configure Scarb for custom build profiles and optimization levels.",
+        "chat_history": "Optimizing for gas.",
+        "expected": {
+          "search_terms": [
+            "Scarb build profiles",
+            "optimization flags",
+            "Scarb.toml build config"
+          ],
+          "resources": [
+            "scarb_docs"
+          ]
+        },
+        "search_terms": [
+          "Scarb",
+          "build profiles",
+          "optimization levels",
+          "Scarb gas optimization",
+          "Scarb configuration",
+          "Scarb build"
+        ],
+        "resources": [
+          "scarb_docs"
+        ]
+      },
+      {
+        "query": "What's the best way to handle errors in a Cairo function that interacts with Starknet storage?",
+        "chat_history": "I've been getting panics when reading non-existent keys.",
+        "expected": {
+          "search_terms": [
+            "error handling Cairo",
+            "Result Option types",
+            "storage read panic",
+            "Felt252Dict errors"
+          ],
+          "resources": [
+            "cairo_book",
+            "corelib_docs",
+            "starknet_docs"
+          ]
+        },
+        "search_terms": [
+          "Cairo error handling",
+          "Starknet storage",
+          "storage access",
+          "reading non-existent keys",
+          "Cairo panics",
+          "Result type Cairo",
+          "Option type Cairo",
+          "assert Cairo",
+          "expect Cairo",
+          "unwrap Cairo"
+        ],
+        "resources": [
+          "cairo_book",
+          "starknet_docs",
+          "corelib_docs"
+        ]
+      },
+      {
+        "query": "How to configure Scarb for custom build profiles and optimization levels.",
+        "chat_history": "Optimizing for gas.",
+        "expected": {
+          "search_terms": [
+            "Scarb build profiles",
+            "optimization flags",
+            "Scarb.toml build config"
+          ],
+          "resources": [
+            "scarb_docs"
+          ]
+        },
+        "search_terms": [
+          "Scarb",
+          "build profiles",
+          "optimization levels",
+          "Scarb configuration",
+          "Scarb optimize"
+        ],
+        "resources": [
+          "scarb_docs"
+        ]
+      },
+      {
+        "query": "Can you show how to use bitwise operations for packing data in storage to save gas?",
+        "chat_history": "Optimizing a contract with many small uints.",
+        "expected": {
+          "search_terms": [
+            "bitwise packing Cairo",
+            "storage optimization gas",
+            "bit shift AND OR"
+          ],
+          "resources": [
+            "cairo_book",
+            "cairo_by_example",
+            "starknet_docs"
+          ]
+        },
+        "search_terms": [
+          "bitwise operations Cairo",
+          "data packing Cairo",
+          "storage optimization Starknet",
+          "gas saving Cairo",
+          "uint packing Cairo",
+          "Cairo storage layout"
+        ],
+        "resources": [
+          "cairo_book",
+          "starknet_docs",
+          "cairo_by_example"
+        ]
+      },
+      {
+        "query": "Create a custom trait for a generic enum and implement it for multiple types.",
+        "chat_history": "Working with enums in traits.",
+        "expected": {
+          "search_terms": [
+            "generic trait enum",
+            "impl for enum",
+            "trait bounds generics"
+          ],
+          "resources": [
+            "cairo_book",
+            "cairo_by_example"
+          ]
+        },
+        "search_terms": [
+          "Cairo trait",
+          "Cairo enum",
+          "Cairo generic",
+          "Cairo implement trait",
+          "Cairo trait implementation",
+          "Cairo enum trait",
+          "Cairo generic enum"
+        ],
+        "resources": [
+          "cairo_book",
+          "cairo_by_example"
+        ]
+      },
+      {
+        "query": "What's the withdrawal limit mechanism in StarkGate for security?",
+        "chat_history": "Concerned about bridge risks.",
+        "expected": {
+          "search_terms": [
+            "StarkGate withdrawal limits",
+            "bridge security measures",
+            "L2 to L1 limits"
+          ],
+          "resources": [
+            "starknet_docs"
+          ]
+        },
+        "search_terms": [
+          "StarkGate",
+          "withdrawal limit",
+          "Starknet bridge security",
+          "L2 bridge mechanism"
+        ],
+        "resources": [
+          "starknet_docs"
+        ]
+      },
+      {
+        "query": "How can I implement a custom ERC20 token with minting capabilities using OpenZeppelin, and test it with Foundry?",
+        "chat_history": "I'm building a token contract on Starknet.",
+        "expected": {
+          "search_terms": [
+            "ERC20 mintable",
+            "OpenZeppelin ERC20Component",
+            "mint function",
+            "testing ERC20 Foundry",
+            "deploy token test"
+          ],
+          "resources": [
+            "openzeppelin_docs",
+            "starknet_foundry",
+            "cairo_book"
+          ]
+        },
+        "search_terms": [
+          "ERC20 Cairo",
+          "custom ERC20 Starknet",
+          "minting ERC20 Cairo",
+          "OpenZeppelin ERC20 Cairo",
+          "Foundry testing Starknet",
+          "Foundry ERC20 testing"
+        ],
+        "resources": [
+          "openzeppelin_docs",
+          "starknet_foundry",
+          "starknet_docs",
+          "cairo_book"
+        ]
+      },
+      {
+        "query": "How to bridge ETH to Starknet using StarkGate and then swap it in a contract call?",
+        "chat_history": "New to bridging.",
+        "expected": {
+          "search_terms": [
+            "StarkGate deposit ETH",
+            "bridge L1 to L2",
+            "contract call after bridge"
+          ],
+          "resources": [
+            "starknet_docs"
+          ]
+        },
+        "search_terms": [
+          "StarkGate bridge",
+          "ETH Starknet bridge",
+          "Starknet swap",
+          "Starknet contract call",
+          "Starknet transaction"
+        ],
+        "resources": [
+          "starknet_docs"
+        ]
+      },
+      {
+        "query": "How can I implement a custom ERC20 token with minting capabilities using OpenZeppelin, and test it with Foundry?",
+        "chat_history": "I'm building a token contract on Starknet.",
+        "expected": {
+          "search_terms": [
+            "ERC20 mintable",
+            "OpenZeppelin ERC20Component",
+            "mint function",
+            "testing ERC20 Foundry",
+            "deploy token test"
+          ],
+          "resources": [
+            "openzeppelin_docs",
+            "starknet_foundry",
+            "cairo_book"
+          ]
+        },
+        "search_terms": [
+          "custom ERC20 Cairo",
+          "ERC20 minting Starknet",
+          "OpenZeppelin ERC20 Cairo",
+          "Foundry testing ERC20",
+          "Starknet token contract",
+          "Cairo smart contract testing"
+        ],
+        "resources": [
+          "openzeppelin_docs",
+          "starknet_foundry",
+          "cairo_book",
+          "starknet_docs"
+        ]
+      },
+      {
+        "query": "Implement reentrancy protection in a contract using OZ ReentrancyGuard.",
+        "chat_history": "Worried about reentrancy attacks.",
+        "expected": {
+          "search_terms": [
+            "ReentrancyGuardComponent",
+            "non_reentrant modifier",
+            "security reentrancy"
+          ],
+          "resources": [
+            "openzeppelin_docs",
+            "cairo_book"
+          ]
+        },
+        "search_terms": [
+          "reentrancy protection Cairo",
+          "ReentrancyGuard Cairo",
+          "OpenZeppelin ReentrancyGuard Starknet",
+          "contract security Cairo"
+        ],
+        "resources": [
+          "openzeppelin_docs",
+          "cairo_book",
+          "starknet_docs"
+        ]
+      },
+      {
+        "query": "Create a custom trait for a generic enum and implement it for multiple types.",
+        "chat_history": "Working with enums in traits.",
+        "expected": {
+          "search_terms": [
+            "generic trait enum",
+            "impl for enum",
+            "trait bounds generics"
+          ],
+          "resources": [
+            "cairo_book",
+            "cairo_by_example"
+          ]
+        },
+        "search_terms": [
+          "Cairo custom trait",
+          "Cairo generic enum",
+          "Cairo trait implementation",
+          "Cairo enum trait",
+          "Cairo generic types",
+          "Cairo trait bounds"
+        ],
+        "resources": [
+          "cairo_book",
+          "cairo_by_example"
+        ]
+      },
+      {
+        "query": "Can you show how to use bitwise operations for packing data in storage to save gas?",
+        "chat_history": "Optimizing a contract with many small uints.",
+        "expected": {
+          "search_terms": [
+            "bitwise packing Cairo",
+            "storage optimization gas",
+            "bit shift AND OR"
+          ],
+          "resources": [
+            "cairo_book",
+            "cairo_by_example",
+            "starknet_docs"
+          ]
+        },
+        "search_terms": [
+          "bitwise operations Cairo",
+          "data packing storage Cairo",
+          "gas optimization Starknet",
+          "storage layout Cairo",
+          "uint packing Cairo",
+          "bit manipulation Cairo"
+        ],
+        "resources": [
+          "cairo_book",
+          "starknet_docs",
+          "cairo_by_example"
+        ]
+      },
+      {
+        "query": "How to debug a failing test in Foundry using print statements and cheatcodes?",
+        "chat_history": "My test is panicking unexpectedly.",
+        "expected": {
+          "search_terms": [
+            "Foundry debug test",
+            "print cheatcode",
+            "spy events debug"
+          ],
+          "resources": [
+            "starknet_foundry",
+            "cairo_book"
+          ]
+        },
+        "search_terms": [
+          "Foundry debug",
+          "Starknet Foundry testing",
+          "Cairo test debugging",
+          "Foundry print statements",
+          "Foundry cheatcodes",
+          "Starknet test output"
+        ],
+        "resources": [
+          "starknet_foundry",
+          "starknet_docs",
+          "cairo_book",
+          "scarb_docs"
+        ]
+      },
+      {
+        "query": "What's the withdrawal limit mechanism in StarkGate for security?",
+        "chat_history": "Concerned about bridge risks.",
+        "expected": {
+          "search_terms": [
+            "StarkGate withdrawal limits",
+            "bridge security measures",
+            "L2 to L1 limits"
+          ],
+          "resources": [
+            "starknet_docs"
+          ]
+        },
+        "search_terms": [
+          "StarkGate withdrawal limit",
+          "StarkGate security",
+          "Starknet bridge risks",
+          "Starknet security mechanisms",
+          "bridge security",
+          "smart contract withdrawal limits",
+          "Cairo security"
+        ],
+        "resources": [
+          "starknet_docs",
+          "openzeppelin_docs"
+        ]
+      },
+      {
+        "query": "Can you show how to use bitwise operations for packing data in storage to save gas?",
+        "chat_history": "Optimizing a contract with many small uints.",
+        "expected": {
+          "search_terms": [
+            "bitwise packing Cairo",
+            "storage optimization gas",
+            "bit shift AND OR"
+          ],
+          "resources": [
+            "cairo_book",
+            "cairo_by_example",
+            "starknet_docs"
+          ]
+        },
+        "search_terms": [
+          "bit packing Cairo",
+          "data packing Starknet storage",
+          "bitwise operations Cairo gas optimization",
+          "storage optimization Cairo",
+          "uint packing Cairo"
+        ],
+        "resources": [
+          "cairo_book",
+          "starknet_docs",
+          "cairo_by_example",
+          "corelib_docs"
+        ]
+      },
+      {
+        "query": "Create a custom trait for a generic enum and implement it for multiple types.",
+        "chat_history": "Working with enums in traits.",
+        "expected": {
+          "search_terms": [
+            "generic trait enum",
+            "impl for enum",
+            "trait bounds generics"
+          ],
+          "resources": [
+            "cairo_book",
+            "cairo_by_example"
+          ]
+        },
+        "search_terms": [
+          "Cairo custom trait",
+          "Cairo generic enum",
+          "Cairo implement trait multiple types",
+          "Cairo enum trait implementation",
+          "Cairo generic programming"
+        ],
+        "resources": [
+          "cairo_book",
+          "cairo_by_example",
+          "corelib_docs"
+        ]
+      },
+      {
+        "query": "Can you show how to use bitwise operations for packing data in storage to save gas?",
+        "chat_history": "Optimizing a contract with many small uints.",
+        "expected": {
+          "search_terms": [
+            "bitwise packing Cairo",
+            "storage optimization gas",
+            "bit shift AND OR"
+          ],
+          "resources": [
+            "cairo_book",
+            "cairo_by_example",
+            "starknet_docs"
+          ]
+        },
+        "search_terms": [
+          "Cairo bitwise operations",
+          "Starknet data packing",
+          "Cairo storage optimization",
+          "gas saving Cairo",
+          "Cairo uint packing"
+        ],
+        "resources": [
+          "cairo_book",
+          "starknet_docs",
+          "cairo_by_example"
+        ]
+      },
+      {
+        "query": "Implement reentrancy protection in a contract using OZ ReentrancyGuard.",
+        "chat_history": "Worried about reentrancy attacks.",
+        "expected": {
+          "search_terms": [
+            "ReentrancyGuardComponent",
+            "non_reentrant modifier",
+            "security reentrancy"
+          ],
+          "resources": [
+            "openzeppelin_docs",
+            "cairo_book"
+          ]
+        },
+        "search_terms": [
+          "reentrancy protection",
+          "ReentrancyGuard",
+          "OpenZeppelin Contracts Cairo",
+          "smart contract security",
+          "Cairo contract",
+          "prevent reentrancy"
+        ],
+        "resources": [
+          "openzeppelin_docs",
+          "cairo_book",
+          "starknet_docs"
+        ]
+      },
+      {
+        "query": "Can you show how to use bitwise operations for packing data in storage to save gas?",
+        "chat_history": "Optimizing a contract with many small uints.",
+        "expected": {
+          "search_terms": [
+            "bitwise packing Cairo",
+            "storage optimization gas",
+            "bit shift AND OR"
+          ],
+          "resources": [
+            "cairo_book",
+            "cairo_by_example",
+            "starknet_docs"
+          ]
+        },
+        "search_terms": [
+          "Cairo bitwise operations",
+          "Starknet storage optimization",
+          "Cairo data packing",
+          "Cairo gas saving",
+          "Cairo storage layout",
+          "Cairo uint packing",
+          "Cairo bit manipulation"
+        ],
+        "resources": [
+          "cairo_book",
+          "starknet_docs",
+          "cairo_by_example"
+        ]
+      },
+      {
+        "query": "What's the best way to handle errors in a Cairo function that interacts with Starknet storage?",
+        "chat_history": "I've been getting panics when reading non-existent keys.",
+        "expected": {
+          "search_terms": [
+            "error handling Cairo",
+            "Result Option types",
+            "storage read panic",
+            "Felt252Dict errors"
+          ],
+          "resources": [
+            "cairo_book",
+            "corelib_docs",
+            "starknet_docs"
+          ]
+        },
+        "search_terms": [
+          "Cairo error handling",
+          "Starknet storage error",
+          "Cairo panic",
+          "Cairo Option",
+          "Cairo Result",
+          "Starknet StorageAccess",
+          "Cairo try_read",
+          "Cairo read_or_default"
+        ],
+        "resources": [
+          "cairo_book",
+          "starknet_docs",
+          "corelib_docs"
+        ]
+      },
+      {
+        "query": "How to emit indexed events with keys for efficient querying.",
+        "chat_history": "Need better event filtering.",
+        "expected": {
+          "search_terms": [
+            "#[key] event attribute",
+            "indexed events Starknet",
+            "query events keys"
+          ],
+          "resources": [
+            "cairo_book",
+            "starknet_docs"
+          ]
+        },
+        "search_terms": [
+          "emit events",
+          "indexed events",
+          "event keys",
+          "event filtering",
+          "Cairo events",
+          "Starknet events",
+          "efficient event querying"
+        ],
+        "resources": [
+          "cairo_book",
+          "starknet_docs",
+          "cairo_by_example",
+          "openzeppelin_docs"
+        ]
+      },
+      {
+        "query": "Create a custom trait for a generic enum and implement it for multiple types.",
+        "chat_history": "Working with enums in traits.",
+        "expected": {
+          "search_terms": [
+            "generic trait enum",
+            "impl for enum",
+            "trait bounds generics"
+          ],
+          "resources": [
+            "cairo_book",
+            "cairo_by_example"
+          ]
+        },
+        "search_terms": [
+          "Cairo trait",
+          "Cairo enum",
+          "Cairo generic enum",
+          "Cairo custom trait",
+          "Cairo implement trait",
+          "Cairo multiple types",
+          "Cairo generic programming"
+        ],
+        "resources": [
+          "cairo_book",
+          "cairo_by_example"
+        ]
+      },
+      {
+        "query": "Implement reentrancy protection in a contract using OZ ReentrancyGuard.",
+        "chat_history": "Worried about reentrancy attacks.",
+        "expected": {
+          "search_terms": [
+            "ReentrancyGuardComponent",
+            "non_reentrant modifier",
+            "security reentrancy"
+          ],
+          "resources": [
+            "openzeppelin_docs",
+            "cairo_book"
+          ]
+        },
+        "search_terms": [
+          "reentrancy protection",
+          "reentrancyguard",
+          "openzeppelin cairo",
+          "cairo smart contract security",
+          "starknet security"
+        ],
+        "resources": [
+          "openzeppelin_docs",
+          "cairo_book",
+          "starknet_docs"
+        ]
+      },
+      {
+        "query": "How to configure Scarb for custom build profiles and optimization levels.",
+        "chat_history": "Optimizing for gas.",
+        "expected": {
+          "search_terms": [
+            "Scarb build profiles",
+            "optimization flags",
+            "Scarb.toml build config"
+          ],
+          "resources": [
+            "scarb_docs"
+          ]
+        },
+        "search_terms": [
+          "Scarb",
+          "Scarb build profiles",
+          "Scarb optimization levels",
+          "Scarb.toml",
+          "Cairo optimization",
+          "Starknet gas optimization",
+          "Scarb configuration"
+        ],
+        "resources": [
+          "scarb_docs",
+          "cairo_book"
+        ]
+      },
+      {
+        "query": "What's the withdrawal limit mechanism in StarkGate for security?",
+        "chat_history": "Concerned about bridge risks.",
+        "expected": {
+          "search_terms": [
+            "StarkGate withdrawal limits",
+            "bridge security measures",
+            "L2 to L1 limits"
+          ],
+          "resources": [
+            "starknet_docs"
+          ]
+        },
+        "search_terms": [
+          "StarkGate withdrawal limit",
+          "StarkGate security",
+          "Starknet bridge withdrawal",
+          "Starknet bridge security",
+          "StarkGate mechanism"
+        ],
+        "resources": [
+          "starknet_docs"
+        ]
+      },
+      {
+        "query": "Create a custom trait for a generic enum and implement it for multiple types.",
+        "chat_history": "Working with enums in traits.",
+        "expected": {
+          "search_terms": [
+            "generic trait enum",
+            "impl for enum",
+            "trait bounds generics"
+          ],
+          "resources": [
+            "cairo_book",
+            "cairo_by_example"
+          ]
+        },
+        "search_terms": [
+          "Cairo trait",
+          "Cairo enum",
+          "Cairo generic enum",
+          "Cairo implement trait",
+          "Cairo custom trait",
+          "Cairo multiple types trait implementation"
+        ],
+        "resources": [
+          "cairo_book",
+          "cairo_by_example",
+          "corelib_docs"
+        ]
+      },
+      {
+        "query": "How can I implement a custom ERC20 token with minting capabilities using OpenZeppelin, and test it with Foundry?",
+        "chat_history": "I'm building a token contract on Starknet.",
+        "expected": {
+          "search_terms": [
+            "ERC20 mintable",
+            "OpenZeppelin ERC20Component",
+            "mint function",
+            "testing ERC20 Foundry",
+            "deploy token test"
+          ],
+          "resources": [
+            "openzeppelin_docs",
+            "starknet_foundry",
+            "cairo_book"
+          ]
+        },
+        "search_terms": [
+          "ERC20 Cairo",
+          "custom ERC20 Starknet",
+          "minting ERC20",
+          "OpenZeppelin Contracts Cairo ERC20",
+          "Starknet Foundry testing",
+          "ERC20 contract testing",
+          "OpenZeppelin Cairo mint"
+        ],
+        "resources": [
+          "openzeppelin_docs",
+          "starknet_foundry",
+          "cairo_book",
+          "starknet_docs",
+          "cairo_by_example"
+        ]
+      },
+      {
+        "query": "How to bridge ETH to Starknet using StarkGate and then swap it in a contract call?",
+        "chat_history": "New to bridging.",
+        "expected": {
+          "search_terms": [
+            "StarkGate deposit ETH",
+            "bridge L1 to L2",
+            "contract call after bridge"
+          ],
+          "resources": [
+            "starknet_docs"
+          ]
+        },
+        "search_terms": [
+          "StarkGate",
+          "bridge ETH Starknet",
+          "deposit ETH Starknet",
+          "swap contract call Cairo",
+          "cross-chain transactions Starknet",
+          "L1 L2 bridge Starknet"
+        ],
+        "resources": [
+          "starknet_docs",
+          "cairo_book"
+        ]
+      },
+      {
+        "query": "How to emit indexed events with keys for efficient querying.",
+        "chat_history": "Need better event filtering.",
+        "expected": {
+          "search_terms": [
+            "#[key] event attribute",
+            "indexed events Starknet",
+            "query events keys"
+          ],
+          "resources": [
+            "cairo_book",
+            "starknet_docs"
+          ]
+        },
+        "search_terms": [
+          "emit indexed events",
+          "Cairo events",
+          "Starknet events",
+          "event keys",
+          "event filtering",
+          "efficient querying events",
+          "event indexing"
+        ],
+        "resources": [
+          "cairo_book",
+          "starknet_docs",
+          "openzeppelin_docs",
+          "cairo_by_example"
+        ]
+      },
+      {
+        "query": "How to configure Scarb for custom build profiles and optimization levels.",
+        "chat_history": "Optimizing for gas.",
+        "expected": {
+          "search_terms": [
+            "Scarb build profiles",
+            "optimization flags",
+            "Scarb.toml build config"
+          ],
+          "resources": [
+            "scarb_docs"
+          ]
+        },
+        "search_terms": [
+          "Scarb",
+          "Scarb configuration",
+          "Scarb build profiles",
+          "Scarb optimization levels",
+          "Cairo optimization",
+          "Starknet gas optimization",
+          "Scarb manifest",
+          "Scarb.toml"
+        ],
+        "resources": [
+          "scarb_docs",
+          "cairo_book"
+        ]
+      },
+      {
+        "query": "What's the withdrawal limit mechanism in StarkGate for security?",
+        "chat_history": "Concerned about bridge risks.",
+        "expected": {
+          "search_terms": [
+            "StarkGate withdrawal limits",
+            "bridge security measures",
+            "L2 to L1 limits"
+          ],
+          "resources": [
+            "starknet_docs"
+          ]
+        },
+        "search_terms": [
+          "StarkGate withdrawal limit",
+          "StarkGate security",
+          "Starknet bridge security",
+          "Starknet withdrawal mechanism",
+          "StarkGate security mechanism"
+        ],
+        "resources": [
+          "starknet_docs"
+        ]
+      }
+    ],
+    "programId": "070777a65ad2a947a8d352fd17dad5fa73e9c80777e5726276be79817b837583"
+  }
+]

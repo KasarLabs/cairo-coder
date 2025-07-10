@@ -1,4 +1,6 @@
 import { ax, AxGen, f } from '@ax-llm/ax';
+import path from 'path';
+import fs from 'fs';
 
 // Available documentation resources
 export const AVAILABLE_RESOURCES = [
@@ -39,9 +41,9 @@ const RETRIEVAL_INSTRUCTIONS = `Analyze the user's Cairo/Starknet query to gener
 
 Instructions:
 1. Identify the specific Cairo programming problem, smart contract requirement, or concept
-2. Extract core technical components (storage types, traits, testing methods, errors)
-3. Extract a list of search terms that will be used to retrieve relevant documentation or code examples. Typically, keywords related to the query, linked to Cairo, Starknet, and programming in general.
-4. For general terms like 'events' or 'storage', add Cairo/Starknet context
+2. Extract core technical components (storage types, traits, testing methods, errors, components, openzeppelin, starknet foundry, scarb, etc.)
+3. Extract a list of search terms that will be used to retrieve relevant documentation or code examples through vector search. Typically, keywords related to the query, linked to Cairo, Starknet, and programming in general.
+4. For general terms like 'events' or 'storage', add Cairo/Starknet context to search terms.
 5. Return empty arrays for non-Cairo queries (e.g. 'Hello, how are you?')
 `;
 
@@ -53,6 +55,7 @@ export const retrievalProgram: AxGen<
   { chat_history: string; query: string },
   { search_terms: string[]; resources: string[] }
 > = ax`
+  "${RETRIEVAL_INSTRUCTIONS}"
   chat_history:${f.string("Previous messages from this conversation, used to infer context and intent of the user's query.")},
   query:${f.string('The users query that must be sanitized and classified. This is the main query that will be used to retrieve relevant documentation or code examples.')} ->
   search_terms:${f.array(f.string(RETRIEVAL_INSTRUCTIONS))},
@@ -73,7 +76,7 @@ retrievalProgram.setExamples([
       'Defining Contract Functions',
       'Contract Interface Trait',
     ],
-    resources: ['cairo_book', 'starknet_docs', 'cairo_by_example'],
+    resources: ['cairo_book'],
   },
   {
     chat_history: 'Discussion about tokens',
@@ -87,7 +90,7 @@ retrievalProgram.setExamples([
       'Contract Function Assertions',
       'Getting Caller Address Syscall',
     ],
-    resources: ['openzeppelin_docs', 'starknet_docs', 'cairo_book'],
+    resources: ['openzeppelin_docs', 'cairo_book'],
   },
   {
     chat_history: '',
@@ -121,6 +124,9 @@ retrievalProgram.setExamples([
     resources: ['cairo_book', 'corelib_docs', 'cairo_by_example'],
   },
 ]);
+
+const retrieverDemos = JSON.parse(fs.readFileSync(path.join(__dirname, '../../optimizers/optimized-retrieval-demos.json'), 'utf8'));
+retrievalProgram.setDemos(retrieverDemos);
 
 // Helper function to validate resources
 export function validateResources(resources: string[]): string[] {
