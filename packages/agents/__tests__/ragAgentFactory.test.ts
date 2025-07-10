@@ -1,5 +1,5 @@
 import { RagAgentFactory } from '../src/core/agentFactory';
-import { RagPipeline } from '../src/core/pipeline/ragPipeline';
+import { CairoCoderFlow } from '../src/core/pipeline/cairoCoderFlow';
 import { AvailableAgents, DocumentSource } from '../src/types';
 import { AxMultiServiceRouter } from '@ax-llm/ax';
 import { mockDeep, MockProxy } from 'jest-mock-extended';
@@ -7,7 +7,7 @@ import { BaseMessage } from '@langchain/core/messages';
 import EventEmitter from 'events';
 import { VectorStore } from '../src/db/postgresVectorStore';
 
-// Mock the agent configuration and RagPipeline
+// Mock the agent configuration and CairoCoderFlow
 jest.mock('../src/config/agent', () => ({
   getAgentConfig: jest.fn().mockImplementation(() => ({
     name: 'Cairo Coder',
@@ -26,8 +26,8 @@ jest.mock('../src/config/agent', () => ({
   })),
 }));
 
-jest.mock('../src/core/pipeline/ragPipeline', () => ({
-  RagPipeline: jest.fn().mockImplementation(() => ({
+jest.mock('../src/core/pipeline/cairoCoderFlow', () => ({
+  CairoCoderFlow: jest.fn().mockImplementation(() => ({
     execute: jest.fn().mockReturnValue(new EventEmitter()),
   })),
 }));
@@ -61,21 +61,24 @@ describe('RagAgentFactory', () => {
       );
 
       // Assert
-      expect(RagPipeline).toHaveBeenCalledTimes(1);
+      expect(CairoCoderFlow).toHaveBeenCalledTimes(1);
       expect(emitter).toBeInstanceOf(EventEmitter);
 
       // Check that the pipeline execute method was called with the right parameters
-      const executeSpy = (RagPipeline as jest.Mock).mock.results[0].value
+      const executeSpy = (CairoCoderFlow as jest.Mock).mock.results[0].value
         .execute;
-      expect(executeSpy).toHaveBeenCalledWith({
-        query: message,
-        chatHistory: history,
-        sources: [
-          DocumentSource.CAIRO_BOOK,
-          DocumentSource.CAIRO_BY_EXAMPLE,
-          DocumentSource.STARKNET_FOUNDRY,
-        ],
-      });
+      expect(executeSpy).toHaveBeenCalledWith(
+        {
+          query: message,
+          chatHistory: history,
+          sources: [
+            DocumentSource.CAIRO_BOOK,
+            DocumentSource.CAIRO_BY_EXAMPLE,
+            DocumentSource.STARKNET_FOUNDRY,
+          ],
+        },
+        false,
+      );
     });
 
     it('should handle complex Cairo queries', () => {
@@ -93,21 +96,24 @@ describe('RagAgentFactory', () => {
       );
 
       // Assert
-      expect(RagPipeline).toHaveBeenCalledTimes(1);
+      expect(CairoCoderFlow).toHaveBeenCalledTimes(1);
       expect(emitter).toBeInstanceOf(EventEmitter);
 
-      // Check streaming option is passed
-      const executeSpy = (RagPipeline as jest.Mock).mock.results[0].value
+      // Check that the execute method was called with the right parameters
+      const executeSpy = (CairoCoderFlow as jest.Mock).mock.results[0].value
         .execute;
-      expect(executeSpy).toHaveBeenCalledWith({
-        query: message,
-        chatHistory: history,
-        sources: [
-          DocumentSource.CAIRO_BOOK,
-          DocumentSource.CAIRO_BY_EXAMPLE,
-          DocumentSource.STARKNET_FOUNDRY,
-        ],
-      });
+      expect(executeSpy).toHaveBeenCalledWith(
+        {
+          query: message,
+          chatHistory: history,
+          sources: [
+            DocumentSource.CAIRO_BOOK,
+            DocumentSource.CAIRO_BY_EXAMPLE,
+            DocumentSource.STARKNET_FOUNDRY,
+          ],
+        },
+        false,
+      );
     });
   });
 });

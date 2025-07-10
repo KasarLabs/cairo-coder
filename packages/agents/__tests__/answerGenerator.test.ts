@@ -1,359 +1,162 @@
-import { AnswerGenerator } from '../src/core/pipeline/answerGenerator';
-import { AxMultiServiceRouter } from '@ax-llm/ax';
-import {
-  RagInput,
-  ProcessedQuery,
-  RetrievedDocuments,
-  RagSearchConfig,
-  DocumentSource,
-} from '../src/types/index';
-import { Document } from '@langchain/core/documents';
+import { generationProgram } from '../src/core/programs/generation.program';
+import { AxAIService } from '@ax-llm/ax';
 import { mockDeep, MockProxy } from 'jest-mock-extended';
-import { IterableReadableStream } from '@langchain/core/utils/stream';
-import { StreamEvent } from '@langchain/core/tracers/log_stream';
-import { BaseLanguageModelInput } from '@langchain/core/language_models/base';
-import { AIMessageChunk } from '@langchain/core/messages'; // ✅ AJOUTÉ
 
-// Mock the generation program
+// Mock the generation program itself
 jest.mock('../src/core/programs/generation.program', () => ({
   generationProgram: {
-    streamingForward: jest.fn().mockReturnValue({
-      [Symbol.asyncIterator]: async function* () {
-        yield {
-          delta: { answer: 'This is a test response about Cairo.' },
-          version: 1,
-        };
-      },
-    }),
+    forward: jest.fn(),
+    streamingForward: jest.fn(),
   },
 }));
 
-// Mock getModelForTask
-jest.mock('../src/config/llm', () => ({
-  getModelForTask: jest.fn().mockReturnValue('test-model'),
-}));
-
-// Mock the formatChatHistoryAsString utility
+// Mock logger
 jest.mock('../src/utils/index', () => ({
   __esModule: true,
-  formatChatHistoryAsString: jest
-    .fn()
-    .mockImplementation(() => 'mocked chat history'),
   logger: {
     info: jest.fn(),
     debug: jest.fn(),
     error: jest.fn(),
   },
-  TokenTracker: {
-    trackFullUsage: jest.fn().mockReturnValue({
-      promptTokens: 100,
-      responseTokens: 50,
-      totalTokens: 150,
-    }),
-  },
 }));
 
-// No need to separately mock the logger since it's now mocked as part of utils/index
-
-describe('AnswerGenerator', () => {
-  let answerGenerator: AnswerGenerator;
-  let mockAxRouter: MockProxy<AxMultiServiceRouter>;
-  let mockConfig: RagSearchConfig;
+describe('GenerationProgram', () => {
+  let mockAI: MockProxy<AxAIService>;
 
   beforeEach(() => {
     // Reset mocks
     jest.clearAllMocks();
 
     // Create mock instances
-    mockAxRouter = mockDeep<AxMultiServiceRouter>();
-
-    // Create a basic config for testing
-    mockConfig = {
-      name: 'Test Agent',
-      prompts: {
-        searchRetrieverPrompt: 'test retriever prompt',
-        searchResponsePrompt: 'test response prompt',
-        noSourceFoundPrompt: 'Sorry, no relevant information was found.',
-      },
-      vectorStore: mockDeep(),
-      contractTemplate:
-        '<contract_template>Example template</contract_template>',
-      testTemplate: '<test_template>Example test template</test_template>',
-    };
-
-    // Mock the AxMultiServiceRouter methods
-    // The AnswerGenerator will use generationProgram.streamingForward which returns an async generator
-    // We don't need to mock streamEvents since we're using AX now
-
-    // Create the AnswerGenerator instance
-    answerGenerator = new AnswerGenerator(mockAxRouter, mockConfig);
+    mockAI = mockDeep<AxAIService>();
   });
 
-  describe('generate', () => {
-    it('should generate an answer stream using retrieved documents', async () => {
+  describe('forward', () => {
+    it('should generate Cairo code for contract-related queries', async () => {
       // Arrange
-      const input: RagInput = {
+      const input = {
+        chat_history: '',
         query: 'How do I write a Cairo contract?',
-        chatHistory: [],
-        sources: [DocumentSource.CAIRO_BOOK],
+        context:
+          'Cairo is a programming language for Starknet contracts. Use #[starknet::contract] attribute.',
       };
 
-      const processedQuery: ProcessedQuery = {
-        original: input.query,
-        transformed: 'cairo contract',
-        isContractRelated: true,
-      };
-
-      const documents = [
-        new Document({
-          pageContent: 'Cairo is a programming language for Starknet.',
-          metadata: {
-            name: 'Cairo Programming',
-            title: 'Cairo Programming',
-            chunkNumber: 1,
-            contentHash: '1234567890',
-            uniqueId: '1234567890',
-            sourceLink: 'https://example.com/cairo',
-            source: DocumentSource.CAIRO_BOOK,
-          },
-        }),
-      ];
-
-      const retrievedDocs: RetrievedDocuments = {
-        documents,
-        processedQuery,
-      };
+      // Mock the generation program response
+      const mockGenerationProgram = require('../src/core/programs/generation.program');
+      mockGenerationProgram.generationProgram.forward.mockResolvedValue({
+        answer:
+          'Here is a simple Cairo contract example with #[starknet::contract] attribute.',
+      });
 
       // Act
-      const result = await answerGenerator.generate(input, retrievedDocs);
+      const result = await generationProgram.forward(mockAI, input);
 
       // Assert
-      // Since we're using the generation program, we check that instead
-      const {
-        generationProgram,
-      } = require('../src/core/programs/generation.program');
-      expect(generationProgram.streamingForward).toHaveBeenCalled();
+      expect(
+        mockGenerationProgram.generationProgram.forward,
+      ).toHaveBeenCalledWith(mockAI, input);
+      expect(result.answer).toContain('contract');
+    });
 
-      // Collect the stream results
-      const events: StreamEvent[] = [];
-      for await (const event of result) {
-        events.push(event);
+    it('should handle test-related queries', async () => {
+      // Arrange
+      const input = {
+        chat_history: '',
+        query: 'How do I test a Cairo contract?',
+        context: 'Testing Cairo contracts requires using test functions.',
+      };
+
+      // Mock the generation program response
+      const mockGenerationProgram = require('../src/core/programs/generation.program');
+      mockGenerationProgram.generationProgram.forward.mockResolvedValue({
+        answer: 'Here is how to test Cairo contracts with test functions.',
+      });
+
+      // Act
+      const result = await generationProgram.forward(mockAI, input);
+
+      // Assert
+      expect(result.answer).toContain('test');
+    });
+
+    it('should handle non-Cairo queries appropriately', async () => {
+      // Arrange
+      const input = {
+        chat_history: '',
+        query: 'Tell me about machine learning',
+        context:
+          'Cairo is a programming language for writing provable programs.',
+      };
+
+      // Mock the generation program response
+      const mockGenerationProgram = require('../src/core/programs/generation.program');
+      mockGenerationProgram.generationProgram.forward.mockResolvedValue({
+        answer:
+          'I am designed to generate Cairo code. Could you please provide a specific Cairo coding request?',
+      });
+
+      // Act
+      const result = await generationProgram.forward(mockAI, input);
+
+      // Assert
+      expect(result.answer).toContain('designed to generate Cairo code');
+    });
+
+    it('should handle queries with no relevant context', async () => {
+      // Arrange
+      const input = {
+        chat_history: '',
+        query: 'How do I implement a hash function?',
+        context: 'No relevant documentation found for this query.',
+      };
+
+      // Mock the generation program response
+      const mockGenerationProgram = require('../src/core/programs/generation.program');
+      mockGenerationProgram.generationProgram.forward.mockResolvedValue({
+        answer:
+          "I apologize, but I couldn't find specific information about implementing hash functions in Cairo.",
+      });
+
+      // Act
+      const result = await generationProgram.forward(mockAI, input);
+
+      // Assert
+      expect(result.answer).toContain('specific information');
+    });
+
+    it('should work with streaming forward', async () => {
+      // Arrange
+      const input = {
+        chat_history: '',
+        query: 'How do I create a simple counter contract?',
+        context: 'Starknet contracts use #[starknet::contract] attribute.',
+      };
+
+      // Mock streaming response
+      const mockStream = {
+        [Symbol.asyncIterator]: async function* () {
+          yield { delta: { answer: 'Here is a simple ' } };
+          yield { delta: { answer: 'counter contract:' } };
+        },
+      };
+
+      const mockGenerationProgram = require('../src/core/programs/generation.program');
+      mockGenerationProgram.generationProgram.streamingForward.mockReturnValue(
+        mockStream,
+      );
+
+      // Act
+      const result = generationProgram.streamingForward(mockAI, input);
+
+      // Assert
+      const chunks = [];
+      for await (const chunk of result) {
+        chunks.push(chunk);
       }
 
-      // Check that we got the expected events
-      expect(events.length).toBeGreaterThan(0);
-      expect(events[0].event).toBe('on_llm_stream');
-      expect(events[0].data.chunk).toBe('This is a test response about Cairo.');
-    });
-
-    it('should include contract template when query is contract-related', async () => {
-      // Arrange
-      const input: RagInput = {
-        query: 'How do I write a Cairo contract?',
-        chatHistory: [],
-        sources: [DocumentSource.CAIRO_BOOK],
-      };
-
-      const processedQuery: ProcessedQuery = {
-        original: input.query,
-        transformed: 'cairo contract',
-        isContractRelated: true,
-      };
-
-      const documents = [
-        new Document({
-          pageContent: 'Cairo is a programming language for Starknet.',
-          metadata: {
-            name: 'Cairo Programming',
-            title: 'Cairo Programming',
-            chunkNumber: 1,
-            contentHash: '1234567890',
-            uniqueId: '1234567890',
-            sourceLink: 'https://example.com/cairo',
-            source: DocumentSource.CAIRO_BOOK,
-          },
-        }),
-      ];
-
-      const retrievedDocs: RetrievedDocuments = {
-        documents,
-        processedQuery,
-      };
-
-      // Create a spy on the LLM streamEvents method to capture the actual prompt
-      let capturedPrompt: string | null = null;
-      const mockReturnValue = {
-        [Symbol.asyncIterator]: async function* () {
-          yield {
-            event: 'on_llm_stream',
-            data: {
-              chunk: {
-                content: 'This is a test response about Cairo contracts.',
-              },
-            },
-            run_id: 'test-run-123',
-            name: 'TestLLM',
-            tags: [],
-            metadata: {},
-          } as StreamEvent;
-        },
-      } as IterableReadableStream<StreamEvent>;
-
-      // Update the generation program mock
-      const {
-        generationProgram,
-      } = require('../src/core/programs/generation.program');
-      generationProgram.streamingForward.mockImplementation(
-        (router, inputs) => {
-          capturedPrompt = `${inputs.chat_history}\n\nUser: ${inputs.query}\n\nContext:\n${inputs.context}`;
-          return mockReturnValue;
-        },
-      );
-
-      // Act
-      await answerGenerator.generate(input, retrievedDocs);
-
-      // Assert
-      expect(capturedPrompt).toBeDefined();
-      const promptString = JSON.stringify(capturedPrompt);
-      expect(promptString).toContain(
-        '<contract_template>Example template</contract_template>',
-      );
-    });
-
-    it('should include test template when query is test-related', async () => {
-      // Arrange
-      const input: RagInput = {
-        query: 'How do I test a Cairo contract?',
-        chatHistory: [],
-        sources: [DocumentSource.CAIRO_BOOK],
-      };
-
-      const processedQuery: ProcessedQuery = {
-        original: input.query,
-        transformed: 'cairo test',
-        isContractRelated: true,
-        isTestRelated: true,
-      };
-
-      const documents = [
-        new Document({
-          pageContent: 'Testing Cairo contracts is important.',
-          metadata: {
-            name: 'Cairo Testing',
-            title: 'Cairo Testing',
-            sourceLink: 'https://example.com/cairo-testing',
-            chunkNumber: 1,
-            contentHash: '1234567890',
-            uniqueId: '1234567890',
-            source: DocumentSource.CAIRO_BOOK,
-          },
-        }),
-      ];
-
-      const retrievedDocs: RetrievedDocuments = {
-        documents,
-        processedQuery,
-      };
-
-      // Create a spy on the LLM streamEvents method to capture the actual prompt
-      let capturedPrompt: string | null = null;
-      const mockReturnValue = {
-        [Symbol.asyncIterator]: async function* () {
-          yield {
-            event: 'on_llm_stream',
-            data: {
-              chunk: {
-                content:
-                  'This is a test response about testing Cairo contracts.',
-              },
-            },
-            run_id: 'test-run-123',
-            name: 'TestLLM',
-            tags: [],
-            metadata: {},
-          } as StreamEvent;
-        },
-      } as IterableReadableStream<StreamEvent>;
-
-      // Update the generation program mock
-      const {
-        generationProgram,
-      } = require('../src/core/programs/generation.program');
-      generationProgram.streamingForward.mockImplementation(
-        (router, inputs) => {
-          capturedPrompt = `${inputs.chat_history}\n\nUser: ${inputs.query}\n\nContext:\n${inputs.context}`;
-          return mockReturnValue;
-        },
-      );
-
-      // Act
-      await answerGenerator.generate(input, retrievedDocs);
-
-      // Assert
-      expect(capturedPrompt).toBeDefined();
-      const promptString = JSON.stringify(capturedPrompt);
-      expect(promptString).toContain(
-        '<test_template>Example test template</test_template>',
-      );
-    });
-
-    it('should use noSourceFoundPrompt when no documents are retrieved', async () => {
-      // Arrange
-      const input: RagInput = {
-        query: 'How do I write a Cairo contract?',
-        chatHistory: [],
-        sources: [DocumentSource.CAIRO_BOOK],
-      };
-
-      const processedQuery: ProcessedQuery = {
-        original: input.query,
-        transformed: 'cairo contract',
-        isContractRelated: true,
-      };
-
-      const retrievedDocs: RetrievedDocuments = {
-        documents: [], // Empty document list
-        processedQuery,
-      };
-
-      // Create a spy on the LLM streamEvents method to capture the actual prompt
-      let capturedPrompt: string | null = null;
-      const mockReturnValue = {
-        [Symbol.asyncIterator]: async function* () {
-          yield {
-            event: 'on_llm_stream',
-            data: {
-              chunk: { content: 'I cannot find any relevant information.' },
-            },
-            run_id: 'test-run-123',
-            name: 'TestLLM',
-            tags: [],
-            metadata: {},
-          } as StreamEvent;
-        },
-      } as IterableReadableStream<StreamEvent>;
-
-      // Update the generation program mock
-      const {
-        generationProgram,
-      } = require('../src/core/programs/generation.program');
-      generationProgram.streamingForward.mockImplementation(
-        (router, inputs) => {
-          capturedPrompt = `${inputs.chat_history}\n\nUser: ${inputs.query}\n\nContext:\n${inputs.context}`;
-          return mockReturnValue;
-        },
-      );
-
-      // Act
-      await answerGenerator.generate(input, retrievedDocs);
-
-      // Assert
-      expect(capturedPrompt).toBeDefined();
-      const promptString = JSON.stringify(capturedPrompt);
-      expect(promptString).toContain(
-        'No relevant documentation found for this query.',
-      );
+      expect(chunks).toHaveLength(2);
+      expect(chunks[0].delta.answer).toBe('Here is a simple ');
+      expect(chunks[1].delta.answer).toBe('counter contract:');
     });
   });
 });

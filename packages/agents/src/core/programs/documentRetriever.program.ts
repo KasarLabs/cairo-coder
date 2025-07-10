@@ -1,34 +1,56 @@
-import { Document } from '@langchain/core/documents';
-import { AxMultiServiceRouter } from '@ax-llm/ax';
 import {
-  ProcessedQuery,
-  RetrievedDocuments,
-  RagSearchConfig,
-  BookChunk,
-  DocumentSource,
-} from '../../types';
+  AxAIService,
+  AxGen,
+  AxProgramForwardOptions,
+  AxProgram,
+} from '@ax-llm/ax';
+import { Document } from '@langchain/core/documents';
 import { computeSimilarity, logger } from '../../utils';
-/**
- * Retrieves and refines relevant documents based on a processed query.
- */
-export class DocumentRetriever {
+import {
+  RagSearchConfig,
+  ProcessedQuery,
+  DocumentSource,
+  BookChunk,
+} from '../../types';
+import { AxMultiServiceRouter } from '@ax-llm/ax';
+
+export class DocumentRetrieverProgram extends AxGen<
+  {
+    processedQuery: ProcessedQuery;
+    sources: DocumentSource | DocumentSource[];
+  },
+  { documents: Document<BookChunk>[] }
+> {
   constructor(
     private axRouter: AxMultiServiceRouter,
     private config: RagSearchConfig,
-  ) {}
+  ) {
+    super(`processedQuery:json, sources:string[] -> documents:json[]`);
+  }
 
-  async retrieve(
-    processedQuery: ProcessedQuery,
-    sources: DocumentSource | DocumentSource[],
-  ): Promise<RetrievedDocuments> {
-    logger.debug('Retrieving documents', { processedQuery, sources });
+  // Note for future maintainers: ensure that you give the right inputs to forward, otherwise the program will silently fail.
+  async forward(
+    ai: Readonly<AxAIService>,
+    {
+      processedQuery,
+      sources,
+    }: {
+      processedQuery: ProcessedQuery;
+      sources: DocumentSource | DocumentSource[];
+    },
+  ): Promise<{ documents: Document<BookChunk>[] }> {
+    if (processedQuery.resources?.length > 0) {
+      sources = processedQuery.resources;
+    }
     const docs = await this.fetchDocuments(processedQuery, sources);
-    const refinedDocs = (await this.rerankDocuments(
-      processedQuery.transformed,
+    const refinedDocs = await this.rerankDocuments(
+      processedQuery.original,
       docs,
-    )) as Document<BookChunk>[];
-    const attachedDocs = await this.attachSources(refinedDocs);
-    return { documents: attachedDocs, processedQuery };
+    );
+    const attachedDocs = await this.attachSources(
+      refinedDocs as Document<BookChunk>[],
+    );
+    return { documents: attachedDocs };
   }
 
   private async fetchDocuments(
@@ -54,27 +76,19 @@ export class DocumentRetriever {
     ].map(
       (content) => results.flat().find((doc) => doc.pageContent === content)!,
     );
-    const sourceSet = new Set(uniqueDocs.map((doc) => doc.metadata.source));
-    logger.debug('Retrieved documents:', {
-      count: uniqueDocs.length,
-      sources: Array.from(sourceSet),
-    });
     return uniqueDocs;
   }
 
   private async rerankDocuments(
-    query: string | string[],
+    query: string,
     docs: Document[],
   ): Promise<Document[]> {
-    if (
-      docs.length === 0 ||
-      (typeof query === 'string' && query === 'Summarize')
-    ) {
+    if (docs.length === 0) {
       return docs;
     }
 
     const validDocs = docs.filter((doc) => doc.pageContent?.length > 0);
-    const queryText = Array.isArray(query) ? query.join(' ') : query;
+    const queryText = query;
     const [docEmbeddingsResult, queryEmbeddingResult] = await Promise.all([
       this.axRouter.embed({
         texts: validDocs.map((doc) => doc.pageContent),
@@ -106,13 +120,15 @@ export class DocumentRetriever {
   private async attachSources(
     docs: Document<BookChunk>[],
   ): Promise<Document<BookChunk>[]> {
-    return docs.map((doc) => ({
-      pageContent: doc.pageContent,
-      metadata: {
-        ...doc.metadata,
-        title: doc.metadata.title,
-        url: doc.metadata.sourceLink,
-      },
-    }));
+    return docs
+      .filter((doc) => doc?.pageContent)
+      .map((doc) => ({
+        pageContent: doc.pageContent,
+        metadata: {
+          ...doc.metadata,
+          title: doc.metadata?.title,
+          url: doc.metadata?.sourceLink,
+        },
+      }));
   }
 }

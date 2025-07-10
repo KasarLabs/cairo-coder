@@ -1,8 +1,7 @@
-import { QueryProcessor } from '../src/core/pipeline/queryProcessor';
-import { AxMultiServiceRouter } from '@ax-llm/ax';
-import { RagInput, RagSearchConfig, DocumentSource } from '../src/types/index';
+import { QueryProcessorProgram } from '../src/core/programs/queryProcessor.program';
+import { AxAIService } from '@ax-llm/ax';
+import { DocumentSource } from '../src/types/index';
 import { mockDeep, MockProxy } from 'jest-mock-extended';
-import { AIMessage } from '@langchain/core/messages';
 
 // Mock the retrieval program
 jest.mock('../src/core/programs/retrieval.program', () => ({
@@ -12,7 +11,11 @@ jest.mock('../src/core/programs/retrieval.program', () => ({
       resources: ['cairo_book', 'starknet_docs'],
     }),
   },
-  retrievalInstructions: 'Mock instructions',
+  validateResources: jest.fn((resources) =>
+    resources.filter((r) =>
+      Object.values(DocumentSource).includes(r as DocumentSource),
+    ),
+  ),
 }));
 
 // Mock getModelForTask
@@ -20,173 +23,162 @@ jest.mock('../src/config/llm', () => ({
   getModelForTask: jest.fn().mockReturnValue('test-model'),
 }));
 
-// Mock the logger
-jest.mock('../src/utils/index', () => ({
-  logger: {
-    info: jest.fn(),
-    debug: jest.fn(),
-    error: jest.fn(),
-  },
-  formatChatHistoryAsString: jest.fn((history) =>
-    history
-      .map((message) => `${message._getType()}: ${message.content}`)
-      .join('\n'),
-  ),
-  parseXMLContent: jest.fn((xml, tag) => {
-    const regex = new RegExp(`<${tag}>(.*?)</${tag}>`, 'gs');
-    const matches = [...xml.matchAll(regex)];
-    return matches.map((match) => match[1].trim());
-  }),
-  TokenTracker: {
-    trackFullUsage: jest.fn().mockReturnValue({
-      promptTokens: 100,
-      completionTokens: 50,
-      totalTokens: 150,
-    }),
-  },
-}));
-
-describe('QueryProcessor', () => {
-  let queryProcessor: QueryProcessor;
-  let mockAxRouter: MockProxy<AxMultiServiceRouter>;
-  let mockConfig: RagSearchConfig;
+describe('QueryProcessorProgram', () => {
+  let queryProcessorProgram: QueryProcessorProgram;
+  let mockAI: MockProxy<AxAIService>;
 
   beforeEach(() => {
     // Reset mocks
     jest.clearAllMocks();
 
     // Create mock instances
-    mockAxRouter = mockDeep<AxMultiServiceRouter>();
+    mockAI = mockDeep<AxAIService>();
 
-    // Create a basic config for testing
-    mockConfig = {
-      name: 'Test Agent',
-      prompts: {
-        searchRetrieverPrompt:
-          'Your task is to rephrase this question: {query}\nChat history: {chat_history}',
-        searchResponsePrompt: 'test response prompt',
-      },
-      vectorStore: mockDeep(),
-    };
-
-    // Mock the retrieval program forward method
-    // The QueryProcessor now uses the retrieval program instead of direct LLM calls
-
-    // Create the QueryProcessor instance
-    queryProcessor = new QueryProcessor(mockAxRouter, mockConfig);
+    // Create the QueryProcessorProgram instance
+    queryProcessorProgram = new QueryProcessorProgram();
   });
 
-  describe('process', () => {
-    it('should process a query and extract search terms when the LLM returns terms', async () => {
+  describe('forward', () => {
+    it('should process a query and return ProcessedQuery with search terms', async () => {
       // Arrange
-      const input: RagInput = {
+      const input = {
+        chat_history: '',
         query: 'How do I write a Cairo contract?',
-        chatHistory: [],
-        sources: [DocumentSource.CAIRO_BOOK],
       };
 
       // Act
-      const result = await queryProcessor.process(input);
+      const result = await queryProcessorProgram.forward(mockAI, input);
 
       // Assert
-      // Since we're using the retrieval program, we check that instead
       const {
         retrievalProgram,
       } = require('../src/core/programs/retrieval.program');
-      expect(retrievalProgram.forward).toHaveBeenCalled();
+      expect(retrievalProgram.forward).toHaveBeenCalledWith(mockAI, input, {
+        model: 'test-model',
+      });
 
-      // Check that result contains the extracted terms
-      expect(result).toEqual(
-        expect.objectContaining({
-          original: input.query,
-          transformed: [
-            'How do I write a Cairo contract?',
-            'cairo contract',
-            'starknet',
-          ],
-          isContractRelated: true,
-          isTestRelated: false,
-          resources: [DocumentSource.CAIRO_BOOK, DocumentSource.STARKNET_DOCS],
-        }),
-      );
-    });
-
-    it('should use fallback when LLM is not provided', async () => {
-      // Arrange
-      const input: RagInput = {
-        query: 'How do I write a Cairo contract?',
-        chatHistory: [],
-        sources: [DocumentSource.CAIRO_BOOK],
-      };
-
-      // Create a processor without LLM
-      const processorWithoutLLM = new QueryProcessor(undefined, mockConfig);
-
-      // Act
-      const result = await processorWithoutLLM.process(input);
-
-      // Assert - should use the fallback processing
-      expect(result).toEqual(
-        expect.objectContaining({
-          original: input.query,
-          transformed: input.query,
-          isContractRelated: true, // Because it contains the word "contract"
-        }),
-      );
+      expect(result.processedQuery).toEqual({
+        original: 'How do I write a Cairo contract?',
+        transformed: [
+          'How do I write a Cairo contract?',
+          'cairo contract',
+          'starknet',
+        ],
+        isContractRelated: true,
+        isTestRelated: false,
+        resources: ['cairo_book', 'starknet_docs'],
+      });
     });
 
     it('should correctly identify test-related queries', async () => {
       // Arrange
-      const input: RagInput = {
+      const input = {
+        chat_history: '',
         query: 'How to write tests for Cairo?',
-        chatHistory: [],
-        sources: [DocumentSource.CAIRO_BOOK],
       };
 
       // Update the mock to return test-related response
       const {
         retrievalProgram,
       } = require('../src/core/programs/retrieval.program');
-      retrievalProgram.forward.mockResolvedValue({
-        search_terms: ['cairo test', 'starknet foundry'],
-        resources: [],
+      retrievalProgram.forward.mockResolvedValueOnce({
+        search_terms: ['cairo testing', 'starknet foundry'],
+        resources: ['starknet_foundry'],
       });
 
       // Act
-      const result = await queryProcessor.process(input);
+      const result = await queryProcessorProgram.forward(mockAI, input);
 
       // Assert
-      expect(result.isTestRelated).toBe(true);
+      expect(result.processedQuery.isTestRelated).toBe(true);
+      expect(result.processedQuery.original).toBe(
+        'How to write tests for Cairo?',
+      );
+      expect(result.processedQuery.transformed).toEqual([
+        'How to write tests for Cairo?',
+        'cairo testing',
+        'starknet foundry',
+      ]);
     });
 
-    it('should handle a direct response from LLM instead of terms', async () => {
+    it('should handle queries with no search terms', async () => {
       // Arrange
-      const input: RagInput = {
-        query: 'How do I build on Starknet?',
-        chatHistory: [],
-        sources: [DocumentSource.CAIRO_BOOK],
+      const input = {
+        chat_history: '',
+        query: 'Hello, how are you?',
       };
 
-      // Update the mock to return a different response
+      // Update the mock to return empty search terms
       const {
         retrievalProgram,
       } = require('../src/core/programs/retrieval.program');
-      retrievalProgram.forward.mockResolvedValue({
-        search_terms: ['How to develop contracts on Starknet?'],
+      retrievalProgram.forward.mockResolvedValueOnce({
+        search_terms: [],
         resources: [],
       });
 
       // Act
-      const result = await queryProcessor.process(input);
+      const result = await queryProcessorProgram.forward(mockAI, input);
 
       // Assert
-      expect(result).toEqual(
-        expect.objectContaining({
-          original: input.query,
-          transformed: [input.query, 'How to develop contracts on Starknet?'],
-          isContractRelated: true, // because "contract" is in the transformed query
-          resources: [],
-        }),
+      expect(result.processedQuery).toEqual({
+        original: 'Hello, how are you?',
+        transformed: ['Hello, how are you?'],
+        isContractRelated: false,
+        isTestRelated: false,
+        resources: [],
+      });
+    });
+
+    it('should filter invalid resources', async () => {
+      // Arrange
+      const input = {
+        chat_history: '',
+        query: 'How do I use Cairo?',
+      };
+
+      // Update the mock to return some invalid resources
+      const {
+        retrievalProgram,
+      } = require('../src/core/programs/retrieval.program');
+      retrievalProgram.forward.mockResolvedValueOnce({
+        search_terms: ['cairo usage'],
+        resources: ['cairo_book', 'invalid_resource', 'starknet_docs'],
+      });
+
+      // Act
+      const result = await queryProcessorProgram.forward(mockAI, input);
+
+      // Assert
+      expect(result.processedQuery.resources).toEqual([
+        'cairo_book',
+        'starknet_docs',
+      ]);
+    });
+
+    it('should detect contract-related queries from transformed terms', async () => {
+      // Arrange
+      const input = {
+        chat_history: '',
+        query: 'How do I use storage?',
+      };
+
+      // Update the mock to return contract-related terms
+      const {
+        retrievalProgram,
+      } = require('../src/core/programs/retrieval.program');
+      retrievalProgram.forward.mockResolvedValueOnce({
+        search_terms: ['storage mapping', 'smart contract storage'],
+        resources: ['cairo_book'],
+      });
+
+      // Act
+      const result = await queryProcessorProgram.forward(mockAI, input);
+
+      // Assert
+      expect(result.processedQuery.isContractRelated).toBe(true);
+      expect(result.processedQuery.transformed).toContain(
+        'smart contract storage',
       );
     });
   });

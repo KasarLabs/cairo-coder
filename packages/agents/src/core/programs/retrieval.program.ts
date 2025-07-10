@@ -20,7 +20,7 @@ const RESOURCE_DESCRIPTIONS = {
   starknet_foundry:
     'The Starknet Foundry Documentation. For using the Foundry toolchain: writing, compiling, testing (unit tests, integration tests), and debugging Starknet contracts.',
   cairo_by_example:
-    'Cairo by Example Documentation. Provides practical Cairo code snippets for specific language features or common patterns. Useful for "how-to" syntax questions.',
+    'Cairo by Example Documentation. Provides practical Cairo code snippets for specific language features or common patterns. Useful for how-to syntax questions.',
   openzeppelin_docs:
     'OpenZeppelin Cairo Contracts Documentation. For using the OZ library: standard implementations (ERC20, ERC721), access control, security patterns, contract upgradeability. Crucial for building standard-compliant contracts.',
   corelib_docs:
@@ -39,11 +39,9 @@ Instructions:
 5. Return empty arrays for non-Cairo queries (e.g. 'Hello, how are you?')
 `;
 
-const RESOURCES_SELECTION_INSTRUCTIONS = `Select relevant documentation resources from: ${Object.keys(
+const RESOURCES_SELECTION_INSTRUCTIONS = `Select relevant documentation resources from the available options: ${Object.keys(
   RESOURCE_DESCRIPTIONS,
-)
-  .map((key) => `${key}:${RESOURCE_DESCRIPTIONS[key]}`)
-  .join(', ')}`;
+).join(', ')}`;
 
 export const retrievalProgram: AxGen<
   { chat_history: string; query: string },

@@ -1,9 +1,10 @@
-import { DocumentRetriever } from '../src/core/pipeline/documentRetriever';
-import { AxMultiServiceRouter } from '@ax-llm/ax';
+import { DocumentRetrieverProgram } from '../src/core/programs/documentRetriever.program';
+import { AxMultiServiceRouter, AxAIService } from '@ax-llm/ax';
 import {
   DocumentSource,
   ProcessedQuery,
   RagSearchConfig,
+  BookChunk,
 } from '../src/types/index';
 import { Document } from '@langchain/core/documents';
 import { mockDeep, MockProxy } from 'jest-mock-extended';
@@ -19,9 +20,10 @@ jest.mock('../src/utils/index', () => ({
   },
 }));
 
-describe('DocumentRetriever', () => {
-  let documentRetriever: DocumentRetriever;
+describe('DocumentRetrieverProgram', () => {
+  let documentRetrieverProgram: DocumentRetrieverProgram;
   let mockAxRouter: MockProxy<AxMultiServiceRouter>;
+  let mockAI: MockProxy<AxAIService>;
   let mockConfig: RagSearchConfig;
 
   beforeEach(() => {
@@ -30,12 +32,14 @@ describe('DocumentRetriever', () => {
 
     // Create mock instances
     mockAxRouter = mockDeep<AxMultiServiceRouter>();
+    mockAI = mockDeep<AxAIService>();
 
     // Set up mock embed behavior for AxMultiServiceRouter
     mockAxRouter.embed.mockResolvedValue({
       embeddings: [
-        [0.1, 0.2, 0.3],
+        [0.1, 0.2, 0.3], // Document embeddings
         [0.4, 0.5, 0.6],
+        [0.4, 0.5, 0.6], // Query embedding (similar to second doc)
       ],
     } as any);
 
@@ -49,161 +53,251 @@ describe('DocumentRetriever', () => {
       vectorStore: {
         similaritySearch: jest.fn().mockResolvedValue([
           new Document({
-            pageContent: 'Cairo is a programming language for Starknet.',
+            pageContent: 'This is a test document about Cairo contracts.',
             metadata: {
-              title: 'Cairo Programming',
-              sourceLink: 'https://example.com/cairo',
+              title: 'Cairo Contracts',
+              sourceLink: 'https://example.com',
             },
           }),
           new Document({
-            pageContent: 'Starknet is a layer 2 solution powered by Cairo.',
+            pageContent: 'Another document about Starknet development.',
             metadata: {
-              title: 'Starknet Overview',
-              sourceLink: 'https://example.com/starknet',
+              title: 'Starknet Dev',
+              sourceLink: 'https://starknet.io',
             },
           }),
         ]),
       } as any,
-      maxSourceCount: 5,
-      similarityThreshold: 0.5,
+      maxSourceCount: 10,
+      similarityThreshold: 0.4,
     };
 
-    // Create the DocumentRetriever instance
-    documentRetriever = new DocumentRetriever(mockAxRouter, mockConfig);
+    // Create the DocumentRetrieverProgram instance
+    documentRetrieverProgram = new DocumentRetrieverProgram(
+      mockAxRouter,
+      mockConfig,
+    );
   });
 
-  describe('retrieve', () => {
-    it('should retrieve documents for a single query string', async () => {
+  describe('forward', () => {
+    it('should retrieve and rerank documents successfully', async () => {
       // Arrange
       const processedQuery: ProcessedQuery = {
         original: 'How do I write a Cairo contract?',
-        transformed: 'cairo contract',
+        transformed: ['How do I write a Cairo contract?', 'cairo contract'],
         isContractRelated: true,
+        isTestRelated: false,
+        resources: [DocumentSource.CAIRO_BOOK],
+      };
+
+      const input = {
+        processedQuery,
+        sources: [DocumentSource.CAIRO_BOOK] as DocumentSource[],
       };
 
       // Act
-      const result = await documentRetriever.retrieve(
+      const result = await documentRetrieverProgram.forward(mockAI, input);
+
+      // Assert
+      expect(result.documents).toHaveLength(2);
+      expect(result.documents[0].pageContent).toContain('Cairo contracts');
+      expect(result.documents[1].pageContent).toContain('Starknet development');
+
+      // Verify vectorStore.similaritySearch was called
+      expect(mockConfig.vectorStore.similaritySearch).toHaveBeenCalled();
+
+      // Verify embeddings were computed for reranking
+      expect(mockAxRouter.embed).toHaveBeenCalledTimes(2); // Once for docs, once for query
+    });
+
+    it('should use resources from processedQuery if available', async () => {
+      // Arrange
+      const processedQuery: ProcessedQuery = {
+        original: 'How do I test Cairo?',
+        transformed: ['cairo testing'],
+        isContractRelated: false,
+        isTestRelated: true,
+        resources: [DocumentSource.STARKNET_FOUNDRY], // Different from input sources
+      };
+
+      const input = {
         processedQuery,
-        DocumentSource.CAIRO_BOOK,
-      );
+        sources: [DocumentSource.CAIRO_BOOK] as DocumentSource[], // This should be overridden
+      };
+
+      // Act
+      const result = await documentRetrieverProgram.forward(mockAI, input);
 
       // Assert
       expect(mockConfig.vectorStore.similaritySearch).toHaveBeenCalledWith(
-        'cairo contract',
-        5,
-        DocumentSource.CAIRO_BOOK,
-      );
-      expect(result.documents.length).toBe(2);
-      expect(result.processedQuery).toBe(processedQuery);
-
-      // Check that documents have the expected metadata
-      expect(result.documents[0].metadata).toEqual(
-        expect.objectContaining({
-          url: expect.any(String),
-          title: expect.any(String),
-        }),
+        'cairo testing',
+        10,
+        [DocumentSource.STARKNET_FOUNDRY], // Should use resources from processedQuery
       );
     });
 
-    it('should retrieve and merge documents for an array of search terms', async () => {
+    it('should handle multiple transformed queries', async () => {
       // Arrange
       const processedQuery: ProcessedQuery = {
-        original: 'How do I write a Cairo contract?',
-        transformed: ['cairo', 'starknet', 'contract'],
+        original: 'How do I write and deploy Cairo contracts?',
+        transformed: ['cairo contracts', 'cairo deployment', 'starknet deploy'],
         isContractRelated: true,
+        isTestRelated: false,
+      };
+
+      const input = {
+        processedQuery,
+        sources: [DocumentSource.CAIRO_BOOK] as DocumentSource[],
       };
 
       // Act
-      const result = await documentRetriever.retrieve(
-        processedQuery,
-        DocumentSource.CAIRO_BOOK,
-      );
+      const result = await documentRetrieverProgram.forward(mockAI, input);
 
       // Assert
-      // Should search for each term
+      // Should call similaritySearch for each transformed query
       expect(mockConfig.vectorStore.similaritySearch).toHaveBeenCalledTimes(3);
       expect(mockConfig.vectorStore.similaritySearch).toHaveBeenCalledWith(
-        'cairo',
-        5,
-        DocumentSource.CAIRO_BOOK,
+        'cairo contracts',
+        10,
+        [DocumentSource.CAIRO_BOOK],
       );
       expect(mockConfig.vectorStore.similaritySearch).toHaveBeenCalledWith(
-        'starknet',
-        5,
-        DocumentSource.CAIRO_BOOK,
+        'cairo deployment',
+        10,
+        [DocumentSource.CAIRO_BOOK],
       );
       expect(mockConfig.vectorStore.similaritySearch).toHaveBeenCalledWith(
-        'contract',
-        5,
-        DocumentSource.CAIRO_BOOK,
+        'starknet deploy',
+        10,
+        [DocumentSource.CAIRO_BOOK],
       );
-
-      // Should deduplicate documents
-      expect(result.documents.length).toBe(2);
     });
 
-    it('should rerank documents based on similarity scores', async () => {
+    it('should filter documents by similarity threshold', async () => {
       // Arrange
+      const { computeSimilarity } = require('../src/utils/index');
+      computeSimilarity
+        .mockReturnValueOnce(0.3) // Below threshold
+        .mockReturnValueOnce(0.8); // Above threshold
+
       const processedQuery: ProcessedQuery = {
-        original: 'How do I write a Cairo contract?',
-        transformed: 'cairo contract',
-        isContractRelated: true,
-      };
-
-      // Set up embeddings mock
-      // Update the mock for when we test the second scenario
-      mockAxRouter.embed.mockResolvedValue({
-        embeddings: [
-          [0.1, 0.2, 0.3],
-          [0.4, 0.5, 0.6],
-        ],
-      } as any);
-
-      // Import the real computeSimilarity function to control scores
-      const computeSimilarityMock =
-        jest.requireMock('../src/utils/index').computeSimilarity;
-
-      // Set up different similarity scores for different documents
-      computeSimilarityMock
-        .mockImplementationOnce(() => 0.3) // Below threshold
-        .mockImplementationOnce(() => 0.6); // Above threshold
-
-      // Act
-      const result = await documentRetriever.retrieve(
-        processedQuery,
-        DocumentSource.CAIRO_BOOK,
-      );
-
-      // Assert
-      expect(mockAxRouter.embed).toHaveBeenCalled();
-
-      // Should only include documents above the similarity threshold
-      expect(result.documents.length).toBe(1);
-    });
-
-    it('should handle the special case of "Summarize" query', async () => {
-      // Arrange
-      const processedQuery: ProcessedQuery = {
-        original: 'Give me a summary',
-        transformed: 'Summarize',
+        original: 'test query',
+        transformed: ['test'],
         isContractRelated: false,
+        isTestRelated: false,
+      };
+
+      const input = {
+        processedQuery,
+        sources: [DocumentSource.CAIRO_BOOK] as DocumentSource[],
       };
 
       // Act
-      const result = await documentRetriever.retrieve(
-        processedQuery,
-        DocumentSource.CAIRO_BOOK,
-      );
+      const result = await documentRetrieverProgram.forward(mockAI, input);
 
       // Assert
-      expect(mockConfig.vectorStore.similaritySearch).toHaveBeenCalledWith(
-        'Summarize',
-        5,
-        DocumentSource.CAIRO_BOOK,
-      );
+      // Should only include the document with similarity above threshold
+      expect(result.documents).toHaveLength(1);
+      expect(result.documents[0].pageContent).toContain('Starknet development');
+    });
 
-      // Should skip reranking for "Summarize" queries
+    it('should handle empty document results', async () => {
+      // Arrange
+      mockConfig.vectorStore.similaritySearch = jest.fn().mockResolvedValue([]);
+
+      const processedQuery: ProcessedQuery = {
+        original: 'nonexistent query',
+        transformed: ['nonexistent'],
+        isContractRelated: false,
+        isTestRelated: false,
+      };
+
+      const input = {
+        processedQuery,
+        sources: [DocumentSource.CAIRO_BOOK] as DocumentSource[],
+      };
+
+      // Act
+      const result = await documentRetrieverProgram.forward(mockAI, input);
+
+      // Assert
+      expect(result.documents).toHaveLength(0);
+      // Should not call embed if no documents
       expect(mockAxRouter.embed).not.toHaveBeenCalled();
+    });
+
+    it('should attach source metadata correctly', async () => {
+      // Arrange
+      const processedQuery: ProcessedQuery = {
+        original: 'test query',
+        transformed: ['test'],
+        isContractRelated: false,
+        isTestRelated: false,
+      };
+
+      const input = {
+        processedQuery,
+        sources: [DocumentSource.CAIRO_BOOK] as DocumentSource[],
+      };
+
+      // Act
+      const result = await documentRetrieverProgram.forward(mockAI, input);
+
+      // Assert
+      expect(result.documents[0].metadata).toEqual({
+        title: 'Cairo Contracts',
+        sourceLink: 'https://example.com',
+        url: 'https://example.com',
+      });
+      expect(result.documents[1].metadata).toEqual({
+        title: 'Starknet Dev',
+        sourceLink: 'https://starknet.io',
+        url: 'https://starknet.io',
+      });
+    });
+
+    it('should deduplicate documents with same content', async () => {
+      // Arrange
+      mockConfig.vectorStore.similaritySearch = jest
+        .fn()
+        .mockResolvedValueOnce([
+          new Document({
+            pageContent: 'Duplicate content',
+            metadata: { title: 'Doc 1' },
+          }),
+        ])
+        .mockResolvedValueOnce([
+          new Document({
+            pageContent: 'Duplicate content', // Same content
+            metadata: { title: 'Doc 2' },
+          }),
+          new Document({
+            pageContent: 'Unique content',
+            metadata: { title: 'Doc 3' },
+          }),
+        ]);
+
+      const processedQuery: ProcessedQuery = {
+        original: 'test query',
+        transformed: ['query1', 'query2'],
+        isContractRelated: false,
+        isTestRelated: false,
+      };
+
+      const input = {
+        processedQuery,
+        sources: [DocumentSource.CAIRO_BOOK] as DocumentSource[],
+      };
+
+      // Act
+      const result = await documentRetrieverProgram.forward(mockAI, input);
+
+      // Assert
+      // Should only have 2 unique documents (duplicate content removed)
+      expect(result.documents).toHaveLength(2);
+      const contents = result.documents.map((d) => d.pageContent);
+      expect(contents).toContain('Duplicate content');
+      expect(contents).toContain('Unique content');
     });
   });
 });

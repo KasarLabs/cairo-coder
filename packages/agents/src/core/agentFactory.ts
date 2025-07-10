@@ -2,8 +2,7 @@ import { BaseMessage } from '@langchain/core/messages';
 import { AxMultiServiceRouter } from '@ax-llm/ax';
 import { getAgentConfig, getAgentConfigById } from '../config/agent';
 import EventEmitter from 'events';
-import { RagPipeline } from './pipeline/ragPipeline';
-import { McpPipeline } from './pipeline/mcpPipeline';
+import { CairoCoderFlow } from './pipeline/cairoCoderFlow';
 import { VectorStore } from '../db/postgresVectorStore';
 import { RagSearchConfig } from '../types';
 import { getAgent } from '../config/agents';
@@ -18,14 +17,15 @@ export class RagAgentFactory {
     mcpMode: boolean = false,
   ): EventEmitter {
     const config = getAgentConfig(vectorStore);
-    const pipeline = mcpMode
-      ? new McpPipeline(axRouter, config)
-      : new RagPipeline(axRouter, config);
-    return pipeline.execute({
-      query: message,
-      chatHistory: history,
-      sources: config.sources,
-    });
+    const flow = new CairoCoderFlow(axRouter, config);
+    return flow.execute(
+      {
+        query: message,
+        chatHistory: history,
+        sources: config.sources,
+      },
+      mcpMode,
+    );
   }
 
   // New method with agent ID support
@@ -49,25 +49,16 @@ export class RagAgentFactory {
       vectorStore,
     );
 
-    // Create pipeline based on agent configuration or MCP mode
-    const pipeline = this.createPipeline(mcpMode, axRouter, config);
+    // Create CairoCoderFlow with the configuration
+    const flow = new CairoCoderFlow(axRouter, config);
 
-    return pipeline.execute({
-      query: message,
-      chatHistory: history,
-      sources: config.sources,
-    });
-  }
-
-  private static createPipeline(
-    mcpMode: boolean,
-    axRouter: AxMultiServiceRouter,
-    config: RagSearchConfig,
-  ): RagPipeline | McpPipeline {
-    // MCP mode overrides pipeline type
-    if (mcpMode) {
-      return new McpPipeline(axRouter, config);
-    }
-    return new RagPipeline(axRouter, config);
+    return flow.execute(
+      {
+        query: message,
+        chatHistory: history,
+        sources: config.sources,
+      },
+      mcpMode,
+    );
   }
 }
