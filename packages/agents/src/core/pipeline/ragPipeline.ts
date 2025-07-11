@@ -20,7 +20,6 @@ export class RagPipeline {
   private retrievalFlow: AxFlow<
     { input: RagInput },
     {
-      input: string;
       retrieved: {
         documents: Document<BookChunk>[];
         processedQuery: ProcessedQuery;
@@ -42,14 +41,11 @@ export class RagPipeline {
     this.retrievalFlow = new AxFlow<
       { input: RagInput },
       {
-        input: string;
         retrieved: {
           documents: Document<BookChunk>[];
           processedQuery: ProcessedQuery;
         };
-      },
-      Record<string, never>,
-      { input: RagInput }
+      }
     >()
       .node('queryProcess', queryProg)
       .node('retrieve', retrieveProg)
@@ -213,27 +209,54 @@ export class RagPipeline {
     answerStream: AsyncIterable<any>;
   }> {
     // Execute retrieval flow to get intermediate results
-    const state = await this.retrievalFlow.forward(this.axRouter, { input });
-    const retrieved = state.retrieved;
+    try {
+      const state = await this.retrievalFlow.forward(this.axRouter, { input });
+      const retrieved = state.retrieved;
 
-    // Also get the processed query from the retrieval result
-    const processedQuery = retrieved.processedQuery;
+      // Also get the processed query from the retrieval result
+      const processedQuery = retrieved.processedQuery;
 
-    // Generate answer stream
-    const context = this.buildContext(retrieved);
-    const chat_history = formatChatHistoryAsString(input.chatHistory);
-    const query = input.query;
-    const modelKey = GET_DEFAULT_FAST_CHAT_MODEL();
-    const answerStream = this.config.generationProgram.streamingForward(
-      this.axRouter,
-      { chat_history, query, context },
-      { model: modelKey },
-    );
+      // Generate answer stream
+      const context = this.buildContext(retrieved);
+      const chat_history = formatChatHistoryAsString(input.chatHistory);
+      const query = input.query;
+      const modelKey = GET_DEFAULT_FAST_CHAT_MODEL();
+      const answerStream = this.config.generationProgram.streamingForward(
+        this.axRouter,
+        { chat_history, query, context },
+        { model: modelKey },
+      );
 
-    return {
-      processedQuery,
-      retrieved,
-      answerStream,
-    };
+      return {
+        processedQuery,
+        retrieved,
+        answerStream,
+      };
+    } catch (error) {
+      // Create fallback values when retrieval fails
+      const fallbackProcessedQuery = {
+        original: input.query,
+        transformed: [input.query],
+        isContractRelated: false,
+        isTestRelated: false,
+        resources: [],
+      };
+
+      const fallbackRetrieved: RetrievedDocuments = {
+        documents: [],
+        processedQuery: fallbackProcessedQuery,
+      };
+
+      // Create an error stream that satisfies the AsyncIterable type
+      const errorStream = async function* () {
+        yield "Could not process request.";
+      };
+
+      return {
+        processedQuery: fallbackProcessedQuery,
+        retrieved: fallbackRetrieved,
+        answerStream: errorStream(),
+      };
+    }
   }
 }

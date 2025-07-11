@@ -2,13 +2,14 @@ import { AxAIService, AxGen, AxProgram } from '@ax-llm/ax';
 import { validateResources } from './retrieval.program';
 import { ProcessedQuery, DocumentSource } from '../../types';
 import { GET_DEFAULT_FAST_CHAT_MODEL } from '../../config/llm';
+import { logger } from '../..';
 
 export class QueryProcessorProgram extends AxGen<
   { chat_history: string; query: string },
   { processedQuery: ProcessedQuery }
 > {
-  constructor(private retrievalProgram: AxGen<any, any>) {
-    super(`chat_history:string, query:string -> processedQuery:json`);
+  constructor(private retrievalProgram: AxGen<{ chat_history: string; query: string }, { search_terms: string[], resources: string[] }>) {
+    super(`chat_history?:string, query:string -> processedQuery:json`);
   }
 
   async forward(
@@ -22,7 +23,20 @@ export class QueryProcessorProgram extends AxGen<
       { model: modelKey },
     );
 
-    const searchTerms = result.search_terms as string[];
+    logger.info(`result: ${JSON.stringify(result)}`)
+    if (!result.search_terms) {
+      return {
+        processedQuery: {
+          original: query,
+          transformed: [query],
+          isContractRelated: false,
+          isTestRelated: false,
+          resources: [],
+        },
+      };
+    }
+
+    const searchTerms = result.search_terms;
     const transformed: string[] =
       searchTerms.length > 0 ? [query, ...searchTerms] : [query];
     const isContractRelated = transformed.some((t) =>

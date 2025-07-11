@@ -45,6 +45,8 @@ Instructions:
 3. Extract a list of search terms that will be used to retrieve relevant documentation or code examples through vector search. Typically, keywords related to the query, linked to Cairo, Starknet, and programming in general.
 4. For general terms like 'events' or 'storage', add Cairo/Starknet context to search terms.
 5. Return empty arrays for non-Cairo queries (e.g. 'Hello, how are you?')
+
+If the user is providing a snippet of code, extrapolate from the code programming concepts, starknet concepts, and smart contract concepts to build the answer.
 `;
 
 const RESOURCES_SELECTION_INSTRUCTIONS = `Select relevant documentation resources from the available options: ${Object.keys(
@@ -52,11 +54,11 @@ const RESOURCES_SELECTION_INSTRUCTIONS = `Select relevant documentation resource
 ).join(', ')}`;
 
 export const retrievalProgram: AxGen<
-  { chat_history: string; query: string },
+  { chat_history?: string; query: string },
   { search_terms: string[]; resources: string[] }
 > = ax`
   "${RETRIEVAL_INSTRUCTIONS}"
-  chat_history:${f.string("Previous messages from this conversation, used to infer context and intent of the user's query.")},
+  chat_history?:${f.string("Previous messages from this conversation, used to infer context and intent of the user's query.")},
   query:${f.string('The users query that must be sanitized and classified. This is the main query that will be used to retrieve relevant documentation or code examples.')} ->
   search_terms:${f.array(f.string(RETRIEVAL_INSTRUCTIONS))},
   resources:${f.array(f.string(RESOURCES_SELECTION_INSTRUCTIONS))}
