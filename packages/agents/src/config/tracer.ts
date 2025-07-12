@@ -2,7 +2,10 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { axGlobals } from '@ax-llm/ax';
 import { trace } from '@opentelemetry/api';
-import { defaultResource, resourceFromAttributes } from '@opentelemetry/resources';
+import {
+  defaultResource,
+  resourceFromAttributes,
+} from '@opentelemetry/resources';
 import {
   ATTR_SERVICE_NAME,
   ATTR_SERVICE_VERSION,
@@ -116,7 +119,10 @@ function transformStreamingSpan(span: ReadableSpan): ReadableSpan {
           fullCompletionContent += messageData.content;
         }
       } catch (e) {
-        logger.error('Failed to parse message attribute in gen_ai.choice event:', e);
+        logger.error(
+          'Failed to parse message attribute in gen_ai.choice event:',
+          e,
+        );
         otherEvents.push(event);
       }
     } else {
@@ -155,13 +161,13 @@ class FileSpanExporter implements SpanExporter {
 
     // Create write stream
     this.writeStream = fs.createWriteStream(this.filePath, {
-      flags: config.append !== false ? 'a' : 'w'
+      flags: config.append !== false ? 'a' : 'w',
     });
   }
 
   export(
     spans: ReadableSpan[],
-    resultCallback: (result: ExportResult) => void
+    resultCallback: (result: ExportResult) => void,
   ): void {
     try {
       for (const span of spans) {
@@ -276,18 +282,18 @@ export function initializeTracer(enableFileExport: boolean = false): void {
       // Use filtering processor to exclude embedding operations
       const langsmithProcessor = new FilteringSpanProcessor(
         langsmithExporter,
-        FILTERED_OPERATIONS
+        FILTERED_OPERATIONS,
       );
 
       spanProcessors.push(langsmithProcessor);
     }
 
     if (enableFileExport) {
-    // Always enable file export for debugging
-    const fileExporter = new FileSpanExporter({
-      filePath: DEFAULT_TRACE_FILE,
-      append: true,
-    });
+      // Always enable file export for debugging
+      const fileExporter = new FileSpanExporter({
+        filePath: DEFAULT_TRACE_FILE,
+        append: true,
+      });
       const fileProcessor = new BatchSpanProcessor(fileExporter);
       spanProcessors.push(fileProcessor);
     }
@@ -296,7 +302,7 @@ export function initializeTracer(enableFileExport: boolean = false): void {
       resourceFromAttributes({
         [ATTR_SERVICE_NAME]: SERVICE_INFO.name,
         [ATTR_SERVICE_VERSION]: SERVICE_INFO.version,
-      })
+      }),
     );
 
     const tracerProvider = new BasicTracerProvider({
