@@ -53,6 +53,10 @@ const RESOURCES_SELECTION_INSTRUCTIONS = `Select relevant documentation resource
   RESOURCE_DESCRIPTIONS,
 ).join(', ')}`;
 
+/**
+ * Generation program for extracting search terms and resources from queries.
+ * Configured with instructions for Cairo/Starknet specific analysis.
+ */
 export const retrievalProgram: AxGen<
   { chat_history?: string; query: string },
   { search_terms: string[]; resources: string[] }

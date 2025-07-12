@@ -8,9 +8,7 @@
     "test-doc-quality": "ts-node src/testDocQuality.ts",
     "optimize-retrieval": "bun run src/optimizers/optimize-retrieval.ts",
     "optimize-generation": "bun run src/optimizers/generation/optimize-generation.ts",
-    "test-generation-metric": "bun run src/optimizers/generation/test-generation-metric.ts",
-    "generate-starklings-dataset": "bun run src/optimizers/generation/generate-starklings-dataset.ts",
-    "test-context-summarizer": "bun run src/optimizers/generation/test-context-summarizer.ts"
+    "generate-starklings-dataset": "bun run src/optimizers/generation/generate-starklings-dataset.ts"
   },
   "dependencies": {
     "@arizeai/openinference-instrumentation-langchain": "^3.3.2",

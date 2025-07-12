@@ -27,6 +27,11 @@ import { initializeTracer } from './tracer';
 /**
  * Get the default fast chat model based on configuration
  */
+/**
+ * Returns the key for the default fast chat model based on configuration settings.
+ * Maps provider and model names to predefined keys, with a fallback to 'gemini-fast'.
+ * @returns {string} The model key string.
+ */
 export const GET_DEFAULT_FAST_CHAT_MODEL = () => {
   const config = getHostedModeConfig();
   const provider = config.DEFAULT_FAST_CHAT_PROVIDER;
@@ -52,6 +57,11 @@ export const GET_DEFAULT_FAST_CHAT_MODEL = () => {
 
 /**
  * Get the default chat model based on configuration
+ */
+/**
+ * Returns the key for the default chat model based on configuration settings.
+ * Maps provider and model names to predefined keys, with a fallback to 'gemini-fast'.
+ * @returns {string} The model key string.
  */
 export const GET_DEFAULT_CHAT_MODEL = () => {
   const config = getHostedModeConfig();
@@ -187,6 +197,12 @@ let axRouter: AxMultiServiceRouter | null = null;
  * - Returns a router that can route requests to appropriate providers
  *
  * @throws Error if no LLM providers are configured
+ */
+/**
+ * Returns the singleton instance of the multi-service LLM router.
+ * Initializes providers based on available API keys and throws an error if none are configured.
+ * @returns {AxMultiServiceRouter} The configured router instance.
+ * @throws {Error} If no LLM providers are configured.
  */
 export const getAxRouter = (): AxMultiServiceRouter => {
   if (axRouter) return axRouter;

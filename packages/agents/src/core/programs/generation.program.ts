@@ -22,6 +22,10 @@ context:${f.string('Documentation context containing relevant Cairo/Starknet inf
 answer:${f.string(ANSWER_DESCRIPTION)}
 `;
 
+/**
+ * Chain-of-thought program for generating Cairo code based on queries and context.
+ * Configured with signature, description, and examples for guided generation.
+ */
 export const generationProgram = new AxChainOfThought<
   {
     chat_history: string;

@@ -1,16 +1,14 @@
 import { AxAI, AxGen, AxSignature, f, s } from '@ax-llm/ax';
 import { getAxRouter } from '../../config/llm';
 
-/**
- * Program to summarize raw documentation context while preserving all important information
- * related to the specific Cairo/Starknet query.
- */
-
 const signature = s`
 query:${f.string("The user's query that must be answered with Cairo code examples or solutions.")}, rawContext:${f.string('Documentation context containing relevant Cairo/Starknet information to inform the response to summarize.')} ->
 summarizedContext:string
 `;
 
+/**
+ * Program to summarize raw documentation context while preserving key technical details.
+ */
 export const contextSummarizerProgram = new AxGen<
   { query: string; rawContext: string },
   { summarizedContext: string }
@@ -29,7 +27,6 @@ Key requirements:
 The goal is to create a focused, information-dense context that enables accurate Cairo code generation.`,
 });
 
-// Set examples to demonstrate proper summarization
 contextSummarizerProgram.setExamples([
   {
     query: `Complete the following Cairo code:
@@ -107,6 +104,9 @@ Error handling primarily uses the \`panic!\` macro or the \`Result\` type. The \
   },
 ]);
 
+/**
+ * Summarizes the raw documentation context based on the user's query using a fast model.
+ */
 export async function summarizeContext(
   query: string,
   rawContext: string,
@@ -117,7 +117,7 @@ export async function summarizeContext(
     const result = await contextSummarizerProgram.forward(
       router,
       { query, rawContext },
-      { model: 'gemini-fast' }, // Use fast model for summarization
+      { model: 'gemini-fast' },
     );
 
     return result.summarizedContext;

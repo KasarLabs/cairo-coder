@@ -4,10 +4,17 @@ import { ProcessedQuery, DocumentSource } from '../../types';
 import { GET_DEFAULT_FAST_CHAT_MODEL } from '../../config/llm';
 import { logger } from '../..';
 
+/**
+ * Program for processing queries into structured formats for retrieval.
+ */
 export class QueryProcessorProgram extends AxGen<
   { chat_history: string; query: string },
   { processedQuery: ProcessedQuery }
 > {
+  /**
+   * Initializes the QueryProcessorProgram with a retrieval program.
+   * @param {AxGen} retrievalProgram - The program for generating search terms and resources.
+   */
   constructor(
     private retrievalProgram: AxGen<
       { chat_history: string; query: string },
@@ -17,6 +24,14 @@ export class QueryProcessorProgram extends AxGen<
     super(`chat_history?:string, query:string -> processedQuery:json`);
   }
 
+  /**
+   * Processes the query using the retrieval program and derives additional flags.
+   * @param {AxAIService} ai - The AI service instance.
+   * @param {Object} param - Input parameters.
+   * @param {string} param.chat_history - Chat history string.
+   * @param {string} param.query - The user query.
+   * @returns {Promise<{ processedQuery: ProcessedQuery }>} The processed query object.
+   */
   async forward(
     ai: AxAIService,
     { chat_history, query }: { chat_history: string; query: string },

@@ -14,6 +14,9 @@ import {
 } from '../../types';
 import { AxMultiServiceRouter } from '@ax-llm/ax';
 
+/**
+ * Program for retrieving and processing documents based on processed queries.
+ */
 export class DocumentRetrieverProgram extends AxGen<
   {
     processedQuery: ProcessedQuery;
@@ -21,6 +24,11 @@ export class DocumentRetrieverProgram extends AxGen<
   },
   { documents: Document<BookChunk>[] }
 > {
+  /**
+   * Initializes the DocumentRetrieverProgram with router and config.
+   * @param {AxMultiServiceRouter} axRouter - The multi-service router instance.
+   * @param {RagSearchConfig} config - Configuration for RAG search.
+   */
   constructor(
     private axRouter: AxMultiServiceRouter,
     private config: RagSearchConfig,
@@ -29,6 +37,14 @@ export class DocumentRetrieverProgram extends AxGen<
   }
 
   // Note for future maintainers: ensure that you give the right inputs to forward, otherwise the program will silently fail.
+  /**
+   * Executes the document retrieval process: fetch, rerank, and attach sources.
+   * @param {Readonly<AxAIService>} ai - The AI service instance.
+   * @param {Object} param - Input parameters.
+   * @param {ProcessedQuery} param.processedQuery - The processed user query.
+   * @param {DocumentSource | DocumentSource[]} param.sources - Sources to search in.
+   * @returns {Promise<{ documents: Document<BookChunk>[] }>} Retrieved and processed documents.
+   */
   async forward(
     ai: Readonly<AxAIService>,
     {

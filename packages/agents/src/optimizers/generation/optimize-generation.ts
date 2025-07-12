@@ -1,8 +1,6 @@
 import {
   AxAI,
   AxAIGoogleGeminiModel,
-  AxBootstrapFewShot,
-  AxMiPRO,
   type AxMetricFn,
   AxDefaultCostTracker,
   AxCheckpointLoadFn,
@@ -12,15 +10,13 @@ import {
   type GenerationExample,
 } from '../datasets/generation.dataset';
 import { generationProgram } from '../../core/programs/generation.program';
-import { execSync } from 'child_process';
-import * as fs from 'fs';
-import * as path from 'path';
-import * as os from 'os';
 import { getGeminiApiKey, logger } from '../..';
 import { generationMetricFn } from './utils';
+import { AxMiPRO } from '@ax-llm/ax';
+import * as fs from 'fs';
+import * as path from 'path';
 
-// 1. Setup AI
-// We optimize a cheaper "student" model.
+// Setup student AI model
 const apiKey = getGeminiApiKey();
 const studentAI = new AxAI({
   name: 'google-gemini',
@@ -35,11 +31,11 @@ const studentAI = new AxAI({
 });
 
 const costTracker = new AxDefaultCostTracker({
-  maxTokens: 300000, // Stop after 300K tokens
-  maxCost: 1.0, // Stop after $1.0
+  maxTokens: 300000,
+  maxCost: 1.0,
 });
 
-// Checkpointing functions for fault tolerance
+// Checkpoint functions
 const checkpointSave = async (state: any) => {
   const id = `checkpoint_${Date.now()}`;
   try {
@@ -62,27 +58,29 @@ const checkpointLoad: AxCheckpointLoadFn = async (id) => {
   }
 };
 
-// 2. Instantiate Optimizer
+// Optimizer instance
 const optimizer = new AxMiPRO({
   studentAI,
   // @ts-ignore
-  examples: generationDataset, // Use our new dataset as validation
-  targetScore: 0.9, // Target 90% compilation success rate as per requirements
+  examples: generationDataset,
+  targetScore: 0.9,
   verbose: true,
   costTracker,
   checkpointSave,
   checkpointLoad,
-  checkpointInterval: 10, // Save checkpoint every 10 iterations
+  checkpointInterval: 10,
   options: {
     maxBootstrappedDemos: 15,
     maxLabeledDemos: 10,
-    numTrials: 8, // For thoroughness
+    numTrials: 8,
   },
 });
 
-// Evaluate baseline performance
+/**
+ * Evaluates baseline performance on a subset of the dataset.
+ */
 const evaluateBaseline = async () => {
-  console.log('📊 Evaluating baseline performance...');
+  console.log('Evaluating baseline performance...');
   let totalScore = 0;
 
   for (let i = 0; i < Math.min(5, generationDataset.length); i++) {
@@ -107,30 +105,29 @@ const evaluateBaseline = async () => {
       });
 
       totalScore += score;
-      console.log(`  Example ${i + 1}: ${score.toFixed(2)}`);
     } catch (error) {
-      console.error(`  Example ${i + 1}: Error - ${error}`);
+      console.error(`Example ${i + 1}: Error - ${error}`);
     }
   }
 
   const avgScore = totalScore / Math.min(5, generationDataset.length);
-  console.log(`📊 Baseline average score: ${avgScore.toFixed(4)}\n`);
+  console.log(`Baseline average score: ${avgScore.toFixed(4)}`);
   return avgScore;
 };
 
-// 3. Main execution function
+/**
+ * Main function to run the optimization.
+ */
 const main = async () => {
-  console.log('🚀 Starting generation program optimization...');
+  console.log('Starting generation program optimization...');
 
-  // Evaluate baseline
   const baselineScore = await evaluateBaseline();
 
   const startTime = Date.now();
   const result = await optimizer.compile(generationProgram, generationMetricFn);
   const duration = (Date.now() - startTime) / 1000;
 
-  console.log('\n✅ Optimization Complete!');
-  console.log('---------------------------');
+  console.log('Optimization Complete!');
   console.log(`Duration: ${duration.toFixed(2)}s`);
   console.log(`Baseline Score: ${baselineScore.toFixed(4)}`);
   console.log(`Best Score: ${result.bestScore.toFixed(4)}`);
@@ -141,15 +138,9 @@ const main = async () => {
   console.log(`Demos Generated: ${result.demos?.length || 0}`);
 
   if (result.demos) {
-    console.log('\nOptimized Demos:');
-    console.log(JSON.stringify(result.demos, null, 2));
-
-    // Dump demos to file
-    const fs = require('fs');
-    const path = require('path');
     const outputPath = path.join(__dirname, 'optimized-generation-demos.json');
     fs.writeFileSync(outputPath, JSON.stringify(result.demos, null, 2));
-    console.log(`📁 Demos saved to: ${outputPath}`);
+    console.log(`Demos saved to: ${outputPath}`);
   }
 
   const programConfig = JSON.stringify(result.finalConfiguration, null, 2);
@@ -158,16 +149,11 @@ const main = async () => {
     programConfig,
   );
 
-  // Show cost
   console.log(`Cost: $${costTracker.getCurrentCost().toFixed(4)}`);
   console.log(`Tokens: ${JSON.stringify(costTracker.getTokenUsage())}`);
 };
 
-// Run the optimization
 main().catch((error) => {
-  console.error('\n❌ Optimization failed:', error);
-  console.log(
-    '\n💡 Tip: You can resume from checkpoint by running the optimizer again',
-  );
+  console.error('Optimization failed:', error);
   process.exit(1);
 });
