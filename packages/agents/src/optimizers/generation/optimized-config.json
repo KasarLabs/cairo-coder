@@ -1,0 +1,8 @@
+{
+  "instruction": "Analyze the input systematically and provide a precise, well-reasoned response. Be very specific and detailed in your instructions.",
+  "bootstrappedDemos": 1,
+  "labeledExamples": 1,
+  "numCandidates": 5,
+  "numTrials": 8,
+  "sampleCount": 1
+}

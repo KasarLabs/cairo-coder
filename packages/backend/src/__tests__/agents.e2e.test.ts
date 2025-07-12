@@ -27,23 +27,13 @@ jest.mock('@cairo-coder/agents/config/settings', () => ({
   }),
 }));
 
-jest.mock('../config/provider', () => ({
-  getAvailableChatModelProviders: jest.fn().mockResolvedValue({
-    openai: {
-      'gpt-4': {
-        invoke: jest.fn().mockResolvedValue({ content: 'Mocked response' }),
-      },
-      'gpt-3.5-turbo': {
-        invoke: jest.fn().mockResolvedValue({ content: 'Mocked response' }),
-      },
-    },
-  }),
-  getAvailableEmbeddingModelProviders: jest.fn().mockResolvedValue({
-    openai: {
-      'text-embedding-ada-002': {
-        embedQuery: jest.fn().mockResolvedValue([0.1, 0.2, 0.3]),
-      },
-    },
+// Provider module removed - LLM configuration is now handled by AxMultiServiceRouter
+
+jest.mock('@cairo-coder/agents/config/llm', () => ({
+  getAxRouter: jest.fn().mockReturnValue({
+    // Mock AxMultiServiceRouter methods
+    chat: jest.fn().mockResolvedValue({ content: 'Mocked response' }),
+    embed: jest.fn().mockResolvedValue({ embeddings: [[0.1, 0.2, 0.3]] }),
   }),
 }));
 

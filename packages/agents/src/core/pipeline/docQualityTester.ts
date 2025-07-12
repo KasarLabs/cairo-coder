@@ -1,5 +1,5 @@
 import { BaseChatModel } from '@langchain/core/language_models/chat_models';
-import { Embeddings } from '@langchain/core/embeddings';
+import { AxMultiServiceRouter } from '@ax-llm/ax';
 import { Document } from '@langchain/core/documents';
 import { RagPipeline } from './ragPipeline';
 import {
@@ -29,28 +29,15 @@ import {
 export class DocQualityTester {
   private pipeline: RagPipeline;
   private evaluationLLM: BaseChatModel;
-  private embeddings: Embeddings;
   private config: RagSearchConfig;
 
   constructor(
-    llmConfig: {
-      defaultLLM: BaseChatModel;
-      fastLLM: BaseChatModel;
-      evaluationLLM?: BaseChatModel;
-    },
-    embeddings: Embeddings,
+    axRouter: AxMultiServiceRouter,
+    evaluationLLM: BaseChatModel,
     config: RagSearchConfig,
   ) {
-    this.pipeline = new RagPipeline(
-      {
-        defaultLLM: llmConfig.defaultLLM,
-        fastLLM: llmConfig.fastLLM,
-      },
-      embeddings,
-      config,
-    );
-    this.evaluationLLM = llmConfig.evaluationLLM || llmConfig.defaultLLM;
-    this.embeddings = embeddings;
+    this.pipeline = new RagPipeline(axRouter, config);
+    this.evaluationLLM = evaluationLLM;
     this.config = config;
   }
 
@@ -297,31 +284,17 @@ export class DocQualityTester {
         sources: config_sources,
       };
 
-      // Custom execution to capture intermediates
-      const processedQuery =
-        await this.pipeline['queryProcessor'].process(input);
-      const retrieved = await this.pipeline['documentRetriever'].retrieve(
-        processedQuery,
-        input.sources,
-      );
+      // Execute pipeline to capture intermediates using the new testing method
+      const { processedQuery, retrieved, answerStream } =
+        await this.pipeline.executeRetrievalForTesting(input);
 
       let answer = '';
-      const stream = await this.pipeline['answerGenerator'].generate(
-        input,
-        retrieved,
-      );
+      const stream = answerStream;
       for await (const event of stream) {
         if (event.event === 'on_llm_stream') {
-          const content =
-            event.data?.output?.generations?.[0]?.[0]?.message?.content || '';
-          if (content) {
-            answer += content;
-          }
-        } else if (event.event === 'on_llm_end') {
-          const content =
-            event.data?.output?.generations?.[0]?.[0]?.message?.content || '';
-          if (content) {
-            answer += content;
+          const chunk = event.data?.chunk;
+          if (chunk !== undefined && chunk !== '') {
+            answer += chunk;
           }
         }
       }

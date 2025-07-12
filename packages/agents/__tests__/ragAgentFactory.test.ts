@@ -1,8 +1,7 @@
 import { RagAgentFactory } from '../src/core/agentFactory';
 import { RagPipeline } from '../src/core/pipeline/ragPipeline';
-import { AvailableAgents, LLMConfig, DocumentSource } from '../src/types';
-import { Embeddings } from '@langchain/core/embeddings';
-import { BaseChatModel } from '@langchain/core/language_models/chat_models';
+import { AvailableAgents, DocumentSource } from '../src/types';
+import { AxMultiServiceRouter } from '@ax-llm/ax';
 import { mockDeep, MockProxy } from 'jest-mock-extended';
 import { BaseMessage } from '@langchain/core/messages';
 import EventEmitter from 'events';
@@ -34,8 +33,7 @@ jest.mock('../src/core/pipeline/ragPipeline', () => ({
 }));
 
 describe('RagAgentFactory', () => {
-  let mockLLM: LLMConfig;
-  let mockEmbeddings: MockProxy<Embeddings>;
+  let mockAxRouter: MockProxy<AxMultiServiceRouter>;
   let mockVectorStore: MockProxy<VectorStore>;
 
   beforeEach(() => {
@@ -43,11 +41,7 @@ describe('RagAgentFactory', () => {
     jest.clearAllMocks();
 
     // Create mock instances
-    mockLLM = {
-      defaultLLM: mockDeep<BaseChatModel>(),
-      fastLLM: mockDeep<BaseChatModel>(),
-    };
-    mockEmbeddings = mockDeep<Embeddings>();
+    mockAxRouter = mockDeep<AxMultiServiceRouter>();
     mockVectorStore = mockDeep<VectorStore>();
   });
 
@@ -62,8 +56,7 @@ describe('RagAgentFactory', () => {
       const emitter = RagAgentFactory.createAgent(
         message,
         history,
-        mockLLM,
-        mockEmbeddings,
+        mockAxRouter,
         mockVectorStore,
       );
 
@@ -74,15 +67,18 @@ describe('RagAgentFactory', () => {
       // Check that the pipeline execute method was called with the right parameters
       const executeSpy = (RagPipeline as jest.Mock).mock.results[0].value
         .execute;
-      expect(executeSpy).toHaveBeenCalledWith({
-        query: message,
-        chatHistory: history,
-        sources: [
-          DocumentSource.CAIRO_BOOK,
-          DocumentSource.CAIRO_BY_EXAMPLE,
-          DocumentSource.STARKNET_FOUNDRY,
-        ],
-      });
+      expect(executeSpy).toHaveBeenCalledWith(
+        {
+          query: message,
+          chatHistory: history,
+          sources: [
+            DocumentSource.CAIRO_BOOK,
+            DocumentSource.CAIRO_BY_EXAMPLE,
+            DocumentSource.STARKNET_FOUNDRY,
+          ],
+        },
+        false,
+      );
     });
 
     it('should handle complex Cairo queries', () => {
@@ -95,8 +91,7 @@ describe('RagAgentFactory', () => {
       const emitter = RagAgentFactory.createAgent(
         message,
         history,
-        mockLLM,
-        mockEmbeddings,
+        mockAxRouter,
         mockVectorStore,
       );
 
@@ -104,18 +99,21 @@ describe('RagAgentFactory', () => {
       expect(RagPipeline).toHaveBeenCalledTimes(1);
       expect(emitter).toBeInstanceOf(EventEmitter);
 
-      // Check streaming option is passed
+      // Check that the execute method was called with the right parameters
       const executeSpy = (RagPipeline as jest.Mock).mock.results[0].value
         .execute;
-      expect(executeSpy).toHaveBeenCalledWith({
-        query: message,
-        chatHistory: history,
-        sources: [
-          DocumentSource.CAIRO_BOOK,
-          DocumentSource.CAIRO_BY_EXAMPLE,
-          DocumentSource.STARKNET_FOUNDRY,
-        ],
-      });
+      expect(executeSpy).toHaveBeenCalledWith(
+        {
+          query: message,
+          chatHistory: history,
+          sources: [
+            DocumentSource.CAIRO_BOOK,
+            DocumentSource.CAIRO_BY_EXAMPLE,
+            DocumentSource.STARKNET_FOUNDRY,
+          ],
+        },
+        false,
+      );
     });
   });
 });

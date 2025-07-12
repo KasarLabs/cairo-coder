@@ -5,15 +5,21 @@ import { getAgent, getDefaultAgent } from './agents';
 // Legacy function for backward compatibility
 export const getAgentConfig = (vectorStore: VectorStore): RagSearchConfig => {
   const agent = getDefaultAgent();
+
+  if (!agent.programs) {
+    throw new Error(`Programs not defined for default agent`);
+  }
+
   return {
     name: agent.name,
-    prompts: agent.prompts,
     vectorStore,
     contractTemplate: agent.templates?.contract,
     testTemplate: agent.templates?.test,
     maxSourceCount: agent.parameters.maxSourceCount,
     similarityThreshold: agent.parameters.similarityThreshold,
     sources: agent.sources,
+    retrievalProgram: agent.programs.retrieval,
+    generationProgram: agent.programs.generation,
   };
 };
 
@@ -28,14 +34,19 @@ export const getAgentConfigById = async (
     throw new Error(`Agent configuration not found: ${agentId}`);
   }
 
+  if (!agentConfig.programs) {
+    throw new Error(`Programs not defined for agent: ${agentId}`);
+  }
+
   return {
     name: agentConfig.name,
-    prompts: agentConfig.prompts,
     vectorStore,
     contractTemplate: agentConfig.templates?.contract,
     testTemplate: agentConfig.templates?.test,
     maxSourceCount: agentConfig.parameters.maxSourceCount,
     similarityThreshold: agentConfig.parameters.similarityThreshold,
     sources: agentConfig.sources,
+    retrievalProgram: agentConfig.programs.retrieval,
+    generationProgram: agentConfig.programs.generation,
   };
 };
