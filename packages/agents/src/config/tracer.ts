@@ -131,6 +131,19 @@ function transformStreamingSpan(span: ReadableSpan): ReadableSpan {
     }
   }
 
+  const genAiUsageEvents = span.events?.filter(
+    (event) => event.name === 'gen_ai.usage',
+  );
+  const lastGenAiUsageEvent = genAiUsageEvents?.[genAiUsageEvents.length - 1];
+  if (lastGenAiUsageEvent) {
+    span.attributes['gen_ai.usage.total_tokens'] =
+      lastGenAiUsageEvent.attributes['gen_ai.usage.total_tokens'];
+    span.attributes['gen_ai.usage.prompt_tokens'] =
+      lastGenAiUsageEvent.attributes['gen_ai.usage.prompt_tokens'];
+    span.attributes['gen_ai.usage.completion_tokens'] =
+      lastGenAiUsageEvent.attributes['gen_ai.usage.completion_tokens'];
+  }
+
   // Add aggregated content to span attributes
   if (fullCompletionContent) {
     span.attributes['gen_ai.completion'] = fullCompletionContent;

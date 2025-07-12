@@ -1,4 +1,9 @@
-import { AxGenIn, AxGenOut, AxMultiServiceRouter } from '@ax-llm/ax';
+import {
+  AxAIGoogleGeminiModel,
+  AxGenIn,
+  AxGenOut,
+  AxMultiServiceRouter,
+} from '@ax-llm/ax';
 import {
   RagInput,
   StreamHandler,
@@ -27,17 +32,21 @@ export class RagPipeline {
     }
   >;
 
+  private queryProg: QueryProcessorProgram;
+  private retrieveProg: DocumentRetrieverProgram;
+
   constructor(
     private axRouter: AxMultiServiceRouter,
     private config: RagSearchConfig,
   ) {
-    const queryProg = new QueryProcessorProgram(this.config.retrievalProgram);
-    const retrieveProg = new DocumentRetrieverProgram(
+    this.queryProg = new QueryProcessorProgram(this.config.retrievalProgram);
+    this.retrieveProg = new DocumentRetrieverProgram(
       this.axRouter,
       this.config,
     );
 
     // @ts-ignore
+    // TODO (feature-request): ask for flow.getUsage() to call getUsage() on all nodes and sum them?
     this.retrievalFlow = new AxFlow<
       { input: RagInput },
       {
@@ -47,8 +56,8 @@ export class RagPipeline {
         };
       }
     >()
-      .node('queryProcess', queryProg)
-      .node('retrieve', retrieveProg)
+      .node('queryProcess', this.queryProg)
+      .node('retrieve', this.retrieveProg)
       .execute('queryProcess', (s) => ({
         chat_history: formatChatHistoryAsString(s.input.chatHistory),
         query: s.input.query,
@@ -93,7 +102,9 @@ export class RagPipeline {
     handler: StreamHandler,
   ): Promise<void> {
     try {
-      TokenTracker.resetSessionCounters();
+      this.queryProg.resetUsage();
+      this.config.generationProgram.resetUsage();
+
       logger.info('Starting RagPipeline', { query: input.query });
 
       const state = await this.retrievalFlow.forward(
@@ -106,6 +117,7 @@ export class RagPipeline {
           logger: (message) => logger.debug(message),
         },
       );
+
       const retrieved = state.retrieved;
       handler.emitSources(retrieved.documents);
 
@@ -140,7 +152,24 @@ export class RagPipeline {
         );
       }
 
+      // Currently AX-LLM has an issue with token tracking for streaming models.
+      // Transition to using this once solved.
+
+      // const queryUsage = this.queryProg.getUsage()[0];
+      // const generationUsage = this.config.generationProgram.getUsage()[0];
+
+      // console.log('Query usage:', this.queryProg.getUsage());
+      // console.log('Generation usage:', this.config.generationProgram.getUsage());
+
+      // const totalTokens = {
+      //   promptTokens: queryUsage.tokens.promptTokens + generationUsage.tokens.promptTokens,
+      //   responseTokens: queryUsage.tokens.completionTokens + generationUsage.tokens.completionTokens,
+      //   totalTokens: queryUsage.tokens.totalTokens + generationUsage.tokens.totalTokens,
+      //   thinkingTokens: generationUsage.tokens.thoughtsTokens || 0 + queryUsage.tokens.thoughtsTokens || 0,
+      // }
+
       const tokenUsage = TokenTracker.getSessionTokenUsage();
+
       logger.info('Pipeline completed', {
         query: input.query,
         tokenUsage: {

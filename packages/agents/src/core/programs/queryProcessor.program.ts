@@ -1,4 +1,10 @@
-import { AxAIService, AxGen, AxProgram } from '@ax-llm/ax';
+import {
+  AxAIService,
+  AxGen,
+  AxProgram,
+  AxProgramTrace,
+  AxProgramUsage,
+} from '@ax-llm/ax';
 import { validateResources } from './retrieval.program';
 import { ProcessedQuery, DocumentSource } from '../../types';
 import { GET_DEFAULT_FAST_CHAT_MODEL } from '../../config/llm';
@@ -22,6 +28,22 @@ export class QueryProcessorProgram extends AxGen<
     >,
   ) {
     super(`chat_history?:string, query:string -> processedQuery:json`);
+  }
+
+  /**
+   * Get the usage of the underlying retrieval program.
+   * If we don't implement this, the usage will not be tracked and the default `[]` will be returned.
+   * @returns {AxProgramUsage[]} The usage of the retrieval program.
+   */
+  getUsage(): AxProgramUsage[] {
+    return this.retrievalProgram.getUsage();
+  }
+
+  /**
+   * Reset the usage of the underlying retrieval program.
+   */
+  resetUsage(): void {
+    this.retrievalProgram.resetUsage();
   }
 
   /**

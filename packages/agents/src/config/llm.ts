@@ -131,10 +131,6 @@ const initializeOpenAI = () => {
         description: 'Model for embeddings',
       },
     ],
-    // Skip tracing for embeddings to reduce noise
-    options: {
-      tracer: null,
-    },
   });
 };
 
