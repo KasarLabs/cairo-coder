@@ -273,7 +273,10 @@ export class VectorStore {
       // Process all batches
       const batchEmbeddings = await Promise.all(
         documentBatches.map(async (batch) => {
-          const result = await this.axRouter.embed({ texts: batch });
+          const result = await this.axRouter.embed({
+            texts: batch,
+            embedModel: 'openai-embeddings',
+          });
           return result.embeddings;
         }),
       );

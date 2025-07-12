@@ -7,7 +7,7 @@ import { execSync } from 'child_process';
 import {
   ensureStarklingsRepo,
   parseStarklingsInfo,
-  type StarklingsExercise
+  type StarklingsExercise,
 } from './starklings-helper';
 import { VectorStore } from '../../db/postgresVectorStore';
 import { getAxRouter } from '../../config/llm';
@@ -64,7 +64,10 @@ async function setupVectorStore(): Promise<VectorStore> {
 /**
  * Read the exercise source code to use as the query
  */
-function readExerciseSourceCode(exercisePath: string, starklingsPath: string): string | null {
+function readExerciseSourceCode(
+  exercisePath: string,
+  starklingsPath: string,
+): string | null {
   const fullPath = path.join(starklingsPath, exercisePath);
 
   if (!fs.existsSync(fullPath)) {
@@ -90,7 +93,7 @@ async function getContextForQuery(
   searchQuery: string,
   fullQuery: string,
   vectorStore: VectorStore,
-  router: AxMultiServiceRouter
+  router: AxMultiServiceRouter,
 ): Promise<string> {
   try {
     // Perform similarity search (vectorStore handles embedding generation internally)
@@ -135,7 +138,9 @@ async function getContextForQuery(
     // Summarize the context to keep only relevant information
     const summarizedContext = await summarizeContext(fullQuery, context);
 
-    logger.debug(`Summarized context length: ${summarizedContext.length} characters`);
+    logger.debug(
+      `Summarized context length: ${summarizedContext.length} characters`,
+    );
 
     return summarizedContext || 'No relevant documentation found.';
   } catch (error) {
@@ -147,23 +152,25 @@ async function getContextForQuery(
 /**
  * Read exercise solution if available
  */
-function readExerciseSolution(exercisePath: string, starklingsPath: string): string | null {
+function readExerciseSolution(
+  exercisePath: string,
+  starklingsPath: string,
+): string | null {
   // Try to find solution file
   const solutionPath = exercisePath.replace('exercises/', 'solutions/');
   const fullPath = path.join(starklingsPath, solutionPath);
   if (fs.existsSync(fullPath)) {
     try {
-        const content = fs.readFileSync(fullPath, 'utf8');
-        // Wrap in code block for consistency
-        return `\`\`\`cairo\n${content}\n\`\`\``;
-      } catch (error) {
+      const content = fs.readFileSync(fullPath, 'utf8');
+      // Wrap in code block for consistency
+      return `\`\`\`cairo\n${content}\n\`\`\``;
+    } catch (error) {
       logger.warn(`Failed to read solution at ${fullPath}:`, error);
     }
   }
   // If no solution found, return null.
   return null;
-  }
-
+}
 
 /**
  * Process a single Starklings exercise
@@ -172,7 +179,7 @@ async function processExercise(
   exercise: StarklingsExercise,
   starklingsPath: string,
   vectorStore: VectorStore,
-  router: AxMultiServiceRouter
+  router: AxMultiServiceRouter,
 ): Promise<ProcessedExample | null> {
   try {
     logger.info(`Processing exercise: ${exercise.name}`);
@@ -180,7 +187,9 @@ async function processExercise(
     // Read the exercise source code (with TODOs) as the query
     const exerciseCode = readExerciseSourceCode(exercise.path, starklingsPath);
     if (!exerciseCode) {
-      logger.warn(`Could not read exercise code for ${exercise.name}, skipping...`);
+      logger.warn(
+        `Could not read exercise code for ${exercise.name}, skipping...`,
+      );
       return null;
     }
 
@@ -205,20 +214,25 @@ async function processExercise(
     const query = `Complete the following Cairo code:\n\n\`\`\`cairo\n${exerciseCode}\n\`\`\`\n\nHint: ${exercise.hint}`;
 
     // Get relevant context based on the hint and full query
-    const context = await getContextForQuery(searchQuery, query, vectorStore, router);
+    const context = await getContextForQuery(
+      searchQuery,
+      query,
+      vectorStore,
+      router,
+    );
 
     return {
       query,
       chat_history: '',
       context,
       expected: {
-        answer: solution
+        answer: solution,
       },
       metadata: {
         exerciseName: exercise.name,
         exercisePath: exercise.path,
-        mode: exercise.mode
-      }
+        mode: exercise.mode,
+      },
     };
   } catch (error) {
     logger.error(`Failed to process exercise ${exercise.name}:`, error);
@@ -237,7 +251,10 @@ async function generateStarklingsDataset() {
   const router = getAxRouter();
 
   // Setup Starklings repository
-  const starklingsPath = path.join(__dirname, '../../../../../temp/starklings-cairo1');
+  const starklingsPath = path.join(
+    __dirname,
+    '../../../../../temp/starklings-cairo1',
+  );
 
   console.log('📂 Ensuring Starklings repository...');
   const repoReady = await ensureStarklingsRepo(starklingsPath);
@@ -258,23 +275,31 @@ async function generateStarklingsDataset() {
   for (let i = 0; i < exercises.length; i += batchSize) {
     const batch = exercises.slice(i, Math.min(i + batchSize, exercises.length));
 
-    console.log(`\n📦 Processing batch ${Math.floor(i / batchSize) + 1}/${Math.ceil(exercises.length / batchSize)}`);
+    console.log(
+      `\n📦 Processing batch ${Math.floor(i / batchSize) + 1}/${Math.ceil(exercises.length / batchSize)}`,
+    );
 
     const batchResults = await Promise.all(
-      batch.map(exercise => processExercise(exercise, starklingsPath, vectorStore, router))
+      batch.map((exercise) =>
+        processExercise(exercise, starklingsPath, vectorStore, router),
+      ),
     );
 
     // Filter out null results
-    const validResults = batchResults.filter((result): result is ProcessedExample => result !== null);
+    const validResults = batchResults.filter(
+      (result): result is ProcessedExample => result !== null,
+    );
     processedExamples.push(...validResults);
 
     // Add a small delay between batches to avoid rate limiting
     if (i + batchSize < exercises.length) {
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await new Promise((resolve) => setTimeout(resolve, 1000));
     }
   }
 
-  console.log(`\n✅ Successfully processed ${processedExamples.length} examples`);
+  console.log(
+    `\n✅ Successfully processed ${processedExamples.length} examples`,
+  );
 
   // Generate the TypeScript file content
   const datasetContent = generateDatasetFile(processedExamples);
@@ -306,7 +331,9 @@ function generateDatasetFile(examples: ProcessedExample[]): string {
   });
 
   // Convert to dataset format (without metadata)
-  const datasetExamples = sortedExamples.map(({ metadata, ...example }) => example);
+  const datasetExamples = sortedExamples.map(
+    ({ metadata, ...example }) => example,
+  );
 
   return `// This dataset was automatically generated from Starklings exercises
 // Generated on: ${new Date().toISOString()}
@@ -328,13 +355,13 @@ export const datasetMetadata = {
   source: 'Starklings Cairo 1',
   generatedAt: '${new Date().toISOString()}',
   totalExamples: ${datasetExamples.length},
-  exerciseNames: ${JSON.stringify(sortedExamples.map(e => e.metadata?.exerciseName || 'unknown'))}
+  exerciseNames: ${JSON.stringify(sortedExamples.map((e) => e.metadata?.exerciseName || 'unknown'))}
 };
 `;
 }
 
 // Run the generation
-generateStarklingsDataset().catch(error => {
+generateStarklingsDataset().catch((error) => {
   console.error('\n❌ Dataset generation failed:', error);
   process.exit(1);
 });

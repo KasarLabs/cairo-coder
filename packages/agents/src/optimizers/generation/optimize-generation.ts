@@ -90,11 +90,15 @@ const evaluateBaseline = async () => {
     const modelKey = 'gemini-fast';
 
     try {
-      const result = await generationProgram.forward(studentAI, {
-        chat_history: example.chat_history || '',
-        query: example.query,
-        context: example.context,
-      }, { model: modelKey });
+      const result = await generationProgram.forward(
+        studentAI,
+        {
+          chat_history: example.chat_history || '',
+          query: example.query,
+          context: example.context,
+        },
+        { model: modelKey },
+      );
 
       const score = await generationMetricFn({
         prediction: result,
@@ -130,7 +134,9 @@ const main = async () => {
   console.log(`Duration: ${duration.toFixed(2)}s`);
   console.log(`Baseline Score: ${baselineScore.toFixed(4)}`);
   console.log(`Best Score: ${result.bestScore.toFixed(4)}`);
-  console.log(`Improvement: ${((result.bestScore - baselineScore) * 100).toFixed(1)}%`);
+  console.log(
+    `Improvement: ${((result.bestScore - baselineScore) * 100).toFixed(1)}%`,
+  );
   console.log(`Total API Calls: ${result.stats.totalCalls}`);
   console.log(`Demos Generated: ${result.demos?.length || 0}`);
 
@@ -147,7 +153,10 @@ const main = async () => {
   }
 
   const programConfig = JSON.stringify(result.finalConfiguration, null, 2);
-   fs.writeFileSync(path.join(__dirname, 'optimized-config.json'), programConfig);
+  fs.writeFileSync(
+    path.join(__dirname, 'optimized-config.json'),
+    programConfig,
+  );
 
   // Show cost
   console.log(`Cost: $${costTracker.getCurrentCost().toFixed(4)}`);
@@ -157,6 +166,8 @@ const main = async () => {
 // Run the optimization
 main().catch((error) => {
   console.error('\n❌ Optimization failed:', error);
-  console.log('\n💡 Tip: You can resume from checkpoint by running the optimizer again');
+  console.log(
+    '\n💡 Tip: You can resume from checkpoint by running the optimizer again',
+  );
   process.exit(1);
 });

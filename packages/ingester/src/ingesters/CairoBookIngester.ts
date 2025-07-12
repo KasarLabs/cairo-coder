@@ -29,14 +29,14 @@ export class CairoBookIngester extends MarkdownIngester {
   }
 
   async downloadLLMSFullFile(): Promise<string> {
-    const url = 'https://book.cairo-lang.org/llms-full.txt';
+    const url = 'https://cairo-book.github.io/cairo-book/llms-full.txt';
     const response = await fetch(url);
     const text = await response.text();
     return text;
   }
 
   async chunkLLMSFullFile(text: string): Promise<Document<BookChunk>[]> {
-    return super.createChunkFromPage("cairo-book", text);
+    return super.createChunkFromPage('cairo-book', text);
   }
 
   /**

@@ -61,31 +61,35 @@ Error handling in Cairo is done primarily through the panic! macro and the Resul
   console.log('📝 Original Query:');
   console.log(testQuery);
   console.log('\n📚 Raw Context Length:', rawContext.length, 'characters');
-  
+
   console.log('\n🔄 Summarizing context...');
-  
+
   try {
     const summarizedContext = await summarizeContext(testQuery, rawContext);
-    
+
     console.log('\n✅ Summarized Context:');
     console.log(summarizedContext);
     console.log('\n📊 Summary Stats:');
     console.log(`- Original length: ${rawContext.length} characters`);
     console.log(`- Summarized length: ${summarizedContext.length} characters`);
-    console.log(`- Reduction: ${Math.round((1 - summarizedContext.length / rawContext.length) * 100)}%`);
-    
+    console.log(
+      `- Reduction: ${Math.round((1 - summarizedContext.length / rawContext.length) * 100)}%`,
+    );
+
     // Check if important elements are preserved
     const hasCodeExample = summarizedContext.includes('```cairo');
-    const hasTestInfo = summarizedContext.includes('#[test]') || summarizedContext.includes('assert');
+    const hasTestInfo =
+      summarizedContext.includes('#[test]') ||
+      summarizedContext.includes('assert');
     const hasTypeInfo = summarizedContext.includes('u32');
-    const hasFunctionSyntax = summarizedContext.includes('fn ') && summarizedContext.includes('->');
-    
+    const hasFunctionSyntax =
+      summarizedContext.includes('fn ') && summarizedContext.includes('->');
+
     console.log('\n🔍 Important Elements Preserved:');
     console.log(`- Code examples: ${hasCodeExample ? '✅' : '❌'}`);
     console.log(`- Test information: ${hasTestInfo ? '✅' : '❌'}`);
     console.log(`- Type information: ${hasTypeInfo ? '✅' : '❌'}`);
     console.log(`- Function syntax: ${hasFunctionSyntax ? '✅' : '❌'}`);
-    
   } catch (error) {
     console.error('❌ Summarization failed:', error);
   }

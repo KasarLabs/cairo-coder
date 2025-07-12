@@ -60,6 +60,7 @@ pnpm generate-starklings-dataset
 - **From Host**: Access via `localhost` on the exposed port `5455`
 
 This is why:
+
 - Backend service (running in Docker) uses: `POSTGRES_HOST="postgres"` and `POSTGRES_PORT="5432"`
 - Local scripts use: `POSTGRES_HOST="localhost"` and `POSTGRES_PORT="5455"`
 
@@ -91,24 +92,30 @@ docker run --rm \
 ## Troubleshooting
 
 ### "ENOTFOUND postgres" Error
+
 - Ensure you've updated `POSTGRES_HOST` to `"localhost"` in config.toml
 - Verify PostgreSQL is running: `docker ps | grep postgres`
 
 ### "Connection refused" Error
+
 - Check if port 5455 is exposed: `docker port postgres`
 - Ensure no firewall is blocking the connection
 - Try: `telnet localhost 5455` to test connectivity
 
 ### "Database does not exist" Error
+
 - The database might not be initialized. Check `.env` file in project root
 - Ensure ingester has run at least once to create tables
 
 ### Port Already in Use
+
 If port 5455 is already in use, you can change it in docker-compose.yml:
+
 ```yaml
 ports:
-  - 5456:5432  # Change to another port
+  - 5456:5432 # Change to another port
 ```
+
 Then update config.toml accordingly.
 
 ## Config Management Tip

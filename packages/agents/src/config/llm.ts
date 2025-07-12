@@ -1,38 +1,32 @@
+/**
+ * LLM Provider Configuration and Router
+ *
+ * This module handles:
+ * - Multi-provider LLM configuration (OpenAI, Anthropic, Google Gemini)
+ * - Model selection based on configuration settings
+ * - Automatic tracing integration for observability
+ * - Provider-specific model mapping
+ */
+
 import {
   AxAI,
-  AxMultiServiceRouter,
-  AxAIOpenAIModel,
   AxAIAnthropicModel,
   AxAIGoogleGeminiModel,
-  AxAIService,
   AxAIOpenAIEmbedModel,
+  AxAIOpenAIModel,
+  AxMultiServiceRouter,
 } from '@ax-llm/ax';
 import {
-  getOpenaiApiKey,
-  getGroqApiKey,
   getAnthropicApiKey,
-  getDeepseekApiKey,
   getGeminiApiKey,
   getHostedModeConfig,
+  getOpenaiApiKey,
 } from './settings';
-import { logger } from '../utils';
-import {
-  BasicTracerProvider,
-  ConsoleSpanExporter,
-  SimpleSpanProcessor,
-} from '@opentelemetry/sdk-trace-base'
-import {
-  MeterProvider,
-  ConsoleMetricExporter,
-  PeriodicExportingMetricReader,
-} from '@opentelemetry/sdk-metrics'
-import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-http'
-import { trace, metrics, Tracer, Meter } from '@opentelemetry/api'
-import { axGlobals } from '@ax-llm/ax'
+import { initializeTracer } from './tracer';
 
-
-
-
+/**
+ * Get the default fast chat model based on configuration
+ */
 export const GET_DEFAULT_FAST_CHAT_MODEL = () => {
   const config = getHostedModeConfig();
   const provider = config.DEFAULT_FAST_CHAT_PROVIDER;
@@ -56,6 +50,9 @@ export const GET_DEFAULT_FAST_CHAT_MODEL = () => {
   return 'gemini-fast';
 };
 
+/**
+ * Get the default chat model based on configuration
+ */
 export const GET_DEFAULT_CHAT_MODEL = () => {
   const config = getHostedModeConfig();
   const provider = config.DEFAULT_CHAT_PROVIDER;
@@ -79,7 +76,11 @@ export const GET_DEFAULT_CHAT_MODEL = () => {
   return 'gemini-fast';
 };
 
-const GET_DEFAULT_EMBEDDING_MODEL = () => {
+/**
+ * Get the default embedding model based on configuration
+ * @private
+ */
+const _GET_DEFAULT_EMBEDDING_MODEL = () => {
   const config = getHostedModeConfig();
   const provider = config.DEFAULT_EMBEDDING_PROVIDER;
   const model = config.DEFAULT_EMBEDDING_MODEL;
@@ -93,8 +94,10 @@ const GET_DEFAULT_EMBEDDING_MODEL = () => {
   return 'openai-embeddings';
 };
 
-// Initialize AxAI instances for each provider
-const initializeOpenAI = (tracer: Tracer, meter: Meter) => {
+/**
+ * Initialize OpenAI provider with configured models
+ */
+const initializeOpenAI = () => {
   const apiKey = getOpenaiApiKey();
   if (!apiKey) return null;
 
@@ -118,13 +121,17 @@ const initializeOpenAI = (tracer: Tracer, meter: Meter) => {
         description: 'Model for embeddings',
       },
     ],
+    // Skip tracing for embeddings to reduce noise
     options: {
-      tracer,
-    }
+      tracer: null,
+    },
   });
 };
 
-const initializeAnthropic = (tracer: Tracer, meter: Meter) => {
+/**
+ * Initialize Anthropic provider with configured models
+ */
+const initializeAnthropic = () => {
   const apiKey = getAnthropicApiKey();
   if (!apiKey) return null;
 
@@ -138,13 +145,13 @@ const initializeAnthropic = (tracer: Tracer, meter: Meter) => {
         description: 'Model for complex reasoning and code generation',
       },
     ],
-    options: {
-      tracer,
-    }
   });
 };
 
-const initializeGemini = (tracer: Tracer, meter: Meter) => {
+/**
+ * Initialize Google Gemini provider with configured models
+ */
+const initializeGemini = () => {
   const apiKey = getGeminiApiKey();
   if (!apiKey) return null;
 
@@ -163,82 +170,40 @@ const initializeGemini = (tracer: Tracer, meter: Meter) => {
         description: 'Advanced model for complex tasks',
       },
     ],
-    options: {
-      tracer,
-    }
   });
 };
 
-const initializeTracer = () => {
-  // Set up basic tracing
-
-  const otlpEndpoint = process.env.OTEL_EXPORTER_OTLP_ENDPOINT;
-  const langsmithApiKey = process.env.LANGSMITH_API_KEY;
-
-  const langfusePublicApiKey = process.env.LANGFUSE_PUBLIC_API_KEY;
-  const langfusePrivateApiKey = process.env.LANGFUSE_PRIVATE_API_KEY;
-  const langfuseBase64Encoding = Buffer.from(`${langfusePublicApiKey}:${langfusePrivateApiKey}`).toString('base64');
-  if (!langfusePublicApiKey || !langfusePrivateApiKey || !langfuseBase64Encoding) {
-    throw new Error('LANGFUSE_PUBLIC_API_KEY and LANGFUSE_PRIVATE_API_KEY environment variables are required');
-  }
-
-  if (!otlpEndpoint) {
-    throw new Error('OTEL_EXPORTER_OTLP_ENDPOINT environment variable is required');
-  }
-
-  if (!langsmithApiKey) {
-    throw new Error('LANGSMITH_API_KEY environment variable is required');
-  }
-  const otlpExporter = new OTLPTraceExporter({
-    url: otlpEndpoint,
-    headers: {
-      'Authorization': `Basic ${langfuseBase64Encoding}`,
-    },
-  })
-  logger.info(`otlpExporter: ${otlpEndpoint}, langfuseBase64Encoding: ${langfuseBase64Encoding}`);
-  const tracerProvider = new BasicTracerProvider({spanProcessors: [new SimpleSpanProcessor(otlpExporter)]})
-  trace.setGlobalTracerProvider(tracerProvider)
-
-  // Set up basic metrics
-  const meterProvider = new MeterProvider({
-    readers: [
-      new PeriodicExportingMetricReader({
-        exporter: new ConsoleMetricExporter(),
-        exportIntervalMillis: 5000,
-      }),
-    ],
-  })
-  metrics.setGlobalMeterProvider(meterProvider)
-
-  // Get your tracer and meter
-  const tracer = trace.getTracer('cairo-coder')
-  const meter = metrics.getMeter('cairo-coder')
-
-    // Global tracer
-  axGlobals.tracer = trace.getTracer('global-ax-tracer')
-  // Global meter
-  axGlobals.meter = metrics.getMeter('global-ax-meter')
-
-return {tracer, meter}
-};
-
-// Create and export the singleton router instance
+/**
+ * Singleton router instance for multi-provider LLM access
+ */
 let axRouter: AxMultiServiceRouter | null = null;
 
+/**
+ * Get or create the multi-service LLM router
+ *
+ * This function:
+ * - Initializes tracing for LLM operations
+ * - Creates provider instances based on available API keys
+ * - Returns a router that can route requests to appropriate providers
+ *
+ * @throws Error if no LLM providers are configured
+ */
 export const getAxRouter = (): AxMultiServiceRouter => {
   if (axRouter) return axRouter;
 
   const services = [];
-  const {tracer, meter} = initializeTracer();
+
+  // Initialize tracing before creating LLM providers
+  initializeTracer();
 
   // Initialize all available providers
-  const openai = initializeOpenAI(tracer, meter);
+  const openai = initializeOpenAI();
   if (openai) services.push(openai);
 
-  const anthropic = initializeAnthropic(tracer, meter);
+  const anthropic = initializeAnthropic();
   if (anthropic) services.push(anthropic);
 
-  const gemini = initializeGemini(tracer, meter);
+  const gemini = initializeGemini();
   if (gemini) services.push(gemini);
 
   if (services.length === 0) {
@@ -248,7 +213,6 @@ export const getAxRouter = (): AxMultiServiceRouter => {
   }
 
   // Create the router with all available services
-
   axRouter = new AxMultiServiceRouter(services);
 
   return axRouter;

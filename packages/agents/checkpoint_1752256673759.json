@@ -30,13 +30,7 @@
     "bootstrappedDemos": 1,
     "labeledExamples": 1
   },
-  "scoreHistory": [
-    0,
-    0,
-    0,
-    0,
-    0
-  ],
+  "scoreHistory": [0, 0, 0, 0, 0],
   "configurationHistory": [
     {
       "instruction": "Analyze the input systematically and provide a precise, well-reasoned response. Be very specific and detailed in your instructions.",

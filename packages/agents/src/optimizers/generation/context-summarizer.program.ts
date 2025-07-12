@@ -7,7 +7,7 @@ import { getAxRouter } from '../../config/llm';
  */
 
 const signature = s`
-query:${f.string('The user\'s query that must be answered with Cairo code examples or solutions.')}, rawContext:${f.string('Documentation context containing relevant Cairo/Starknet information to inform the response to summarize.')} ->
+query:${f.string("The user's query that must be answered with Cairo code examples or solutions.")}, rawContext:${f.string('Documentation context containing relevant Cairo/Starknet information to inform the response to summarize.')} ->
 summarizedContext:string
 `;
 
@@ -26,7 +26,7 @@ Key requirements:
 6. Keep import statements, module paths, and dependency information
 7. Preserve trait implementations, storage patterns, and contract structures
 
-The goal is to create a focused, information-dense context that enables accurate Cairo code generation.`
+The goal is to create a focused, information-dense context that enables accurate Cairo code generation.`,
 });
 
 // Set examples to demonstrate proper summarization
@@ -103,18 +103,21 @@ fn test_addition() {
 }
 \`\`\`
 
-Error handling primarily uses the \`panic!\` macro or the \`Result\` type. The \`assert!\` macro is a special case that panics if its condition is false.`
-  }
+Error handling primarily uses the \`panic!\` macro or the \`Result\` type. The \`assert!\` macro is a special case that panics if its condition is false.`,
+  },
 ]);
 
-export async function summarizeContext(query: string, rawContext: string): Promise<string> {
+export async function summarizeContext(
+  query: string,
+  rawContext: string,
+): Promise<string> {
   const router = getAxRouter();
 
   try {
     const result = await contextSummarizerProgram.forward(
       router,
       { query, rawContext },
-      { model: 'gemini-fast' } // Use fast model for summarization
+      { model: 'gemini-fast' }, // Use fast model for summarization
     );
 
     return result.summarizedContext;

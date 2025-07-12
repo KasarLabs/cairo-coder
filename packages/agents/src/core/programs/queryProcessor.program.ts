@@ -8,7 +8,12 @@ export class QueryProcessorProgram extends AxGen<
   { chat_history: string; query: string },
   { processedQuery: ProcessedQuery }
 > {
-  constructor(private retrievalProgram: AxGen<{ chat_history: string; query: string }, { search_terms: string[], resources: string[] }>) {
+  constructor(
+    private retrievalProgram: AxGen<
+      { chat_history: string; query: string },
+      { search_terms: string[]; resources: string[] }
+    >,
+  ) {
     super(`chat_history?:string, query:string -> processedQuery:json`);
   }
 
@@ -23,7 +28,7 @@ export class QueryProcessorProgram extends AxGen<
       { model: modelKey },
     );
 
-    logger.info(`result: ${JSON.stringify(result)}`)
+    logger.info(`result: ${JSON.stringify(result)}`);
     if (!result.search_terms) {
       return {
         processedQuery: {

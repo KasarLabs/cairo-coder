@@ -5,6 +5,7 @@ This directory contains the optimization infrastructure for improving the Cairo 
 ## Overview
 
 The optimizer automatically improves the generation program by:
+
 - Learning from examples to select optimal demonstrations
 - Refining prompts for better code generation
 - Validating generated code through compilation
@@ -21,11 +22,13 @@ The optimizer automatically improves the generation program by:
 ### Prerequisites
 
 1. Ensure Scarb is installed (v2.11.4+):
+
    ```bash
    curl --proto '=https' --tlsv1.2 -sSf https://docs.swmansion.com/scarb/install.sh | sh
    ```
 
 2. Start the database (required for context retrieval):
+
    ```bash
    docker compose up postgres backend
    ```
@@ -38,16 +41,19 @@ The optimizer automatically improves the generation program by:
 ### Running the Optimizer
 
 1. Test the metric function:
+
    ```bash
    pnpm test-generation-metric
    ```
 
 2. Run the optimization:
+
    ```bash
    pnpm optimize-generation
    ```
 
    This will:
+
    - Use the generation dataset to train the optimizer
    - Test each generated code sample for compilation
    - Save optimized demonstrations to `optimized-generation-demos.json`
@@ -66,6 +72,7 @@ The optimizer automatically improves the generation program by:
 ### Metrics
 
 The optimizer uses a weighted scoring system:
+
 - **50%** - Code compilation success
 - **30%** - Presence of code when expected
 - **20%** - Following response guidelines
@@ -80,6 +87,7 @@ The optimizer uses a weighted scoring system:
 ## Dataset Guidelines
 
 When adding examples to `generation.dataset.ts`:
+
 - Include diverse query types (simple functions, contracts, error handling)
 - Provide realistic context (simulated RAG output)
 - Ensure expected answers compile successfully

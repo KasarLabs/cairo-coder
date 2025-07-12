@@ -15,7 +15,7 @@ async function testMetric() {
 fn add(a: u32, b: u32) -> u32 {
     a + b
 }
-\`\`\``
+\`\`\``,
     },
     example: {
       query: 'Write an add function',
@@ -24,9 +24,9 @@ fn add(a: u32, b: u32) -> u32 {
 fn add(a: u32, b: u32) -> u32 {
     a + b
 }
-\`\`\``
-      }
-    }
+\`\`\``,
+      },
+    },
   };
 
   console.log('Test 1: Valid Cairo code');
@@ -37,14 +37,16 @@ fn add(a: u32, b: u32) -> u32 {
   // Test 2: Non-Cairo query
   const test2 = {
     prediction: {
-      answer: 'I am designed to generate Cairo code. Could you please provide a specific Cairo coding request?'
+      answer:
+        'I am designed to generate Cairo code. Could you please provide a specific Cairo coding request?',
     },
     example: {
       query: 'Tell me about Python',
       expected: {
-        answer: 'I am designed to generate Cairo code. Could you please provide a specific Cairo coding request?'
-      }
-    }
+        answer:
+          'I am designed to generate Cairo code. Could you please provide a specific Cairo coding request?',
+      },
+    },
   };
 
   console.log('Test 2: Non-Cairo query');
@@ -62,7 +64,7 @@ fn broken_function {
     // Missing parameters and return type
     invalid syntax here
 }
-\`\`\``
+\`\`\``,
     },
     example: {
       query: 'Write a function',
@@ -71,9 +73,9 @@ fn broken_function {
 fn my_function() -> u32 {
     42
 }
-\`\`\``
-      }
-    }
+\`\`\``,
+      },
+    },
   };
 
   console.log('Test 3: Invalid Cairo code');
@@ -86,13 +88,15 @@ fn my_function() -> u32 {
     const datasetExample = generationDataset[0];
     const test4 = {
       prediction: {
-        answer: datasetExample.expected.answer
+        answer: datasetExample.expected.answer,
       },
-      example: datasetExample
+      example: datasetExample,
     };
     // @ts-ignore
     const score4 = await generationMetricFn(test4);
-    console.log(`Score: ${score4} (should be high since prediction matches expected)\n`);
+    console.log(
+      `Score: ${score4} (should be high since prediction matches expected)\n`,
+    );
   }
 }
 

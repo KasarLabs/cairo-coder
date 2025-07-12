@@ -249,7 +249,7 @@ export class RagPipeline {
 
       // Create an error stream that satisfies the AsyncIterable type
       const errorStream = async function* () {
-        yield "Could not process request.";
+        yield 'Could not process request.';
       };
 
       return {
