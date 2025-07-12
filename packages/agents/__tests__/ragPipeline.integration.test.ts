@@ -8,10 +8,14 @@ import { generationProgram } from '../src/core/programs/generation.program';
 // Mock the programs used in the flow
 jest.mock('../src/core/programs/retrieval.program', () => ({
   retrievalProgram: {
-    forward: jest.fn().mockResolvedValue({
-      search_terms: ['cairo contract', 'starknet'],
-      resources: ['cairo_book'],
+    forward: jest.fn().mockImplementation(async (ai, params, options) => {
+      return {
+        search_terms: ['cairo contract', 'starknet'],
+        resources: ['cairo_book'],
+      };
     }),
+    getUsage: jest.fn().mockReturnValue([]),
+    resetUsage: jest.fn(),
   },
   validateResources: jest.fn((resources) => resources),
 }));
@@ -19,6 +23,8 @@ jest.mock('../src/core/programs/retrieval.program', () => ({
 jest.mock('../src/core/programs/generation.program', () => ({
   generationProgram: {
     streamingForward: jest.fn(),
+    getUsage: jest.fn().mockReturnValue([]),
+    resetUsage: jest.fn(),
   },
 }));
 
@@ -265,13 +271,24 @@ describe('RagPipeline Integration Test', () => {
     const emitter = flow.execute(input, false);
 
     let error: string | null = null;
+    let ended = false;
+
     emitter.on('error', (err) => {
       error = err;
     });
 
+    emitter.on('end', () => {
+      ended = true;
+    });
+
     await new Promise<void>((resolve) => {
-      emitter.on('error', () => resolve());
-      emitter.on('end', resolve);
+      emitter.on('error', () => {
+        // Wait a bit to ensure no 'end' event follows
+        setTimeout(() => resolve(), 100);
+      });
+      emitter.on('end', () => resolve());
+      // Add timeout to prevent hanging
+      setTimeout(() => resolve(), 2000);
     });
 
     expect(error).toBeTruthy();
@@ -279,7 +296,7 @@ describe('RagPipeline Integration Test', () => {
     expect(parsedError.data).toBe(
       'An error occurred while processing your request',
     );
-  });
+  }, 15000);
 
   it('should include chat history in the pipeline', async () => {
     const chatHistory: BaseMessage[] = [
@@ -322,14 +339,30 @@ describe('RagPipeline Integration Test', () => {
 
     const emitter = flow.execute(input, false);
 
-    await new Promise<void>((resolve) => {
-      emitter.on('end', resolve);
-      emitter.on('error', () => resolve());
+    let ended = false;
+    let error: any = null;
+
+    emitter.on('end', () => {
+      ended = true;
     });
+
+    emitter.on('error', (err) => {
+      error = err;
+    });
+
+    await new Promise<void>((resolve) => {
+      emitter.on('end', () => resolve());
+      emitter.on('error', () => resolve());
+      // Add timeout to prevent hanging
+      setTimeout(() => resolve(), 5000);
+    });
+
+    expect(error).toBeNull();
+    expect(ended).toBe(true);
 
     // Verify chat history was passed to generation
     const streamingCall = (generationProgram.streamingForward as jest.Mock).mock
       .calls[0];
     expect(streamingCall[1].chat_history).toContain('I want to build a game');
-  });
+  }, 15000);
 });

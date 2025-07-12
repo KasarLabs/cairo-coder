@@ -92,7 +92,10 @@ export class RagPipeline {
       emitError: (error) =>
         emitter.emit('error', JSON.stringify({ data: error })),
     };
-    this.runPipeline(input, mcpMode, handler);
+    this.runPipeline(input, mcpMode, handler).catch((error) => {
+      logger.error('Unhandled pipeline error:', error);
+      handler.emitError('An error occurred while processing your request');
+    });
     return emitter;
   }
 
