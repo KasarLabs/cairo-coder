@@ -71,7 +71,7 @@ describe('DocumentRetrieverProgram', () => {
         ]),
       } as any,
       maxSourceCount: 10,
-      similarityThreshold: 0.4,
+      similarityThreshold: 0.3,
     };
 
     // Create the DocumentRetrieverProgram instance

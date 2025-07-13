@@ -7,6 +7,7 @@ import {
 } from '@ax-llm/ax';
 import { validateResources } from './retrieval.program';
 import { ProcessedQuery, DocumentSource } from '../../types';
+
 import { GET_DEFAULT_FAST_CHAT_MODEL } from '../../config/llm';
 import { logger } from '../..';
 
@@ -24,7 +25,7 @@ export class QueryProcessorProgram extends AxGen<
   constructor(
     private retrievalProgram: AxGen<
       { chat_history: string; query: string },
-      { search_terms: string[]; resources: string[] }
+      { search_terms: string[]; resources: string[]; reformulatedQuery: string }
     >,
   ) {
     super(`chat_history?:string, query:string -> processedQuery:json`);
@@ -70,7 +71,8 @@ export class QueryProcessorProgram extends AxGen<
       return {
         processedQuery: {
           original: query,
-          transformed: [query],
+          searchTerms: [query],
+          transformedQuery: result.reformulatedQuery || query,
           isContractRelated: false,
           isTestRelated: false,
           resources: [],
@@ -93,7 +95,8 @@ export class QueryProcessorProgram extends AxGen<
     return {
       processedQuery: {
         original: query,
-        transformed,
+        searchTerms,
+        transformedQuery: result.reformulatedQuery,
         isContractRelated,
         isTestRelated,
         resources,

@@ -49,7 +49,7 @@ export const AGENTS: Record<string, AgentConfiguration> = {
     },
     parameters: {
       maxSourceCount: 15,
-      similarityThreshold: 0.4,
+      similarityThreshold: 0.3,
     },
     programs: {
       retrieval: retrievalProgram,
@@ -63,7 +63,7 @@ export const AGENTS: Record<string, AgentConfiguration> = {
     sources: [DocumentSource.SCARB_DOCS],
     parameters: {
       maxSourceCount: 10,
-      similarityThreshold: 0.5,
+      similarityThreshold: 0.3,
     },
     programs: {
       retrieval: scarbRetrievalProgram,

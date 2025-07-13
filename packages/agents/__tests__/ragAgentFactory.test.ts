@@ -17,7 +17,7 @@ jest.mock('../src/config/agent', () => ({
     },
     vectorStore: {},
     maxSourceCount: 15,
-    similarityThreshold: 0.4,
+    similarityThreshold: 0.3,
     sources: [
       DocumentSource.CAIRO_BOOK,
       DocumentSource.CAIRO_BY_EXAMPLE,

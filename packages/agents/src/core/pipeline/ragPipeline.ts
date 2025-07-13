@@ -1,8 +1,12 @@
 import {
   AxAIGoogleGeminiModel,
+  AxGen,
   AxGenIn,
   AxGenOut,
   AxMultiServiceRouter,
+  f,
+  s,
+  ax,
 } from '@ax-llm/ax';
 import {
   RagInput,
@@ -20,6 +24,51 @@ import { QueryProcessorProgram } from '../programs/queryProcessor.program';
 import { DocumentRetrieverProgram } from '../programs/documentRetriever.program';
 import { Document } from '@langchain/core/documents';
 import { GET_DEFAULT_FAST_CHAT_MODEL } from '../../config/llm';
+import { ContextFilterProgram } from '../programs/contextFilter.program';
+
+// TODO move in its own file. Add proper examples
+const filterProgram = ax`
+"Classify whether the contextDocument helps answer the users query.
+Assign a score between 0 and 10 on how much the context brings info related to the query.
+If it's less than 6, return false.
+
+The document will be fed to another LLM to augment its context. As such, is considered a document relevant:
+1. If it's related to a topic of the query (e.g. if the query is about a contract, and the document is about a contract, it is relevant)
+2. If it brings broader knowledge relevant to the query (e.g. if the query is about a cairo function and the document is about exposed contract entrypoints, it's relevant)
+
+A document is considered irrelevant if it's not related to the query or if it's not relevant to the broader knowledge of the query.
+It's also considered irrelevant if it cannot be leveraged for this direct query:
+1. To write a smart contract, it's irrelevant to know details about the staking mechanism of the Starknet Token and its inflation.
+2. To fix a bug in a smart contract, it's irrelevant to know what the Cairo / Starknet ZK-VM is.
+"
+contextDocument:${f.string('A document given as context to help answer the users query.')},
+relatedQuery:${f.string('The users query that must be answered')} ->
+helpsAnswerQuery:${f.boolean('Whether the contextDocument helps answer the users query.')}`;
+
+filterProgram.setExamples([
+  {
+    contextDocument:
+      'Public functions can also be defined outside an implementation of a trait using the `#[external(v0)]` attribute. These functions automatically generate an entry in the contract ABI, making them callable externally. They also require `self` as their first parameter.',
+    relatedQuery: 'Write me a contract that implements an ERC20 token',
+    helpsAnswerQuery: true,
+  },
+  {
+    contextDocument: `#### Contract Class ABI
+
+The **Application Binary Interface (ABI)** is the high-level specification of a contract's interface. It describes callable functions, their parameters, and return values, enabling external sources (off-chain or other contracts) to communicate by encoding/decoding data.
+
+- **JSON Representation**: External sources (e.g., block explorers like Voyager or Starkscan) typically use a JSON representation of the ABI, generated from the contract class, containing types, functions, or events.
+- **Dispatcher Pattern**: Other contracts interact directly in Cairo using the _dispatcher_ pattern, a specific type with auto-generated methods for calling functions and handling data encoding/decoding.`,
+    relatedQuery: 'How do I call a function from another contract?',
+    helpsAnswerQuery: true,
+  },
+  {
+    contextDocument: `Inlining is a compiler optimization that directly impacts the generated Sierra and Casm code by embedding a function's body into the caller's context, thereby eliminating the overhead of a function call.`,
+    relatedQuery:
+      'Write me a contract that stores the list of users that call it in a storage variable',
+    helpsAnswerQuery: false,
+  },
+]);
 
 export class RagPipeline {
   private retrievalFlow: AxFlow<
@@ -58,6 +107,7 @@ export class RagPipeline {
     >()
       .node('queryProcess', this.queryProg)
       .node('retrieve', this.retrieveProg)
+      .node('documentFilter', filterProgram)
       .execute('queryProcess', (s) => ({
         chat_history: formatChatHistoryAsString(s.input.chatHistory),
         query: s.input.query,
@@ -71,11 +121,39 @@ export class RagPipeline {
         sources: s.sources,
       }))
       .map((s) => ({
-        retrieved: {
-          documents: s.retrieveResult.documents,
-          processedQuery: s.processedQuery,
-        },
-      }));
+        relevantDocuments: [],
+        retrievedDocuments: s.retrieveResult.documents,
+        processedQuery: s.processedQuery,
+        currentlyProcessed: 0,
+      }))
+      .while((s) => s.currentlyProcessed < s.retrievedDocuments.length)
+      .execute('documentFilter', (s) => ({
+        contextDocument: s.retrievedDocuments[s.currentlyProcessed].pageContent,
+        relatedQuery: s.processedQuery.original,
+      }))
+      .map((s) => {
+        const currentDoc = s.retrievedDocuments[s.currentlyProcessed];
+        const relevantDocuments = s.documentFilterResult.helpsAnswerQuery
+          ? [...s.relevantDocuments, currentDoc]
+          : s.relevantDocuments;
+        logger.info(
+          `Document ${currentDoc.metadata.title} is relevant for query: ${s.documentFilterResult.helpsAnswerQuery}`,
+        );
+        return {
+          ...s,
+          relevantDocuments,
+          currentlyProcessed: s.currentlyProcessed + 1,
+        };
+      })
+      .end()
+      .map((s) => {
+        return {
+          retrieved: {
+            documents: s.relevantDocuments,
+            processedQuery: s.processedQuery,
+          },
+        };
+      });
   }
 
   execute(input: RagInput, mcpMode: boolean = false): EventEmitter {
@@ -110,14 +188,14 @@ export class RagPipeline {
 
       logger.info('Starting RagPipeline', { query: input.query });
 
+      const modelKey = GET_DEFAULT_FAST_CHAT_MODEL();
       const state = await this.retrievalFlow.forward(
         this.axRouter,
         { input },
         {
-          debug: true,
           fastFail: true,
           autoParallel: false,
-          logger: (message) => logger.debug(message),
+          model: modelKey,
         },
       );
 
@@ -268,7 +346,8 @@ export class RagPipeline {
       // Create fallback values when retrieval fails
       const fallbackProcessedQuery = {
         original: input.query,
-        transformed: [input.query],
+        searchTerms: [input.query],
+        transformedQuery: input.query,
         isContractRelated: false,
         isTestRelated: false,
         resources: [],

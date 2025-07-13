@@ -52,7 +52,8 @@ export interface AgentConfig {
 
 export interface ProcessedQuery {
   original: string;
-  transformed: string | string[]; // Single query or list of search terms
+  searchTerms: string[];
+  transformedQuery: string; // A reformulated query, expanded from the original one, for better semantic search
   isContractRelated?: boolean;
   isTestRelated?: boolean;
   resources?: DocumentSource[];

@@ -107,7 +107,7 @@ describe('RagPipeline Integration Test', () => {
       contractTemplate: 'Basic contract template',
       testTemplate: 'Basic test template',
       maxSourceCount: 10,
-      similarityThreshold: 0.5,
+      similarityThreshold: 0.3,
       sources: [DocumentSource.CAIRO_BOOK],
       retrievalProgram: retrievalProgram,
       generationProgram: generationProgram,

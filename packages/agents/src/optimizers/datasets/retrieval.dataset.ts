@@ -1,7 +1,7 @@
 import { AVAILABLE_RESOURCES } from '../../core/programs/retrieval.program';
 
 export type RetrievalExample = {
-  // The user's query.
+  // The user"s query.
   query: string;
   // Optional chat history for context.
   chat_history?: string;
@@ -11,6 +11,8 @@ export type RetrievalExample = {
     search_terms: string[];
     // The ideal resources to search.
     resources: (typeof AVAILABLE_RESOURCES)[number][];
+    // The ideal reformulated query.
+    reformulatedQuery: string;
   };
 };
 
@@ -20,6 +22,7 @@ export const retrievalDataset: RetrievalExample[] = [
     expected: {
       search_terms: ['let keyword', 'mut', 'variables', 'immutability'],
       resources: ['cairo_book', 'cairo_by_example'],
+      reformulatedQuery: 'Defining a mutable variable in Cairo.',
     },
   },
   {
@@ -28,6 +31,8 @@ export const retrievalDataset: RetrievalExample[] = [
     expected: {
       search_terms: ['immutability', 'let keyword', 'compile error'],
       resources: ['cairo_book', 'cairo_by_example'],
+      reformulatedQuery:
+        'Reassigning a variable declared without `mut` in Cairo.',
     },
   },
   {
@@ -36,6 +41,8 @@ export const retrievalDataset: RetrievalExample[] = [
     expected: {
       search_terms: ['felt252', 'field elements', 'division', 'type inference'],
       resources: ['cairo_book', 'cairo_by_example'],
+      reformulatedQuery:
+        'Default data type in the Cairo Programming Language. Cairo felt252 type.',
     },
   },
   {
@@ -43,6 +50,8 @@ export const retrievalDataset: RetrievalExample[] = [
     expected: {
       search_terms: ['u8', 'integer types', 'type annotation'],
       resources: ['cairo_book', 'cairo_by_example'],
+      reformulatedQuery:
+        'Declaring an unsigned 8-bit u8 type integer in Cairo.',
     },
   },
   {
@@ -50,6 +59,8 @@ export const retrievalDataset: RetrievalExample[] = [
     expected: {
       search_terms: ['i128', 'signed integers', 'range'],
       resources: ['cairo_book', 'corelib_docs'],
+      reformulatedQuery:
+        'What is the minimum and maximum value for an i128 type in Cairo?',
     },
   },
   {
@@ -57,6 +68,8 @@ export const retrievalDataset: RetrievalExample[] = [
     expected: {
       search_terms: ['fn keyword', 'generics', 'type parameters'],
       resources: ['cairo_book', 'cairo_by_example'],
+      reformulatedQuery:
+        'Defining a function with a generic type parameter in Cairo.',
     },
   },
   {
@@ -64,6 +77,7 @@ export const retrievalDataset: RetrievalExample[] = [
     expected: {
       search_terms: ['fn keyword', 'function declaration'],
       resources: ['cairo_book', 'cairo_by_example'],
+      reformulatedQuery: 'What keyword is used to declare a function in Cairo?',
     },
   },
   {
@@ -71,6 +85,7 @@ export const retrievalDataset: RetrievalExample[] = [
     expected: {
       search_terms: ['comments', '//', 'syntax'],
       resources: ['cairo_book', 'cairo_by_example'],
+      reformulatedQuery: 'Writing a single-line comment in Cairo.',
     },
   },
   {
@@ -78,6 +93,8 @@ export const retrievalDataset: RetrievalExample[] = [
     expected: {
       search_terms: ['array!', 'arrays', 'collections'],
       resources: ['cairo_book', 'corelib_docs', 'cairo_by_example'],
+      reformulatedQuery:
+        'Constructor method for creating an array with initial values in Cairo.',
     },
   },
   {
@@ -85,6 +102,8 @@ export const retrievalDataset: RetrievalExample[] = [
     expected: {
       search_terms: ['ownership', 'move semantics', 'arrays', 'immutability'],
       resources: ['cairo_book'],
+      reformulatedQuery:
+        'Why can’t you mutate an array after it has been moved in Cairo?',
     },
   },
   {
@@ -92,6 +111,8 @@ export const retrievalDataset: RetrievalExample[] = [
     expected: {
       search_terms: ['get', 'Option', 'arrays'],
       resources: ['cairo_book', 'corelib_docs'],
+      reformulatedQuery:
+        'Safely accessing the first element of an array in Cairo. Array accessor methods. Array core library access methods.',
     },
   },
   {
@@ -99,6 +120,8 @@ export const retrievalDataset: RetrievalExample[] = [
     expected: {
       search_terms: ['Felt252Dict', 'dictionaries', 'mutable data'],
       resources: ['cairo_book', 'corelib_docs'],
+      reformulatedQuery:
+        'What is the purpose of the Felt252Dict type in Cairo?',
     },
   },
   {
@@ -106,6 +129,8 @@ export const retrievalDataset: RetrievalExample[] = [
     expected: {
       search_terms: ['insert', 'Felt252Dict', 'key-value'],
       resources: ['cairo_book', 'corelib_docs', 'cairo_by_example'],
+      reformulatedQuery:
+        'Inserting a key-value pair into a Felt252Dict in Cairo using the Felt252Dict core library methods.',
     },
   },
   {
@@ -114,6 +139,8 @@ export const retrievalDataset: RetrievalExample[] = [
     expected: {
       search_terms: ['get', 'Felt252Dict', 'default value'],
       resources: ['cairo_book', 'corelib_docs'],
+      reformulatedQuery:
+        'What happens when you access a non-existent key in a Felt252Dict in Cairo?',
     },
   },
   {
@@ -121,6 +148,8 @@ export const retrievalDataset: RetrievalExample[] = [
     expected: {
       search_terms: ['for', 'range', 'iteration'],
       resources: ['cairo_book', 'cairo_by_example'],
+      reformulatedQuery:
+        'What is the syntax of a for loop? How do I iterate over a range of values?',
     },
   },
   {
@@ -128,6 +157,8 @@ export const retrievalDataset: RetrievalExample[] = [
     expected: {
       search_terms: ['loop', 'while', 'control flow', 'break'],
       resources: ['cairo_book'],
+      reformulatedQuery:
+        'What is the difference between loop and while in Cairo?',
     },
   },
   {
@@ -135,6 +166,7 @@ export const retrievalDataset: RetrievalExample[] = [
     expected: {
       search_terms: ['struct', 'fields', 'data structure'],
       resources: ['cairo_book', 'cairo_by_example'],
+      reformulatedQuery: 'Defining structs with two initial fields in Cairo.',
     },
   },
   {
@@ -142,6 +174,8 @@ export const retrievalDataset: RetrievalExample[] = [
     expected: {
       search_terms: ['derive', 'Copy', 'Drop', 'traits'],
       resources: ['cairo_book'],
+      reformulatedQuery:
+        'What are derive attributes on top of structs, and what does the #[derive(Copy, Drop)] attribute do in Cairo?',
     },
   },
   {
@@ -149,6 +183,8 @@ export const retrievalDataset: RetrievalExample[] = [
     expected: {
       search_terms: ['impl', 'method syntax', 'self'],
       resources: ['cairo_book', 'cairo_by_example'],
+      reformulatedQuery:
+        'Defining methods for a struct in Cairo. Writing impl for structs to define methods.',
     },
   },
   {
@@ -160,7 +196,9 @@ export const retrievalDataset: RetrievalExample[] = [
         'smart contracts',
         'Starknet',
       ],
-      resources: ['cairo_book'],
+      resources: ['cairo_book', 'openzeppelin_docs'],
+      reformulatedQuery:
+        'How do I write a smart contract in Cairo? What libraries, like Openzeppelin, can I use to write safe contracts?',
     },
   },
   {
@@ -169,6 +207,8 @@ export const retrievalDataset: RetrievalExample[] = [
     expected: {
       search_terms: ['#[storage]', 'struct', 'state', 'smart contracts'],
       resources: ['cairo_book'],
+      reformulatedQuery:
+        'What is the purpose of the #[storage] attribute in a Starknet contract? How do I define storage in a Starknet contract?',
     },
   },
   {
@@ -181,6 +221,8 @@ export const retrievalDataset: RetrievalExample[] = [
         'smart contracts',
       ],
       resources: ['cairo_book'],
+      reformulatedQuery:
+        'How do I define an external function in a Starknet contract? What are the #[external(v0)] and #[abi(embed_v0)] attributes?',
     },
   },
   {
@@ -188,6 +230,8 @@ export const retrievalDataset: RetrievalExample[] = [
     expected: {
       search_terms: ['ContractState', 'state', 'smart contracts'],
       resources: ['cairo_book'],
+      reformulatedQuery:
+        'What is the role of ContractState in a Starknet contract? How do I define a contract state in a Starknet contract?',
     },
   },
   {
@@ -200,6 +244,8 @@ export const retrievalDataset: RetrievalExample[] = [
         'ABI',
       ],
       resources: ['cairo_book'],
+      reformulatedQuery:
+        'How do I define an interface for a Starknet contract?',
     },
   },
   {
@@ -208,6 +254,8 @@ export const retrievalDataset: RetrievalExample[] = [
     expected: {
       search_terms: ['ref', 'ContractState', 'storage', 'compile error'],
       resources: ['cairo_book'],
+      reformulatedQuery:
+        'What happens if you omit ref in a function that modifies storage? How do I access or modify state in a Starknet contract?',
     },
   },
   {
@@ -215,6 +263,8 @@ export const retrievalDataset: RetrievalExample[] = [
     expected: {
       search_terms: ['#[event]', 'emit', 'smart contracts', 'Starknet'],
       resources: ['cairo_book'],
+      reformulatedQuery:
+        'Emitting events in Starknet contract? What is the #[event] attribute?',
     },
   },
   {
@@ -223,6 +273,8 @@ export const retrievalDataset: RetrievalExample[] = [
     expected: {
       search_terms: ['Cairo program', 'smart contract', 'state', 'Starknet'],
       resources: ['cairo_book', 'starknet_docs'],
+      reformulatedQuery:
+        'What is the difference between a Cairo program and a Starknet smart contract?',
     },
   },
   {
@@ -236,6 +288,8 @@ export const retrievalDataset: RetrievalExample[] = [
         'smart contracts',
       ],
       resources: ['cairo_book'],
+      reformulatedQuery:
+        'How do you call another contract’s function from a Starknet contract? What is the dispatcher?',
     },
   },
   {
@@ -243,6 +297,8 @@ export const retrievalDataset: RetrievalExample[] = [
     expected: {
       search_terms: ['#[generate_trait]', 'traits', 'code generation'],
       resources: ['cairo_book'],
+      reformulatedQuery:
+        'What does the #[generate_trait] attribute do in Cairo? How does automatic trait generation work?',
     },
   },
   {
@@ -250,6 +306,8 @@ export const retrievalDataset: RetrievalExample[] = [
     expected: {
       search_terms: ['pub', 'modules', 'visibility'],
       resources: ['cairo_book'],
+      reformulatedQuery:
+        'Making functions public with pub keyword. Module visibility and function accessibility in Cairo.',
     },
   },
   {
@@ -257,6 +315,8 @@ export const retrievalDataset: RetrievalExample[] = [
     expected: {
       search_terms: ['use', 'import', 'scope'],
       resources: ['cairo_book', 'cairo_by_example'],
+      reformulatedQuery:
+        'What is the purpose of the use keyword in Cairo? How to import items into scope.',
     },
   },
   {
@@ -264,6 +324,8 @@ export const retrievalDataset: RetrievalExample[] = [
     expected: {
       search_terms: ['struct', 'generics', 'type parameters'],
       resources: ['cairo_book', 'cairo_by_example'],
+      reformulatedQuery:
+        'Creating generic structs with type parameters in Cairo. Struct generics syntax and usage.',
     },
   },
   {
@@ -271,6 +333,8 @@ export const retrievalDataset: RetrievalExample[] = [
     expected: {
       search_terms: ['impl', 'trait', 'generics', 'trait bounds'],
       resources: ['cairo_book'],
+      reformulatedQuery:
+        'Implementing traits for generic types in Cairo. Generic trait implementations and trait bounds.',
     },
   },
   {
@@ -278,6 +342,8 @@ export const retrievalDataset: RetrievalExample[] = [
     expected: {
       search_terms: ['snapshots', 'references', 'ownership', 'immutability'],
       resources: ['cairo_book', 'cairo_by_example'],
+      reformulatedQuery:
+        'What is the difference between snapshots and references in Cairo? Ownership model and immutability.',
     },
   },
   {
@@ -286,6 +352,8 @@ export const retrievalDataset: RetrievalExample[] = [
     expected: {
       search_terms: ['contract call', 'library call', 'state', 'class hash'],
       resources: ['cairo_book', 'starknet_docs'],
+      reformulatedQuery:
+        'What is the difference between a contract call and a library call in Starknet? State isolation and execution context.',
     },
   },
   {
@@ -294,6 +362,8 @@ export const retrievalDataset: RetrievalExample[] = [
     expected: {
       search_terms: ['constructor', '#[constructor]', 'state initialization'],
       resources: ['cairo_book'],
+      reformulatedQuery:
+        'What is the purpose of a constructor in a Starknet contract? How to define constructor with #[constructor] attribute.',
     },
   },
   {
@@ -307,6 +377,8 @@ export const retrievalDataset: RetrievalExample[] = [
         'internal',
       ],
       resources: ['cairo_book'],
+      reformulatedQuery:
+        'What are the visibility modifiers for functions in a Starknet contract? External, internal, and ABI visibility.',
     },
   },
   {
@@ -314,6 +386,8 @@ export const retrievalDataset: RetrievalExample[] = [
     expected: {
       search_terms: ['negative impl', 'traits', 'type constraints'],
       resources: ['cairo_book'],
+      reformulatedQuery:
+        'What is a negative implementation in Cairo? When to use negative impl for type constraints.',
     },
   },
   {
@@ -326,6 +400,8 @@ export const retrievalDataset: RetrievalExample[] = [
         'associated functions',
       ],
       resources: ['cairo_book', 'cairo_by_example'],
+      reformulatedQuery:
+        'What are associated items in a Cairo trait? Associated types and associated functions in traits.',
     },
   },
   {
@@ -333,6 +409,8 @@ export const retrievalDataset: RetrievalExample[] = [
     expected: {
       search_terms: ['storage node', 'struct', 'storage', 'mappings'],
       resources: ['cairo_book'],
+      reformulatedQuery:
+        'What is a storage node in Cairo? How to use storage nodes for mappings and complex storage structures.',
     },
   },
   {
@@ -340,6 +418,8 @@ export const retrievalDataset: RetrievalExample[] = [
     expected: {
       search_terms: ['components', 'reusability', 'modularity'],
       resources: ['cairo_book', 'openzeppelin_docs'],
+      reformulatedQuery:
+        'What are the benefits of using components in a Starknet contract? Component reusability and modularity.',
     },
   },
   {
@@ -347,13 +427,17 @@ export const retrievalDataset: RetrievalExample[] = [
     expected: {
       search_terms: ['component!()', 'storage', 'events'],
       resources: ['cairo_book', 'openzeppelin_docs'],
+      reformulatedQuery:
+        'How do you integrate a component into a Starknet contract? Using component!() macro for storage and events.',
     },
   },
   {
-    query: 'How do you call a component’s function within a contract?',
+    query: "How do you call a component's function within a contract?",
     expected: {
       search_terms: ['component', 'dispatcher', 'ComponentState'],
       resources: ['cairo_book', 'openzeppelin_docs'],
+      reformulatedQuery:
+        "How do you call a component's function within a contract? Component dispatcher and ComponentState usage.",
     },
   },
   {
@@ -361,6 +445,8 @@ export const retrievalDataset: RetrievalExample[] = [
     expected: {
       search_terms: ['upgrade', 'replace_class_syscall', 'class hash'],
       resources: ['cairo_book', 'starknet_docs', 'openzeppelin_docs'],
+      reformulatedQuery:
+        'What are the steps to upgrade a Starknet contract? Using replace_class_syscall for contract upgrades.',
     },
   },
   {
@@ -368,6 +454,8 @@ export const retrievalDataset: RetrievalExample[] = [
     expected: {
       search_terms: ['?', 'Result', 'Option', 'error propagation'],
       resources: ['cairo_book', 'corelib_docs', 'cairo_by_example'],
+      reformulatedQuery:
+        'What does the ? operator do in Cairo? Error propagation with Result and Option types.',
     },
   },
   {
@@ -375,6 +463,8 @@ export const retrievalDataset: RetrievalExample[] = [
     expected: {
       search_terms: ['#[should_panic]', 'testing', 'panic'],
       resources: ['cairo_book', 'starknet_foundry'],
+      reformulatedQuery:
+        'How does #[should_panic] work in Cairo testing? Testing functions that should panic.',
     },
   },
   {
@@ -382,6 +472,8 @@ export const retrievalDataset: RetrievalExample[] = [
     expected: {
       search_terms: ['#[cfg(test)]', 'testing', 'conditional compilation'],
       resources: ['cairo_book', 'starknet_foundry', 'cairo_by_example'],
+      reformulatedQuery:
+        'What is the purpose of the #[cfg(test)] attribute? Conditional compilation for test code.',
     },
   },
   {
@@ -390,6 +482,8 @@ export const retrievalDataset: RetrievalExample[] = [
     expected: {
       search_terms: ['unit tests', 'integration tests', 'testing'],
       resources: ['cairo_book', 'starknet_foundry'],
+      reformulatedQuery:
+        'What is the difference between unit tests and integration tests in Cairo? Testing strategies and approaches.',
     },
   },
   {
@@ -397,6 +491,8 @@ export const retrievalDataset: RetrievalExample[] = [
     expected: {
       search_terms: ['private functions', 'testing', 'module visibility'],
       resources: ['cairo_book', 'starknet_foundry'],
+      reformulatedQuery:
+        'How can you test private functions in Cairo? Testing module visibility and private function access.',
     },
   },
   {
@@ -405,6 +501,8 @@ export const retrievalDataset: RetrievalExample[] = [
     expected: {
       search_terms: ['deploy', 'testing', 'dispatcher', 'Foundry'],
       resources: ['cairo_book', 'starknet_foundry'],
+      reformulatedQuery:
+        'How do you test a Starknet contract by deploying and interacting with it? Contract deployment testing with Foundry.',
     },
   },
   {
@@ -412,6 +510,8 @@ export const retrievalDataset: RetrievalExample[] = [
     expected: {
       search_terms: ['Scarb.toml', 'dependencies', 'package manager'],
       resources: ['cairo_book', 'scarb_docs'],
+      reformulatedQuery:
+        'How do you add a dependency to a Cairo project? Managing dependencies in Scarb.toml.',
     },
   },
   {
@@ -419,6 +519,8 @@ export const retrievalDataset: RetrievalExample[] = [
     expected: {
       search_terms: ['storage', 'storage slot', 'storage address'],
       resources: ['cairo_book'],
+      reformulatedQuery:
+        'How are storage slots identified in a Starknet contract? Storage addressing and slot calculation.',
     },
   },
   {
@@ -426,6 +528,8 @@ export const retrievalDataset: RetrievalExample[] = [
     expected: {
       search_terms: ['ZK-ISA', 'STARKs', 'efficiency'],
       resources: ['cairo_book', 'starknet_docs'],
+      reformulatedQuery:
+        'What are the benefits of using a ZK-ISA in Cairo? Zero-knowledge instruction set architecture and STARK efficiency.',
     },
   },
   {
@@ -438,6 +542,8 @@ export const retrievalDataset: RetrievalExample[] = [
         'function-like macros',
       ],
       resources: ['cairo_book', 'cairo_by_example'],
+      reformulatedQuery:
+        'What types of procedural macros exist in Cairo? Derive macros, attribute-like macros, and function-like macros.',
     },
   },
   {
@@ -450,6 +556,8 @@ export const retrievalDataset: RetrievalExample[] = [
         'storage optimization',
       ],
       resources: ['cairo_book', 'cairo_by_example', 'corelib_docs'],
+      reformulatedQuery:
+        'How do you pack multiple small integers into a larger integer in Cairo? Bit-packing and bitwise operations for storage optimization.',
     },
   },
   {
@@ -457,6 +565,8 @@ export const retrievalDataset: RetrievalExample[] = [
     expected: {
       search_terms: ['bit-packing', 'storage optimization', 'gas costs'],
       resources: ['cairo_book', 'cairo_by_example', 'corelib_docs'],
+      reformulatedQuery:
+        'When should you use bit-packing in a Starknet contract? Storage optimization and gas cost considerations.',
     },
   },
   {
@@ -464,6 +574,8 @@ export const retrievalDataset: RetrievalExample[] = [
     expected: {
       search_terms: ['#[flat]', 'events', 'composability'],
       resources: ['cairo_book'],
+      reformulatedQuery:
+        'How does the #[flat] attribute affect events in Starknet? Event composability and flattening.',
     },
   },
   {
@@ -471,6 +583,8 @@ export const retrievalDataset: RetrievalExample[] = [
     expected: {
       search_terms: ['#[key]', 'events', 'indexed fields'],
       resources: ['cairo_book', 'starknet_docs'],
+      reformulatedQuery:
+        'What is the role of the #[key] attribute in Starknet events? Indexed event fields and event querying.',
     },
   },
   {
@@ -478,11 +592,13 @@ export const retrievalDataset: RetrievalExample[] = [
     expected: {
       search_terms: ['nopanic', 'compile-time checks', 'panic'],
       resources: ['cairo_book'],
+      reformulatedQuery:
+        'How does the Cairo compiler enforce nopanic function safety? Compile-time panic analysis and safety guarantees.',
     },
   },
   {
     query:
-      'How does Cairo’s write-once memory model affect mutable data structures?',
+      'How does Cairo"s write-once memory model affect mutable data structures?',
     expected: {
       search_terms: [
         'immutable memory',
@@ -490,6 +606,8 @@ export const retrievalDataset: RetrievalExample[] = [
         'Felt252Dict',
       ],
       resources: ['cairo_book'],
+      reformulatedQuery:
+        'How does Cairo"s write-once memory model affect mutable data structures? Immutable memory and Felt252Dict usage.',
     },
   },
   {
@@ -497,6 +615,8 @@ export const retrievalDataset: RetrievalExample[] = [
     expected: {
       search_terms: ['ComponentState', 'components', 'storage access'],
       resources: ['cairo_book', 'openzeppelin_docs'],
+      reformulatedQuery:
+        'What is the role of ComponentState in Starknet components? Component storage access and state management.',
     },
   },
   {
@@ -504,6 +624,8 @@ export const retrievalDataset: RetrievalExample[] = [
     expected: {
       search_terms: ['library call', 'contract call', 'state', 'gas costs'],
       resources: ['cairo_book', 'starknet_docs'],
+      reformulatedQuery:
+        'When should you use a library call instead of a contract call? State isolation and gas cost considerations.',
     },
   },
   {
@@ -512,6 +634,8 @@ export const retrievalDataset: RetrievalExample[] = [
     expected: {
       search_terms: ['components', 'architecture', 'design pattern'],
       resources: ['openzeppelin_docs'],
+      reformulatedQuery:
+        'What architectural pattern does OpenZeppelin Contracts for Cairo use? Component-based architecture and design patterns.',
     },
   },
   {
@@ -520,6 +644,8 @@ export const retrievalDataset: RetrievalExample[] = [
     expected: {
       search_terms: ['components', 'inheritance', 'Solidity comparison'],
       resources: ['openzeppelin_docs', 'cairo_book'],
+      reformulatedQuery:
+        'How does the component model in Cairo contracts differ from the inheritance model in Solidity contracts? Component composition vs inheritance.',
     },
   },
   {
@@ -528,6 +654,8 @@ export const retrievalDataset: RetrievalExample[] = [
     expected: {
       search_terms: ['customization', 'hooks', 'custom implementations'],
       resources: ['openzeppelin_docs', 'cairo_book'],
+      reformulatedQuery:
+        'How do you customize the behavior of a component in OpenZeppelin Contracts for Cairo? Component hooks and custom implementations.',
     },
   },
   {
@@ -536,6 +664,8 @@ export const retrievalDataset: RetrievalExample[] = [
     expected: {
       search_terms: ['ERC20', 'token implementation', 'ERC20Component'],
       resources: ['openzeppelin_docs', 'cairo_book'],
+      reformulatedQuery:
+        'How do you implement ERC20 token with OpenZeppelin Contracts for Cairo? Using ERC20Component for token implementation.',
     },
   },
   {
@@ -544,6 +674,8 @@ export const retrievalDataset: RetrievalExample[] = [
     expected: {
       search_terms: ['ERC20', 'decimals', 'configuration'],
       resources: ['openzeppelin_docs'],
+      reformulatedQuery:
+        'What are the supported decimals configuration options for ERC20 tokens? Token decimals and precision configuration.',
     },
   },
   {
@@ -557,6 +689,8 @@ export const retrievalDataset: RetrievalExample[] = [
         'camelCase',
       ],
       resources: ['openzeppelin_docs', 'cairo_book'],
+      reformulatedQuery:
+        'How does Cairo handle method naming conventions in smart contracts? Interface naming and snake_case vs camelCase.',
     },
   },
   {
@@ -569,6 +703,8 @@ export const retrievalDataset: RetrievalExample[] = [
         'AccessControlComponent',
       ],
       resources: ['openzeppelin_docs', 'cairo_book'],
+      reformulatedQuery:
+        'How do you implement access control in OpenZeppelin Contracts for Cairo? Using OwnableComponent and AccessControlComponent.',
     },
   },
   {
@@ -582,6 +718,8 @@ export const retrievalDataset: RetrievalExample[] = [
         'ReentrancyGuard',
       ],
       resources: ['openzeppelin_docs'],
+      reformulatedQuery:
+        'What security components are available in OpenZeppelin Contracts for Cairo? Initializable, Pausable, and ReentrancyGuard components.',
     },
   },
   {
@@ -590,6 +728,8 @@ export const retrievalDataset: RetrievalExample[] = [
     expected: {
       search_terms: ['upgrades', 'replace_class', 'proxy patterns'],
       resources: ['openzeppelin_docs', 'starknet_docs'],
+      reformulatedQuery:
+        'How does contract upgradeability work in Starknet compared to EVM chains? Native upgrades vs proxy patterns.',
     },
   },
   {
@@ -598,6 +738,8 @@ export const retrievalDataset: RetrievalExample[] = [
     expected: {
       search_terms: ['governance', 'voting', 'delegation'],
       resources: ['openzeppelin_docs'],
+      reformulatedQuery:
+        'What is the purpose of the Votes component in OpenZeppelin Contracts for Cairo? Governance voting and delegation mechanisms.',
     },
   },
   {
@@ -606,6 +748,8 @@ export const retrievalDataset: RetrievalExample[] = [
     expected: {
       search_terms: ['governance', 'Governor', 'proposals', 'voting'],
       resources: ['openzeppelin_docs'],
+      reformulatedQuery:
+        'How do you implement on-chain governance with OpenZeppelin Contracts for Cairo? Governor component for proposals and voting.',
     },
   },
   {
@@ -614,6 +758,8 @@ export const retrievalDataset: RetrievalExample[] = [
     expected: {
       search_terms: ['governance', 'timelock', 'execution delay'],
       resources: ['openzeppelin_docs'],
+      reformulatedQuery:
+        'What is the purpose of the Timelock Controller in governance systems? Delayed execution and governance security.',
     },
   },
   {
@@ -622,6 +768,8 @@ export const retrievalDataset: RetrievalExample[] = [
     expected: {
       search_terms: ['multisig', 'multiple signers', 'quorum'],
       resources: ['openzeppelin_docs'],
+      reformulatedQuery:
+        'How do you implement a Multisig wallet with OpenZeppelin Contracts for Cairo? Multiple signers and quorum requirements.',
     },
   },
   {
@@ -629,6 +777,8 @@ export const retrievalDataset: RetrievalExample[] = [
     expected: {
       search_terms: ['ERC721', 'token URI', 'metadata'],
       resources: ['openzeppelin_docs'],
+      reformulatedQuery:
+        'How does token URI work in the ERC721 implementation? NFT metadata and token URI generation.',
     },
   },
   {
@@ -636,6 +786,8 @@ export const retrievalDataset: RetrievalExample[] = [
     expected: {
       search_terms: ['SRC5', 'introspection', 'interface detection'],
       resources: ['openzeppelin_docs', 'starknet_docs'],
+      reformulatedQuery:
+        'What is the purpose of the SRC5 introspection standard? Interface detection and contract introspection.',
     },
   },
   {
@@ -644,6 +796,8 @@ export const retrievalDataset: RetrievalExample[] = [
     expected: {
       search_terms: ['ERC1155', 'multi-token', 'fungible and non-fungible'],
       resources: ['openzeppelin_docs'],
+      reformulatedQuery:
+        'How do you implement ERC1155 multi-token standard with OpenZeppelin Contracts for Cairo? Multi-token contracts with fungible and non-fungible tokens.',
     },
   },
   {
@@ -652,6 +806,8 @@ export const retrievalDataset: RetrievalExample[] = [
     expected: {
       search_terms: ['testing', 'Starknet Foundry', 'test utilities'],
       resources: ['openzeppelin_docs', 'starknet_foundry'],
+      reformulatedQuery:
+        'What testing utilities does OpenZeppelin provide for Cairo contracts? Test utilities and Starknet Foundry integration.',
     },
   },
   {
@@ -659,6 +815,8 @@ export const retrievalDataset: RetrievalExample[] = [
     expected: {
       search_terms: ['ERC20', 'permit', 'signatures'],
       resources: ['openzeppelin_docs'],
+      reformulatedQuery:
+        'How do you implement the Permit extension for ERC20 tokens? Gasless approvals with signature-based permits.',
     },
   },
   {
@@ -666,6 +824,8 @@ export const retrievalDataset: RetrievalExample[] = [
     expected: {
       search_terms: ['UDC', 'deployment', 'contracts'],
       resources: ['openzeppelin_docs', 'cairo_book'],
+      reformulatedQuery:
+        'What is the Universal Deployer Contract (UDC) and how is it used? Deterministic contract deployment with UDC.',
     },
   },
   {
@@ -673,6 +833,8 @@ export const retrievalDataset: RetrievalExample[] = [
     expected: {
       search_terms: ['ERC721', 'safe transfer', 'receiver contracts'],
       resources: ['openzeppelin_docs'],
+      reformulatedQuery:
+        'How do you implement safe transfers in ERC721? Safe transfer mechanisms and receiver contract validation.',
     },
   },
   {
@@ -680,6 +842,8 @@ export const retrievalDataset: RetrievalExample[] = [
     expected: {
       search_terms: ['upgrades', 'security', 'storage'],
       resources: ['openzeppelin_docs', 'cairo_book'],
+      reformulatedQuery:
+        'What are the security considerations when upgrading contracts? Storage compatibility and upgrade security.',
     },
   },
   {
@@ -688,6 +852,8 @@ export const retrievalDataset: RetrievalExample[] = [
     expected: {
       search_terms: ['security', 'Pausable', 'emergency stop'],
       resources: ['openzeppelin_docs'],
+      reformulatedQuery:
+        'How does the Pausable component work to provide emergency stop functionality? Emergency pause mechanisms and security.',
     },
   },
   {
@@ -696,6 +862,8 @@ export const retrievalDataset: RetrievalExample[] = [
     expected: {
       search_terms: ['access control', 'ownership', 'roles'],
       resources: ['openzeppelin_docs'],
+      reformulatedQuery:
+        'What is the difference between OwnableComponent and AccessControlComponent? Simple ownership vs role-based access control.',
     },
   },
   {
@@ -703,6 +871,8 @@ export const retrievalDataset: RetrievalExample[] = [
     expected: {
       search_terms: ['ERC20', 'supply', 'minting', 'burning'],
       resources: ['openzeppelin_docs'],
+      reformulatedQuery:
+        'How do you implement custom token supply mechanisms in ERC20? Token minting, burning, and supply management.',
     },
   },
   {
@@ -711,6 +881,8 @@ export const retrievalDataset: RetrievalExample[] = [
     expected: {
       search_terms: ['security', 'initialization', 'constructor alternative'],
       resources: ['openzeppelin_docs'],
+      reformulatedQuery:
+        'How do you use the Initializable component to secure contract initialization? Secure initialization and constructor alternatives.',
     },
   },
   {
@@ -722,6 +894,8 @@ export const retrievalDataset: RetrievalExample[] = [
         'smart accounts',
       ],
       resources: ['starknet_docs'],
+      reformulatedQuery:
+        'What is account abstraction in Starknet? Account contracts and smart account functionality.',
     },
   },
   {
@@ -733,6 +907,8 @@ export const retrievalDataset: RetrievalExample[] = [
         'DEPLOY_ACCOUNT',
       ],
       resources: ['starknet_docs', 'cairo_book'],
+      reformulatedQuery:
+        'How are account contracts deployed in Starknet? Account deployment with Universal Deployer and DEPLOY_ACCOUNT transactions.',
     },
   },
   {
@@ -740,6 +916,8 @@ export const retrievalDataset: RetrievalExample[] = [
     expected: {
       search_terms: ['account interface', 'required functions', 'validation'],
       resources: ['starknet_docs', 'cairo_book'],
+      reformulatedQuery:
+        'What functions must a Starknet account contract implement? Account interface and required validation functions.',
     },
   },
   {
@@ -747,6 +925,8 @@ export const retrievalDataset: RetrievalExample[] = [
     expected: {
       search_terms: ['Cairo', 'Sierra', 'compilation', 'smart contracts'],
       resources: ['starknet_docs', 'cairo_book'],
+      reformulatedQuery:
+        'What is Cairo and Sierra in the context of Starknet? Cairo compilation pipeline and Sierra intermediate representation.',
     },
   },
   {
@@ -759,6 +939,8 @@ export const retrievalDataset: RetrievalExample[] = [
         'deployment',
       ],
       resources: ['starknet_docs'],
+      reformulatedQuery:
+        'How are contract classes and instances separated in Starknet? Contract class declaration vs instance deployment.',
     },
   },
   {
@@ -771,6 +953,8 @@ export const retrievalDataset: RetrievalExample[] = [
         'Starknet Keccak',
       ],
       resources: ['starknet_docs', 'corelib_docs'],
+      reformulatedQuery:
+        'What hash functions are available in Starknet? Pedersen, Poseidon, and Starknet Keccak hash functions.',
     },
   },
   {
@@ -778,6 +962,8 @@ export const retrievalDataset: RetrievalExample[] = [
     expected: {
       search_terms: ['state', 'Merkle-Patricia tries', 'state commitment'],
       resources: ['starknet_docs'],
+      reformulatedQuery:
+        'How is the Starknet state structured? State commitment and Merkle-Patricia trie organization.',
     },
   },
   {
@@ -790,6 +976,8 @@ export const retrievalDataset: RetrievalExample[] = [
         'fee mechanism',
       ],
       resources: ['starknet_docs'],
+      reformulatedQuery:
+        'What is the transaction flow in Starknet? Transaction validation, execution, and fee mechanism.',
     },
   },
   {
@@ -797,6 +985,8 @@ export const retrievalDataset: RetrievalExample[] = [
     expected: {
       search_terms: ['L1-L2 messaging', 'L1 handler', 'messaging mechanism'],
       resources: ['starknet_docs', 'cairo_book'],
+      reformulatedQuery:
+        'How does L1-L2 messaging work in Starknet? Cross-layer messaging and L1 handler functions.',
     },
   },
   {
@@ -804,6 +994,8 @@ export const retrievalDataset: RetrievalExample[] = [
     expected: {
       search_terms: ['STRK', 'native token', 'token economics'],
       resources: ['starknet_docs'],
+      reformulatedQuery:
+        'What is the STRK token and its utility? Starknet native token and token economics.',
     },
   },
   {
@@ -811,6 +1003,8 @@ export const retrievalDataset: RetrievalExample[] = [
     expected: {
       search_terms: ['staking', 'validators', 'delegation', 'rewards'],
       resources: ['starknet_docs'],
+      reformulatedQuery:
+        'How does staking work in Starknet? Validator staking, delegation, and reward mechanisms.',
     },
   },
   {
@@ -818,6 +1012,8 @@ export const retrievalDataset: RetrievalExample[] = [
     expected: {
       search_terms: ['minting curve', 'staking rewards', 'token inflation'],
       resources: ['starknet_docs'],
+      reformulatedQuery:
+        'What is the minting curve formula for Starknet staking rewards? Token inflation and reward calculation formula.',
     },
   },
   {
@@ -825,6 +1021,8 @@ export const retrievalDataset: RetrievalExample[] = [
     expected: {
       search_terms: ['StarkGate', 'bridge', 'token bridging', 'L1-L2'],
       resources: ['starknet_docs'],
+      reformulatedQuery:
+        'How does the StarkGate bridge work? Token bridging between L1 and L2 with StarkGate.',
     },
   },
   {
@@ -832,6 +1030,8 @@ export const retrievalDataset: RetrievalExample[] = [
     expected: {
       search_terms: ['withdrawal', 'L2-L1', 'bridge', 'finalization'],
       resources: ['starknet_docs'],
+      reformulatedQuery:
+        'What is the withdrawal process from Starknet to Ethereum? L2-L1 withdrawal and finalization process.',
     },
   },
   {
@@ -839,6 +1039,8 @@ export const retrievalDataset: RetrievalExample[] = [
     expected: {
       search_terms: ['class hash', 'contract classes', 'declaration'],
       resources: ['starknet_docs', 'cairo_book'],
+      reformulatedQuery:
+        'What is a class hash in Starknet? Contract class identification and declaration hashes.',
     },
   },
   {
@@ -846,6 +1048,8 @@ export const retrievalDataset: RetrievalExample[] = [
     expected: {
       search_terms: ['compiled class hash', 'CASM', 'Sierra', 'compilation'],
       resources: ['starknet_docs', 'cairo_book'],
+      reformulatedQuery:
+        'What is a compiled class hash in Starknet? CASM compilation and Sierra to CASM hash.',
     },
   },
   {
@@ -853,6 +1057,8 @@ export const retrievalDataset: RetrievalExample[] = [
     expected: {
       search_terms: ['contract address', 'address calculation', 'deployment'],
       resources: ['starknet_docs', 'cairo_book'],
+      reformulatedQuery:
+        'How are contract addresses determined in Starknet? Contract address calculation and deployment parameters.',
     },
   },
   {
@@ -870,6 +1076,8 @@ export const retrievalDataset: RetrievalExample[] = [
         'starknet_foundry',
         'cairo_book',
       ],
+      reformulatedQuery:
+        'What are the main development tools for Starknet? Scarb, Starknet Foundry, and Starkli development tools.',
     },
   },
   {
@@ -877,6 +1085,8 @@ export const retrievalDataset: RetrievalExample[] = [
     expected: {
       search_terms: ['development environment', 'devnet', 'setup'],
       resources: ['starknet_docs', 'scarb_docs', 'starknet_foundry'],
+      reformulatedQuery:
+        'How can I set up a local Starknet development environment? Local devnet setup and development configuration.',
     },
   },
   {
@@ -884,6 +1094,8 @@ export const retrievalDataset: RetrievalExample[] = [
     expected: {
       search_terms: ['dApp development', 'frameworks', 'frontend'],
       resources: ['starknet_docs'],
+      reformulatedQuery:
+        'What frameworks exist for building dApps on Starknet? Frontend frameworks and dApp development tools.',
     },
   },
   {
@@ -891,6 +1103,8 @@ export const retrievalDataset: RetrievalExample[] = [
     expected: {
       search_terms: ['fee mechanism', 'gas', 'transaction fees'],
       resources: ['starknet_docs'],
+      reformulatedQuery:
+        'How does the fee mechanism work in Starknet? Transaction fees and gas calculation.',
     },
   },
   {
@@ -898,6 +1112,8 @@ export const retrievalDataset: RetrievalExample[] = [
     expected: {
       search_terms: ['wallets', 'account contracts', 'user interface'],
       resources: ['starknet_docs'],
+      reformulatedQuery:
+        'What wallets support Starknet? Wallet integration and account contract support.',
     },
   },
   {
@@ -905,6 +1121,8 @@ export const retrievalDataset: RetrievalExample[] = [
     expected: {
       search_terms: ['system calls', 'contract interaction', 'OS'],
       resources: ['starknet_docs', 'cairo_book'],
+      reformulatedQuery:
+        'How do system calls work in Cairo contracts? Contract system calls and OS interaction.',
     },
   },
   {
@@ -912,6 +1130,8 @@ export const retrievalDataset: RetrievalExample[] = [
     expected: {
       search_terms: ['data availability', 'state updates', 'volition'],
       resources: ['starknet_docs'],
+      reformulatedQuery:
+        'What is data availability in Starknet? State updates and Volition data availability modes.',
     },
   },
   {
@@ -919,6 +1139,8 @@ export const retrievalDataset: RetrievalExample[] = [
     expected: {
       search_terms: ['full nodes', 'synchronization', 'state management'],
       resources: ['starknet_docs'],
+      reformulatedQuery:
+        'How do Starknet full nodes work? Node synchronization and state management.',
     },
   },
   {
@@ -926,6 +1148,8 @@ export const retrievalDataset: RetrievalExample[] = [
     expected: {
       search_terms: ['SHARP', 'provers', 'STARK proofs', 'verification'],
       resources: ['starknet_docs'],
+      reformulatedQuery:
+        'What is the SHARP prover system in Starknet? STARK proof generation and verification system.',
     },
   },
   {
@@ -941,6 +1165,8 @@ export const retrievalDataset: RetrievalExample[] = [
         'deploy token test',
       ],
       resources: ['openzeppelin_docs', 'starknet_foundry', 'cairo_book'],
+      reformulatedQuery:
+        'How can I implement a custom ERC20 token with minting capabilities using OpenZeppelin? Testing mintable ERC20 tokens with Foundry.',
     },
   },
   {
@@ -954,6 +1180,8 @@ export const retrievalDataset: RetrievalExample[] = [
         'compile with Scarb',
       ],
       resources: ['scarb_docs', 'openzeppelin_docs'],
+      reformulatedQuery:
+        'Explain how to use Scarb to add OpenZeppelin as a dependency and compile a contract that uses AccessControl. Scarb dependency management and compilation.',
     },
   },
   {
@@ -968,6 +1196,8 @@ export const retrievalDataset: RetrievalExample[] = [
         'Felt252Dict errors',
       ],
       resources: ['cairo_book', 'corelib_docs', 'starknet_docs'],
+      reformulatedQuery:
+        'What"s the best way to handle errors in a Cairo function that interacts with Starknet storage? Error handling for storage reads and Felt252Dict operations.',
     },
   },
   {
@@ -980,6 +1210,8 @@ export const retrievalDataset: RetrievalExample[] = [
         'replace_class syscall',
       ],
       resources: ['starknet_docs', 'openzeppelin_docs'],
+      reformulatedQuery:
+        'How do I deploy a contract using Starkli and then upgrade it later? Contract deployment and upgrade with Starkli.',
     },
   },
   {
@@ -993,6 +1225,8 @@ export const retrievalDataset: RetrievalExample[] = [
         'bit shift AND OR',
       ],
       resources: ['cairo_book', 'cairo_by_example', 'starknet_docs'],
+      reformulatedQuery:
+        'Can you show how to use bitwise operations for packing data in storage to save gas? Bitwise packing for storage optimization and gas efficiency.',
     },
   },
   {
@@ -1005,6 +1239,8 @@ export const retrievalDataset: RetrievalExample[] = [
         'testing pausable Foundry',
       ],
       resources: ['openzeppelin_docs', 'starknet_foundry'],
+      reformulatedQuery:
+        'Integrate an OZ Pausable component into my contract and write a test to verify pausing. PausableComponent integration and testing.',
     },
   },
   {
@@ -1017,6 +1253,8 @@ export const retrievalDataset: RetrievalExample[] = [
         'ZK efficiency security',
       ],
       resources: ['starknet_docs', 'corelib_docs'],
+      reformulatedQuery:
+        'What"s the difference between Pedersen and Poseidon hashes, and when to use each in contracts? Hash function comparison and use cases.',
     },
   },
   {
@@ -1029,6 +1267,8 @@ export const retrievalDataset: RetrievalExample[] = [
         'signature validation __validate__',
       ],
       resources: ['openzeppelin_docs', 'starknet_docs'],
+      reformulatedQuery:
+        'Set up a multisig account on Starknet using OZ, including signature validation. MultisigComponent and account abstraction implementation.',
     },
   },
   {
@@ -1042,6 +1282,8 @@ export const retrievalDataset: RetrievalExample[] = [
         'contract call after bridge',
       ],
       resources: ['starknet_docs'],
+      reformulatedQuery:
+        'How to bridge ETH to Starknet using StarkGate and then swap it in a contract call? ETH bridging and contract interaction.',
     },
   },
   {
@@ -1054,6 +1296,8 @@ export const retrievalDataset: RetrievalExample[] = [
         'snapshot voting',
       ],
       resources: ['openzeppelin_docs'],
+      reformulatedQuery:
+        'Implement a governance token with voting delegation using OZ Votes component. VotesComponent for governance and delegation.',
     },
   },
   {
@@ -1066,6 +1310,8 @@ export const retrievalDataset: RetrievalExample[] = [
         'Starknet contracts build',
       ],
       resources: ['scarb_docs', 'cairo_book'],
+      reformulatedQuery:
+        'Use Scarb to build a project with multiple crates and Starknet contracts. Scarb workspace and multi-crate project structure.',
     },
   },
   {
@@ -1078,6 +1324,8 @@ export const retrievalDataset: RetrievalExample[] = [
         'write-once memory',
       ],
       resources: ['cairo_book', 'corelib_docs'],
+      reformulatedQuery:
+        'How does the Cairo VM handle memory allocation for dynamic structures like arrays? Cairo VM memory model and array allocation.',
     },
   },
   {
@@ -1089,6 +1337,8 @@ export const retrievalDataset: RetrievalExample[] = [
         'messaging syscalls test',
       ],
       resources: ['starknet_foundry', 'starknet_docs'],
+      reformulatedQuery:
+        'Test L1-L2 messaging in Foundry by mocking the L1 handler. L1 handler testing and message mocking.',
     },
   },
   {
@@ -1102,6 +1352,8 @@ export const retrievalDataset: RetrievalExample[] = [
         'trait bounds generics',
       ],
       resources: ['cairo_book', 'cairo_by_example'],
+      reformulatedQuery:
+        'Create a custom trait for a generic enum and implement it for multiple types. Generic trait implementation for enums.',
     },
   },
   {
@@ -1114,6 +1366,8 @@ export const retrievalDataset: RetrievalExample[] = [
         'Starknet execution fees',
       ],
       resources: ['starknet_docs'],
+      reformulatedQuery:
+        'What are the gas costs for different syscalls in Starknet, like get_block_number? Syscall execution costs and fee calculation.',
     },
   },
   {
@@ -1126,6 +1380,8 @@ export const retrievalDataset: RetrievalExample[] = [
         'contract function arrays',
       ],
       resources: ['corelib_docs', 'cairo_book'],
+      reformulatedQuery:
+        'How to use the corelib"s Array<T> in a contract function with snapshots. Array usage and snapshot semantics.',
     },
   },
   {
@@ -1138,6 +1394,8 @@ export const retrievalDataset: RetrievalExample[] = [
         'NFT metadata setup',
       ],
       resources: ['openzeppelin_docs'],
+      reformulatedQuery:
+        'Deploy an ERC721 NFT contract with metadata using OZ and set base URI. ERC721Component deployment and metadata configuration.',
     },
   },
   {
@@ -1150,6 +1408,8 @@ export const retrievalDataset: RetrievalExample[] = [
         'Scarb generate Sierra',
       ],
       resources: ['starknet_docs', 'scarb_docs', 'cairo_book'],
+      reformulatedQuery:
+        'Explain the role of Sierra in the compilation pipeline and how to generate it with Scarb. Sierra intermediate representation and compilation.',
     },
   },
   {
@@ -1163,6 +1423,8 @@ export const retrievalDataset: RetrievalExample[] = [
         'security reentrancy',
       ],
       resources: ['openzeppelin_docs', 'cairo_book'],
+      reformulatedQuery:
+        'Implement reentrancy protection in a contract using OZ ReentrancyGuard. ReentrancyGuardComponent for security protection.',
     },
   },
   {
@@ -1174,6 +1436,8 @@ export const retrievalDataset: RetrievalExample[] = [
         'staking pools',
       ],
       resources: ['starknet_docs'],
+      reformulatedQuery:
+        'How to stake STRK tokens as a delegator and claim rewards? STRK token staking and reward claiming process.',
     },
   },
   {
@@ -1186,6 +1450,8 @@ export const retrievalDataset: RetrievalExample[] = [
         'array iteration code',
       ],
       resources: ['cairo_by_example'],
+      reformulatedQuery:
+        'Use cairo_by_example to find a snippet for a simple loop that sums an array. Array iteration and sum calculation examples.',
     },
   },
   {
@@ -1194,6 +1460,8 @@ export const retrievalDataset: RetrievalExample[] = [
     expected: {
       search_terms: ['Starknet governance proposals', 'voting process'],
       resources: ['starknet_docs'],
+      reformulatedQuery:
+        'What"s the process for proposing and voting on Starknet governance changes? Starknet governance mechanism and proposal process.',
     },
   },
   {
@@ -1206,6 +1474,8 @@ export const retrievalDataset: RetrievalExample[] = [
         'constructor security',
       ],
       resources: ['openzeppelin_docs'],
+      reformulatedQuery:
+        'Integrate OZ Initializable with a constructor to prevent reinitialization attacks. InitializableComponent for secure initialization.',
     },
   },
   {
@@ -1219,6 +1489,8 @@ export const retrievalDataset: RetrievalExample[] = [
         'spy events debug',
       ],
       resources: ['starknet_foundry', 'cairo_book'],
+      reformulatedQuery:
+        'How to debug a failing test in Foundry using print statements and cheatcodes? Foundry debugging and test troubleshooting.',
     },
   },
   {
@@ -1230,6 +1502,8 @@ export const retrievalDataset: RetrievalExample[] = [
         'Sierra class hash',
       ],
       resources: ['starknet_docs', 'corelib_docs', 'cairo_book'],
+      reformulatedQuery:
+        'Calculate the class hash for a contract manually in Cairo code. Class hash computation and Sierra hash calculation.',
     },
   },
   {
@@ -1242,6 +1516,8 @@ export const retrievalDataset: RetrievalExample[] = [
         'state isolation library',
       ],
       resources: ['starknet_docs', 'cairo_book', 'corelib_docs'],
+      reformulatedQuery:
+        'Implement a library call to reuse code from another contract without changing state. Library call syscall and state isolation.',
     },
   },
   {
@@ -1254,6 +1530,8 @@ export const retrievalDataset: RetrievalExample[] = [
         'data availability choice',
       ],
       resources: ['starknet_docs'],
+      reformulatedQuery:
+        'How does the Volition data availability mode work, and how to choose between rollup and validium? Volition data availability options.',
     },
   },
   {
@@ -1265,6 +1543,8 @@ export const retrievalDataset: RetrievalExample[] = [
         'Starknet node config',
       ],
       resources: ['starknet_docs'],
+      reformulatedQuery:
+        'Set up a full node with Pathfinder and sync it to mainnet. Pathfinder node setup and mainnet synchronization.',
     },
   },
   {
@@ -1276,6 +1556,8 @@ export const retrievalDataset: RetrievalExample[] = [
         'EIP-2612 Cairo',
       ],
       resources: ['openzeppelin_docs'],
+      reformulatedQuery:
+        'Use the permit extension for gasless approvals in an ERC20 token. ERC20PermitComponent for gasless transactions.',
     },
   },
   {
@@ -1289,6 +1571,8 @@ export const retrievalDataset: RetrievalExample[] = [
         'reward calculation',
       ],
       resources: ['starknet_docs'],
+      reformulatedQuery:
+        'What"s the minting curve and how does it affect STRK inflation based on staking rate? STRK token minting curve and inflation mechanism.',
     },
   },
   {
@@ -1300,6 +1584,8 @@ export const retrievalDataset: RetrievalExample[] = [
         'receiver check',
       ],
       resources: ['openzeppelin_docs'],
+      reformulatedQuery:
+        'Implement safe transfer for ERC1155 tokens with batch operations. ERC1155 batch transfers and safety checks.',
     },
   },
   {
@@ -1312,6 +1598,8 @@ export const retrievalDataset: RetrievalExample[] = [
         'Scarb.toml config',
       ],
       resources: ['scarb_docs', 'cairo_book'],
+      reformulatedQuery:
+        'How to use Scarb to target different Starknet versions in compilation. Scarb version targeting and compilation configuration.',
     },
   },
   {
@@ -1324,6 +1612,8 @@ export const retrievalDataset: RetrievalExample[] = [
         '__validate__ mock',
       ],
       resources: ['starknet_foundry', 'starknet_docs'],
+      reformulatedQuery:
+        'Test account abstraction by deploying a custom account contract and validating signatures. Account contract testing and signature validation.',
     },
   },
   {
@@ -1336,6 +1626,8 @@ export const retrievalDataset: RetrievalExample[] = [
         'verification L1',
       ],
       resources: ['starknet_docs'],
+      reformulatedQuery:
+        'What"s the role of SHARP in proving batches and how does it integrate with Ethereum? SHARP prover system and Ethereum integration.',
     },
   },
   {
@@ -1348,6 +1640,8 @@ export const retrievalDataset: RetrievalExample[] = [
         'impl generic',
       ],
       resources: ['cairo_book', 'cairo_by_example'],
+      reformulatedQuery:
+        'Create a generic function that works with any Copy type and uses trait bounds. Generic functions with Copy trait bounds.',
     },
   },
   {
@@ -1360,6 +1654,8 @@ export const retrievalDataset: RetrievalExample[] = [
         'query events keys',
       ],
       resources: ['cairo_book', 'starknet_docs'],
+      reformulatedQuery:
+        'How to emit indexed events with keys for efficient querying. Indexed events with #[key] attribute for efficient filtering.',
     },
   },
   {
@@ -1372,6 +1668,8 @@ export const retrievalDataset: RetrievalExample[] = [
         'checked add mul',
       ],
       resources: ['corelib_docs', 'cairo_book'],
+      reformulatedQuery:
+        'Use corelib"s math functions for safe arithmetic to prevent overflows. Safe arithmetic operations and overflow prevention.',
     },
   },
   {
@@ -1383,6 +1681,8 @@ export const retrievalDataset: RetrievalExample[] = [
         'address calculation salt',
       ],
       resources: ['starknet_docs'],
+      reformulatedQuery:
+        'Deploy a contract counterfactually and fund it before activation. Counterfactual deployment and pre-funding strategies.',
     },
   },
   {
@@ -1395,6 +1695,8 @@ export const retrievalDataset: RetrievalExample[] = [
         'proposal timelock',
       ],
       resources: ['openzeppelin_docs'],
+      reformulatedQuery:
+        'Implement a timelock for governance proposals with delayed execution. TimelockController for governance security.',
     },
   },
   {
@@ -1407,6 +1709,8 @@ export const retrievalDataset: RetrievalExample[] = [
         'dispatcher interactions',
       ],
       resources: ['starknet_foundry'],
+      reformulatedQuery:
+        'How to run integration tests that interact with multiple deployed contracts in Foundry. Multi-contract integration testing.',
     },
   },
   {
@@ -1419,6 +1723,8 @@ export const retrievalDataset: RetrievalExample[] = [
         'class hash vs address',
       ],
       resources: ['starknet_docs'],
+      reformulatedQuery:
+        'What"s the difference between declare and deploy transactions in Starknet? Contract class declaration vs instance deployment.',
     },
   },
   {
@@ -1430,6 +1736,8 @@ export const retrievalDataset: RetrievalExample[] = [
         'type exclusion traits',
       ],
       resources: ['cairo_book'],
+      reformulatedQuery:
+        'Use negative impl to constrain generics in a trait implementation. Negative implementations for type constraints.',
     },
   },
   {
@@ -1443,6 +1751,8 @@ export const retrievalDataset: RetrievalExample[] = [
         'Scarb.toml build config',
       ],
       resources: ['scarb_docs'],
+      reformulatedQuery:
+        'How to configure Scarb for custom build profiles and optimization levels. Scarb build configuration and optimization.',
     },
   },
   {
@@ -1454,6 +1764,8 @@ export const retrievalDataset: RetrievalExample[] = [
         'interface IDs',
       ],
       resources: ['openzeppelin_docs', 'starknet_docs'],
+      reformulatedQuery:
+        'Implement SRC5 interface detection in a custom contract. SRC5 introspection and interface detection.',
     },
   },
   {
@@ -1465,6 +1777,8 @@ export const retrievalDataset: RetrievalExample[] = [
         'test syscall override',
       ],
       resources: ['starknet_foundry'],
+      reformulatedQuery:
+        'Mock syscalls like get_execution_info in unit tests. Syscall mocking and test cheatcodes.',
     },
   },
   {
@@ -1476,6 +1790,8 @@ export const retrievalDataset: RetrievalExample[] = [
         'contracts classes tries',
       ],
       resources: ['starknet_docs'],
+      reformulatedQuery:
+        'How does the state commitment work with Merkle tries in Starknet? State commitment and Merkle Patricia trie structure.',
     },
   },
   {
@@ -1488,6 +1804,8 @@ export const retrievalDataset: RetrievalExample[] = [
         'call contract frontend',
       ],
       resources: ['starknet_docs'],
+      reformulatedQuery:
+        'Create a dApp frontend that connects to Starknet wallet and calls a contract. Frontend wallet integration and contract interaction.',
     },
   },
   {
@@ -1499,6 +1817,8 @@ export const retrievalDataset: RetrievalExample[] = [
         'trait associated items',
       ],
       resources: ['cairo_book'],
+      reformulatedQuery:
+        'Use associated types in a trait for flexible return types. Associated types for flexible trait design.',
     },
   },
   {
@@ -1511,6 +1831,8 @@ export const retrievalDataset: RetrievalExample[] = [
         'L2 to L1 limits',
       ],
       resources: ['starknet_docs'],
+      reformulatedQuery:
+        'What"s the withdrawal limit mechanism in StarkGate for security? StarkGate security measures and withdrawal limits.',
     },
   },
   {
@@ -1523,6 +1845,8 @@ export const retrievalDataset: RetrievalExample[] = [
         'compile-time no panic',
       ],
       resources: ['cairo_book'],
+      reformulatedQuery:
+        'Implement a nopanic function that does safe division without panicking. Nopanic functions and safe division operations.',
     },
   },
   {
@@ -1534,6 +1858,8 @@ export const retrievalDataset: RetrievalExample[] = [
         'salt class hash deploy',
       ],
       resources: ['starknet_docs', 'openzeppelin_docs'],
+      reformulatedQuery:
+        'How to use the UDC for deterministic deployments in scripts. Universal Deployer Contract for deterministic deployment.',
     },
   },
   {
@@ -1545,6 +1871,8 @@ export const retrievalDataset: RetrievalExample[] = [
         'component composition',
       ],
       resources: ['openzeppelin_docs', 'cairo_book'],
+      reformulatedQuery:
+        'Combine OZ components for an upgradable ERC20 with access control. Component composition for upgradable tokens.',
     },
   },
   {
@@ -1556,6 +1884,8 @@ export const retrievalDataset: RetrievalExample[] = [
         'assert event emitted',
       ],
       resources: ['starknet_foundry', 'cairo_book'],
+      reformulatedQuery:
+        'Test event emissions in a contract using Foundry spy. Event testing and spy cheatcodes in Foundry.',
     },
   },
   {
@@ -1567,6 +1897,8 @@ export const retrievalDataset: RetrievalExample[] = [
         'storage node ByteArray',
       ],
       resources: ['cairo_book', 'corelib_docs'],
+      reformulatedQuery:
+        'How to handle ByteArray in storage for large strings. ByteArray storage and large string handling.',
     },
   },
   {
@@ -1579,6 +1911,8 @@ export const retrievalDataset: RetrievalExample[] = [
         'block production sequencer',
       ],
       resources: ['starknet_docs'],
+      reformulatedQuery:
+        'What"s the role of the sequencer in Starknet transaction processing? Sequencer functionality and transaction ordering.',
     },
   },
   {
@@ -1590,6 +1924,8 @@ export const retrievalDataset: RetrievalExample[] = [
         'event serialization flat',
       ],
       resources: ['cairo_book', 'openzeppelin_docs'],
+      reformulatedQuery:
+        'Implement a flat event structure for composability in components. Flat events and component composability.',
     },
   },
   {
@@ -1601,6 +1937,8 @@ export const retrievalDataset: RetrievalExample[] = [
         'upgrade hook data',
       ],
       resources: ['openzeppelin_docs', 'cairo_book'],
+      reformulatedQuery:
+        'How to migrate data during a contract upgrade. Data migration strategies and storage compatibility.',
     },
   },
   {
@@ -1612,6 +1950,8 @@ export const retrievalDataset: RetrievalExample[] = [
         'local network config',
       ],
       resources: ['starknet_docs', 'starknet_foundry'],
+      reformulatedQuery:
+        'Set up Devnet for local testing with pre-deployed accounts. Devnet configuration and account setup.',
     },
   },
   {
@@ -1623,6 +1963,8 @@ export const retrievalDataset: RetrievalExample[] = [
         'no self trait functions',
       ],
       resources: ['cairo_book'],
+      reformulatedQuery:
+        'Implement associated functions in a trait without self. Associated functions and static methods in traits.',
     },
   },
   {
@@ -1634,6 +1976,8 @@ export const retrievalDataset: RetrievalExample[] = [
         'burn convert fees',
       ],
       resources: ['starknet_docs'],
+      reformulatedQuery:
+        'How does fee payment work with STRK vs ETH in transactions? Transaction fee payment mechanisms and token options.',
     },
   },
 ];

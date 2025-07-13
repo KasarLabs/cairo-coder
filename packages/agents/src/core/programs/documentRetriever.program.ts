@@ -73,19 +73,29 @@ export class DocumentRetrieverProgram extends AxGen<
     query: ProcessedQuery,
     sources: DocumentSource | DocumentSource[],
   ): Promise<Document[]> {
-    const searchQuery = Array.isArray(query.transformed)
-      ? query.transformed
-      : [query.transformed];
+    const searchTermQueries = Array.isArray(query.searchTerms)
+      ? query.searchTerms
+      : [query.searchTerms];
     if (query.resources?.length > 0) {
       sources = query.resources;
     }
-    const searchPromises = searchQuery.map((q) =>
+
+    const searchPromises = searchTermQueries.map((q) =>
       this.config.vectorStore.similaritySearch(
         q,
         this.config.maxSourceCount || 10,
         sources,
       ),
     );
+
+    searchPromises.push(
+      this.config.vectorStore.similaritySearch(
+        query.transformedQuery,
+        this.config.maxSourceCount || 10,
+        sources,
+      ),
+    );
+
     const results = await Promise.all(searchPromises);
     const uniqueDocs = [
       ...new Set(results.flat().map((doc) => doc.pageContent)),
@@ -126,7 +136,7 @@ export class DocumentRetrieverProgram extends AxGen<
 
     return similarities
       .filter(
-        (sim) => sim.similarity > (this.config.similarityThreshold || 0.4),
+        (sim) => sim.similarity > (this.config.similarityThreshold || 0.3),
       )
       .sort((a, b) => b.similarity - a.similarity)
       .slice(0, 10)

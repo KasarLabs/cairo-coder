@@ -59,13 +59,14 @@ const RESOURCES_SELECTION_INSTRUCTIONS = `Select relevant documentation resource
  */
 export const retrievalProgram: AxGen<
   { chat_history?: string; query: string },
-  { search_terms: string[]; resources: string[] }
+  { search_terms: string[]; resources: string[]; reformulatedQuery: string }
 > = ax`
   "${RETRIEVAL_INSTRUCTIONS}"
   chat_history?:${f.string("Previous messages from this conversation, used to infer context and intent of the user's query.")},
   query:${f.string('The users query that must be sanitized and classified. This is the main query that will be used to retrieve relevant documentation or code examples.')} ->
   search_terms:${f.array(f.string(RETRIEVAL_INSTRUCTIONS))},
-  resources:${f.array(f.string(RESOURCES_SELECTION_INSTRUCTIONS))}
+  resources:${f.array(f.string(RESOURCES_SELECTION_INSTRUCTIONS))},
+  reformulatedQuery:${f.string('A reformulated query, expanded from the original one, for better semantic search.')}
 `;
 
 // Set examples for the retrieval program
@@ -83,6 +84,8 @@ retrievalProgram.setExamples([
       'Contract Interface Trait',
     ],
     resources: ['cairo_book'],
+    reformulatedQuery:
+      'Creating a Smart Contract with a Storage Mapping. Storing user scores in a map. Function to increment user score. Function to get user score.',
   },
   {
     chat_history: 'Discussion about tokens',
@@ -97,6 +100,8 @@ retrievalProgram.setExamples([
       'Getting Caller Address Syscall',
     ],
     resources: ['openzeppelin_docs', 'cairo_book'],
+    reformulatedQuery:
+      'Given my ERC20 token, I want to: 1. Add a function that allows the owner to mint tokens. 2. Set an owner in the constructor. 3. Allow changing the owner.',
   },
   {
     chat_history: '',
@@ -110,12 +115,15 @@ retrievalProgram.setExamples([
       'Mocking Return Values Foundry',
     ],
     resources: ['cairo_book', 'starknet_foundry'],
+    reformulatedQuery:
+      'Mocking contract calls in Starknet Foundry. Using Foundry cheatcodes to mock contract calls. Integration testing of contracts in Starknet Foundry.',
   },
   {
     chat_history: '',
     query: 'Hello, how are you?',
     search_terms: [],
     resources: [],
+    reformulatedQuery: 'Hello, how are you?',
   },
   {
     chat_history: 'Working on array operations',
@@ -128,6 +136,8 @@ retrievalProgram.setExamples([
       'Cairo Standard Library Vec',
     ],
     resources: ['cairo_book', 'corelib_docs', 'cairo_by_example'],
+    reformulatedQuery:
+      'Using Vec in Cairo. Cairo Storage Vec Operations. Interacting with the Vec type in Cairo.',
   },
 ]);
 

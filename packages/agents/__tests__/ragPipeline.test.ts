@@ -92,7 +92,7 @@ describe('RagPipeline', () => {
       name: 'Test Agent',
       vectorStore: mockDeep(),
       maxSourceCount: 5,
-      similarityThreshold: 0.5,
+      similarityThreshold: 0.3,
       retrievalProgram: mockRetrievalProgram,
       generationProgram: mockGenerationProgram,
     };

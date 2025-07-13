@@ -25,7 +25,7 @@ jest.mock('../../config/agents', () => ({
         },
         parameters: {
           maxSourceCount: 15,
-          similarityThreshold: 0.4,
+          similarityThreshold: 0.3,
         },
       };
     }
@@ -42,7 +42,7 @@ jest.mock('../../config/agent', () => ({
     },
     templates: {},
     maxSourceCount: 15,
-    similarityThreshold: 0.4,
+    similarityThreshold: 0.3,
   }),
   getAgentConfigById: jest.fn().mockResolvedValue({
     vectorStore: {},
@@ -53,7 +53,7 @@ jest.mock('../../config/agent', () => ({
     },
     templates: {},
     maxSourceCount: 15,
-    similarityThreshold: 0.4,
+    similarityThreshold: 0.3,
   }),
 }));
 

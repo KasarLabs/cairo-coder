@@ -2,47 +2,340 @@
   {
     "traces": [
       {
-        "query": "Create a custom trait for a generic enum and implement it for multiple types.",
-        "chat_history": "Working with enums in traits.",
+        "query": "How is the Starknet state structured?",
         "expected": {
           "search_terms": [
-            "generic trait enum",
-            "impl for enum",
-            "trait bounds generics"
+            "state",
+            "Merkle-Patricia tries",
+            "state commitment"
           ],
-          "resources": ["cairo_book", "cairo_by_example"]
+          "resources": ["starknet_docs"],
+          "reformulatedQuery": "How is the Starknet state structured? State commitment and Merkle-Patricia trie organization."
         },
+        "reformulatedQuery": "Explain the structure of the Starknet state, including its underlying data structures like Merkle Patricia trees, and how it stores account and contract data.",
         "search_terms": [
-          "Cairo trait",
-          "Cairo enum",
-          "generic enum trait",
-          "implement trait for enum",
-          "trait implementation multiple types",
-          "Cairo programming pattern trait enum"
+          "Starknet state structure",
+          "Starknet state",
+          "Patricia Merkle tree",
+          "Merkle tree",
+          "Starknet storage",
+          "account state",
+          "contract state",
+          "global state Starknet",
+          "Cairo state management"
         ],
-        "resources": ["cairo_book", "cairo_by_example", "corelib_docs"]
+        "resources": ["starknet_docs", "cairo_book"]
       },
       {
-        "query": "How to debug a failing test in Foundry using print statements and cheatcodes?",
-        "chat_history": "My test is panicking unexpectedly.",
+        "query": "How does fee payment work with STRK vs ETH in transactions?",
         "expected": {
           "search_terms": [
-            "Foundry debug test",
-            "print cheatcode",
-            "spy events debug"
+            "fee payment STRK ETH",
+            "transaction fees token",
+            "burn convert fees"
           ],
-          "resources": ["starknet_foundry", "cairo_book"]
+          "resources": ["starknet_docs"],
+          "reformulatedQuery": "How does fee payment work with STRK vs ETH in transactions? Transaction fee payment mechanisms and token options."
         },
         "search_terms": [
-          "Starknet Foundry debug",
-          "Foundry testing",
-          "Cairo test debug",
-          "print statements Cairo",
-          "cheatcodes Foundry",
-          "failing test Foundry",
-          "panic debugging Foundry"
+          "Starknet transaction fees",
+          "STRK fees",
+          "ETH fees",
+          "fee payment Starknet",
+          "transaction costs Starknet",
+          "Starknet gas",
+          "fee market Starknet"
         ],
-        "resources": ["starknet_foundry", "cairo_book"]
+        "reformulatedQuery": "Explain the mechanism of transaction fee payment on Starknet, detailing how fees are paid using both STRK and ETH, and the differences or implications of using each.",
+        "resources": ["starknet_docs"]
+      },
+      {
+        "query": "Explain how to use Scarb to add OpenZeppelin as a dependency and compile a contract that uses AccessControl.",
+        "expected": {
+          "search_terms": [
+            "Scarb add dependency",
+            "OpenZeppelin Scarb.toml",
+            "AccessControlComponent",
+            "compile with Scarb"
+          ],
+          "resources": ["scarb_docs", "openzeppelin_docs"],
+          "reformulatedQuery": "Explain how to use Scarb to add OpenZeppelin as a dependency and compile a contract that uses AccessControl. Scarb dependency management and compilation."
+        },
+        "reformulatedQuery": "How to configure Scarb to include OpenZeppelin Cairo contracts as a dependency, specifically demonstrating how to compile a Starknet smart contract that integrates the AccessControl component from OpenZeppelin?",
+        "search_terms": [
+          "Scarb dependency management",
+          "Scarb add OpenZeppelin",
+          "Scarb compile contract",
+          "OpenZeppelin AccessControl Cairo",
+          "Cairo smart contract dependencies",
+          "Scarb.toml dependencies",
+          "using AccessControl in Cairo",
+          "Starknet contract compilation"
+        ],
+        "resources": [
+          "scarb_docs",
+          "openzeppelin_docs",
+          "cairo_book",
+          "starknet_docs"
+        ]
+      },
+      {
+        "query": "Use negative impl to constrain generics in a trait implementation.",
+        "expected": {
+          "search_terms": [
+            "negative impl !Trait",
+            "generic constraints negative",
+            "type exclusion traits"
+          ],
+          "resources": ["cairo_book"],
+          "reformulatedQuery": "Use negative impl to constrain generics in a trait implementation. Negative implementations for type constraints."
+        },
+        "reformulatedQuery": "Explain how to use negative implementations (`negative impl`) in Cairo to constrain generic types within a trait implementation, providing examples of its utility.",
+        "search_terms": [
+          "negative impl Cairo",
+          "trait implementation generics Cairo",
+          "constrain generics Cairo",
+          "Cairo language features",
+          "trait bounds Cairo"
+        ],
+        "resources": ["cairo_book", "corelib_docs"]
+      },
+      {
+        "query": "Implement a timelock for governance proposals with delayed execution.",
+        "expected": {
+          "search_terms": [
+            "TimelockController OZ",
+            "delayed execution governance",
+            "proposal timelock"
+          ],
+          "resources": ["openzeppelin_docs"],
+          "reformulatedQuery": "Implement a timelock for governance proposals with delayed execution. TimelockController for governance security."
+        },
+        "reformulatedQuery": "How to implement a timelock for governance proposals with delayed execution in Cairo, potentially using the OpenZeppelin TimelockController component?",
+        "search_terms": [
+          "timelock Cairo",
+          "Starknet timelock",
+          "OpenZeppelin TimelockController",
+          "governance delayed execution Starknet",
+          "DAO timelock Cairo",
+          "Cairo smart contract timelock"
+        ],
+        "resources": ["openzeppelin_docs", "starknet_docs"]
+      },
+      {
+        "query": "What's the minting curve and how does it affect STRK inflation based on staking rate?",
+        "chat_history": "Trying to model token economics.",
+        "expected": {
+          "search_terms": [
+            "minting curve formula",
+            "STRK inflation staking",
+            "reward calculation"
+          ],
+          "resources": ["starknet_docs"],
+          "reformulatedQuery": "What\"s the minting curve and how does it affect STRK inflation based on staking rate? STRK token minting curve and inflation mechanism."
+        },
+        "reformulatedQuery": "Explain the STRK tokenomics model, including its minting curve, inflation mechanisms, and the impact of staking rates on token supply and distribution within the Starknet ecosystem.",
+        "search_terms": [
+          "STRK tokenomics",
+          "STRK inflation",
+          "STRK minting curve",
+          "Starknet staking rate",
+          "Starknet token supply",
+          "Starknet economic model",
+          "STRK distribution"
+        ],
+        "resources": ["starknet_docs"]
+      },
+      {
+        "query": "What is a negative implementation, and when is it useful?",
+        "expected": {
+          "search_terms": ["negative impl", "traits", "type constraints"],
+          "resources": ["cairo_book"],
+          "reformulatedQuery": "What is a negative implementation in Cairo? When to use negative impl for type constraints."
+        },
+        "search_terms": [
+          "Cairo negative implementation",
+          "Cairo trait constraints",
+          "Cairo generic programming",
+          "Cairo trait implementation",
+          "Cairo `impl !Trait`",
+          "Cairo conditional compilation"
+        ],
+        "resources": ["cairo_book", "cairo_by_example"],
+        "reformulatedQuery": "Explain what a negative implementation (`impl !Trait`) is in Cairo, how it is used to constrain generics in trait implementations, and provide examples of its utility."
+      },
+      {
+        "query": "What is the SHARP prover system in Starknet?",
+        "expected": {
+          "search_terms": ["SHARP", "provers", "STARK proofs", "verification"],
+          "resources": ["starknet_docs"],
+          "reformulatedQuery": "What is the SHARP prover system in Starknet? STARK proof generation and verification system."
+        },
+        "reformulatedQuery": "Explain the SHARP prover system in Starknet, its function, and its role in generating and aggregating proofs for transaction validation and scalability.",
+        "search_terms": [
+          "SHARP prover system",
+          "Starknet SHARP",
+          "Starknet prover",
+          "zero-knowledge proofs",
+          "STARKs",
+          "proof aggregation",
+          "scalability",
+          "transaction batching",
+          "off-chain computation"
+        ],
+        "resources": ["starknet_docs"]
+      },
+      {
+        "query": "How do you make a function in a module visible to other modules?",
+        "expected": {
+          "search_terms": ["pub", "modules", "visibility"],
+          "resources": ["cairo_book"],
+          "reformulatedQuery": "Making functions public with pub keyword. Module visibility and function accessibility in Cairo."
+        },
+        "reformulatedQuery": "How do you make a function in a Cairo module visible and accessible to other modules, similar to using `pub` in Rust?",
+        "search_terms": [
+          "Cairo function visibility",
+          "Cairo module system",
+          "Cairo public functions",
+          "Cairo `pub` keyword",
+          "Cairo access modifiers",
+          "Cairo external functions"
+        ],
+        "resources": ["cairo_book"]
+      },
+      {
+        "query": "What is the difference between unit tests and integration tests in Cairo?",
+        "expected": {
+          "search_terms": ["unit tests", "integration tests", "testing"],
+          "resources": ["cairo_book", "starknet_foundry"],
+          "reformulatedQuery": "What is the difference between unit tests and integration tests in Cairo? Testing strategies and approaches."
+        },
+        "search_terms": [
+          "unit tests Cairo",
+          "integration tests Cairo",
+          "Cairo testing",
+          "Starknet Foundry testing",
+          "smart contract testing",
+          "testing methodologies Cairo",
+          "Cairo test types",
+          "Cairo smart contract testing differences"
+        ],
+        "reformulatedQuery": "Explain the differences between unit tests and integration tests in Cairo smart contract development, including their purposes and typical implementation.",
+        "resources": [
+          "cairo_book",
+          "starknet_foundry",
+          "starknet_docs",
+          "cairo_by_example"
+        ]
+      },
+      {
+        "query": "Why can’t you mutate an array after it has been moved?",
+        "expected": {
+          "search_terms": [
+            "ownership",
+            "move semantics",
+            "arrays",
+            "immutability"
+          ],
+          "resources": ["cairo_book"],
+          "reformulatedQuery": "Why can’t you mutate an array after it has been moved in Cairo?"
+        },
+        "reformulatedQuery": "Explain why an array cannot be mutated in Cairo after it has been moved, focusing on Cairo's ownership and borrowing rules.",
+        "search_terms": [
+          "Cairo array mutation",
+          "Cairo array ownership",
+          "Cairo move semantics",
+          "Cairo borrowing",
+          "Cairo immutable array",
+          "Cairo data ownership",
+          "Cairo arrays",
+          "Cairo memory management"
+        ],
+        "resources": ["cairo_book", "corelib_docs"]
+      },
+      {
+        "query": "How does the Pausable component work to provide emergency stop functionality?",
+        "expected": {
+          "search_terms": ["security", "Pausable", "emergency stop"],
+          "resources": ["openzeppelin_docs"],
+          "reformulatedQuery": "How does the Pausable component work to provide emergency stop functionality? Emergency pause mechanisms and security."
+        },
+        "reformulatedQuery": "Explain the functionality and implementation of the OpenZeppelin Pausable component in Starknet smart contracts, specifically how it provides an emergency stop mechanism for contract operations.",
+        "search_terms": [
+          "Pausable component",
+          "Starknet Pausable",
+          "OpenZeppelin Pausable",
+          "emergency stop smart contract",
+          "Cairo smart contract pausing",
+          "Pausable contract functionality",
+          "contract pause mechanism"
+        ],
+        "resources": ["openzeppelin_docs", "starknet_docs"]
+      },
+      {
+        "query": "What is the purpose of the `#[generate_trait]` attribute?",
+        "expected": {
+          "search_terms": ["#[generate_trait]", "traits", "code generation"],
+          "resources": ["cairo_book"],
+          "reformulatedQuery": "What does the #[generate_trait] attribute do in Cairo? How does automatic trait generation work?"
+        },
+        "search_terms": [
+          "Cairo attribute",
+          "generate_trait",
+          "Cairo trait generation",
+          "impl block",
+          "contract interface",
+          "ABI generation",
+          "Cairo programming"
+        ],
+        "reformulatedQuery": "Explain the purpose and usage of the `#[generate_trait]` attribute in Cairo, specifically how it relates to generating a trait from an `impl` block and its implications for contract interfaces and ABI.",
+        "resources": ["cairo_book", "starknet_docs"]
+      },
+      {
+        "query": "Deploy a contract counterfactually and fund it before activation.",
+        "expected": {
+          "search_terms": [
+            "counterfactual deployment",
+            "pre-fund account",
+            "address calculation salt"
+          ],
+          "resources": ["starknet_docs"],
+          "reformulatedQuery": "Deploy a contract counterfactually and fund it before activation. Counterfactual deployment and pre-funding strategies."
+        },
+        "reformulatedQuery": "How to perform counterfactual deployment of a Starknet contract, including funding it before its activation, leveraging concepts like CREATE2 and account abstraction?",
+        "search_terms": [
+          "counterfactual deployment",
+          "Starknet counterfactual deployment",
+          "deploy contract",
+          "fund contract before activation",
+          "pre-fund contract",
+          "account deployment",
+          "CREATE2",
+          "Universal Deployer Contract UDC",
+          "Starknet account abstraction",
+          "Starknet accounts"
+        ],
+        "resources": ["starknet_docs", "openzeppelin_docs"]
+      },
+      {
+        "query": "What is the role of the `#[key]` attribute in Starknet events?",
+        "expected": {
+          "search_terms": ["#[key]", "events", "indexed fields"],
+          "resources": ["cairo_book", "starknet_docs"],
+          "reformulatedQuery": "What is the role of the #[key] attribute in Starknet events? Indexed event fields and event querying."
+        },
+        "reformulatedQuery": "Explain the purpose and functionality of the `#[key]` attribute when defining events in Starknet contracts, specifically how it relates to event indexing and filtering.",
+        "search_terms": [
+          "#[key] attribute Cairo",
+          "Starknet events",
+          "Cairo events",
+          "Event indexing Starknet",
+          "Event filtering Starknet",
+          "Indexed events Cairo",
+          "Event data Cairo",
+          "Event logs Starknet"
+        ],
+        "resources": ["cairo_book", "starknet_docs", "corelib_docs"]
       },
       {
         "query": "Implement reentrancy protection in a contract using OZ ReentrancyGuard.",
@@ -53,161 +346,23 @@
             "non_reentrant modifier",
             "security reentrancy"
           ],
-          "resources": ["openzeppelin_docs", "cairo_book"]
+          "resources": ["openzeppelin_docs", "cairo_book"],
+          "reformulatedQuery": "Implement reentrancy protection in a contract using OZ ReentrancyGuard. ReentrancyGuardComponent for security protection."
         },
+        "reformulatedQuery": "How to implement reentrancy protection in a Starknet contract using the `ReentrancyGuard` component from OpenZeppelin Contracts for Cairo.",
         "search_terms": [
-          "reentrancy protection Cairo",
-          "reentrancy attack Starknet",
-          "OpenZeppelin ReentrancyGuard Cairo",
-          "implement ReentrancyGuard Starknet contract",
-          "smart contract security Cairo"
+          "ReentrancyGuard",
+          "reentrancy protection",
+          "Cairo reentrancy",
+          "Starknet security",
+          "OpenZeppelin Cairo",
+          "smart contract security",
+          "non_reentrant",
+          "contract implementation"
         ],
         "resources": ["openzeppelin_docs", "cairo_book", "starknet_docs"]
-      },
-      {
-        "query": "How can I implement a custom ERC20 token with minting capabilities using OpenZeppelin, and test it with Foundry?",
-        "chat_history": "I'm building a token contract on Starknet.",
-        "expected": {
-          "search_terms": [
-            "ERC20 mintable",
-            "OpenZeppelin ERC20Component",
-            "mint function",
-            "testing ERC20 Foundry",
-            "deploy token test"
-          ],
-          "resources": ["openzeppelin_docs", "starknet_foundry", "cairo_book"]
-        },
-        "search_terms": [
-          "custom ERC20 Cairo",
-          "ERC20 minting Starknet",
-          "OpenZeppelin ERC20 Cairo",
-          "Foundry testing ERC20",
-          "Starknet token contract",
-          "Cairo smart contract testing"
-        ],
-        "resources": [
-          "openzeppelin_docs",
-          "starknet_foundry",
-          "cairo_book",
-          "starknet_docs"
-        ]
-      },
-      {
-        "query": "Can you show how to use bitwise operations for packing data in storage to save gas?",
-        "chat_history": "Optimizing a contract with many small uints.",
-        "expected": {
-          "search_terms": [
-            "bitwise packing Cairo",
-            "storage optimization gas",
-            "bit shift AND OR"
-          ],
-          "resources": ["cairo_book", "cairo_by_example", "starknet_docs"]
-        },
-        "search_terms": [
-          "Cairo bitwise operations",
-          "Starknet data packing",
-          "Cairo storage optimization",
-          "gas saving Cairo",
-          "Cairo uint packing"
-        ],
-        "resources": ["cairo_book", "starknet_docs", "cairo_by_example"]
-      },
-      {
-        "query": "What's the best way to handle errors in a Cairo function that interacts with Starknet storage?",
-        "chat_history": "I've been getting panics when reading non-existent keys.",
-        "expected": {
-          "search_terms": [
-            "error handling Cairo",
-            "Result Option types",
-            "storage read panic",
-            "Felt252Dict errors"
-          ],
-          "resources": ["cairo_book", "corelib_docs", "starknet_docs"]
-        },
-        "search_terms": [
-          "Cairo error handling",
-          "Starknet storage error",
-          "Cairo storage read non-existent key",
-          "Cairo Result type",
-          "Cairo Option type",
-          "Cairo panic handling",
-          "Starknet contract error management",
-          "Cairo StorageMap try_get",
-          "Cairo storage access errors"
-        ],
-        "resources": [
-          "cairo_book",
-          "starknet_docs",
-          "corelib_docs",
-          "cairo_by_example"
-        ]
-      },
-      {
-        "query": "How to configure Scarb for custom build profiles and optimization levels.",
-        "chat_history": "Optimizing for gas.",
-        "expected": {
-          "search_terms": [
-            "Scarb build profiles",
-            "optimization flags",
-            "Scarb.toml build config"
-          ],
-          "resources": ["scarb_docs"]
-        },
-        "search_terms": [
-          "Scarb",
-          "build profiles",
-          "optimization levels",
-          "Scarb configuration",
-          "Scarb.toml",
-          "gas optimization"
-        ],
-        "resources": ["scarb_docs"]
-      },
-      {
-        "query": "What's the withdrawal limit mechanism in StarkGate for security?",
-        "chat_history": "Concerned about bridge risks.",
-        "expected": {
-          "search_terms": [
-            "StarkGate withdrawal limits",
-            "bridge security measures",
-            "L2 to L1 limits"
-          ],
-          "resources": ["starknet_docs"]
-        },
-        "search_terms": [
-          "StarkGate",
-          "withdrawal limit",
-          "security mechanism",
-          "bridge security",
-          "Starknet bridge",
-          "risk management",
-          "StarkGate limits"
-        ],
-        "resources": ["starknet_docs"]
-      },
-      {
-        "query": "Create a custom trait for a generic enum and implement it for multiple types.",
-        "chat_history": "Working with enums in traits.",
-        "expected": {
-          "search_terms": [
-            "generic trait enum",
-            "impl for enum",
-            "trait bounds generics"
-          ],
-          "resources": ["cairo_book", "cairo_by_example"]
-        },
-        "search_terms": [
-          "Cairo custom trait",
-          "Cairo generic enum",
-          "Cairo enum trait implementation",
-          "Cairo trait bounds",
-          "Cairo implement trait for multiple types",
-          "Cairo enum generic",
-          "Cairo type parameters"
-        ],
-        "resources": ["cairo_book", "cairo_by_example", "corelib_docs"]
       }
     ],
-    "programId": "5f102d9ffd883c1fced70d228a3049a19d0d37e9cd22f74e80db3980e6ae1481"
+    "programId": "083a10530c763a9445fe3402531ba06502f5cac57319c5ce547c4c5a0b4248e2"
   }
 ]
