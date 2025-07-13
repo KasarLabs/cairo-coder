@@ -68,7 +68,7 @@ export abstract class AsciiDocIngester extends BaseIngester {
 
     // Run Antora to generate the documentation
     logger.info('Running Antora to build documentation');
-    const antoraCommand = `antora ${this.playbookPath}`;
+    const antoraCommand = `antora ${this.playbookPath} --fetch`;
 
     // Find the package root by looking for package.json
     let packageRoot = __dirname;
