@@ -19,7 +19,7 @@ services:
       dockerfile: backend.dockerfile
     container_name: 'cairo-coder-backend'
     ports:
-      - 3001:3001
+      - 3002:3001
     depends_on:
       postgres:
         condition: service_started
