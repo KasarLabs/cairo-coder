@@ -50,3 +50,4 @@ packages/**/dist
 !.trunk/.gitignore
 
 starklings/
+debug/

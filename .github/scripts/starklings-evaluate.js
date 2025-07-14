@@ -14,17 +14,15 @@ function log(message) {
 }
 
 function parseInfoToml(infoPath) {
-    // log(`Parsing info.toml from: ${infoPath}`);
-    
     if (!fs.existsSync(infoPath)) {
         throw new Error(`info.toml not found at: ${infoPath}`);
     }
     
     const content = fs.readFileSync(infoPath, 'utf8');
-    // log(`File content length: ${content.length} characters`);
-    
-    const exercises = [];
     const lines = content.split('\n');
+    
+    const categories = {};
+    let currentCategory = null;
     let currentExercise = null;
     let collectingHint = false;
     let hintLines = [];
@@ -33,15 +31,23 @@ function parseInfoToml(infoPath) {
         const line = lines[i];
         const cleanLine = line.trim();
         
+        // Détecter les catégories
+        if (cleanLine.startsWith('# ') && !cleanLine.startsWith('##')) {
+            currentCategory = cleanLine.substring(2).trim();
+            categories[currentCategory] = [];
+            continue;
+        }
+        
         if (cleanLine.startsWith('[[exercises]]')) {
             if (currentExercise) {
                 if (hintLines.length > 0) {
                     currentExercise.hint = hintLines.join('\n').replace(/^"""/, '').replace(/"""$/, '');
                 }
-                exercises.push(currentExercise);
-                // log(`Added exercise: ${currentExercise.name}`);
+                if (currentCategory) {
+                    categories[currentCategory].push(currentExercise);
+                }
             }
-            currentExercise = {};
+            currentExercise = { category: currentCategory };
             collectingHint = false;
             hintLines = [];
         } else if (cleanLine.startsWith('hint = """')) {
@@ -77,12 +83,12 @@ function parseInfoToml(infoPath) {
         if (hintLines.length > 0) {
             currentExercise.hint = hintLines.join('\n').replace(/"""$/, '');
         }
-        exercises.push(currentExercise);
-        // log(`Added final exercise: ${currentExercise.name}`);
+        if (currentCategory) {
+            categories[currentCategory].push(currentExercise);
+        }
     }
     
-    // log(`Total exercises parsed: ${exercises.length}`);
-    return exercises;
+    return categories;
 }
 
 async function testServerConnection() {
@@ -227,12 +233,19 @@ async function testExercise(exercise, starklingsPath) {
             
             log(`✅ ${exercise.name} - Success`);
             log(`Starklings output: ${result.substring(0, 200)}...`);
-            return true;
+            return { success: true };
         } catch (error) {
             log(`❌ ${exercise.name} - Execution failed`);
             log(`Error code: ${error.status}`);
             log(`stdout: ${error.stdout ? error.stdout.substring(0, 500) : 'none'}`);
             log(`stderr: ${error.stderr ? error.stderr.substring(0, 500) : 'none'}`);
+            
+            // Formater l'erreur pour le rapport
+            const errorDetails = {
+                exitCode: error.status,
+                stdout: error.stdout || '',
+                stderr: error.stderr || ''
+            };
             
             // Sauvegarder l'erreur pour debug
             if (SAVE_RESPONSES) {
@@ -241,17 +254,58 @@ async function testExercise(exercise, starklingsPath) {
                 log(`Error details saved to: ${errorFile}`);
             }
             
-            return false;
+            return { success: false, error: errorDetails };
         }
     } catch (error) {
         log(`❌ ${exercise.name} - API call failed: ${error.message}`);
-        return false;
+        return { success: false, error: { message: error.message, type: 'API_ERROR' } };
     } finally {
         // Restaurer l'original
         fs.writeFileSync(exercisePath, originalContent);
         fs.unlinkSync(backupPath);
         log(`Restored original file and cleaned up backup`);
     }
+}
+
+async function processCategoryWorker(categoryName, exercises, starklingsPath) {
+    const categoryResults = {
+        category: categoryName,
+        exercises: [],
+        passed: 0,
+        total: exercises.length
+    };
+
+    log(`\n[${categoryName}] Starting ${exercises.length} exercises...`);
+
+    for (const exercise of exercises) {
+        const result = await testExercise(exercise, starklingsPath);
+        
+        const exerciseResult = {
+            name: exercise.name,
+            success: result.success
+        };
+
+        // Ajouter les erreurs seulement si échec
+        if (!result.success && result.error) {
+            exerciseResult.error = result.error;
+        }
+
+        categoryResults.exercises.push(exerciseResult);
+        if (result.success) {
+            categoryResults.passed++;
+        }
+
+        log(`[${categoryName}] ${exercise.name}: ${result.success ? '✅' : '❌'}`);
+    }
+
+    categoryResults.successRate = (categoryResults.passed / categoryResults.total * 100).toFixed(1);
+
+    // Sauvegarder le rapport de catégorie
+    const reportPath = path.join(__dirname, '..', '..', 'debug', `${categoryName.toLowerCase().replace(/\s+/g, '_')}_report.json`);
+    fs.writeFileSync(reportPath, JSON.stringify(categoryResults, null, 2));
+
+    log(`[${categoryName}] Completed: ${categoryResults.passed}/${categoryResults.total} (${categoryResults.successRate}%)`);
+    return categoryResults;
 }
 
 function extractCairoCode(generatedResponse) {
@@ -271,16 +325,9 @@ function extractCairoCode(generatedResponse) {
 }
 
 async function main() {
-    // log('=== Starting Starklings Debug Session ===');
-    
     const starklingsPath = path.join(process.cwd(), 'starklings');
     const infoPath = path.join(starklingsPath, 'info.toml');
-    
-    // Vérifications initiales
-    // log(`Working directory: ${process.cwd()}`);
-    // log(`Starklings path: ${starklingsPath}`);
-    // log(`Info.toml path: ${infoPath}`);
-    
+
     if (!fs.existsSync(starklingsPath)) {
         console.error('❌ Starklings directory not found');
         process.exit(1);
@@ -298,53 +345,78 @@ async function main() {
         process.exit(1);
     }
     
-    // Parser les exercices
-    const exercises = parseInfoToml(infoPath);
+    // Parser les exercices par catégorie
+    const categories = parseInfoToml(infoPath);
     
-    if (exercises.length === 0) {
-        console.error('❌ No exercises found');
+    if (Object.keys(categories).length === 0) {
+        console.error('❌ No categories found');
         process.exit(1);
     }
-    
-    // Filtrer à un seul exercice si demandé
-    let exercisesToTest = exercises;
+
+    // Filtrer à une seule catégorie si demandé
+    let categoriesToTest = categories;
     if (SINGLE_EXERCISE) {
-        exercisesToTest = exercises.filter(ex => ex.name === SINGLE_EXERCISE);
-        if (exercisesToTest.length === 0) {
+        // Trouver la catégorie contenant l'exercice
+        let foundCategory = null;
+        for (const [categoryName, exercises] of Object.entries(categories)) {
+            if (exercises.some(ex => ex.name === SINGLE_EXERCISE)) {
+                foundCategory = categoryName;
+                break;
+            }
+        }
+        
+        if (!foundCategory) {
             console.error(`❌ Exercise '${SINGLE_EXERCISE}' not found`);
-            console.log('Available exercises:', exercises.map(ex => ex.name).join(', '));
             process.exit(1);
         }
-        // log(`Testing single exercise: ${SINGLE_EXERCISE}`);
+        
+        categoriesToTest = {
+            [foundCategory]: categories[foundCategory].filter(ex => ex.name === SINGLE_EXERCISE)
+        };
+        log(`Testing single exercise: ${SINGLE_EXERCISE} in category: ${foundCategory}`);
     }
-    
+
     // Créer le dossier de debug
     const debugDir = path.join(__dirname, '..', '..', 'debug');
     fs.mkdirSync(debugDir, { recursive: true });
-    
-    // Tester les exercices
-    let passed = 0;
-    let total = exercisesToTest.length;
-    
-    console.log(`\n🧪 Starting evaluation of ${total} exercises...`);
-    
-    for (const exercise of exercisesToTest) {
-        const success = await testExercise(exercise, starklingsPath);
-        if (success) {
-            passed++;
-        }
-        
-        // Pause entre les exercices pour éviter la surcharge
-        if (exercisesToTest.length > 1) {
-            await new Promise(resolve => setTimeout(resolve, 1000));
-        }
-    }
-    
+
+    // Calculer le total d'exercices
+    const totalExercises = Object.values(categoriesToTest).reduce((sum, exercises) => sum + exercises.length, 0);
+    console.log(`\n🧪 Starting evaluation of ${totalExercises} exercises across ${Object.keys(categoriesToTest).length} categories...`);
+
+    // Traiter les catégories en parallèle
+    const startTime = Date.now();
+    const categoryPromises = Object.entries(categoriesToTest).map(([categoryName, exercises]) => 
+        processCategoryWorker(categoryName, exercises, starklingsPath)
+    );
+
+    const categoryResults = await Promise.all(categoryPromises);
+    const endTime = Date.now();
+
+    // Consolider les résultats
+    const totalPassed = categoryResults.reduce((sum, result) => sum + result.passed, 0);
+    const globalResults = {
+        totalExercises: totalExercises,
+        totalPassed: totalPassed,
+        globalSuccessRate: (totalPassed / totalExercises * 100).toFixed(1),
+        categories: categoryResults
+    };
+
+    // Sauvegarder le rapport global
+    const globalReportPath = path.join(debugDir, 'global_report.json');
+    fs.writeFileSync(globalReportPath, JSON.stringify(globalResults, null, 2));
+
     console.log(`\n=== Final Results ===`);
-    console.log(`${passed}/${total} exercises passed (${(passed/total*100).toFixed(1)}%)`);
+    console.log(`${totalPassed}/${totalExercises} exercises passed (${globalResults.globalSuccessRate}%)`);
+    console.log(`Total time: ${(endTime - startTime) / 1000}s`);
+    console.log(`\nCategory breakdown:`);
     
-    log(`Debug files saved in: ${debugDir}`);
-    // log('=== Debug Session Complete ===');
+    categoryResults.forEach(result => {
+        console.log(`  ${result.category}: ${result.passed}/${result.total} (${result.successRate}%)`);
+    });
+
+    log(`Reports saved in: ${debugDir}`);
+    log(`Global report: ${globalReportPath}`);
 }
 
 main().catch(error => {
