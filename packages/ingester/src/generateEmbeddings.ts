@@ -2,7 +2,7 @@ import { createInterface } from 'readline';
 import { logger } from '@cairo-coder/agents/utils/index';
 import { VectorStore } from '@cairo-coder/agents/db/postgresVectorStore';
 import { getVectorDbConfig } from '@cairo-coder/agents/config/settings';
-import { loadOpenAIEmbeddingsModels } from '@cairo-coder/backend/config/provider/openai';
+import { getAxRouter } from '@cairo-coder/agents/config/llm';
 import { DocumentSource } from '@cairo-coder/agents/types/index';
 import { IngesterFactory } from './IngesterFactory';
 
@@ -32,15 +32,11 @@ async function setupVectorStore(): Promise<VectorStore> {
     // Get database configuration
     const dbConfig = getVectorDbConfig();
 
-    const embeddingModels = await loadOpenAIEmbeddingsModels();
-    const textEmbedding3Large = embeddingModels['Text embedding 3 large'];
-
-    if (!textEmbedding3Large) {
-      throw new Error('Text embedding 3 large model not found');
-    }
+    // Get the ax router instance
+    const axRouter = getAxRouter();
 
     // Initialize vector store
-    vectorStore = await VectorStore.getInstance(dbConfig, textEmbedding3Large);
+    vectorStore = await VectorStore.getInstance(dbConfig, axRouter);
     logger.info('VectorStore initialized successfully');
     return vectorStore;
   } catch (error) {

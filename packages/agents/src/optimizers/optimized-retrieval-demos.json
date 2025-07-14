@@ -1,0 +1,213 @@
+[
+  {
+    "traces": [
+      {
+        "query": "Create a custom trait for a generic enum and implement it for multiple types.",
+        "chat_history": "Working with enums in traits.",
+        "expected": {
+          "search_terms": [
+            "generic trait enum",
+            "impl for enum",
+            "trait bounds generics"
+          ],
+          "resources": ["cairo_book", "cairo_by_example"]
+        },
+        "search_terms": [
+          "Cairo trait",
+          "Cairo enum",
+          "generic enum trait",
+          "implement trait for enum",
+          "trait implementation multiple types",
+          "Cairo programming pattern trait enum"
+        ],
+        "resources": ["cairo_book", "cairo_by_example", "corelib_docs"]
+      },
+      {
+        "query": "How to debug a failing test in Foundry using print statements and cheatcodes?",
+        "chat_history": "My test is panicking unexpectedly.",
+        "expected": {
+          "search_terms": [
+            "Foundry debug test",
+            "print cheatcode",
+            "spy events debug"
+          ],
+          "resources": ["starknet_foundry", "cairo_book"]
+        },
+        "search_terms": [
+          "Starknet Foundry debug",
+          "Foundry testing",
+          "Cairo test debug",
+          "print statements Cairo",
+          "cheatcodes Foundry",
+          "failing test Foundry",
+          "panic debugging Foundry"
+        ],
+        "resources": ["starknet_foundry", "cairo_book"]
+      },
+      {
+        "query": "Implement reentrancy protection in a contract using OZ ReentrancyGuard.",
+        "chat_history": "Worried about reentrancy attacks.",
+        "expected": {
+          "search_terms": [
+            "ReentrancyGuardComponent",
+            "non_reentrant modifier",
+            "security reentrancy"
+          ],
+          "resources": ["openzeppelin_docs", "cairo_book"]
+        },
+        "search_terms": [
+          "reentrancy protection Cairo",
+          "reentrancy attack Starknet",
+          "OpenZeppelin ReentrancyGuard Cairo",
+          "implement ReentrancyGuard Starknet contract",
+          "smart contract security Cairo"
+        ],
+        "resources": ["openzeppelin_docs", "cairo_book", "starknet_docs"]
+      },
+      {
+        "query": "How can I implement a custom ERC20 token with minting capabilities using OpenZeppelin, and test it with Foundry?",
+        "chat_history": "I'm building a token contract on Starknet.",
+        "expected": {
+          "search_terms": [
+            "ERC20 mintable",
+            "OpenZeppelin ERC20Component",
+            "mint function",
+            "testing ERC20 Foundry",
+            "deploy token test"
+          ],
+          "resources": ["openzeppelin_docs", "starknet_foundry", "cairo_book"]
+        },
+        "search_terms": [
+          "custom ERC20 Cairo",
+          "ERC20 minting Starknet",
+          "OpenZeppelin ERC20 Cairo",
+          "Foundry testing ERC20",
+          "Starknet token contract",
+          "Cairo smart contract testing"
+        ],
+        "resources": [
+          "openzeppelin_docs",
+          "starknet_foundry",
+          "cairo_book",
+          "starknet_docs"
+        ]
+      },
+      {
+        "query": "Can you show how to use bitwise operations for packing data in storage to save gas?",
+        "chat_history": "Optimizing a contract with many small uints.",
+        "expected": {
+          "search_terms": [
+            "bitwise packing Cairo",
+            "storage optimization gas",
+            "bit shift AND OR"
+          ],
+          "resources": ["cairo_book", "cairo_by_example", "starknet_docs"]
+        },
+        "search_terms": [
+          "Cairo bitwise operations",
+          "Starknet data packing",
+          "Cairo storage optimization",
+          "gas saving Cairo",
+          "Cairo uint packing"
+        ],
+        "resources": ["cairo_book", "starknet_docs", "cairo_by_example"]
+      },
+      {
+        "query": "What's the best way to handle errors in a Cairo function that interacts with Starknet storage?",
+        "chat_history": "I've been getting panics when reading non-existent keys.",
+        "expected": {
+          "search_terms": [
+            "error handling Cairo",
+            "Result Option types",
+            "storage read panic",
+            "Felt252Dict errors"
+          ],
+          "resources": ["cairo_book", "corelib_docs", "starknet_docs"]
+        },
+        "search_terms": [
+          "Cairo error handling",
+          "Starknet storage error",
+          "Cairo storage read non-existent key",
+          "Cairo Result type",
+          "Cairo Option type",
+          "Cairo panic handling",
+          "Starknet contract error management",
+          "Cairo StorageMap try_get",
+          "Cairo storage access errors"
+        ],
+        "resources": [
+          "cairo_book",
+          "starknet_docs",
+          "corelib_docs",
+          "cairo_by_example"
+        ]
+      },
+      {
+        "query": "How to configure Scarb for custom build profiles and optimization levels.",
+        "chat_history": "Optimizing for gas.",
+        "expected": {
+          "search_terms": [
+            "Scarb build profiles",
+            "optimization flags",
+            "Scarb.toml build config"
+          ],
+          "resources": ["scarb_docs"]
+        },
+        "search_terms": [
+          "Scarb",
+          "build profiles",
+          "optimization levels",
+          "Scarb configuration",
+          "Scarb.toml",
+          "gas optimization"
+        ],
+        "resources": ["scarb_docs"]
+      },
+      {
+        "query": "What's the withdrawal limit mechanism in StarkGate for security?",
+        "chat_history": "Concerned about bridge risks.",
+        "expected": {
+          "search_terms": [
+            "StarkGate withdrawal limits",
+            "bridge security measures",
+            "L2 to L1 limits"
+          ],
+          "resources": ["starknet_docs"]
+        },
+        "search_terms": [
+          "StarkGate",
+          "withdrawal limit",
+          "security mechanism",
+          "bridge security",
+          "Starknet bridge",
+          "risk management",
+          "StarkGate limits"
+        ],
+        "resources": ["starknet_docs"]
+      },
+      {
+        "query": "Create a custom trait for a generic enum and implement it for multiple types.",
+        "chat_history": "Working with enums in traits.",
+        "expected": {
+          "search_terms": [
+            "generic trait enum",
+            "impl for enum",
+            "trait bounds generics"
+          ],
+          "resources": ["cairo_book", "cairo_by_example"]
+        },
+        "search_terms": [
+          "Cairo custom trait",
+          "Cairo generic enum",
+          "Cairo enum trait implementation",
+          "Cairo trait bounds",
+          "Cairo implement trait for multiple types",
+          "Cairo enum generic",
+          "Cairo type parameters"
+        ],
+        "resources": ["cairo_book", "cairo_by_example", "corelib_docs"]
+      }
+    ],
+    "programId": "5f102d9ffd883c1fced70d228a3049a19d0d37e9cd22f74e80db3980e6ae1481"
+  }
+]

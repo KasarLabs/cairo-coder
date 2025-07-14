@@ -5,6 +5,7 @@ import dot from 'compute-dot';
 import cosineSimilarity from 'compute-cosine-similarity';
 
 export const formatChatHistoryAsString = (history: BaseMessage[]) => {
+  if (history.length === 0) return '';
   return history
     .map((message) => `${message._getType()}: ${message.content}`)
     .join('\n');
@@ -48,4 +49,3 @@ export const computeSimilarity = (x: number[], y: number[]): number => {
 };
 
 export { TokenTracker } from './tokenTracker';
-

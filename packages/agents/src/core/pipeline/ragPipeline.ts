@@ -1,37 +1,86 @@
-import { Embeddings } from '@langchain/core/embeddings';
+import {
+  AxAIGoogleGeminiModel,
+  AxGenIn,
+  AxGenOut,
+  AxMultiServiceRouter,
+} from '@ax-llm/ax';
 import {
   RagInput,
   StreamHandler,
   RagSearchConfig,
-  LLMConfig,
+  RetrievedDocuments,
+  DocumentSource,
+  ProcessedQuery,
+  BookChunk,
 } from '../../types';
-import { QueryProcessor } from './queryProcessor';
-import { DocumentRetriever } from './documentRetriever';
-import { AnswerGenerator } from './answerGenerator';
+import { formatChatHistoryAsString, logger, TokenTracker } from '../../utils';
 import EventEmitter from 'events';
-import { logger, TokenTracker } from '../../utils';
+import { AxFlow } from '@ax-llm/ax';
+import { QueryProcessorProgram } from '../programs/queryProcessor.program';
+import { DocumentRetrieverProgram } from '../programs/documentRetriever.program';
+import { Document } from '@langchain/core/documents';
+import { GET_DEFAULT_FAST_CHAT_MODEL } from '../../config/llm';
 
-/**
- * Orchestrates the RAG process in a clear, sequential flow.
- */
 export class RagPipeline {
-  protected queryProcessor: QueryProcessor;
-  protected documentRetriever: DocumentRetriever;
-  protected answerGenerator: AnswerGenerator;
+  private retrievalFlow: AxFlow<
+    { input: RagInput },
+    {
+      retrieved: {
+        documents: Document<BookChunk>[];
+        processedQuery: ProcessedQuery;
+      };
+    }
+  >;
+
+  private queryProg: QueryProcessorProgram;
+  private retrieveProg: DocumentRetrieverProgram;
 
   constructor(
-    private llmConfig: LLMConfig,
-    private embeddings: Embeddings,
-    public config: RagSearchConfig,
+    private axRouter: AxMultiServiceRouter,
+    private config: RagSearchConfig,
   ) {
-    this.queryProcessor = new QueryProcessor(llmConfig.fastLLM, config);
-    this.documentRetriever = new DocumentRetriever(embeddings, config);
-    this.answerGenerator = new AnswerGenerator(llmConfig.defaultLLM, config);
+    this.queryProg = new QueryProcessorProgram(this.config.retrievalProgram);
+    this.retrieveProg = new DocumentRetrieverProgram(
+      this.axRouter,
+      this.config,
+    );
+
+    // @ts-ignore
+    // TODO (feature-request): ask for flow.getUsage() to call getUsage() on all nodes and sum them?
+    this.retrievalFlow = new AxFlow<
+      { input: RagInput },
+      {
+        retrieved: {
+          documents: Document<BookChunk>[];
+          processedQuery: ProcessedQuery;
+        };
+      }
+    >()
+      .node('queryProcess', this.queryProg)
+      .node('retrieve', this.retrieveProg)
+      .execute('queryProcess', (s) => ({
+        chat_history: formatChatHistoryAsString(s.input.chatHistory),
+        query: s.input.query,
+      }))
+      .map((s) => ({
+        processedQuery: s.queryProcessResult.processedQuery,
+        sources: s.input.sources,
+      }))
+      .execute('retrieve', (s) => ({
+        processedQuery: s.processedQuery,
+        sources: s.sources,
+      }))
+      .map((s) => ({
+        retrieved: {
+          documents: s.retrieveResult.documents,
+          processedQuery: s.processedQuery,
+        },
+      }));
   }
 
-  execute(input: RagInput): EventEmitter {
+  execute(input: RagInput, mcpMode: boolean = false): EventEmitter {
     const emitter = new EventEmitter();
-    this.runPipeline(input, {
+    const handler: StreamHandler = {
       emitSources: (docs) =>
         emitter.emit('data', JSON.stringify({ type: 'sources', data: docs })),
       emitResponse: (chunk) =>
@@ -42,50 +91,88 @@ export class RagPipeline {
       emitEnd: () => emitter.emit('end'),
       emitError: (error) =>
         emitter.emit('error', JSON.stringify({ data: error })),
+    };
+    this.runPipeline(input, mcpMode, handler).catch((error) => {
+      logger.error('Unhandled pipeline error:', error);
+      handler.emitError('An error occurred while processing your request');
     });
     return emitter;
   }
 
-  protected async runPipeline(
+  private async runPipeline(
     input: RagInput,
+    mcpMode: boolean,
     handler: StreamHandler,
   ): Promise<void> {
     try {
-      // Reset token counters at the start of each pipeline run
-      TokenTracker.resetSessionCounters();
+      this.queryProg.resetUsage();
+      this.config.generationProgram.resetUsage();
 
-      logger.info('Starting RAG pipeline', { query: input.query });
+      logger.info('Starting RagPipeline', { query: input.query });
 
-      // Step 1: Process the query
-      const processedQuery = await this.queryProcessor.process(input);
-      logger.debug('Processed query:', processedQuery);
-
-      // Step 2: Retrieve documents
-      const retrieved = await this.documentRetriever.retrieve(
-        processedQuery,
-        input.sources,
+      const state = await this.retrievalFlow.forward(
+        this.axRouter,
+        { input },
+        {
+          debug: true,
+          fastFail: true,
+          autoParallel: false,
+          logger: (message) => logger.debug(message),
+        },
       );
+
+      const retrieved = state.retrieved;
       handler.emitSources(retrieved.documents);
 
-      // Step 3: Generate the answer as a stream
-      const stream = await this.answerGenerator.generate(input, retrieved);
-      for await (const event of stream) {
-        if (event.event === 'on_llm_stream') {
-          const chunk = event.data?.chunk;
-          if (chunk && chunk.content !== undefined && chunk.content !== '') {
-            handler.emitResponse({ content: chunk.content } as any);
-          }
-        } else if (event.event === 'on_llm_end') {
-          const content = event.data?.output?.content || '';
-          if (content) {
-            handler.emitResponse({ content } as any);
+      if (mcpMode) {
+        const assembled = this.assembleDocuments(retrieved);
+        handler.emitResponse({
+          content: JSON.stringify(assembled, null, 2),
+        } as any);
+      } else {
+        const context = this.buildContext(retrieved);
+        const chat_history = formatChatHistoryAsString(input.chatHistory);
+        const query = input.query;
+        const modelKey = GET_DEFAULT_FAST_CHAT_MODEL();
+        // Note: not using the generationFlow here because streamingForward is not supported in AxFlow.
+        const stream = this.config.generationProgram.streamingForward(
+          this.axRouter,
+          { chat_history, query, context },
+          { model: modelKey },
+        );
+        let fullAnswer = '';
+        const promptString = `${chat_history}\n\nUser: ${query}\n\nContext:\n${context}`;
+        for await (const chunk of stream) {
+          if (chunk.delta?.answer) {
+            fullAnswer += chunk.delta.answer;
+            handler.emitResponse({ content: chunk.delta.answer } as any);
           }
         }
+        TokenTracker.trackFullUsage(
+          promptString,
+          { content: fullAnswer },
+          modelKey,
+        );
       }
-      logger.debug('Stream ended');
 
-      // Log final token usage
+      // Currently AX-LLM has an issue with token tracking for streaming models.
+      // Transition to using this once solved.
+
+      // const queryUsage = this.queryProg.getUsage()[0];
+      // const generationUsage = this.config.generationProgram.getUsage()[0];
+
+      // console.log('Query usage:', this.queryProg.getUsage());
+      // console.log('Generation usage:', this.config.generationProgram.getUsage());
+
+      // const totalTokens = {
+      //   promptTokens: queryUsage.tokens.promptTokens + generationUsage.tokens.promptTokens,
+      //   responseTokens: queryUsage.tokens.completionTokens + generationUsage.tokens.completionTokens,
+      //   totalTokens: queryUsage.tokens.totalTokens + generationUsage.tokens.totalTokens,
+      //   thinkingTokens: generationUsage.tokens.thoughtsTokens || 0 + queryUsage.tokens.thoughtsTokens || 0,
+      // }
+
       const tokenUsage = TokenTracker.getSessionTokenUsage();
+
       logger.info('Pipeline completed', {
         query: input.query,
         tokenUsage: {
@@ -99,6 +186,109 @@ export class RagPipeline {
     } catch (error) {
       logger.error('Pipeline error:', error);
       handler.emitError('An error occurred while processing your request');
+    }
+  }
+
+  private buildContext(retrieved: RetrievedDocuments): string {
+    const docs = retrieved.documents;
+    if (!docs.length) {
+      return 'No relevant documentation found for this query.';
+    }
+
+    let context = docs
+      .map(
+        (doc, i) =>
+          `[${i + 1}] ${doc.pageContent}\nSource: ${doc.metadata.title || 'Unknown'}\n`,
+      )
+      .join('\n');
+
+    const { isContractRelated, isTestRelated } = retrieved.processedQuery;
+    if (isContractRelated && this.config.contractTemplate) {
+      context += this.config.contractTemplate;
+    }
+    if (isTestRelated && this.config.testTemplate) {
+      context += this.config.testTemplate;
+    }
+    return context;
+  }
+
+  private assembleDocuments(retrieved: RetrievedDocuments): string {
+    const docs = retrieved.documents;
+    if (!docs.length) {
+      return 'No relevant information found.';
+    }
+
+    let context = docs.map((doc) => doc.pageContent).join('\n\n');
+
+    const { isContractRelated, isTestRelated } = retrieved.processedQuery;
+    if (isContractRelated && this.config.contractTemplate) {
+      context += '\n\n' + this.config.contractTemplate;
+    }
+    if (isTestRelated && this.config.testTemplate) {
+      context += '\n\n' + this.config.testTemplate;
+    }
+
+    return context;
+  }
+
+  /**
+   * Execute retrieval flow and return intermediate results for testing purposes
+   * This method is specifically designed for DocQualityTester to access intermediate states
+   */
+  public async executeRetrievalForTesting(input: RagInput): Promise<{
+    processedQuery: any;
+    retrieved: RetrievedDocuments;
+    answerStream: AsyncIterable<any>;
+  }> {
+    // Execute retrieval flow to get intermediate results
+    try {
+      const state = await this.retrievalFlow.forward(this.axRouter, { input });
+      const retrieved = state.retrieved;
+
+      // Also get the processed query from the retrieval result
+      const processedQuery = retrieved.processedQuery;
+
+      // Generate answer stream
+      const context = this.buildContext(retrieved);
+      const chat_history = formatChatHistoryAsString(input.chatHistory);
+      const query = input.query;
+      const modelKey = GET_DEFAULT_FAST_CHAT_MODEL();
+      const answerStream = this.config.generationProgram.streamingForward(
+        this.axRouter,
+        { chat_history, query, context },
+        { model: modelKey },
+      );
+
+      return {
+        processedQuery,
+        retrieved,
+        answerStream,
+      };
+    } catch (error) {
+      // Create fallback values when retrieval fails
+      const fallbackProcessedQuery = {
+        original: input.query,
+        transformed: [input.query],
+        isContractRelated: false,
+        isTestRelated: false,
+        resources: [],
+      };
+
+      const fallbackRetrieved: RetrievedDocuments = {
+        documents: [],
+        processedQuery: fallbackProcessedQuery,
+      };
+
+      // Create an error stream that satisfies the AsyncIterable type
+      const errorStream = async function* () {
+        yield 'Could not process request.';
+      };
+
+      return {
+        processedQuery: fallbackProcessedQuery,
+        retrieved: fallbackRetrieved,
+        answerStream: errorStream(),
+      };
     }
   }
 }

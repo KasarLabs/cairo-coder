@@ -1,22 +1,12 @@
 import eventEmitter from 'events';
 import { BaseMessage } from '@langchain/core/messages';
-import { Embeddings } from '@langchain/core/embeddings';
-import { LLMConfig } from '@cairo-coder/agents/types/index';
 import { VectorStore } from '@cairo-coder/agents/db/postgresVectorStore';
-import { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import { CorsOptions } from 'cors';
 import { Express } from 'express';
 
 export interface ServerConfig {
   port: number;
-  models: ModelConfig;
   cors: CorsOptions;
-}
-
-export interface ModelConfig {
-  defaultLLM: BaseChatModel;
-  fastLLM: BaseChatModel;
-  embeddings: Embeddings;
 }
 
 export interface ServerContext {
@@ -31,8 +21,6 @@ export interface HandlerOptions {
 export type SearchHandler = (
   content: string,
   history: BaseMessage[],
-  llm: LLMConfig,
-  embeddings: Embeddings,
   options: HandlerOptions,
 ) => eventEmitter;
 

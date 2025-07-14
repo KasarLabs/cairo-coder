@@ -1,18 +1,19 @@
+import { AxGen } from '@ax-llm/ax';
 import { DocumentSource } from '../types';
-import { cairoCoderPrompts, scarbPrompts } from './prompts';
 import { basicContractTemplate } from './templates/contractTemplate';
 import { basicTestTemplate } from './templates/testTemplate';
+import {
+  retrievalProgram,
+  generationProgram,
+  scarbRetrievalProgram,
+  scarbGenerationProgram,
+} from '../core/programs';
 
 export interface AgentConfiguration {
   id: string;
   name: string;
   description: string;
   sources: DocumentSource[];
-  prompts: {
-    searchRetrieverPrompt: string;
-    searchResponsePrompt: string;
-    noSourceFoundPrompt?: string;
-  };
   templates?: {
     contract?: string;
     test?: string;
@@ -20,6 +21,10 @@ export interface AgentConfiguration {
   parameters: {
     maxSourceCount: number;
     similarityThreshold: number;
+  };
+  programs: {
+    retrieval: AxGen<any, any>;
+    generation: AxGen<any, any>;
   };
 }
 
@@ -38,7 +43,6 @@ export const AGENTS: Record<string, AgentConfiguration> = {
       DocumentSource.OPENZEPPELIN_DOCS,
       DocumentSource.SCARB_DOCS,
     ],
-    prompts: cairoCoderPrompts,
     templates: {
       contract: basicContractTemplate,
       test: basicTestTemplate,
@@ -47,16 +51,23 @@ export const AGENTS: Record<string, AgentConfiguration> = {
       maxSourceCount: 15,
       similarityThreshold: 0.4,
     },
+    programs: {
+      retrieval: retrievalProgram,
+      generation: generationProgram,
+    },
   },
   'scarb-assistant': {
     id: 'scarb-assistant',
     name: 'Scarb Assistant',
     description: 'Specialized Scarb build tool assistance',
     sources: [DocumentSource.SCARB_DOCS],
-    prompts: scarbPrompts,
     parameters: {
       maxSourceCount: 10,
       similarityThreshold: 0.5,
+    },
+    programs: {
+      retrieval: scarbRetrievalProgram,
+      generation: scarbGenerationProgram,
     },
   },
 };
