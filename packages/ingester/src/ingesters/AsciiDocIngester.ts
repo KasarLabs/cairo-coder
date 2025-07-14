@@ -2,10 +2,7 @@ import * as fs from 'fs/promises';
 import * as path from 'path';
 import downdoc from 'downdoc';
 import { Document } from '@langchain/core/documents';
-import {
-  BookChunk,
-  DocumentSource,
-} from '@cairo-coder/agents/types/index';
+import { BookChunk, DocumentSource } from '@cairo-coder/agents/types/index';
 import { BaseIngester } from '../BaseIngester';
 import {
   BookConfig,
@@ -68,7 +65,7 @@ export abstract class AsciiDocIngester extends BaseIngester {
 
     // Run Antora to generate the documentation
     logger.info('Running Antora to build documentation');
-    const antoraCommand = `antora ${this.playbookPath}`;
+    const antoraCommand = `antora ${this.playbookPath} --fetch`;
 
     // Find the package root by looking for package.json
     let packageRoot = __dirname;
