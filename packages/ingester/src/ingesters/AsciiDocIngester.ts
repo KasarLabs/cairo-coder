@@ -2,10 +2,7 @@ import * as fs from 'fs/promises';
 import * as path from 'path';
 import downdoc from 'downdoc';
 import { Document } from '@langchain/core/documents';
-import {
-  BookChunk,
-  DocumentSource,
-} from '@cairo-coder/agents/types/index';
+import { BookChunk, DocumentSource } from '@cairo-coder/agents/types/index';
 import { BaseIngester } from '../BaseIngester';
 import {
   BookConfig,
