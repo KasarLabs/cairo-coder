@@ -27,26 +27,14 @@ from cairo_coder.core.rag_pipeline import RagPipeline
 # =============================================================================
 
 @pytest.fixture
-def mock_vector_store():
+def mock_vector_store_config():
     """
-    Create a mock vector store with commonly used methods.
-
-    This fixture provides an enhanced mock with pre-configured methods
-    that are commonly used across tests.
+    Create a mock vector store configuration.
     """
-    mock_store = Mock(spec=VectorStore)
-    mock_store.similarity_search = AsyncMock(return_value=[])
-    mock_store.add_documents = AsyncMock()
-    mock_store.delete_by_source = AsyncMock()
-    mock_store.count_by_source = AsyncMock(return_value=0)
-    mock_store.close = AsyncMock()
-    mock_store.get_pool_status = AsyncMock(return_value={"status": "healthy"})
     mock_config = Mock(spec=VectorStoreConfig)
     mock_config.dsn = "postgresql://test_user:test_pass@localhost:5432/test_db"
     mock_config.table_name = "test_table"
-    mock_store.config = mock_config
-    return mock_store
-
+    return mock_config
 
 @pytest.fixture
 def mock_config_manager():
@@ -233,7 +221,7 @@ def sample_processed_query():
     """
     return ProcessedQuery(
         original="How do I create a Cairo contract?",
-        transformed=["cairo contract", "smart contract creation", "cairo programming"],
+        search_queries=["cairo contract", "smart contract creation", "cairo programming"],
         is_contract_related=True,
         is_test_related=False,
         resources=[DocumentSource.CAIRO_BOOK, DocumentSource.STARKNET_DOCS]
@@ -477,7 +465,7 @@ def create_test_message(role: str, content: str) -> Message:
     return Message(role=role, content=content)
 
 
-def create_test_processed_query(original: str, transformed: List[str] = None,
+def create_test_processed_query(original: str, search_queries: List[str] = None,
                                is_contract_related: bool = False,
                                is_test_related: bool = False,
                                resources: List[DocumentSource] = None) -> ProcessedQuery:
@@ -494,14 +482,14 @@ def create_test_processed_query(original: str, transformed: List[str] = None,
     Returns:
         ProcessedQuery object
     """
-    if transformed is None:
-        transformed = [original.lower()]
+    if search_queries is None:
+        search_queries = [original.lower()]
     if resources is None:
         resources = [DocumentSource.CAIRO_BOOK]
 
     return ProcessedQuery(
         original=original,
-        transformed=transformed,
+        search_queries=search_queries,
         is_contract_related=is_contract_related,
         is_test_related=is_test_related,
         resources=resources

@@ -20,8 +20,8 @@ class TestQueryProcessorProgram:
     def mock_lm(self):
         """Configure DSPy with a mock language model for testing."""
         mock = Mock()
-        mock.return_value = dspy.Prediction(
-            search_terms="cairo, contract, storage, variable",
+        mock.forward.return_value = dspy.Prediction(
+            search_queries=["cairo, contract, storage, variable"],
             resources="cairo_book, starknet_docs"
         )
 
@@ -44,29 +44,10 @@ class TestQueryProcessorProgram:
         assert result.original == query
         assert result.is_contract_related is True
         assert result.is_test_related is False
-        assert isinstance(result.transformed, list)
-        assert len(result.transformed) > 0
+        assert isinstance(result.search_queries, list)
+        assert len(result.search_queries) > 0
         assert isinstance(result.resources, list)
         assert all(isinstance(r, DocumentSource) for r in result.resources)
-
-    def test_search_terms_parsing(self, processor):
-        """Test parsing of search terms string."""
-        # Test with quoted terms
-        terms_str = '"cairo contract", storage, "external function"'
-        parsed = processor._parse_search_terms(terms_str)
-
-        assert "cairo contract" in parsed
-        assert "storage" in parsed
-        assert "external function" in parsed
-
-        # Test with empty/whitespace terms
-        terms_str = "cairo, , storage,  ,trait"
-        parsed = processor._parse_search_terms(terms_str)
-
-        assert "cairo" in parsed
-        assert "storage" in parsed
-        assert "trait" in parsed
-        assert "" not in parsed
 
     def test_resource_validation(self, processor):
         """Test validation of resource strings."""
@@ -92,40 +73,6 @@ class TestQueryProcessorProgram:
         assert DocumentSource.STARKNET_DOCS in validated
         assert len(validated) == 2
 
-    def test_search_terms_enhancement(self, processor):
-        """Test enhancement of search terms with query analysis."""
-        query = "How do I implement token_transfer in my StarkNet contract?"
-        base_terms = ["token", "transfer"]
-
-        enhanced = processor._enhance_search_terms(query, base_terms)
-
-        assert "token" in enhanced
-        assert "transfer" in enhanced
-        assert "starknet" in enhanced  # Should be added from query
-        assert "contract" in enhanced  # Should be added from query
-        assert "token_transfer" in enhanced  # Should be added (snake_case)
-
-    def test_contract_detection(self, processor):
-        """Test detection of contract-related queries."""
-        contract_queries = [
-            "How do I create a contract?",
-            "What is a storage variable?",
-            "How to implement a trait in Cairo?",
-            "External function implementation",
-            "Event emission in StarkNet"
-        ]
-
-        for query in contract_queries:
-            assert processor._is_contract_query(query) is True
-
-        non_contract_queries = [
-            "What is Cairo language?",
-            "How to install Scarb?",
-            "Basic data types in Cairo"
-        ]
-
-        for query in non_contract_queries:
-            assert processor._is_contract_query(query) is False
 
     def test_test_detection(self, processor):
         """Test detection of test-related queries."""
@@ -162,23 +109,6 @@ class TestQueryProcessorProgram:
             assert result.original == ""
             assert result.resources == [DocumentSource.CAIRO_BOOK]  # Default fallback
 
-    def test_malformed_dspy_output(self, processor):
-        """Test handling of malformed DSPy output."""
-        with patch.object(processor, 'retrieval_program') as mock_program:
-            mock_program.return_value = dspy.Prediction(
-                search_terms=None,
-                resources=None
-            )
-
-            query = "How do I create a contract?"
-            result = processor.forward(query)
-
-            assert result.original == query
-            assert result.resources == [DocumentSource.CAIRO_BOOK]  # Default fallback
-            # Enhanced search terms should include "contract" from the query
-            assert "contract" in [term.lower() for term in result.transformed]
-
-
 class TestCairoQueryAnalysis:
     """Test suite for CairoQueryAnalysis signature."""
 
@@ -189,13 +119,13 @@ class TestCairoQueryAnalysis:
         # Check model fields exist
         assert 'chat_history' in signature.model_fields
         assert 'query' in signature.model_fields
-        assert 'search_terms' in signature.model_fields
+        assert 'search_queries' in signature.model_fields
         assert 'resources' in signature.model_fields
 
         # Check field types
         chat_history_field = signature.model_fields['chat_history']
         query_field = signature.model_fields['query']
-        search_terms_field = signature.model_fields['search_terms']
+        search_terms_field = signature.model_fields['search_queries']
         resources_field = signature.model_fields['resources']
 
         assert chat_history_field.json_schema_extra['__dspy_field_type'] == 'input'
@@ -209,12 +139,12 @@ class TestCairoQueryAnalysis:
 
         chat_history_desc = signature.model_fields['chat_history'].json_schema_extra['desc']
         query_desc = signature.model_fields['query'].json_schema_extra['desc']
-        search_terms_desc = signature.model_fields['search_terms'].json_schema_extra['desc']
+        search_queries_desc = signature.model_fields['search_queries'].json_schema_extra['desc']
         resources_desc = signature.model_fields['resources'].json_schema_extra['desc']
 
         assert "conversation context" in chat_history_desc.lower()
         assert "cairo" in query_desc.lower()
-        assert "search terms" in search_terms_desc.lower()
+        assert "search queries" in search_queries_desc.lower()
         assert "documentation sources" in resources_desc.lower()
 
         # Check that resources field lists valid sources

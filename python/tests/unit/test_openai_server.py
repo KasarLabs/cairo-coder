@@ -6,6 +6,7 @@ functionality, ensuring API compatibility and correct behavior.
 """
 
 import json
+from cairo_coder.core.config import VectorStoreConfig
 import pytest
 from unittest.mock import Mock, AsyncMock, patch, MagicMock
 from fastapi.testclient import TestClient
@@ -47,7 +48,7 @@ class TestCairoCoderServer:
     """Test suite for CairoCoderServer class."""
 
     @pytest.fixture
-    def server(self, mock_vector_store, mock_config_manager):
+    def server(self, mock_vector_store_config, mock_config_manager):
         """Create a CairoCoderServer instance for testing."""
         with patch('cairo_coder.server.app.create_agent_factory') as mock_factory_creator:
             mock_factory = Mock()
@@ -60,7 +61,7 @@ class TestCairoCoderServer:
             })
             mock_factory_creator.return_value = mock_factory
 
-            server = CairoCoderServer(mock_vector_store, mock_config_manager)
+            server = CairoCoderServer(mock_vector_store_config, mock_config_manager)
             server.agent_factory = mock_factory
             return server
 
@@ -359,27 +360,25 @@ class TestCairoCoderServer:
 class TestCreateApp:
     """Test suite for create_app function."""
 
-    def test_create_app_returns_fastapi_instance(self):
+    def test_create_app_returns_fastapi_instance(self, mock_vector_store_config):
         """Test that create_app returns a FastAPI instance."""
-        mock_vector_store = Mock(spec=VectorStore)
         mock_config_manager = Mock(spec=ConfigManager)
 
         with patch('cairo_coder.server.app.create_agent_factory'):
-            app = create_app(mock_vector_store, mock_config_manager)
+            app = create_app(mock_vector_store_config, mock_config_manager)
 
         assert isinstance(app, FastAPI)
         assert app.title == "Cairo Coder"
         assert app.version == "1.0.0"
 
-    def test_create_app_with_defaults(self):
+    def test_create_app_with_defaults(self, mock_vector_store_config):
         """Test create_app with default config manager."""
-        mock_vector_store = Mock(spec=VectorStore)
 
         with patch('cairo_coder.server.app.create_agent_factory'), \
              patch('cairo_coder.server.app.ConfigManager') as mock_config_class:
 
             mock_config_class.return_value = Mock()
-            app = create_app(mock_vector_store)
+            app = create_app(mock_vector_store_config)
 
         assert isinstance(app, FastAPI)
         mock_config_class.assert_called_once()
@@ -431,7 +430,7 @@ class TestOpenAICompatibility:
     @pytest.fixture
     def mock_setup(self):
         """Setup mocks for OpenAI compatibility tests."""
-        mock_vector_store = Mock(spec=VectorStore)
+        mock_vector_store_config = Mock(spec=VectorStoreConfig)
         mock_config_manager = Mock(spec=ConfigManager)
 
         with patch('cairo_coder.server.app.create_agent_factory') as mock_factory_creator:
@@ -445,7 +444,7 @@ class TestOpenAICompatibility:
             })
             mock_factory_creator.return_value = mock_factory
 
-            server = CairoCoderServer(mock_vector_store, mock_config_manager)
+            server = CairoCoderServer(mock_vector_store_config, mock_config_manager)
             server.agent_factory = mock_factory
 
             return server, TestClient(server.app)
@@ -567,7 +566,7 @@ class TestMCPModeCompatibility:
     @pytest.fixture
     def mock_setup(self):
         """Setup mocks for MCP mode tests."""
-        mock_vector_store = Mock(spec=VectorStore)
+        mock_vector_store_config = Mock(spec=VectorStoreConfig)
         mock_config_manager = Mock(spec=ConfigManager)
 
         with patch('cairo_coder.server.app.create_agent_factory') as mock_factory_creator:
@@ -581,7 +580,7 @@ class TestMCPModeCompatibility:
             })
             mock_factory_creator.return_value = mock_factory
 
-            server = CairoCoderServer(mock_vector_store, mock_config_manager)
+            server = CairoCoderServer(mock_vector_store_config, mock_config_manager)
             server.agent_factory = mock_factory
 
             return server, TestClient(server.app)

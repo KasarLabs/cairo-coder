@@ -25,7 +25,7 @@ class TestCairoCoderServer:
     """Test suite for CairoCoderServer."""
 
     @pytest.fixture
-    def server(self, mock_vector_store, mock_config_manager):
+    def server(self, mock_vector_store_config, mock_config_manager):
         """Create a CairoCoderServer instance."""
         with patch('cairo_coder.server.app.create_agent_factory') as mock_create_factory:
             mock_factory = Mock(spec=AgentFactory)
@@ -38,7 +38,7 @@ class TestCairoCoderServer:
             }
             mock_create_factory.return_value = mock_factory
 
-            return CairoCoderServer(mock_vector_store, mock_config_manager)
+            return CairoCoderServer(mock_vector_store_config, mock_config_manager)
 
     @pytest.fixture
     def client(self, server):
@@ -149,7 +149,7 @@ class TestCairoCoderServer:
         mock_agent.forward = mock_forward_mcp
         server.agent_factory.create_agent = Mock(return_value=mock_agent)
 
-        response = client.post("/v1/chat/completions", 
+        response = client.post("/v1/chat/completions",
             json={"messages": [{"role": "user", "content": "Test"}]},
             headers={"x-mcp-mode": "true"}
         )
@@ -176,10 +176,10 @@ class TestTokenTracker:
     def test_track_tokens(self):
         """Test token tracking functionality."""
         tracker = TokenTracker()
-        
+
         tracker.track_tokens("session1", 10, 20)
         usage = tracker.get_session_usage("session1")
-        
+
         assert usage["prompt_tokens"] == 10
         assert usage["completion_tokens"] == 20
         assert usage["total_tokens"] == 30
@@ -187,25 +187,25 @@ class TestTokenTracker:
     def test_multiple_sessions(self):
         """Test tracking multiple sessions."""
         tracker = TokenTracker()
-        
+
         tracker.track_tokens("session1", 10, 20)
         tracker.track_tokens("session2", 15, 25)
-        
+
         usage1 = tracker.get_session_usage("session1")
         usage2 = tracker.get_session_usage("session2")
-        
+
         assert usage1["total_tokens"] == 30
         assert usage2["total_tokens"] == 40
 
     def test_session_accumulation(self):
         """Test token accumulation within a session."""
         tracker = TokenTracker()
-        
+
         tracker.track_tokens("session1", 10, 20)
         tracker.track_tokens("session1", 5, 15)
-        
+
         usage = tracker.get_session_usage("session1")
-        
+
         assert usage["prompt_tokens"] == 15
         assert usage["completion_tokens"] == 35
         assert usage["total_tokens"] == 50
@@ -213,9 +213,9 @@ class TestTokenTracker:
     def test_nonexistent_session(self):
         """Test getting usage for nonexistent session."""
         tracker = TokenTracker()
-        
+
         usage = tracker.get_session_usage("nonexistent")
-        
+
         assert usage["prompt_tokens"] == 0
         assert usage["completion_tokens"] == 0
         assert usage["total_tokens"] == 0
@@ -224,34 +224,31 @@ class TestTokenTracker:
 class TestCreateApp:
     """Test suite for create_app function."""
 
-    def test_create_app_basic(self):
+    def test_create_app_basic(self, mock_vector_store_config):
         """Test basic app creation."""
-        mock_vector_store = Mock(spec=VectorStore)
         mock_config_manager = Mock(spec=ConfigManager)
 
         with patch('cairo_coder.server.app.create_agent_factory'):
-            app = create_app(mock_vector_store, mock_config_manager)
+            app = create_app(mock_vector_store_config, mock_config_manager)
 
             assert app is not None
             assert app.title == "Cairo Coder"
             assert app.version == "1.0.0"
 
-    def test_create_app_with_defaults(self):
+    def test_create_app_with_defaults(self, mock_vector_store_config):
         """Test app creation with default config manager."""
-        mock_vector_store = Mock(spec=VectorStore)
 
         with patch('cairo_coder.server.app.create_agent_factory'), \
              patch('cairo_coder.server.app.ConfigManager'):
-            app = create_app(mock_vector_store)
+            app = create_app(mock_vector_store_config)
 
             assert app is not None
 
-    def test_cors_configuration(self):
+    def test_cors_configuration(self, mock_vector_store_config):
         """Test CORS configuration."""
-        mock_vector_store = Mock(spec=VectorStore)
 
         with patch('cairo_coder.server.app.create_agent_factory'):
-            app = create_app(mock_vector_store)
+            app = create_app(mock_vector_store_config)
             client = TestClient(app)
 
             # Test CORS headers
@@ -262,12 +259,11 @@ class TestCreateApp:
 
             assert response.status_code in [200, 204]
 
-    def test_app_middleware(self):
+    def test_app_middleware(self, mock_vector_store_config):
         """Test that app has proper middleware configuration."""
-        mock_vector_store = Mock(spec=VectorStore)
 
         with patch('cairo_coder.server.app.create_agent_factory'):
-            app = create_app(mock_vector_store)
+            app = create_app(mock_vector_store_config)
 
             # Check that middleware is properly configured
             # FastAPI apps have middleware, but middleware_stack might be None until build
@@ -275,12 +271,11 @@ class TestCreateApp:
             # Check that CORS middleware was added by verifying the middleware property exists
             assert hasattr(app, 'middleware')
 
-    def test_app_routes(self):
+    def test_app_routes(self, mock_vector_store_config):
         """Test that app has expected routes."""
-        mock_vector_store = Mock(spec=VectorStore)
 
         with patch('cairo_coder.server.app.create_agent_factory'):
-            app = create_app(mock_vector_store)
+            app = create_app(mock_vector_store_config)
 
             # Get all routes
             routes = [route.path for route in app.routes]
@@ -294,44 +289,41 @@ class TestCreateApp:
 class TestServerConfiguration:
     """Test suite for server configuration."""
 
-    def test_server_initialization(self):
+    def test_server_initialization(self, mock_vector_store_config):
         """Test server initialization."""
-        mock_vector_store = Mock(spec=VectorStore)
         mock_config_manager = Mock(spec=ConfigManager)
 
         with patch('cairo_coder.server.app.create_agent_factory'):
-            server = CairoCoderServer(mock_vector_store, mock_config_manager)
+            server = CairoCoderServer(mock_vector_store_config, mock_config_manager)
 
-            assert server.vector_store == mock_vector_store
+            assert server.vector_store_config == mock_vector_store_config
             assert server.config_manager == mock_config_manager
             assert server.app is not None
             assert server.agent_factory is not None
             assert server.token_tracker is not None
 
-    def test_server_dependencies(self):
+    def test_server_dependencies(self, mock_vector_store_config):
         """Test server dependency injection."""
-        mock_vector_store = Mock(spec=VectorStore)
         mock_config_manager = Mock(spec=ConfigManager)
 
         with patch('cairo_coder.server.app.create_agent_factory') as mock_create_factory:
             mock_factory = Mock()
             mock_create_factory.return_value = mock_factory
 
-            server = CairoCoderServer(mock_vector_store, mock_config_manager)
+            server = CairoCoderServer(mock_vector_store_config, mock_config_manager)
 
             # Check that dependencies are properly injected
             mock_create_factory.assert_called_once_with(
-                vector_store=mock_vector_store,
+                vector_store_config=mock_vector_store_config,
                 config_manager=mock_config_manager
             )
 
-    def test_server_app_configuration(self):
+    def test_server_app_configuration(self, mock_vector_store_config):
         """Test server app configuration."""
-        mock_vector_store = Mock(spec=VectorStore)
         mock_config_manager = Mock(spec=ConfigManager)
 
         with patch('cairo_coder.server.app.create_agent_factory'):
-            server = CairoCoderServer(mock_vector_store, mock_config_manager)
+            server = CairoCoderServer(mock_vector_store_config, mock_config_manager)
 
             # Check FastAPI app configuration
             assert server.app.title == "Cairo Coder"

@@ -10,16 +10,15 @@ import asyncio
 from dataclasses import dataclass, field
 
 from cairo_coder.core.types import Document, DocumentSource, Message
-from cairo_coder.core.vector_store import VectorStore
 from cairo_coder.core.rag_pipeline import RagPipeline, RagPipelineFactory
-from cairo_coder.core.config import AgentConfiguration
+from cairo_coder.core.config import AgentConfiguration, VectorStoreConfig
 from cairo_coder.config.manager import ConfigManager
 
 
 @dataclass
 class AgentFactoryConfig:
     """Configuration for Agent Factory."""
-    vector_store: VectorStore
+    vector_store_config: VectorStoreConfig
     config_manager: ConfigManager
     default_agent_config: Optional[AgentConfiguration] = None
     agent_configs: Dict[str, AgentConfiguration] = field(default_factory=dict)
@@ -41,7 +40,7 @@ class AgentFactory:
             config: AgentFactoryConfig with vector store and configurations
         """
         self.config = config
-        self.vector_store = config.vector_store
+        self.vector_store_config = config.vector_store_config
         self.config_manager = config.config_manager
         self.agent_configs = config.agent_configs
         self.default_agent_config = config.default_agent_config
@@ -53,7 +52,7 @@ class AgentFactory:
     def create_agent(
         query: str,
         history: List[Message],
-        vector_store: VectorStore,
+        vector_store_config: VectorStoreConfig,
         mcp_mode: bool = False,
         sources: Optional[List[DocumentSource]] = None,
         max_source_count: int = 10,
@@ -65,7 +64,7 @@ class AgentFactory:
         Args:
             query: User's query (used for agent optimization)
             history: Chat history (used for context)
-            vector_store: Vector store for document retrieval
+            vector_store_config: Vector store configuration for document retrieval
             mcp_mode: Whether to use MCP mode
             sources: Optional document sources filter
             max_source_count: Maximum documents to retrieve
@@ -81,7 +80,7 @@ class AgentFactory:
         # Create pipeline with appropriate configuration
         pipeline = RagPipelineFactory.create_pipeline(
             name="default_agent",
-            vector_store=vector_store,
+            vector_store_config=vector_store_config,
             sources=sources,
             max_source_count=max_source_count,
             similarity_threshold=similarity_threshold
@@ -94,7 +93,7 @@ class AgentFactory:
         query: str,
         history: List[Message],
         agent_id: str,
-        vector_store: VectorStore,
+        vector_store_config: VectorStoreConfig,
         config_manager: Optional[ConfigManager] = None,
         mcp_mode: bool = False
     ) -> RagPipeline:
@@ -105,7 +104,7 @@ class AgentFactory:
             query: User's query
             history: Chat history
             agent_id: Specific agent identifier
-            vector_store: Vector store for document retrieval
+            vector_store_config: Vector store for document retrieval
             config_manager: Optional configuration manager
             mcp_mode: Whether to use MCP mode
 
@@ -127,7 +126,7 @@ class AgentFactory:
         # Create pipeline based on agent configuration
         pipeline = await AgentFactory._create_pipeline_from_config(
             agent_config=agent_config,
-            vector_store=vector_store,
+            vector_store_config=vector_store_config,
             query=query,
             history=history,
             mcp_mode=mcp_mode
@@ -164,7 +163,7 @@ class AgentFactory:
             query=query,
             history=history,
             agent_id=agent_id,
-            vector_store=self.vector_store,
+            vector_store_config=self.vector_store_config,
             config_manager=self.config_manager,
             mcp_mode=mcp_mode
         )
@@ -254,7 +253,7 @@ class AgentFactory:
     @staticmethod
     async def _create_pipeline_from_config(
         agent_config: AgentConfiguration,
-        vector_store: VectorStore,
+        vector_store_config: VectorStoreConfig,
         query: str,
         history: List[Message],
         mcp_mode: bool = False
@@ -281,7 +280,7 @@ class AgentFactory:
         if pipeline_type == "scarb":
             pipeline = RagPipelineFactory.create_scarb_pipeline(
                 name=agent_config.name,
-                vector_store=vector_store,
+                vector_store_config=vector_store_config,
                 sources=agent_config.sources or [DocumentSource.SCARB_DOCS],
                 max_source_count=agent_config.max_source_count,
                 similarity_threshold=agent_config.similarity_threshold,
@@ -291,7 +290,7 @@ class AgentFactory:
         else:
             pipeline = RagPipelineFactory.create_pipeline(
                 name=agent_config.name,
-                vector_store=vector_store,
+                vector_store_config=vector_store_config,
                 sources=agent_config.sources,
                 max_source_count=agent_config.max_source_count,
                 similarity_threshold=agent_config.similarity_threshold,
@@ -394,7 +393,7 @@ When using OpenZeppelin contracts:
 
 
 def create_agent_factory(
-    vector_store: VectorStore,
+    vector_store_config: VectorStoreConfig,
     config_manager: Optional[ConfigManager] = None,
     custom_agents: Optional[Dict[str, AgentConfiguration]] = None
 ) -> AgentFactory:
@@ -426,7 +425,7 @@ def create_agent_factory(
 
     # Create factory configuration
     factory_config = AgentFactoryConfig(
-        vector_store=vector_store,
+        vector_store_config=vector_store_config,
         config_manager=config_manager,
         default_agent_config=default_configs["default"],
         agent_configs=default_configs

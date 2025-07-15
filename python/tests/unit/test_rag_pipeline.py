@@ -37,7 +37,7 @@ class TestRagPipeline:
         processor = Mock(spec=QueryProcessorProgram)
         processor.forward.return_value = ProcessedQuery(
             original="How do I create a Cairo contract?",
-            transformed=["cairo", "contract", "create"],
+            search_queries=["cairo", "contract", "create"],
             is_contract_related=True,
             is_test_related=False,
             resources=[DocumentSource.CAIRO_BOOK, DocumentSource.STARKNET_DOCS]
@@ -109,13 +109,13 @@ Storage variables use #[storage] attribute.
         return program
 
     @pytest.fixture
-    def pipeline_config(self, mock_vector_store, mock_query_processor,
+    def pipeline_config(self, mock_vector_store_config, mock_query_processor,
                        mock_document_retriever, mock_generation_program,
                        mock_mcp_generation_program):
         """Create a pipeline configuration."""
         return RagPipelineConfig(
             name="test_pipeline",
-            vector_store=mock_vector_store,
+            vector_store_config=mock_vector_store_config,
             query_processor=mock_query_processor,
             document_retriever=mock_document_retriever,
             generation_program=mock_generation_program,
@@ -298,7 +298,7 @@ Storage variables use #[storage] attribute.
 
         processed_query = ProcessedQuery(
             original="How do I create a Cairo contract?",
-            transformed=["cairo", "contract"],
+            search_queries=["cairo", "contract"],
             is_contract_related=True,
             is_test_related=False,
             resources=[DocumentSource.CAIRO_BOOK]
@@ -306,11 +306,6 @@ Storage variables use #[storage] attribute.
 
         context = pipeline._prepare_context(documents, processed_query)
 
-        assert "Query Analysis:" in context
-        assert "Original query: How do I create a Cairo contract?" in context
-        assert "Search terms: cairo, contract" in context
-        assert "Contract-related: True" in context
-        assert "Test-related: False" in context
         assert "## 1. Cairo Contracts" in context
         assert "Source: Cairo Book" in context
         assert "starknet::contract" in context
@@ -319,7 +314,7 @@ Storage variables use #[storage] attribute.
         """Test context preparation with empty documents."""
         processed_query = ProcessedQuery(
             original="Test query",
-            transformed=["test"],
+            search_queries=["test"],
             is_contract_related=False,
             is_test_related=False,
             resources=[]
@@ -339,7 +334,7 @@ Storage variables use #[storage] attribute.
         # Test contract template
         processed_query = ProcessedQuery(
             original="Contract query",
-            transformed=["contract"],
+            search_queries=["contract"],
             is_contract_related=True,
             is_test_related=False,
             resources=[]
@@ -352,7 +347,7 @@ Storage variables use #[storage] attribute.
         # Test test template
         processed_query = ProcessedQuery(
             original="Test query",
-            transformed=["test"],
+            search_queries=["test"],
             is_contract_related=False,
             is_test_related=True,
             resources=[]
@@ -367,7 +362,7 @@ Storage variables use #[storage] attribute.
         # Set some state
         pipeline._current_processed_query = ProcessedQuery(
             original="test",
-            transformed=["test"],
+            search_queries=["test"],
             is_contract_related=False,
             is_test_related=False,
             resources=[]
@@ -387,12 +382,7 @@ Storage variables use #[storage] attribute.
 class TestRagPipelineFactory:
     """Test suite for RagPipelineFactory."""
 
-    @pytest.fixture
-    def mock_vector_store(self):
-        """Create a mock vector store."""
-        return Mock(spec=VectorStore)
-
-    def test_create_pipeline_with_defaults(self, mock_vector_store):
+    def test_create_pipeline_with_defaults(self, mock_vector_store_config):
         """Test creating pipeline with default components."""
         with patch('cairo_coder.dspy.create_query_processor') as mock_create_qp, \
              patch('cairo_coder.dspy.create_document_retriever') as mock_create_dr, \
@@ -406,26 +396,26 @@ class TestRagPipelineFactory:
 
             pipeline = RagPipelineFactory.create_pipeline(
                 name="test_pipeline",
-                vector_store=mock_vector_store
+                vector_store_config=mock_vector_store_config
             )
 
             assert isinstance(pipeline, RagPipeline)
             assert pipeline.config.name == "test_pipeline"
-            assert pipeline.config.vector_store == mock_vector_store
+            assert pipeline.config.vector_store_config == mock_vector_store_config
             assert pipeline.config.max_source_count == 10
             assert pipeline.config.similarity_threshold == 0.4
 
             # Verify factory functions were called
             mock_create_qp.assert_called_once()
             mock_create_dr.assert_called_once_with(
-                vector_store=mock_vector_store,
+                vector_store_config=mock_vector_store_config,
                 max_source_count=10,
                 similarity_threshold=0.4
             )
             mock_create_gp.assert_called_once_with("general")
             mock_create_mcp.assert_called_once()
 
-    def test_create_pipeline_with_custom_components(self, mock_vector_store):
+    def test_create_pipeline_with_custom_components(self, mock_vector_store_config):
         """Test creating pipeline with custom components."""
         custom_query_processor = Mock()
         custom_document_retriever = Mock()
@@ -434,7 +424,7 @@ class TestRagPipelineFactory:
 
         pipeline = RagPipelineFactory.create_pipeline(
             name="custom_pipeline",
-            vector_store=mock_vector_store,
+            vector_store_config=mock_vector_store_config,
             query_processor=custom_query_processor,
             document_retriever=custom_document_retriever,
             generation_program=custom_generation_program,
@@ -458,7 +448,7 @@ class TestRagPipelineFactory:
         assert pipeline.config.contract_template == "Custom contract template"
         assert pipeline.config.test_template == "Custom test template"
 
-    def test_create_scarb_pipeline(self, mock_vector_store):
+    def test_create_scarb_pipeline(self, mock_vector_store_config):
         """Test creating Scarb-specific pipeline."""
         with patch('cairo_coder.dspy.create_generation_program') as mock_create_gp:
             mock_scarb_program = Mock()
@@ -466,7 +456,7 @@ class TestRagPipelineFactory:
 
             pipeline = RagPipelineFactory.create_scarb_pipeline(
                 name="scarb_pipeline",
-                vector_store=mock_vector_store
+                vector_store_config=mock_vector_store_config
             )
 
             assert isinstance(pipeline, RagPipeline)
@@ -477,20 +467,20 @@ class TestRagPipelineFactory:
             # Verify Scarb generation program was created
             mock_create_gp.assert_called_with("scarb")
 
-    def test_create_rag_pipeline_convenience_function(self, mock_vector_store):
+    def test_create_rag_pipeline_convenience_function(self, mock_vector_store_config):
         """Test the convenience function for creating RAG pipeline."""
         with patch('cairo_coder.core.rag_pipeline.RagPipelineFactory.create_pipeline') as mock_create:
             mock_create.return_value = Mock()
 
             pipeline = create_rag_pipeline(
                 name="convenience_pipeline",
-                vector_store=mock_vector_store,
+                vector_store_config=mock_vector_store_config,
                 max_source_count=15
             )
 
             mock_create.assert_called_once_with(
                 "convenience_pipeline",
-                mock_vector_store,
+                mock_vector_store_config,
                 max_source_count=15
             )
 
@@ -500,7 +490,7 @@ class TestRagPipelineConfig:
 
     def test_pipeline_config_creation(self):
         """Test creating pipeline configuration."""
-        mock_vector_store = Mock()
+        mock_vector_store_config = Mock()
         mock_query_processor = Mock()
         mock_document_retriever = Mock()
         mock_generation_program = Mock()
@@ -508,7 +498,7 @@ class TestRagPipelineConfig:
 
         config = RagPipelineConfig(
             name="test_config",
-            vector_store=mock_vector_store,
+            vector_store_config=mock_vector_store_config,
             query_processor=mock_query_processor,
             document_retriever=mock_document_retriever,
             generation_program=mock_generation_program,
@@ -521,7 +511,7 @@ class TestRagPipelineConfig:
         )
 
         assert config.name == "test_config"
-        assert config.vector_store == mock_vector_store
+        assert config.vector_store_config == mock_vector_store_config
         assert config.query_processor == mock_query_processor
         assert config.document_retriever == mock_document_retriever
         assert config.generation_program == mock_generation_program
@@ -536,7 +526,7 @@ class TestRagPipelineConfig:
         """Test pipeline configuration with default values."""
         config = RagPipelineConfig(
             name="default_config",
-            vector_store=Mock(),
+            vector_store_config=Mock(),
             query_processor=Mock(),
             document_retriever=Mock(),
             generation_program=Mock(),

@@ -21,11 +21,11 @@ RESOURCE_DESCRIPTIONS = {
   "cairo_book":
     'The Cairo Programming Language Book. Essential for core language syntax, semantics, types (felt252, structs, enums, Vec), traits, generics, control flow, memory management, writing tests, organizing a project, standard library usage, starknet interactions. Crucial for smart contract structure, storage, events, ABI, syscalls, contract deployment, interaction, L1<>L2 messaging, Starknet-specific attributes.',
   "starknet_docs":
-    'The Starknet Documentation. For Starknet protocol, architecture, APIs, syscalls, network interaction, deployment, ecosystem tools (Starkli, indexers), general Starknet knowledge.',
+    'The Starknet Documentation. For Starknet protocol, architecture, APIs, syscalls, network interaction, deployment, ecosystem tools (Starkli, indexers), general Starknet knowledge. This should not be included for Coding and Programming questions, but rather, only for questions about Starknet itself.',
   "starknet_foundry":
     'The Starknet Foundry Documentation. For using the Foundry toolchain: writing, compiling, testing (unit tests, integration tests), and debugging Starknet contracts.',
   "cairo_by_example":
-    'Cairo by Example Documentation. Provides practical Cairo code snippets for specific language features or common patterns. Useful for how-to syntax questions.',
+    'Cairo by Example Documentation. Provides practical Cairo code snippets for specific language features or common patterns. Useful for how-to syntax questions. This should not be included for Smart Contract questions, but for all other Cairo programming questions.',
   "openzeppelin_docs":
     'OpenZeppelin Cairo Contracts Documentation. For using the OZ library: standard implementations (ERC20, ERC721), access control, security patterns, contract upgradeability. Crucial for building standard-compliant contracts.',
   "corelib_docs":
@@ -48,10 +48,9 @@ class CairoQueryAnalysis(Signature):
         desc="User's Cairo/Starknet programming question or request that needs to be processed"
     )
 
-    search_terms: str = OutputField(
-        desc="List of specific search terms to find relevant documentation, separated by commas"
+    search_queries: List[str] = OutputField(
+        desc="List of specific search queries to make to a vector store to find relevant documentation. Each query should be a sentence describing an action to take to fulfill the user's request"
     )
-
     resources: str = OutputField(
         desc="List of documentation sources. Available sources: " + ", ".join([f"{key}: {value}" for key, value in RESOURCE_DESCRIPTIONS.items()])
     )
@@ -102,49 +101,19 @@ class QueryProcessorProgram(dspy.Module):
         )
 
         # Parse and validate the results
-        search_terms = self._parse_search_terms(result.search_terms)
+        search_queries = result.search_queries
         resources = self._validate_resources(result.resources)
-
-        # Enhance search terms with keyword analysis
-        enhanced_terms = self._enhance_search_terms(query, search_terms)
 
         # Build structured query result
         logger.info(f"Processed query: {query} \n"
-                    f"Generated: search_terms={search_terms}, resources={resources}, enhanced_terms={enhanced_terms}")
+                    f"Generated: search_queries={search_queries}, resources={resources}")
         return ProcessedQuery(
             original=query,
-            transformed=enhanced_terms,
+            search_queries=search_queries,
             is_contract_related=self._is_contract_query(query),
             is_test_related=self._is_test_query(query),
             resources=resources
         )
-
-    def _parse_search_terms(self, search_terms_str: str) -> List[str]:
-        """
-        Parse search terms string into a list of terms.
-
-        Args:
-            search_terms_str: Comma-separated search terms from DSPy output
-
-        Returns:
-            List of cleaned search terms
-        """
-        if not search_terms_str or search_terms_str is None:
-            return []
-
-        # Split by comma and clean each term
-        terms = [term.strip() for term in str(search_terms_str).split(',')]
-
-        # Filter out empty terms and normalize
-        cleaned_terms = []
-        for term in terms:
-            if term and len(term) > 1:  # Skip single characters
-                # Remove quotes if present
-                term = term.strip('"\'')
-                cleaned_terms.append(term)
-
-        return cleaned_terms
-
     def _validate_resources(self, resources_str: str) -> List[DocumentSource]:
         """
         Validate and convert resource strings to DocumentSource enum values.
@@ -178,41 +147,6 @@ class QueryProcessorProgram(dspy.Module):
 
         # Return valid resources or default fallback
         return valid_resources if valid_resources else [DocumentSource.CAIRO_BOOK]
-
-    def _enhance_search_terms(self, query: str, base_terms: List[str]) -> List[str]:
-        """
-        Enhance search terms with query-specific keywords and analysis.
-
-        Args:
-            query: Original user query
-            base_terms: Base search terms from DSPy output
-
-        Returns:
-            Enhanced list of search terms
-        """
-        enhanced_terms = list(base_terms)
-        query_lower = query.lower()
-
-        # Add important keywords found in the query
-        for word in re.findall(r'\b\w+\b', query_lower):
-            if len(word) > 2 and word not in enhanced_terms:
-                # Add technical terms
-                if word in {'cairo', 'starknet', 'contract', 'storage', 'trait', 'impl'}:
-                    enhanced_terms.append(word)
-
-                # Add function/method names (likely in snake_case or camelCase)
-                if '_' in word or any(c.isupper() for c in word[1:]):
-                    enhanced_terms.append(word)
-
-        # Remove duplicates while preserving order
-        seen = set()
-        unique_terms = []
-        for term in enhanced_terms:
-            if term.lower() not in seen:
-                seen.add(term.lower())
-                unique_terms.append(term)
-
-        return unique_terms
 
     def _is_contract_query(self, query: str) -> bool:
         """
