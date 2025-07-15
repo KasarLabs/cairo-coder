@@ -132,6 +132,11 @@ export async function handleChatCompletion(
       let responseContent = '';
 
       agent.on('data', (data: any) => {
+        // Check if response is already finished
+        if (res.destroyed || res.writableEnded) {
+          return;
+        }
+
         const parsed = JSON.parse(data);
 
         if (parsed.type === 'response') {
@@ -162,14 +167,24 @@ export async function handleChatCompletion(
 
       agent.on('error', (error: any) => {
         console.error('Agent error:', error);
-        res.write(`data: ${JSON.stringify({ error: error.message })}\n\n`);
-        res.end();
+        if (!res.destroyed && !res.writableEnded) {
+          res.write(`data: ${JSON.stringify({ error: error.message })}\n\n`);
+          res.end();
+        }
       });
 
       agent.on('end', () => {
+        // Check if response is already finished
+        if (res.destroyed || res.writableEnded) {
+          return;
+        }
+
         const tokenUsage = TokenTracker.getSessionTokenUsage();
 
-        res.setHeader('x-total-tokens', tokenUsage.totalTokens.toString());
+        // Check if headers haven't been sent yet
+        if (!res.headersSent) {
+          res.setHeader('x-total-tokens', tokenUsage.totalTokens.toString());
+        }
 
         const finalChunk = {
           id: uuidv4(),
@@ -210,16 +225,25 @@ export async function handleChatCompletion(
 
       agent.on('error', (error: any) => {
         console.error('Agent error:', error);
-        res.status(500).json({
-          error: {
-            message: error.message,
-            type: 'server_error',
-            code: 'internal_error',
-          },
-        });
+
+        // Check if headers haven't been sent yet
+        if (!res.headersSent) {
+          res.status(500).json({
+            error: {
+              message: error.message,
+              type: 'server_error',
+              code: 'internal_error',
+            },
+          });
+        }
       });
 
       agent.on('end', () => {
+        // Check if headers haven't been sent yet
+        if (res.headersSent) {
+          return;
+        }
+
         const tokenUsage = TokenTracker.getSessionTokenUsage();
 
         res.setHeader('x-total-tokens', tokenUsage.totalTokens.toString());
@@ -257,6 +281,11 @@ export async function handleChatCompletion(
     }
   } catch (error) {
     console.error('Error in chat completion:', error);
+
+    // Check if headers haven't been sent yet
+    if (res.headersSent) {
+      return;
+    }
 
     // Map common errors to OpenAI error format
     if (error instanceof Error) {
