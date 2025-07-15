@@ -39,73 +39,64 @@ class ConfigManager:
         if config_path and not config_path.exists():
             raise FileNotFoundError(f"Configuration file not found at {config_path}")
 
+        # Validate config
+
         # Load base configuration from TOML
         config_dict: Dict[str, Any] = {}
         if config_path:
             with open(config_path, "r") as f:
                 config_dict = toml.load(f)
 
-        # Create configuration objects
-        config = Config()
 
-        # Update server settings
-        if "server" in config_dict:
-            server = config_dict["server"]
-            config.host = server.get("host", config.host)
-            config.port = server.get("port", config.port)
-            config.debug = server.get("debug", config.debug)
+        if not "VECTOR_DB" in config_dict:
+            raise ValueError("VECTOR_DB section is required in config.toml")
 
         # Update vector store settings
-        if "vector_db" in config_dict:
-            db = config_dict["vector_db"]
-            config.vector_store = VectorStoreConfig(
-                host=db.get("host", config.vector_store.host),
-                port=db.get("port", config.vector_store.port),
-                database=db.get("database", config.vector_store.database),
-                user=db.get("user", config.vector_store.user),
-                password=db.get("password", config.vector_store.password),
-                table_name=db.get("table_name", config.vector_store.table_name),
-                similarity_measure=db.get("similarity_measure", config.vector_store.similarity_measure),
-            )
+        vector_db_config = config_dict["VECTOR_DB"]
+        vector_store_config = VectorStoreConfig(
+            host=vector_db_config["POSTGRES_HOST"],
+            port=vector_db_config["POSTGRES_PORT"],
+            database=vector_db_config["POSTGRES_DB"],
+            user=vector_db_config["POSTGRES_USER"],
+            password=vector_db_config["POSTGRES_PASSWORD"],
+            table_name=vector_db_config["POSTGRES_TABLE_NAME"],
+            similarity_measure=vector_db_config["SIMILARITY_MEASURE"],
+        )
 
         # Override with environment variables if explicitly set
         if os.getenv("POSTGRES_HOST") is not None:
-            config.vector_store.host = os.getenv("POSTGRES_HOST", config.vector_store.host)
+            vector_store_config.host = os.getenv("POSTGRES_HOST", vector_store_config.host)
         if os.getenv("POSTGRES_PORT") is not None:
-            config.vector_store.port = int(os.getenv("POSTGRES_PORT", str(config.vector_store.port)))
+            vector_store_config.port = int(os.getenv("POSTGRES_PORT", str(vector_store_config.port)))
         if os.getenv("POSTGRES_DB") is not None:
-            config.vector_store.database = os.getenv("POSTGRES_DB", config.vector_store.database)
+            vector_store_config.database = os.getenv("POSTGRES_DB", vector_store_config.database)
         if os.getenv("POSTGRES_USER") is not None:
-            config.vector_store.user = os.getenv("POSTGRES_USER", config.vector_store.user)
+            vector_store_config.user = os.getenv("POSTGRES_USER", vector_store_config.user)
         if os.getenv("POSTGRES_PASSWORD") is not None:
-            config.vector_store.password = os.getenv("POSTGRES_PASSWORD", config.vector_store.password)
+            vector_store_config.password = os.getenv("POSTGRES_PASSWORD", vector_store_config.password)
 
         # Update LLM provider settings
         if "providers" in config_dict:
             providers = config_dict["providers"]
-            config.llm = LLMProviderConfig(
-                openai_api_key=providers.get("openai", {}).get("api_key", config.llm.openai_api_key),
-                openai_model=providers.get("openai", {}).get("model", config.llm.openai_model),
-                anthropic_api_key=providers.get("anthropic", {}).get("api_key", config.llm.anthropic_api_key),
-                anthropic_model=providers.get("anthropic", {}).get("model", config.llm.anthropic_model),
-                gemini_api_key=providers.get("gemini", {}).get("api_key", config.llm.gemini_api_key),
-                gemini_model=providers.get("gemini", {}).get("model", config.llm.gemini_model),
-                default_provider=providers.get("default", config.llm.default_provider),
-                temperature=providers.get("temperature", config.llm.temperature),
-                max_tokens=providers.get("max_tokens", config.llm.max_tokens),
-                streaming=providers.get("streaming", config.llm.streaming),
-                embedding_model=providers.get("embedding_model", config.llm.embedding_model),
+            llm_config = LLMProviderConfig(
+                openai_api_key=providers.get("openai", {}).get("api_key"),
+                openai_model=providers.get("openai", {}).get("model"),
+                anthropic_api_key=providers.get("anthropic", {}).get("api_key"),
+                anthropic_model=providers.get("anthropic", {}).get("model"),
+                gemini_api_key=providers.get("gemini", {}).get("api_key"),
+                gemini_model=providers.get("gemini", {}).get("model"),
+                default_provider=providers.get("default"),
+                embedding_model=providers.get("embedding_model"),
             )
 
         # Override with environment variables if explicitly set
-        config.llm.openai_api_key = os.getenv("OPENAI_API_KEY", config.llm.openai_api_key)
-        config.llm.anthropic_api_key = os.getenv("ANTHROPIC_API_KEY", config.llm.anthropic_api_key)
-        config.llm.gemini_api_key = os.getenv("GEMINI_API_KEY", config.llm.gemini_api_key)
+        llm_config.openai_api_key = os.getenv("OPENAI_API_KEY", llm_config.openai_api_key)
+        llm_config.anthropic_api_key = os.getenv("ANTHROPIC_API_KEY", llm_config.anthropic_api_key)
+        llm_config.gemini_api_key = os.getenv("GEMINI_API_KEY", llm_config.gemini_api_key)
 
         # Load agent configurations
+        config_agents = {}
         if "agents" in config_dict:
-            if not config.agents:
-                config.agents = {}
             for agent_id, agent_data in config_dict["agents"].items():
                 sources = []
                 for source_str in agent_data.get("sources", []):
@@ -126,25 +117,14 @@ class ConfigManager:
                     retrieval_program_name=agent_data.get("retrieval_program", "default"),
                     generation_program_name=agent_data.get("generation_program", "default"),
                 )
-                config.agents[agent_id] = agent_config
+                config_agents[agent_id] = agent_config
 
-        # Update logging settings
-        if "logging" in config_dict:
-            logging = config_dict["logging"]
-            config.log_level = logging.get("level", config.log_level)
-            config.log_format = logging.get("format", config.log_format)
-
-        # Update monitoring settings
-        if "monitoring" in config_dict:
-            monitoring = config_dict["monitoring"]
-            config.enable_metrics = monitoring.get("enable_metrics", config.enable_metrics)
-            config.metrics_port = monitoring.get("metrics_port", config.metrics_port)
-
-        # Update optimization settings
-        if "optimization" in config_dict:
-            optimization = config_dict["optimization"]
-            config.optimization_dir = optimization.get("dir", config.optimization_dir)
-            config.enable_optimization = optimization.get("enable", config.enable_optimization)
+        config = Config(
+            vector_store=vector_store_config,
+            llm=llm_config,
+            agents=config_agents,
+            default_agent_id="cairo-coder",
+        )
 
         return config
 

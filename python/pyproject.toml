@@ -57,7 +57,7 @@ dev = [
 ]
 
 [project.scripts]
-cairo-coder = "cairo_coder.main:main"
+cairo-coder = "cairo_coder.server.app:main"
 cairo-coder-api = "cairo_coder.api.server:run"
 
 [project.urls]

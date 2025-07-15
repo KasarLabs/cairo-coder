@@ -20,15 +20,14 @@ class TestConfigManager:
     def mock_config_file(self) -> Generator[Path, None, None]:
         """Create a sample config file for testing."""
         config_data = {
-            "server": {
-                "host": "127.0.0.1",
-                "port": 8080,
-                "debug": True,
-            },
-            "vector_db": {
-                "host": "db.example.com",
-                "port": 5433,
-                "database": "test_db",
+            "VECTOR_DB": {
+                "POSTGRES_HOST": "db.example.com",
+                "POSTGRES_PORT": 5433,
+                "POSTGRES_DB": "test_db",
+                "POSTGRES_USER": "test_user",
+                "POSTGRES_PASSWORD": "test_password",
+                "POSTGRES_TABLE_NAME": "test_table",
+                "SIMILARITY_MEASURE": "cosine",
             },
             "providers": {
                 "default": "anthropic",
@@ -75,17 +74,19 @@ class TestConfigManager:
         monkeypatch.delenv("POSTGRES_DB", raising=False)
         monkeypatch.delenv("POSTGRES_USER", raising=False)
         monkeypatch.delenv("POSTGRES_PASSWORD", raising=False)
+        monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+        monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+        monkeypatch.delenv("GOOGLE_API_KEY", raising=False)
 
         config_data = {
-            "server": {
-                "host": "127.0.0.1",
-                "port": 8080,
-                "debug": True,
-            },
-            "vector_db": {
-                "host": "db.example.com",
-                "port": 5433,
-                "database": "test_db",
+            "VECTOR_DB": {
+                "POSTGRES_HOST": "db.example.com",
+                "POSTGRES_PORT": 5433,
+                "POSTGRES_DB": "test_db",
+                "POSTGRES_USER": "test_user",
+                "POSTGRES_PASSWORD": "test_password",
+                "POSTGRES_TABLE_NAME": "test_table",
+                "SIMILARITY_MEASURE": "cosine"
             },
             "providers": {
                 "default": "anthropic",
@@ -103,9 +104,6 @@ class TestConfigManager:
         try:
             config = ConfigManager.load_config(temp_path)
 
-            assert config.host == "127.0.0.1"
-            assert config.port == 8080
-            assert config.debug is True
             assert config.vector_store.host == "db.example.com"
             assert config.vector_store.port == 5433
             assert config.vector_store.database == "test_db"
@@ -162,13 +160,13 @@ class TestConfigManager:
     def test_validate_config(self, mock_config_file: Path) -> None:
         """Test configuration validation."""
         # Valid config with API key
-        config = Config()
+        config = ConfigManager.load_config(mock_config_file)
         config.llm.openai_api_key = "test-key"
         config.vector_store.password = "test-pass"
         ConfigManager.validate_config(config)
 
         # No API keys
-        config = Config()
+        config = ConfigManager.load_config(mock_config_file)
         config.llm.openai_api_key = None
         config.llm.anthropic_api_key = None
         config.llm.gemini_api_key = None
@@ -176,7 +174,7 @@ class TestConfigManager:
             ConfigManager.validate_config(config)
 
         # Invalid default provider
-        config = Config()
+        config = ConfigManager.load_config(mock_config_file)
         config.llm.openai_api_key = "test-key"
         config.llm.default_provider = "unknown"
         config.vector_store.password = "test-pass"
@@ -184,22 +182,22 @@ class TestConfigManager:
             ConfigManager.validate_config(config)
 
         # Default provider without API key
-        config = Config()
-        config.llm.anthropic_api_key = "test-key"
+        config = ConfigManager.load_config(mock_config_file)
+        config.llm.openai_api_key = None
         config.llm.default_provider = "openai"  # No OpenAI key
         config.vector_store.password = "test-pass"
         with pytest.raises(ValueError, match="has no API key configured"):
             ConfigManager.validate_config(config)
 
         # No database password
-        config = Config()
+        config = ConfigManager.load_config(mock_config_file)
         config.llm.openai_api_key = "test-key"
         config.vector_store.password = ""
         with pytest.raises(ValueError, match="Database password is required"):
             ConfigManager.validate_config(config)
 
         # Agent without sources
-        config = Config()
+        config = ConfigManager.load_config(mock_config_file)
         config.llm.openai_api_key = "test-key"
         config.vector_store.password = "test-pass"
         config.agents["test"] = AgentConfiguration(
@@ -212,7 +210,7 @@ class TestConfigManager:
             ConfigManager.validate_config(config)
 
         # Invalid default agent
-        config = Config()
+        config = ConfigManager.load_config(mock_config_file)
         config.llm.openai_api_key = "test-key"
         config.vector_store.password = "test-pass"
         config.default_agent_id = "unknown"

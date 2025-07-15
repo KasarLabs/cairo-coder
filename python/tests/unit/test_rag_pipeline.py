@@ -1,0 +1,550 @@
+"""
+Unit tests for RAG Pipeline.
+
+Tests the pipeline orchestration functionality including query processing,
+document retrieval, and response generation.
+"""
+
+import pytest
+from unittest.mock import Mock, AsyncMock, patch
+import asyncio
+
+from cairo_coder.core.types import (
+    Document,
+    DocumentSource,
+    Message,
+    ProcessedQuery,
+    StreamEvent
+)
+from cairo_coder.core.vector_store import VectorStore
+from cairo_coder.core.rag_pipeline import (
+    RagPipeline,
+    RagPipelineConfig,
+    RagPipelineFactory,
+    create_rag_pipeline
+)
+from cairo_coder.dspy.query_processor import QueryProcessorProgram
+from cairo_coder.dspy.document_retriever import DocumentRetrieverProgram
+from cairo_coder.dspy.generation_program import GenerationProgram, McpGenerationProgram
+
+
+class TestRagPipeline:
+    """Test suite for RagPipeline."""
+
+    @pytest.fixture
+    def mock_query_processor(self):
+        """Create a mock query processor."""
+        processor = Mock(spec=QueryProcessorProgram)
+        processor.forward.return_value = ProcessedQuery(
+            original="How do I create a Cairo contract?",
+            transformed=["cairo", "contract", "create"],
+            is_contract_related=True,
+            is_test_related=False,
+            resources=[DocumentSource.CAIRO_BOOK, DocumentSource.STARKNET_DOCS]
+        )
+        return processor
+
+    @pytest.fixture
+    def mock_document_retriever(self):
+        """Create a mock document retriever."""
+        retriever = Mock(spec=DocumentRetrieverProgram)
+        retriever.forward = AsyncMock(return_value=[
+            Document(
+                page_content="Cairo contracts are defined using #[starknet::contract].",
+                metadata={
+                    'title': 'Cairo Contracts',
+                    'url': 'https://book.cairo-lang.org/contracts',
+                    'source_display': 'Cairo Book'
+                }
+            ),
+            Document(
+                page_content="Storage variables use #[storage] attribute.",
+                metadata={
+                    'title': 'Storage Variables',
+                    'url': 'https://docs.starknet.io/storage',
+                    'source_display': 'Starknet Documentation'
+                }
+            )
+        ])
+        return retriever
+
+    @pytest.fixture
+    def mock_generation_program(self):
+        """Create a mock generation program."""
+        program = Mock(spec=GenerationProgram)
+
+        async def mock_streaming(*args, **kwargs):
+            chunks = [
+                "Here's how to create a Cairo contract:\n\n",
+                "```cairo\n#[starknet::contract]\n",
+                "mod SimpleContract {\n    // Implementation\n}\n```"
+            ]
+            for chunk in chunks:
+                yield chunk
+
+        program.forward_streaming = mock_streaming
+        return program
+
+    @pytest.fixture
+    def mock_mcp_generation_program(self):
+        """Create a mock MCP generation program."""
+        program = Mock(spec=McpGenerationProgram)
+        program.forward.return_value = """
+## 1. Cairo Contracts
+
+**Source:** Cairo Book
+**URL:** https://book.cairo-lang.org/contracts
+
+Cairo contracts are defined using #[starknet::contract].
+
+---
+
+## 2. Storage Variables
+
+**Source:** Starknet Documentation
+**URL:** https://docs.starknet.io/storage
+
+Storage variables use #[storage] attribute.
+"""
+        return program
+
+    @pytest.fixture
+    def pipeline_config(self, mock_vector_store, mock_query_processor,
+                       mock_document_retriever, mock_generation_program,
+                       mock_mcp_generation_program):
+        """Create a pipeline configuration."""
+        return RagPipelineConfig(
+            name="test_pipeline",
+            vector_store=mock_vector_store,
+            query_processor=mock_query_processor,
+            document_retriever=mock_document_retriever,
+            generation_program=mock_generation_program,
+            mcp_generation_program=mock_mcp_generation_program,
+            max_source_count=10,
+            similarity_threshold=0.4,
+        )
+
+    @pytest.fixture
+    def pipeline(self, pipeline_config):
+        """Create a RagPipeline instance."""
+        return RagPipeline(pipeline_config)
+
+    @pytest.mark.asyncio
+    async def test_normal_pipeline_execution(self, pipeline):
+        """Test normal pipeline execution with generation."""
+        query = "How do I create a Cairo contract?"
+
+        events = []
+        async for event in pipeline.forward(query=query):
+            events.append(event)
+
+        # Verify event sequence
+        event_types = [event.type for event in events]
+        assert "processing" in event_types
+        assert "sources" in event_types
+        assert "response" in event_types
+        assert "end" in event_types
+
+        # Verify sources event
+        sources_event = next(e for e in events if e.type == "sources")
+        assert isinstance(sources_event.data, list)
+        assert len(sources_event.data) == 2
+        assert sources_event.data[0]['title'] == 'Cairo Contracts'
+        assert sources_event.data[1]['title'] == 'Storage Variables'
+
+        # Verify response events
+        response_events = [e for e in events if e.type == "response"]
+        assert len(response_events) == 3  # Three chunks from mock
+
+        # Verify end event
+        end_event = next(e for e in events if e.type == "end")
+        assert end_event.data is None
+
+    @pytest.mark.asyncio
+    async def test_mcp_mode_pipeline_execution(self, pipeline):
+        """Test MCP mode pipeline execution."""
+        query = "How do I create a Cairo contract?"
+
+        events = []
+        async for event in pipeline.forward(query=query, mcp_mode=True):
+            events.append(event)
+
+        # Verify event sequence
+        event_types = [event.type for event in events]
+        assert "processing" in event_types
+        assert "sources" in event_types
+        assert "response" in event_types
+        assert "end" in event_types
+
+        # Verify MCP response
+        response_events = [e for e in events if e.type == "response"]
+        assert len(response_events) == 1
+        response_data = response_events[0].data
+        assert "## 1. Cairo Contracts" in response_data
+        assert "Cairo Book" in response_data
+        assert "Storage Variables" in response_data
+
+    @pytest.mark.asyncio
+    async def test_pipeline_with_chat_history(self, pipeline):
+        """Test pipeline execution with chat history."""
+        query = "How do I add storage to that contract?"
+        chat_history = [
+            Message(role="user", content="How do I create a contract?"),
+            Message(role="assistant", content="Here's how to create a contract...")
+        ]
+
+        events = []
+        async for event in pipeline.forward(query=query, chat_history=chat_history):
+            events.append(event)
+
+        # Verify pipeline executed successfully
+        assert len(events) > 0
+        assert events[-1].type == "end"
+
+        # Verify chat history was formatted and passed
+        pipeline.query_processor.forward.assert_called_once()
+        call_args = pipeline.query_processor.forward.call_args
+        assert "User:" in call_args[1]['chat_history']
+        assert "Assistant:" in call_args[1]['chat_history']
+
+    @pytest.mark.asyncio
+    async def test_pipeline_with_custom_sources(self, pipeline):
+        """Test pipeline execution with custom sources."""
+        query = "How do I configure Scarb?"
+        sources = [DocumentSource.SCARB_DOCS]
+
+        events = []
+        async for event in pipeline.forward(query=query, sources=sources):
+            events.append(event)
+
+        # Verify custom sources were used
+        pipeline.document_retriever.forward.assert_called_once()
+        call_args = pipeline.document_retriever.forward.call_args[1]
+        assert call_args['sources'] == sources
+
+    @pytest.mark.asyncio
+    async def test_pipeline_error_handling(self, pipeline):
+        """Test pipeline error handling."""
+        # Mock an error in document retrieval
+        pipeline.document_retriever.forward.side_effect = Exception("Retrieval error")
+
+        query = "How do I create a contract?"
+
+        events = []
+        async for event in pipeline.forward(query=query):
+            events.append(event)
+
+        # Should have an error event
+        error_events = [e for e in events if e.type == "error"]
+        assert len(error_events) == 1
+        assert "error" in error_events[0].data.lower()
+
+    def test_format_chat_history(self, pipeline):
+        """Test chat history formatting."""
+        messages = [
+            Message(role="user", content="How do I create a contract?"),
+            Message(role="assistant", content="Here's how..."),
+            Message(role="user", content="How do I add storage?")
+        ]
+
+        formatted = pipeline._format_chat_history(messages)
+
+        assert "User: How do I create a contract?" in formatted
+        assert "Assistant: Here's how..." in formatted
+        assert "User: How do I add storage?" in formatted
+        assert formatted.count("User:") == 2
+        assert formatted.count("Assistant:") == 1
+
+    def test_format_empty_chat_history(self, pipeline):
+        """Test formatting empty chat history."""
+        formatted = pipeline._format_chat_history([])
+        assert formatted == ""
+
+    def test_format_sources(self, pipeline):
+        """Test source formatting."""
+        documents = [
+            Document(
+                page_content="This is a long document content that should be truncated when creating preview..." + "x" * 200,
+                metadata={
+                    'title': 'Test Document',
+                    'url': 'https://example.com',
+                    'source_display': 'Test Source'
+                }
+            )
+        ]
+
+        sources = pipeline._format_sources(documents)
+
+        assert len(sources) == 1
+        source = sources[0]
+        assert source['title'] == 'Test Document'
+        assert source['url'] == 'https://example.com'
+        assert source['source_display'] == 'Test Source'
+        assert len(source['content_preview']) <= 203  # 200 chars + "..."
+        assert source['content_preview'].endswith('...')
+
+    def test_prepare_context(self, pipeline):
+        """Test context preparation."""
+        documents = [
+            Document(
+                page_content="Cairo contracts are defined using #[starknet::contract].",
+                metadata={
+                    'title': 'Cairo Contracts',
+                    'url': 'https://book.cairo-lang.org/contracts',
+                    'source_display': 'Cairo Book'
+                }
+            )
+        ]
+
+        processed_query = ProcessedQuery(
+            original="How do I create a Cairo contract?",
+            transformed=["cairo", "contract"],
+            is_contract_related=True,
+            is_test_related=False,
+            resources=[DocumentSource.CAIRO_BOOK]
+        )
+
+        context = pipeline._prepare_context(documents, processed_query)
+
+        assert "Query Analysis:" in context
+        assert "Original query: How do I create a Cairo contract?" in context
+        assert "Search terms: cairo, contract" in context
+        assert "Contract-related: True" in context
+        assert "Test-related: False" in context
+        assert "## 1. Cairo Contracts" in context
+        assert "Source: Cairo Book" in context
+        assert "starknet::contract" in context
+
+    def test_prepare_context_empty_documents(self, pipeline):
+        """Test context preparation with empty documents."""
+        processed_query = ProcessedQuery(
+            original="Test query",
+            transformed=["test"],
+            is_contract_related=False,
+            is_test_related=False,
+            resources=[]
+        )
+
+        context = pipeline._prepare_context([], processed_query)
+        assert "No relevant documentation found." in context
+
+    def test_prepare_context_with_templates(self, pipeline):
+        """Test context preparation with templates."""
+        # Set templates in config
+        pipeline.config.contract_template = "Contract template content"
+        pipeline.config.test_template = "Test template content"
+
+        documents = [Document(page_content="Test doc", metadata={})]
+
+        # Test contract template
+        processed_query = ProcessedQuery(
+            original="Contract query",
+            transformed=["contract"],
+            is_contract_related=True,
+            is_test_related=False,
+            resources=[]
+        )
+
+        context = pipeline._prepare_context(documents, processed_query)
+        assert "Contract Development Guidelines:" in context
+        assert "Contract template content" in context
+
+        # Test test template
+        processed_query = ProcessedQuery(
+            original="Test query",
+            transformed=["test"],
+            is_contract_related=False,
+            is_test_related=True,
+            resources=[]
+        )
+
+        context = pipeline._prepare_context(documents, processed_query)
+        assert "Testing Guidelines:" in context
+        assert "Test template content" in context
+
+    def test_get_current_state(self, pipeline):
+        """Test getting current pipeline state."""
+        # Set some state
+        pipeline._current_processed_query = ProcessedQuery(
+            original="test",
+            transformed=["test"],
+            is_contract_related=False,
+            is_test_related=False,
+            resources=[]
+        )
+        pipeline._current_documents = [Document(page_content="test", metadata={})]
+
+        state = pipeline.get_current_state()
+
+        assert state['processed_query'] is not None
+        assert state['documents_count'] == 1
+        assert len(state['documents']) == 1
+        assert state['config']['name'] == 'test_pipeline'
+        assert state['config']['max_source_count'] == 10
+        assert state['config']['similarity_threshold'] == 0.4
+
+
+class TestRagPipelineFactory:
+    """Test suite for RagPipelineFactory."""
+
+    @pytest.fixture
+    def mock_vector_store(self):
+        """Create a mock vector store."""
+        return Mock(spec=VectorStore)
+
+    def test_create_pipeline_with_defaults(self, mock_vector_store):
+        """Test creating pipeline with default components."""
+        with patch('cairo_coder.dspy.create_query_processor') as mock_create_qp, \
+             patch('cairo_coder.dspy.create_document_retriever') as mock_create_dr, \
+             patch('cairo_coder.dspy.create_generation_program') as mock_create_gp, \
+             patch('cairo_coder.dspy.create_mcp_generation_program') as mock_create_mcp:
+
+            mock_create_qp.return_value = Mock()
+            mock_create_dr.return_value = Mock()
+            mock_create_gp.return_value = Mock()
+            mock_create_mcp.return_value = Mock()
+
+            pipeline = RagPipelineFactory.create_pipeline(
+                name="test_pipeline",
+                vector_store=mock_vector_store
+            )
+
+            assert isinstance(pipeline, RagPipeline)
+            assert pipeline.config.name == "test_pipeline"
+            assert pipeline.config.vector_store == mock_vector_store
+            assert pipeline.config.max_source_count == 10
+            assert pipeline.config.similarity_threshold == 0.4
+
+            # Verify factory functions were called
+            mock_create_qp.assert_called_once()
+            mock_create_dr.assert_called_once_with(
+                vector_store=mock_vector_store,
+                max_source_count=10,
+                similarity_threshold=0.4
+            )
+            mock_create_gp.assert_called_once_with("general")
+            mock_create_mcp.assert_called_once()
+
+    def test_create_pipeline_with_custom_components(self, mock_vector_store):
+        """Test creating pipeline with custom components."""
+        custom_query_processor = Mock()
+        custom_document_retriever = Mock()
+        custom_generation_program = Mock()
+        custom_mcp_program = Mock()
+
+        pipeline = RagPipelineFactory.create_pipeline(
+            name="custom_pipeline",
+            vector_store=mock_vector_store,
+            query_processor=custom_query_processor,
+            document_retriever=custom_document_retriever,
+            generation_program=custom_generation_program,
+            mcp_generation_program=custom_mcp_program,
+            max_source_count=20,
+            similarity_threshold=0.6,
+            sources=[DocumentSource.CAIRO_BOOK],
+            contract_template="Custom contract template",
+            test_template="Custom test template"
+        )
+
+        assert isinstance(pipeline, RagPipeline)
+        assert pipeline.config.name == "custom_pipeline"
+        assert pipeline.config.query_processor == custom_query_processor
+        assert pipeline.config.document_retriever == custom_document_retriever
+        assert pipeline.config.generation_program == custom_generation_program
+        assert pipeline.config.mcp_generation_program == custom_mcp_program
+        assert pipeline.config.max_source_count == 20
+        assert pipeline.config.similarity_threshold == 0.6
+        assert pipeline.config.sources == [DocumentSource.CAIRO_BOOK]
+        assert pipeline.config.contract_template == "Custom contract template"
+        assert pipeline.config.test_template == "Custom test template"
+
+    def test_create_scarb_pipeline(self, mock_vector_store):
+        """Test creating Scarb-specific pipeline."""
+        with patch('cairo_coder.dspy.create_generation_program') as mock_create_gp:
+            mock_scarb_program = Mock()
+            mock_create_gp.return_value = mock_scarb_program
+
+            pipeline = RagPipelineFactory.create_scarb_pipeline(
+                name="scarb_pipeline",
+                vector_store=mock_vector_store
+            )
+
+            assert isinstance(pipeline, RagPipeline)
+            assert pipeline.config.name == "scarb_pipeline"
+            assert pipeline.config.sources == [DocumentSource.SCARB_DOCS]
+            assert pipeline.config.max_source_count == 5
+
+            # Verify Scarb generation program was created
+            mock_create_gp.assert_called_with("scarb")
+
+    def test_create_rag_pipeline_convenience_function(self, mock_vector_store):
+        """Test the convenience function for creating RAG pipeline."""
+        with patch('cairo_coder.core.rag_pipeline.RagPipelineFactory.create_pipeline') as mock_create:
+            mock_create.return_value = Mock()
+
+            pipeline = create_rag_pipeline(
+                name="convenience_pipeline",
+                vector_store=mock_vector_store,
+                max_source_count=15
+            )
+
+            mock_create.assert_called_once_with(
+                "convenience_pipeline",
+                mock_vector_store,
+                max_source_count=15
+            )
+
+
+class TestRagPipelineConfig:
+    """Test suite for RagPipelineConfig."""
+
+    def test_pipeline_config_creation(self):
+        """Test creating pipeline configuration."""
+        mock_vector_store = Mock()
+        mock_query_processor = Mock()
+        mock_document_retriever = Mock()
+        mock_generation_program = Mock()
+        mock_mcp_program = Mock()
+
+        config = RagPipelineConfig(
+            name="test_config",
+            vector_store=mock_vector_store,
+            query_processor=mock_query_processor,
+            document_retriever=mock_document_retriever,
+            generation_program=mock_generation_program,
+            mcp_generation_program=mock_mcp_program,
+            max_source_count=15,
+            similarity_threshold=0.5,
+            sources=[DocumentSource.CAIRO_BOOK],
+            contract_template="Contract template",
+            test_template="Test template",
+        )
+
+        assert config.name == "test_config"
+        assert config.vector_store == mock_vector_store
+        assert config.query_processor == mock_query_processor
+        assert config.document_retriever == mock_document_retriever
+        assert config.generation_program == mock_generation_program
+        assert config.mcp_generation_program == mock_mcp_program
+        assert config.max_source_count == 15
+        assert config.similarity_threshold == 0.5
+        assert config.sources == [DocumentSource.CAIRO_BOOK]
+        assert config.contract_template == "Contract template"
+        assert config.test_template == "Test template"
+
+    def test_pipeline_config_defaults(self):
+        """Test pipeline configuration with default values."""
+        config = RagPipelineConfig(
+            name="default_config",
+            vector_store=Mock(),
+            query_processor=Mock(),
+            document_retriever=Mock(),
+            generation_program=Mock(),
+            mcp_generation_program=Mock(),
+        )
+
+        assert config.max_source_count == 10
+        assert config.similarity_threshold == 0.4
+        assert config.sources is None
+        assert config.contract_template is None
+        assert config.test_template is None
