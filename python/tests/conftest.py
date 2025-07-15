@@ -40,8 +40,11 @@ def mock_vector_store():
     mock_store.delete_by_source = AsyncMock()
     mock_store.count_by_source = AsyncMock(return_value=0)
     mock_store.close = AsyncMock()
-    mock_store.embedding_client = None
     mock_store.get_pool_status = AsyncMock(return_value={"status": "healthy"})
+    mock_config = Mock(spec=VectorStoreConfig)
+    mock_config.dsn = "postgresql://test_user:test_pass@localhost:5432/test_db"
+    mock_config.table_name = "test_table"
+    mock_store.config = mock_config
     return mock_store
 
 

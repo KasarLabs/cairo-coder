@@ -506,7 +506,7 @@ def get_vector_store() -> VectorStore:
     config = ConfigManager.load_config()
 
     # Load from environment or config
-    config = VectorStoreConfig(
+    vector_store_config = VectorStoreConfig(
         host=config.vector_store.host,
         port=config.vector_store.port,
         database=config.vector_store.database,
@@ -516,7 +516,7 @@ def get_vector_store() -> VectorStore:
         similarity_measure=config.vector_store.similarity_measure
     )
 
-    return VectorStore(config)
+    return VectorStore(vector_store_config)
 
 
 # Create FastAPI app instance

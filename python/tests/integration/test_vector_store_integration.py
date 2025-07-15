@@ -43,44 +43,44 @@ class TestVectorStoreIntegration:
         return pool
 
     @pytest.fixture
-    async def vector_store_with_mock_db(
+    async def vector_store(
         self,
         vector_store_config: VectorStoreConfig,
         mock_pool: AsyncMock
     ) -> AsyncGenerator[VectorStore, None]:
         """Create vector store with mocked database."""
-        store = VectorStore(vector_store_config, openai_api_key="test-key")
+        store = VectorStore(vector_store_config)
         store.pool = mock_pool
         yield store
         # No need to close since we're using a mock
 
-    @pytest.fixture
-    async def vector_store_no_api_key(
-        self,
-        vector_store_config: VectorStoreConfig,
-        mock_pool: AsyncMock
-    ) -> AsyncGenerator[VectorStore, None]:
-        """Create vector store without API key."""
-        store = VectorStore(vector_store_config, openai_api_key=None)
-        store.pool = mock_pool
-        yield store
+    # @pytest.fixture
+    # async def vector_store(
+    #     self,
+    #     vector_store_config: VectorStoreConfig,
+    #     mock_pool: AsyncMock
+    # ) -> AsyncGenerator[VectorStore, None]:
+    #     """Create vector store without API key."""
+    #     store = VectorStore(vector_store_config, openai_api_key=None)
+    #     store.pool = mock_pool
+    #     yield store
 
     @pytest.mark.asyncio
-    async def test_database_connection(self, vector_store_no_api_key: VectorStore, mock_pool: AsyncMock) -> None:
+    async def test_database_connection(self, vector_store: VectorStore, mock_pool: AsyncMock) -> None:
         """Test basic database connection."""
         # Mock the connection response
         mock_conn = mock_pool.acquire.return_value.__aenter__.return_value
         mock_conn.fetchval.return_value = 1
 
         # Should be able to query the database
-        async with vector_store_no_api_key.pool.acquire() as conn:
+        async with vector_store.pool.acquire() as conn:
             result = await conn.fetchval("SELECT 1")
             assert result == 1
 
     @pytest.mark.asyncio
     async def test_add_and_retrieve_documents(
         self,
-        vector_store_no_api_key: VectorStore,
+        vector_store: VectorStore,
         mock_pool: AsyncMock
     ) -> None:
         """Test adding documents and retrieving them without embeddings."""
@@ -92,19 +92,19 @@ class TestVectorStoreIntegration:
         ]
 
         # Test count by source
-        counts = await vector_store_no_api_key.count_by_source()
+        counts = await vector_store.count_by_source()
         assert counts[DocumentSource.CAIRO_BOOK.value] == 1
         assert counts[DocumentSource.STARKNET_DOCS.value] == 1
 
     @pytest.mark.asyncio
-    async def test_delete_by_source(self, vector_store_no_api_key: VectorStore, mock_pool: AsyncMock) -> None:
+    async def test_delete_by_source(self, vector_store: VectorStore, mock_pool: AsyncMock) -> None:
         """Test deleting documents by source."""
         # Mock the delete operation
         mock_conn = mock_pool.acquire.return_value.__aenter__.return_value
         mock_conn.execute.return_value = "DELETE 3"
 
         # Delete Cairo book documents
-        deleted = await vector_store_no_api_key.delete_by_source(DocumentSource.CAIRO_BOOK)
+        deleted = await vector_store.delete_by_source(DocumentSource.CAIRO_BOOK)
         assert deleted == 3
 
         # Verify delete was called with correct query
@@ -117,7 +117,7 @@ class TestVectorStoreIntegration:
     @pytest.mark.asyncio
     async def test_similarity_search_with_mock_embeddings(
         self,
-        vector_store_with_mock_db: VectorStore,
+        vector_store: VectorStore,
         mock_pool: AsyncMock,
         monkeypatch: pytest.MonkeyPatch
     ) -> None:
@@ -126,12 +126,12 @@ class TestVectorStoreIntegration:
         async def mock_embed_text(text: str) -> List[float]:
             # Return different embeddings based on content
             if "cairo" in text.lower():
-                return [1.0, 0.0, 0.0] + [0.0] * (vector_store_with_mock_db.config.embedding_dimension - 3)
+                return [1.0, 0.0, 0.0] + [0.0] * (vector_store.config.embedding_dimension - 3)
             else:
-                return [0.0, 1.0, 0.0] + [0.0] * (vector_store_with_mock_db.config.embedding_dimension - 3)
-        
-        monkeypatch.setattr(vector_store_with_mock_db, "_embed_text", mock_embed_text)
-        
+                return [0.0, 1.0, 0.0] + [0.0] * (vector_store.config.embedding_dimension - 3)
+
+        monkeypatch.setattr(vector_store, "_embed_text", mock_embed_text)
+
         # Mock database results
         mock_conn = mock_pool.acquire.return_value.__aenter__.return_value
         mock_conn.fetch.return_value = [
@@ -148,28 +148,17 @@ class TestVectorStoreIntegration:
                 "similarity": 0.85
             }
         ]
-        
+
         # Search for Cairo-related content
-        results = await vector_store_with_mock_db.similarity_search(
+        results = await vector_store.similarity_search(
             query="Tell me about Cairo",
             k=2
         )
-        
+
         # Should return Cairo document first due to embedding similarity
         assert len(results) == 2
         assert "cairo" in results[0].page_content.lower()
         assert results[0].metadata["similarity"] == 0.95
-
-    @pytest.mark.asyncio
-    async def test_error_handling_without_api_key(self, vector_store_no_api_key: VectorStore) -> None:
-        """Test that operations requiring embeddings fail gracefully without API key."""
-        with pytest.raises(ValueError, match="OpenAI API key required"):
-            await vector_store_no_api_key.similarity_search("test query")
-
-        with pytest.raises(ValueError, match="OpenAI API key required"):
-            await vector_store_no_api_key.add_documents([
-                Document(page_content="test", metadata={})
-            ])
 
     @pytest.mark.asyncio
     async def test_cosine_similarity_computation(self) -> None:

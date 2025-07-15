@@ -17,12 +17,26 @@ from cairo_coder.core.types import DocumentSource, ProcessedQuery
 
 logger = structlog.get_logger(__name__)
 
+RESOURCE_DESCRIPTIONS = {
+  "cairo_book":
+    'The Cairo Programming Language Book. Essential for core language syntax, semantics, types (felt252, structs, enums, Vec), traits, generics, control flow, memory management, writing tests, organizing a project, standard library usage, starknet interactions. Crucial for smart contract structure, storage, events, ABI, syscalls, contract deployment, interaction, L1<>L2 messaging, Starknet-specific attributes.',
+  "starknet_docs":
+    'The Starknet Documentation. For Starknet protocol, architecture, APIs, syscalls, network interaction, deployment, ecosystem tools (Starkli, indexers), general Starknet knowledge.',
+  "starknet_foundry":
+    'The Starknet Foundry Documentation. For using the Foundry toolchain: writing, compiling, testing (unit tests, integration tests), and debugging Starknet contracts.',
+  "cairo_by_example":
+    'Cairo by Example Documentation. Provides practical Cairo code snippets for specific language features or common patterns. Useful for how-to syntax questions.',
+  "openzeppelin_docs":
+    'OpenZeppelin Cairo Contracts Documentation. For using the OZ library: standard implementations (ERC20, ERC721), access control, security patterns, contract upgradeability. Crucial for building standard-compliant contracts.',
+  "corelib_docs":
+    'Cairo Core Library Documentation. For using the Cairo core library: basic types, stdlib functions, stdlib structs, macros, and other core concepts. Essential for Cairo programming questions.',
+  "scarb_docs":
+    'Scarb Documentation. For using the Scarb package manager: building, compiling, generating compilation artifacts, managing dependencies, configuration of Scarb.toml.',
+};
 
 class CairoQueryAnalysis(Signature):
     """
     Analyze a Cairo programming query to extract search terms and identify relevant documentation sources.
-
-    This signature defines the input-output interface for the query processing step of the RAG pipeline.
     """
 
     chat_history: Optional[str] = InputField(
@@ -39,7 +53,7 @@ class CairoQueryAnalysis(Signature):
     )
 
     resources: str = OutputField(
-        desc="List of documentation sources from: cairo_book, starknet_docs, starknet_foundry, cairo_by_example, openzeppelin_docs, corelib_docs, scarb_docs, separated by commas"
+        desc="List of documentation sources. Available sources: " + ", ".join([f"{key}: {value}" for key, value in RESOURCE_DESCRIPTIONS.items()])
     )
 
 
@@ -67,37 +81,6 @@ class QueryProcessorProgram(dspy.Module):
             'should_panic', 'expected', 'setup', 'teardown', 'coverage'
         }
 
-        # Source-specific keywords mapping
-        self.source_keywords = {
-            DocumentSource.CAIRO_BOOK: {
-                'syntax', 'language', 'type', 'variable', 'function', 'struct',
-                'enum', 'match', 'loop', 'array', 'felt', 'ownership'
-            },
-            DocumentSource.STARKNET_DOCS: {
-                'contract', 'starknet', 'account', 'transaction', 'fee', 'sequencer',
-                'prover', 'verifier', 'l1', 'l2', 'bridge', 'state'
-            },
-            DocumentSource.STARKNET_FOUNDRY: {
-                'foundry', 'forge', 'cast', 'anvil', 'test', 'deploy', 'script',
-                'cheatcode', 'fuzz', 'invariant'
-            },
-            DocumentSource.CAIRO_BY_EXAMPLE: {
-                'example', 'tutorial', 'guide', 'walkthrough', 'sample', 'demo'
-            },
-            DocumentSource.OPENZEPPELIN_DOCS: {
-                'openzeppelin', 'oz', 'standard', 'erc', 'token', 'access', 'security',
-                'upgradeable', 'governance', 'utils'
-            },
-            DocumentSource.CORELIB_DOCS: {
-                'corelib', 'core', 'library', 'builtin', 'primitive', 'trait',
-                'implementation', 'generic'
-            },
-            DocumentSource.SCARB_DOCS: {
-                'scarb', 'build', 'package', 'dependency', 'cargo', 'toml',
-                'manifest', 'workspace', 'profile'
-            }
-        }
-
     def forward(self, query: str, chat_history: Optional[str] = None) -> ProcessedQuery:
         """
         Process a user query into a structured format for document retrieval.
@@ -109,17 +92,14 @@ class QueryProcessorProgram(dspy.Module):
         Returns:
             ProcessedQuery with search terms, resource identification, and categorization
         """
-        logger.info("Processing query", query=query, chat_history=chat_history)
         if chat_history is None:
             chat_history = ""
 
         # Execute the DSPy retrieval program
-        logger.info("Executing retrieval program", query=query, chat_history=chat_history)
         result = self.retrieval_program.forward(
             query=query,
             chat_history=chat_history
         )
-        logger.info("Retrieval program result", result=result)
 
         # Parse and validate the results
         search_terms = self._parse_search_terms(result.search_terms)
@@ -129,6 +109,8 @@ class QueryProcessorProgram(dspy.Module):
         enhanced_terms = self._enhance_search_terms(query, search_terms)
 
         # Build structured query result
+        logger.info(f"Processed query: {query} \n"
+                    f"Generated: search_terms={search_terms}, resources={resources}, enhanced_terms={enhanced_terms}")
         return ProcessedQuery(
             original=query,
             transformed=enhanced_terms,
@@ -257,31 +239,6 @@ class QueryProcessorProgram(dspy.Module):
         """
         query_lower = query.lower()
         return any(keyword in query_lower for keyword in self.test_keywords)
-
-    def _get_relevant_sources(self, query: str) -> List[DocumentSource]:
-        """
-        Determine relevant documentation sources based on query content.
-
-        Args:
-            query: User query to analyze
-
-        Returns:
-            List of relevant DocumentSource values
-        """
-        query_lower = query.lower()
-        relevant_sources = []
-
-        # Check each source for relevant keywords
-        for source, keywords in self.source_keywords.items():
-            if any(keyword in query_lower for keyword in keywords):
-                relevant_sources.append(source)
-
-        # Default to Cairo Book if no specific sources identified
-        if not relevant_sources:
-            relevant_sources = [DocumentSource.CAIRO_BOOK]
-
-        return relevant_sources
-
 
 def create_query_processor() -> QueryProcessorProgram:
     """

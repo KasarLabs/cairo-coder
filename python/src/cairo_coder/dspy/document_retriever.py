@@ -9,7 +9,11 @@ import asyncio
 from typing import List, Optional, Tuple
 import numpy as np
 
+import openai
+import psycopg2
+
 import dspy
+from dspy.retrieve.pgvector_rm import PgVectorRM
 from openai import AsyncOpenAI
 
 from cairo_coder.core.types import Document, DocumentSource, ProcessedQuery
@@ -29,8 +33,13 @@ class DocumentRetrieverProgram(dspy.Module):
     3. Attach metadata and filter by similarity threshold
     """
 
-    def __init__(self, vector_store: VectorStore, max_source_count: int = 10,
-                 similarity_threshold: float = 0.4, embedding_model: str = "text-embedding-3-large"):
+    def __init__(
+        self,
+        vector_store: VectorStore,
+        max_source_count: int = 10,
+        similarity_threshold: float = 0.4,
+        embedding_model: str = "text-embedding-3-large",
+    ):
         """
         Initialize the DocumentRetrieverProgram.
 
@@ -46,12 +55,9 @@ class DocumentRetrieverProgram(dspy.Module):
         self.similarity_threshold = similarity_threshold
         self.embedding_model = embedding_model
 
-        # Initialize OpenAI client for embeddings (if available)
-        self.embedding_client = None
-        if hasattr(vector_store, 'embedding_client') and vector_store.embedding_client:
-            self.embedding_client = vector_store.embedding_client
-
-    async def forward(self, processed_query: ProcessedQuery, sources: Optional[List[DocumentSource]] = None) -> List[Document]:
+    async def forward(
+        self, processed_query: ProcessedQuery, sources: Optional[List[DocumentSource]] = None
+    ) -> List[Document]:
         """
         Execute the document retrieval process.
 
@@ -69,17 +75,20 @@ class DocumentRetrieverProgram(dspy.Module):
         # Step 1: Fetch documents from vector store
         documents = await self._fetch_documents(processed_query, sources)
 
+        # TODO: No source found means no answer can be given!
         if not documents:
             return []
 
-        # Step 2: Rerank documents using embedding similarity
-        if self.embedding_client:
-            documents = await self._rerank_documents(processed_query.original, documents)
+        # TODO: dead code elimination once confirmed
+        # Reraking should not be required as the retriever is already ranking documents.
+        # # Step 2: Rerank documents using embedding similarity
+        # documents = await self._rerank_documents(processed_query.original, documents)
 
-        # Final filtering and limiting
-        return documents[:self.max_source_count]
+        return documents
 
-    async def _fetch_documents(self, processed_query: ProcessedQuery, sources: List[DocumentSource]) -> List[Document]:
+    async def _fetch_documents(
+        self, processed_query: ProcessedQuery, sources: List[DocumentSource]
+    ) -> List[Document]:
         """
         Fetch documents from vector store using similarity search.
 
@@ -91,23 +100,41 @@ class DocumentRetrieverProgram(dspy.Module):
             List of Document objects from vector store
         """
         try:
-            # Use the original query for vector similarity search
-            query_text = processed_query.original
-
-            # Search in vector store
-            documents = await self.vector_store.similarity_search(
-                query=query_text,
-                k=self.max_source_count * 2,  # Fetch more for reranking
-                sources=sources
+            openai_client = openai.OpenAI()
+            db_url = self.vector_store.config.dsn
+            pg_table_name = self.vector_store.config.table_name
+            retriever = PgVectorRM(
+                db_url=db_url,
+                pg_table_name=pg_table_name,
+                openai_client=openai_client,
+                content_field="content",
+                fields=["id", "content", "metadata"],
+                k=self.max_source_count,
             )
+            dspy.settings.configure(rm=retriever)
+
+            # TODO improve with proper re-phrased text.
+            search_terms = ", ".join([st for st in processed_query.transformed])
+            retrieval_query = f"{processed_query.original}, tags: {search_terms}"
+            retrieved_examples: List[dspy.Example] = retriever(retrieval_query)
+
+            # Convert to Document objects
+            documents = []
+            for ex in retrieved_examples:
+                doc = Document(
+                    page_content=ex.content,
+                    metadata=ex.metadata
+                )
+                documents.append(doc)
 
             return documents
 
         except Exception as e:
-            # Log error and return empty list
-            logger.error(f"Error fetching documents: {e}")
-            return []
+            import traceback
+            logger.error(f"Error fetching documents: {traceback.format_exc()}")
+            raise e
 
+    # TODO: dead code elimination – remove once confirmed
     async def _rerank_documents(self, query: str, documents: List[Document]) -> List[Document]:
         """
         Rerank documents by cosine similarity using embeddings.
@@ -119,7 +146,7 @@ class DocumentRetrieverProgram(dspy.Module):
         Returns:
             List of documents ranked by similarity
         """
-        if not self.embedding_client or not documents:
+        if not documents:
             return documents
 
         try:
@@ -149,8 +176,7 @@ class DocumentRetrieverProgram(dspy.Module):
 
             # Filter by similarity threshold
             filtered_pairs = [
-                (doc, sim) for doc, sim in doc_sim_pairs
-                if sim >= self.similarity_threshold
+                (doc, sim) for doc, sim in doc_sim_pairs if sim >= self.similarity_threshold
             ]
 
             # Sort by similarity (descending)
@@ -160,9 +186,11 @@ class DocumentRetrieverProgram(dspy.Module):
             return [doc for doc, _ in filtered_pairs]
 
         except Exception as e:
-            print(f"Error reranking documents: {e}")
-            return documents
+            import traceback
+            logger.error(f"Error reranking documents: {traceback.format_exc()}")
+            raise e
 
+    # TODO: dead code elimination – remove once confirmed
     async def _get_embedding(self, text: str) -> List[float]:
         """
         Get embedding for a single text.
@@ -173,16 +201,11 @@ class DocumentRetrieverProgram(dspy.Module):
         Returns:
             List of embedding values
         """
-        try:
-            response = await self.embedding_client.embeddings.create(
-                model=self.embedding_model,
-                input=text
-            )
-            return response.data[0].embedding
-        except Exception as e:
-            print(f"Error getting embedding: {e}")
-            return []
+        embeddings = self.vector_store.embedder([text])
+        # DSPy Embedder returns a 2D array/list, we need the first row
+        return embeddings[0] if isinstance(embeddings, list) else embeddings[0].tolist()
 
+    # TODO: dead code elimination – remove once confirmed
     async def _get_embeddings(self, texts: List[str]) -> List[List[float]]:
         """
         Get embeddings for multiple texts.
@@ -193,28 +216,25 @@ class DocumentRetrieverProgram(dspy.Module):
         Returns:
             List of embedding lists
         """
-        try:
-            # Process in batches to avoid rate limits
-            batch_size = 100
-            embeddings = []
+        # Process in batches to avoid rate limits
+        batch_size = 100
+        all_embeddings = []
 
-            for i in range(0, len(texts), batch_size):
-                batch = texts[i:i + batch_size]
+        for i in range(0, len(texts), batch_size):
+            batch = texts[i : i + batch_size]
 
-                response = await self.embedding_client.embeddings.create(
-                    model=self.embedding_model,
-                    input=batch
-                )
+            # DSPy Embedder returns embeddings as 2D array/list
+            embeddings = self.vector_store.embedder(batch)
 
-                batch_embeddings = [data.embedding for data in response.data]
-                embeddings.extend(batch_embeddings)
+            # Convert to list of lists if numpy array
+            if hasattr(embeddings, "tolist"):
+                embeddings = embeddings.tolist()
 
-            return embeddings
+            all_embeddings.extend(embeddings)
 
-        except Exception as e:
-            print(f"Error getting embeddings: {e}")
-            return [[] for _ in texts]
+        return all_embeddings
 
+    # TODO: dead code elimination – remove once confirmed
     def _cosine_similarity(self, vec1: List[float], vec2: List[float]) -> float:
         """
         Calculate cosine similarity between two vectors.
@@ -251,8 +271,9 @@ class DocumentRetrieverProgram(dspy.Module):
             return 0.0
 
 
-def create_document_retriever(vector_store: VectorStore, max_source_count: int = 10,
-                             similarity_threshold: float = 0.4) -> DocumentRetrieverProgram:
+def create_document_retriever(
+    vector_store: VectorStore, max_source_count: int = 10, similarity_threshold: float = 0.4
+) -> DocumentRetrieverProgram:
     """
     Factory function to create a DocumentRetrieverProgram instance.
 
@@ -267,5 +288,5 @@ def create_document_retriever(vector_store: VectorStore, max_source_count: int =
     return DocumentRetrieverProgram(
         vector_store=vector_store,
         max_source_count=max_source_count,
-        similarity_threshold=similarity_threshold
+        similarity_threshold=similarity_threshold,
     )

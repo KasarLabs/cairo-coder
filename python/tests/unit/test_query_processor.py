@@ -149,28 +149,6 @@ class TestQueryProcessorProgram:
         for query in non_test_queries:
             assert processor._is_test_query(query) is False
 
-    def test_source_relevance_detection(self, processor):
-        """Test detection of relevant sources based on query content."""
-        # Test Scarb-related query
-        scarb_query = "How to configure Scarb build profiles?"
-        sources = processor._get_relevant_sources(scarb_query)
-        assert DocumentSource.SCARB_DOCS in sources
-
-        # Test OpenZeppelin-related query
-        oz_query = "How to use OpenZeppelin ERC20 implementation?"
-        sources = processor._get_relevant_sources(oz_query)
-        assert DocumentSource.OPENZEPPELIN_DOCS in sources
-
-        # Test Starknet Foundry-related query
-        foundry_query = "How to use Foundry for Cairo testing?"
-        sources = processor._get_relevant_sources(foundry_query)
-        assert DocumentSource.STARKNET_FOUNDRY in sources
-
-        # Test general query defaults to Cairo Book
-        general_query = "What is a variable in Cairo?"
-        sources = processor._get_relevant_sources(general_query)
-        assert DocumentSource.CAIRO_BOOK in sources
-
     def test_empty_query_handling(self, processor):
         """Test handling of empty or whitespace queries."""
         with patch.object(processor, 'retrieval_program') as mock_program:
