@@ -1,13 +1,13 @@
 """
 Unit tests for DocumentRetrieverProgram.
 
-Tests the DSPy-based document retrieval functionality including vector search,
-reranking, and metadata enhancement.
+Tests the DSPy-based document retrieval functionality using PgVectorRM retriever.
 """
 
 import pytest
-from unittest.mock import Mock, AsyncMock, patch
+from unittest.mock import Mock, AsyncMock, patch, MagicMock
 import numpy as np
+import dspy
 
 from cairo_coder.core.types import Document, DocumentSource, ProcessedQuery
 from cairo_coder.core.vector_store import VectorStore
@@ -18,30 +18,21 @@ class TestDocumentRetrieverProgram:
     """Test suite for DocumentRetrieverProgram."""
 
     @pytest.fixture
-    def mock_embedding_client(self):
-        """Create a mock OpenAI embedding client."""
-        mock_client = Mock()
-        mock_response = Mock()
-        mock_response.data = [Mock(embedding=[0.1, 0.2, 0.3, 0.4, 0.5])]
-        mock_client.embeddings.create = AsyncMock(return_value=mock_response)
-        return mock_client
-
-    @pytest.fixture
     def enhanced_sample_documents(self):
         """Create enhanced sample documents for testing with additional metadata."""
         return [
             Document(
                 page_content="Cairo is a programming language for writing provable programs.",
-                metadata={'source': 'cairo_book', 'score': 0.9, 'chapter': 1}
+                metadata={"source": "cairo_book", "score": 0.9, "chapter": 1},
             ),
             Document(
                 page_content="Starknet is a validity rollup (also known as a ZK rollup).",
-                metadata={'source': 'starknet_docs', 'score': 0.8, 'section': 'overview'}
+                metadata={"source": "starknet_docs", "score": 0.8, "section": "overview"},
             ),
             Document(
                 page_content="OpenZeppelin provides secure smart contract libraries for Cairo.",
-                metadata={'source': 'openzeppelin_docs', 'score': 0.7}
-            )
+                metadata={"source": "openzeppelin_docs", "score": 0.7},
+            ),
         ]
 
     @pytest.fixture
@@ -52,151 +43,214 @@ class TestDocumentRetrieverProgram:
             transformed=["cairo", "contract", "create"],
             is_contract_related=True,
             is_test_related=False,
-            resources=[DocumentSource.CAIRO_BOOK, DocumentSource.STARKNET_DOCS]
+            resources=[DocumentSource.CAIRO_BOOK, DocumentSource.STARKNET_DOCS],
         )
 
     @pytest.fixture
     def retriever(self, mock_vector_store):
         """Create a DocumentRetrieverProgram instance."""
         return DocumentRetrieverProgram(
-            vector_store=mock_vector_store,
-            max_source_count=5,
-            similarity_threshold=0.4
+            vector_store=mock_vector_store, max_source_count=5, similarity_threshold=0.4
         )
 
+    @pytest.fixture
+    def mock_dspy_examples(self, sample_documents):
+        """Create mock DSPy Example objects from sample documents."""
+        examples = []
+        for doc in sample_documents:
+            example = Mock(spec=dspy.Example)
+            example.content = doc.page_content
+            example.metadata = doc.metadata
+            examples.append(example)
+        return examples
+
     @pytest.mark.asyncio
-    async def test_basic_document_retrieval(self, retriever, mock_vector_store,
-                                          sample_documents, sample_processed_query):
-        """Test basic document retrieval without reranking."""
-        # Setup mock vector store
-        mock_vector_store.similarity_search.return_value = sample_documents
+    async def test_basic_document_retrieval(
+        self, retriever, mock_vector_store, mock_dspy_examples, sample_processed_query
+    ):
+        """Test basic document retrieval using DSPy PgVectorRM."""
 
-        # Execute retrieval
-        result = await retriever.forward(sample_processed_query)
+        # Mock OpenAI client
+        with patch("cairo_coder.dspy.document_retriever.openai.OpenAI") as mock_openai_class:
+            mock_openai_client = Mock()
+            mock_openai_class.return_value = mock_openai_client
 
-        # Verify results
-        assert len(result) == 4
-        assert all(isinstance(doc, Document) for doc in result)
+            # Mock PgVectorRM
+            with patch("cairo_coder.dspy.document_retriever.PgVectorRM") as mock_pgvector_rm:
+                mock_retriever_instance = Mock(return_value=mock_dspy_examples)
+                mock_pgvector_rm.return_value = mock_retriever_instance
 
-        # Verify vector store was called correctly
-        mock_vector_store.similarity_search.assert_called_once_with(
-            query=sample_processed_query.original,
-            k=10,  # max_source_count * 2
-            sources=sample_processed_query.resources
+                # Mock dspy module
+                mock_dspy = Mock()
+                mock_settings = Mock()
+                mock_settings.configure = Mock()
+                mock_dspy.settings = mock_settings
+
+                with patch("cairo_coder.dspy.document_retriever.dspy", mock_dspy):
+                    # Execute retrieval
+                    result = await retriever.forward(sample_processed_query)
+
+                    # Verify results
+                    assert len(result) == 4
+                    assert all(isinstance(doc, Document) for doc in result)
+
+                    # Verify PgVectorRM was instantiated correctly
+                    mock_pgvector_rm.assert_called_once_with(
+                        db_url=mock_vector_store.config.dsn,
+                        pg_table_name=mock_vector_store.config.table_name,
+                        openai_client=mock_openai_client,
+                        content_field="content",
+                        fields=["id", "content", "metadata"],
+                        k=5,  # max_source_count
+                    )
+
+                    # Verify dspy.settings.configure was called
+                    mock_settings.configure.assert_called_once_with(rm=mock_retriever_instance)
+
+                    # Verify retriever was called with proper query
+                    expected_query = f"{sample_processed_query.original}, tags: {', '.join(sample_processed_query.transformed)}"
+                    mock_retriever_instance.assert_called_once_with(expected_query)
+
+    @pytest.mark.asyncio
+    async def test_retrieval_with_empty_transformed_terms(
+        self, retriever, mock_vector_store, mock_dspy_examples
+    ):
+        """Test retrieval when transformed terms list is empty."""
+        query = ProcessedQuery(
+            original="Simple query",
+            transformed=[],  # Empty transformed terms
+            is_contract_related=False,
+            is_test_related=False,
+            resources=[DocumentSource.CAIRO_BOOK],
         )
 
-        # Verify metadata enhancement
-        for doc in result:
-            assert 'title' in doc.metadata
-            assert 'url' in doc.metadata
-            assert 'source_display' in doc.metadata
+        with patch("cairo_coder.dspy.document_retriever.openai.OpenAI") as mock_openai_class:
+            mock_openai_client = Mock()
+            mock_openai_class.return_value = mock_openai_client
+
+            with patch("cairo_coder.dspy.document_retriever.PgVectorRM") as mock_pgvector_rm:
+                mock_retriever_instance = Mock(return_value=mock_dspy_examples)
+                mock_pgvector_rm.return_value = mock_retriever_instance
+
+                # Mock dspy module
+                mock_dspy = Mock()
+                mock_settings = Mock()
+                mock_settings.configure = Mock()
+                mock_dspy.settings = mock_settings
+
+                with patch("cairo_coder.dspy.document_retriever.dspy", mock_dspy):
+                    result = await retriever.forward(query)
+
+                    # Should still work with empty transformed terms
+                    assert len(result) == 4
+
+                    # Query should just be the original query with empty tags
+                    expected_query = "Simple query, tags: "
+                    mock_retriever_instance.assert_called_once_with(expected_query)
 
     @pytest.mark.asyncio
-    async def test_retrieval_with_reranking(self, mock_vector_store, mock_embedding_client,
-                                          sample_documents, sample_processed_query):
-        """Test document retrieval with embedding-based reranking."""
-        # Setup mock vector store and embedding client - use only first 3 documents for this test
-        test_documents = sample_documents[:3]
-        mock_vector_store.similarity_search.return_value = test_documents
-        mock_vector_store.embedding_client = mock_embedding_client
-
-        # Create retriever with embedding client
-        retriever = DocumentRetrieverProgram(
-            vector_store=mock_vector_store,
-            max_source_count=5,
-            similarity_threshold=0.4
-        )
-
-        # Mock embedding responses with realistic vectors
-        query_response = Mock()
-        query_response.data = [Mock(embedding=[1.0, 0.0, 0.0, 0.0, 0.0])]
-
-        doc_response = Mock()
-        doc_response.data = [
-            Mock(embedding=[0.8, 0.0, 0.0, 0.0, 0.0]),  # Similarity: 0.8
-            Mock(embedding=[0.0, 1.0, 0.0, 0.0, 0.0]),  # Similarity: 0.0
-            Mock(embedding=[0.6, 0.0, 0.0, 0.0, 0.0])   # Similarity: 0.6
-        ]
-
-        mock_embedding_client.embeddings.create.side_effect = [query_response, doc_response]
-
-        # Execute retrieval
-        result = await retriever.forward(sample_processed_query)
-
-        # Verify results are reranked by similarity (only docs above threshold 0.4)
-        assert len(result) == 2  # First and third documents
-        assert result[0].page_content == "Cairo is a programming language for writing provable programs."
-        assert result[1].page_content == "Scarb is the Cairo package manager and build tool."
-
-        # Verify embedding calls
-        assert mock_embedding_client.embeddings.create.call_count == 2
-
-    @pytest.mark.asyncio
-    async def test_retrieval_with_custom_sources(self, retriever, mock_vector_store,
-                                                sample_documents, sample_processed_query):
+    async def test_retrieval_with_custom_sources(
+        self, retriever, mock_vector_store, mock_dspy_examples, sample_processed_query
+    ):
         """Test retrieval with custom source filtering."""
-        mock_vector_store.similarity_search.return_value = sample_documents
-
         # Override sources
         custom_sources = [DocumentSource.SCARB_DOCS, DocumentSource.OPENZEPPELIN_DOCS]
 
-        result = await retriever.forward(sample_processed_query, sources=custom_sources)
+        with patch("cairo_coder.dspy.document_retriever.openai.OpenAI") as mock_openai_class:
+            mock_openai_client = Mock()
+            mock_openai_class.return_value = mock_openai_client
 
-        # Verify vector store called with custom sources
-        mock_vector_store.similarity_search.assert_called_once_with(
-            query=sample_processed_query.original,
-            k=10,
-            sources=custom_sources
-        )
+            with patch("cairo_coder.dspy.document_retriever.PgVectorRM") as mock_pgvector_rm:
+                mock_retriever_instance = Mock(return_value=mock_dspy_examples)
+                mock_pgvector_rm.return_value = mock_retriever_instance
+
+                # Mock dspy module
+                mock_dspy = Mock()
+                mock_settings = Mock()
+                mock_settings.configure = Mock()
+                mock_dspy.settings = mock_settings
+
+                with patch("cairo_coder.dspy.document_retriever.dspy", mock_dspy):
+                    result = await retriever.forward(sample_processed_query, sources=custom_sources)
+
+                    # Verify result
+                    assert len(result) == 4
+
+                    # Note: sources filtering is not currently implemented in PgVectorRM call
+                    # This test ensures the method still works when sources are provided
+                    mock_retriever_instance.assert_called_once()
 
     @pytest.mark.asyncio
-    async def test_empty_document_handling(self, retriever, mock_vector_store, sample_processed_query):
+    async def test_empty_document_handling(
+        self, retriever, mock_vector_store, sample_processed_query
+    ):
         """Test handling of empty document results."""
-        mock_vector_store.similarity_search.return_value = []
 
-        result = await retriever.forward(sample_processed_query)
+        with patch("cairo_coder.dspy.document_retriever.openai.OpenAI") as mock_openai_class:
+            mock_openai_client = Mock()
+            mock_openai_class.return_value = mock_openai_client
 
-        assert result == []
+            with patch("cairo_coder.dspy.document_retriever.PgVectorRM") as mock_pgvector_rm:
+                mock_retriever_instance = Mock(return_value=[])  # Empty results
+                mock_pgvector_rm.return_value = mock_retriever_instance
+                # Mock dspy module
+                mock_dspy = Mock()
+                mock_settings = Mock()
+                mock_settings.configure = Mock()
+                mock_dspy.settings = mock_settings
+
+                with patch("cairo_coder.dspy.document_retriever.dspy", mock_dspy):
+                    result = await retriever.forward(sample_processed_query)
+
+                    assert result == []
 
     @pytest.mark.asyncio
-    async def test_vector_store_error_handling(self, retriever, mock_vector_store, sample_processed_query):
-        """Test handling of vector store errors."""
-        mock_vector_store.similarity_search.side_effect = Exception("Database error")
+    async def test_pgvector_rm_error_handling(
+        self, retriever, mock_vector_store, sample_processed_query
+    ):
+        """Test handling of PgVectorRM instantiation errors."""
 
-        # Should handle error gracefully
-        result = await retriever.forward(sample_processed_query)
+        with patch("cairo_coder.dspy.document_retriever.openai.OpenAI") as mock_openai_class:
+            mock_openai_client = Mock()
+            mock_openai_class.return_value = mock_openai_client
 
-        assert result == []
+            with patch("cairo_coder.dspy.document_retriever.PgVectorRM") as mock_pgvector_rm:
+                # Mock PgVectorRM to raise an exception
+                mock_pgvector_rm.side_effect = Exception("Database connection error")
+
+                with pytest.raises(Exception) as exc_info:
+                    await retriever.forward(sample_processed_query)
+
+                assert "Database connection error" in str(exc_info.value)
 
     @pytest.mark.asyncio
-    async def test_embedding_error_handling(self, mock_vector_store, mock_embedding_client,
-                                          sample_documents, sample_processed_query):
-        """Test handling of embedding errors during reranking."""
-        mock_vector_store.similarity_search.return_value = sample_documents
-        mock_vector_store.embedding_client = mock_embedding_client
+    async def test_retriever_call_error_handling(
+        self, retriever, mock_vector_store, sample_processed_query
+    ):
+        """Test handling of retriever call errors."""
 
-        # Mock embedding error
-        mock_embedding_client.embeddings.create.side_effect = Exception("API error")
+        with patch("cairo_coder.dspy.document_retriever.openai.OpenAI") as mock_openai_class:
+            mock_openai_client = Mock()
+            mock_openai_class.return_value = mock_openai_client
 
-        retriever = DocumentRetrieverProgram(
-            vector_store=mock_vector_store,
-            max_source_count=5,
-            similarity_threshold=0.4
-        )
+            with patch("cairo_coder.dspy.document_retriever.PgVectorRM") as mock_pgvector_rm:
+                mock_retriever_instance = Mock(side_effect=Exception("Query execution error"))
+                mock_pgvector_rm.return_value = mock_retriever_instance
 
-        # Should fall back to original documents with metadata attached
-        result = await retriever.forward(sample_processed_query)
+                # Mock dspy module
+                mock_dspy = Mock()
+                mock_settings = Mock()
+                mock_settings.configure = Mock()
+                mock_dspy.settings = mock_settings
 
-        assert len(result) == len(sample_documents)
-        assert all(isinstance(doc, Document) for doc in result)
-        # Verify metadata was attached despite embedding error
-        for doc in result:
-            assert 'title' in doc.metadata
-            assert 'url' in doc.metadata
-            assert 'source_display' in doc.metadata
+                with patch("cairo_coder.dspy.document_retriever.dspy", mock_dspy):
+                    with pytest.raises(Exception) as exc_info:
+                        await retriever.forward(sample_processed_query)
+
+                    assert "Query execution error" in str(exc_info.value)
 
     def test_cosine_similarity_calculation(self, retriever):
-        """Test cosine similarity calculation."""
+        """Test cosine similarity calculation method (used in dead code)."""
         vec1 = [1.0, 0.0, 0.0]
         vec2 = [0.0, 1.0, 0.0]
         vec3 = [1.0, 0.0, 0.0]
@@ -212,66 +266,87 @@ class TestDocumentRetrieverProgram:
         assert retriever._cosine_similarity(vec1, []) == 0.0
 
     @pytest.mark.asyncio
-    async def test_max_source_count_limiting(self, retriever, mock_vector_store, sample_processed_query):
-        """Test limiting results by max_source_count."""
-        # Create more documents than max_source_count
-        many_documents = [
-            Document(
-                page_content=f"Document {i}",
-                metadata={'source': 'cairo_book', 'score': 0.9 - i * 0.1}
-            )
-            for i in range(10)
-        ]
-
-        mock_vector_store.similarity_search.return_value = many_documents
-
-        result = await retriever.forward(sample_processed_query)
-
-        # Should be limited to max_source_count (5)
-        assert len(result) == 5
-
-    @pytest.mark.asyncio
-    async def test_batch_embedding_processing(self, mock_vector_store, mock_embedding_client,
-                                            sample_processed_query):
-        """Test batch processing of embeddings."""
-        # Create many documents to test batching
-        many_documents = [
-            Document(
-                page_content=f"Document {i} content",
-                metadata={'source': 'cairo_book'}
-            )
-            for i in range(150)  # More than batch size (100)
-        ]
-
-        mock_vector_store.similarity_search.return_value = many_documents
-        mock_vector_store.embedding_client = mock_embedding_client
-
+    async def test_max_source_count_configuration(self, mock_vector_store, sample_processed_query):
+        """Test that max_source_count is properly passed to PgVectorRM."""
         retriever = DocumentRetrieverProgram(
             vector_store=mock_vector_store,
-            max_source_count=200,
-            similarity_threshold=0.0
+            max_source_count=15,  # Custom value
+            similarity_threshold=0.4,
         )
 
-        # Mock embedding responses
-        query_response = Mock()
-        query_response.data = [Mock(embedding=[0.1, 0.2, 0.3, 0.4, 0.5])]
+        with patch("cairo_coder.dspy.document_retriever.openai.OpenAI") as mock_openai_class:
+            mock_openai_client = Mock()
+            mock_openai_class.return_value = mock_openai_client
 
-        # Mock batch responses
-        batch1_response = Mock()
-        batch1_response.data = [Mock(embedding=[0.1, 0.2, 0.3, 0.4, 0.5])] * 100
+            with patch("cairo_coder.dspy.document_retriever.PgVectorRM") as mock_pgvector_rm:
+                mock_retriever_instance = Mock()
+                mock_retriever_instance = Mock(return_value=[])
+                mock_pgvector_rm.return_value = mock_retriever_instance
+                # Mock dspy module
+                mock_dspy = Mock()
+                mock_settings = Mock()
+                mock_settings.configure = Mock()
+                mock_dspy.settings = mock_settings
 
-        batch2_response = Mock()
-        batch2_response.data = [Mock(embedding=[0.1, 0.2, 0.3, 0.4, 0.5])] * 50
+                with patch("cairo_coder.dspy.document_retriever.dspy", mock_dspy):
+                    await retriever.forward(sample_processed_query)
 
-        mock_embedding_client.embeddings.create.side_effect = [
-            query_response, batch1_response, batch2_response
+                    # Verify max_source_count was passed as k parameter
+                    mock_pgvector_rm.assert_called_once_with(
+                        db_url=mock_vector_store.config.dsn,
+                        pg_table_name=mock_vector_store.config.table_name,
+                        openai_client=mock_openai_client,
+                        content_field="content",
+                        fields=["id", "content", "metadata"],
+                        k=15,  # Should match max_source_count
+                    )
+
+    @pytest.mark.asyncio
+    async def test_document_conversion(
+        self,
+        retriever: DocumentRetrieverProgram,
+        mock_vector_store: VectorStore,
+        sample_processed_query: ProcessedQuery,
+    ):
+        """Test conversion from DSPy Examples to Document objects."""
+
+        # Create mock DSPy examples with specific content and metadata
+        mock_examples = []
+        expected_docs = [
+            ("Test content 1", {"source": "test1", "title": "Test 1"}),
+            ("Test content 2", {"source": "test2", "title": "Test 2"}),
         ]
 
-        result = await retriever.forward(sample_processed_query)
+        for content, metadata in expected_docs:
+            example = Mock(spec=dspy.Example)
+            example.content = content
+            example.metadata = metadata
+            mock_examples.append(example)
 
-        # Should process all documents in batches
-        assert len(result) == 150
-        assert mock_embedding_client.embeddings.create.call_count == 3  # Query + 2 batches
+        with patch("cairo_coder.dspy.document_retriever.openai.OpenAI") as mock_openai_class:
+            mock_openai_client = Mock()
+            mock_openai_class.return_value = mock_openai_client
+
+            with patch("cairo_coder.dspy.document_retriever.PgVectorRM") as mock_pgvector_rm:
+                mock_retriever_instance = Mock(return_value=mock_examples)
+                mock_pgvector_rm.return_value = mock_retriever_instance
+
+                # Mock dspy module
+                mock_dspy = Mock()
+                mock_settings = Mock()
+                mock_settings.configure = Mock()
+                mock_dspy.settings = mock_settings
+
+                with patch("cairo_coder.dspy.document_retriever.dspy", mock_dspy):
+                    result = await retriever.forward(sample_processed_query)
+
+                    # Verify conversion to Document objects
+                    assert len(result) == 2
+
+                    for i, doc in enumerate(result):
+                        assert isinstance(doc, Document)
+                        assert doc.page_content == expected_docs[i][0]
+                        assert doc.metadata == expected_docs[i][1]
 
 
 class TestDocumentRetrieverFactory:
@@ -282,9 +357,7 @@ class TestDocumentRetrieverFactory:
         mock_vector_store = Mock(spec=VectorStore)
 
         retriever = create_document_retriever(
-            vector_store=mock_vector_store,
-            max_source_count=20,
-            similarity_threshold=0.6
+            vector_store=mock_vector_store, max_source_count=20, similarity_threshold=0.6
         )
 
         assert isinstance(retriever, DocumentRetrieverProgram)

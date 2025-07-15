@@ -30,8 +30,7 @@ class TestVectorStore:
     @pytest.fixture
     def vector_store(self, config: VectorStoreConfig) -> VectorStore:
         """Create vector store instance."""
-        # Don't provide API key for unit tests
-        return VectorStore(config, openai_api_key=None)
+        return VectorStore(config)
 
     @pytest.fixture
     def mock_pool(self) -> AsyncMock:

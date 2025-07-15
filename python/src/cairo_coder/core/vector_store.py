@@ -5,7 +5,7 @@ from typing import Any, Dict, List, Optional, Union
 
 import asyncpg
 import numpy as np
-from openai import AsyncOpenAI
+import dspy
 
 from ..utils.logging import get_logger
 from .config import VectorStoreConfig
@@ -13,26 +13,22 @@ from .types import Document, DocumentSource
 
 logger = get_logger(__name__)
 
+BATCH_SIZE = 2048
 
 class VectorStore:
     """PostgreSQL vector store for document storage and retrieval."""
 
-    def __init__(self, config: VectorStoreConfig, openai_api_key: Optional[str] = None):
+    def __init__(self, config: VectorStoreConfig):
         """
         Initialize vector store with configuration.
 
         Args:
             config: Vector store configuration.
-            openai_api_key: Optional OpenAI API key for embeddings.
         """
         self.config = config
         self.pool: Optional[asyncpg.Pool] = None
 
-        # Initialize embedding client only if API key is provided
-        if openai_api_key:
-            self.embedding_client = AsyncOpenAI(api_key=openai_api_key)
-        else:
-            self.embedding_client = None
+        self.embedder: dspy.Embedder = dspy.Embedder("openai/text-embedding-3-large", batch_size=BATCH_SIZE)
 
     async def initialize(self) -> None:
         """Initialize database connection pool."""
@@ -280,14 +276,15 @@ class VectorStore:
         Returns:
             Embedding vector.
         """
-        if not self.embedding_client:
-            raise ValueError("OpenAI API key required for generating embeddings")
-
-        response = await self.embedding_client.embeddings.create(
-            model=self.config.embedding_model or "text-embedding-3-large",
-            input=text
-        )
-        return response.data[0].embedding
+        embeddings = self.embedder([text])
+        # DSPy Embedder returns a 2D array/list, we need the first row
+        # Always convert to list to ensure compatibility with asyncpg
+        if hasattr(embeddings, 'tolist'):
+            # numpy array
+            return embeddings[0].tolist()
+        else:
+            # already a list
+            return list(embeddings[0])
 
     async def _embed_texts(self, texts: List[str]) -> List[List[float]]:
         """
@@ -299,20 +296,19 @@ class VectorStore:
         Returns:
             List of embedding vectors.
         """
-        if not self.embedding_client:
-            raise ValueError("OpenAI API key required for generating embeddings")
-
-        # OpenAI supports batching up to 2048 embeddings
-        batch_size = 2048
+        # DSPy's Embedder handles batching internally with the batch_size parameter
         all_embeddings = []
 
-        for i in range(0, len(texts), batch_size):
-            batch = texts[i:i + batch_size]
-            response = await self.embedding_client.embeddings.create(
-                model=self.config.embedding_model or "text-embedding-3-large",
-                input=batch
-            )
-            embeddings = [item.embedding for item in response.data]
+        for i in range(0, len(texts), BATCH_SIZE):
+            batch = texts[i:i + BATCH_SIZE]
+
+            # DSPy Embedder returns embeddings as 2D array/list
+            embeddings = self.embedder(batch)
+
+            # Convert to list of lists if numpy array
+            if hasattr(embeddings, 'tolist'):
+                embeddings = embeddings.tolist()
+
             all_embeddings.extend(embeddings)
 
         return all_embeddings
