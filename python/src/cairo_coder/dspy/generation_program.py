@@ -12,7 +12,9 @@ import dspy
 from dspy import InputField, OutputField, Signature
 
 from cairo_coder.core.types import Document, Message, StreamEvent
+import structlog
 
+logger = structlog.get_logger(__name__)
 
 class CairoCodeGeneration(Signature):
     """
@@ -164,7 +166,7 @@ When generating Cairo test code, follow these guidelines:
     async def forward_streaming(self, query: str, context: str,
                               chat_history: Optional[str] = None) -> AsyncGenerator[str, None]:
         """
-        Generate Cairo code response with streaming support.
+        Generate Cairo code response with streaming support using DSPy's native streaming.
 
         Args:
             query: User's Cairo programming question
@@ -180,25 +182,32 @@ When generating Cairo test code, follow these guidelines:
         # Enhance context with appropriate template
         enhanced_context = self._enhance_context(query, context)
 
-        # TODO: use DSPy's streaming capabilities
-        # For now, simulate streaming by yielding the complete response
-        # In a real implementation, this would use DSPy's streaming capabilities
+        # Create a streamified version of the generation program
+        stream_generation = dspy.streamify(
+            self.generation_program,
+            stream_listeners=[dspy.streaming.StreamListener(signature_field_name="answer")]
+        )
+
         try:
-            result = self.generation_program(
+            # Execute the streaming generation
+            output_stream = stream_generation(
                 query=query,
                 context=enhanced_context,
                 chat_history=chat_history
             )
 
-            # Simulate streaming by chunking the response
-            response = result.answer
-            chunk_size = 50  # Characters per chunk
-
-            for i in range(0, len(response), chunk_size):
-                chunk = response[i:i + chunk_size]
-                yield chunk
-                # Small delay to simulate streaming
-                await asyncio.sleep(0.01)
+            # Process the stream and yield tokens
+            is_cached = True
+            async for chunk in output_stream:
+                if isinstance(chunk, dspy.streaming.StreamResponse):
+                    # No streaming if cached
+                    is_cached = False
+                    # Yield the actual token content
+                    yield chunk.chunk
+                elif isinstance(chunk, dspy.Prediction):
+                    if is_cached:
+                        yield chunk.answer
+                    # Final output received - streaming is complete
 
         except Exception as e:
             yield f"Error generating response: {str(e)}"

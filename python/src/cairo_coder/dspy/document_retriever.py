@@ -7,6 +7,7 @@ relevant documents from the vector store based on processed queries.
 
 import asyncio
 from typing import List, Optional, Tuple
+from cairo_coder.core.config import VectorStoreConfig
 import numpy as np
 
 import openai
@@ -35,7 +36,7 @@ class DocumentRetrieverProgram(dspy.Module):
 
     def __init__(
         self,
-        vector_store: VectorStore,
+        vector_store_config: VectorStoreConfig,
         max_source_count: int = 10,
         similarity_threshold: float = 0.4,
         embedding_model: str = "text-embedding-3-large",
@@ -44,13 +45,13 @@ class DocumentRetrieverProgram(dspy.Module):
         Initialize the DocumentRetrieverProgram.
 
         Args:
-            vector_store: VectorStore instance for document retrieval
+            vector_store_config: VectorStoreConfig for document retrieval
             max_source_count: Maximum number of documents to retrieve
             similarity_threshold: Minimum similarity score for document inclusion
             embedding_model: OpenAI embedding model to use for reranking
         """
         super().__init__()
-        self.vector_store = vector_store
+        self.vector_store_config = vector_store_config
         self.max_source_count = max_source_count
         self.similarity_threshold = similarity_threshold
         self.embedding_model = embedding_model
@@ -101,8 +102,8 @@ class DocumentRetrieverProgram(dspy.Module):
         """
         try:
             openai_client = openai.OpenAI()
-            db_url = self.vector_store.config.dsn
-            pg_table_name = self.vector_store.config.table_name
+            db_url = self.vector_store_config.dsn
+            pg_table_name = self.vector_store_config.table_name
             retriever = PgVectorRM(
                 db_url=db_url,
                 pg_table_name=pg_table_name,
@@ -114,9 +115,14 @@ class DocumentRetrieverProgram(dspy.Module):
             dspy.settings.configure(rm=retriever)
 
             # TODO improve with proper re-phrased text.
-            search_terms = ", ".join([st for st in processed_query.transformed])
-            retrieval_query = f"{processed_query.original}, tags: {search_terms}"
-            retrieved_examples: List[dspy.Example] = retriever(retrieval_query)
+            search_queries = processed_query.search_queries
+            if len(search_queries) == 0:
+                search_queries = [processed_query.original]
+
+            retrieved_examples: List[dspy.Example] = []
+            for search_query in search_queries:
+                logger.info(f"Retrieving documents for search query: {search_query}")
+                retrieved_examples.extend(retriever(search_query))
 
             # Convert to Document objects
             documents = []
@@ -190,89 +196,8 @@ class DocumentRetrieverProgram(dspy.Module):
             logger.error(f"Error reranking documents: {traceback.format_exc()}")
             raise e
 
-    # TODO: dead code elimination – remove once confirmed
-    async def _get_embedding(self, text: str) -> List[float]:
-        """
-        Get embedding for a single text.
-
-        Args:
-            text: Text to embed
-
-        Returns:
-            List of embedding values
-        """
-        embeddings = self.vector_store.embedder([text])
-        # DSPy Embedder returns a 2D array/list, we need the first row
-        return embeddings[0] if isinstance(embeddings, list) else embeddings[0].tolist()
-
-    # TODO: dead code elimination – remove once confirmed
-    async def _get_embeddings(self, texts: List[str]) -> List[List[float]]:
-        """
-        Get embeddings for multiple texts.
-
-        Args:
-            texts: List of texts to embed
-
-        Returns:
-            List of embedding lists
-        """
-        # Process in batches to avoid rate limits
-        batch_size = 100
-        all_embeddings = []
-
-        for i in range(0, len(texts), batch_size):
-            batch = texts[i : i + batch_size]
-
-            # DSPy Embedder returns embeddings as 2D array/list
-            embeddings = self.vector_store.embedder(batch)
-
-            # Convert to list of lists if numpy array
-            if hasattr(embeddings, "tolist"):
-                embeddings = embeddings.tolist()
-
-            all_embeddings.extend(embeddings)
-
-        return all_embeddings
-
-    # TODO: dead code elimination – remove once confirmed
-    def _cosine_similarity(self, vec1: List[float], vec2: List[float]) -> float:
-        """
-        Calculate cosine similarity between two vectors.
-
-        Args:
-            vec1: First vector
-            vec2: Second vector
-
-        Returns:
-            Cosine similarity score (0-1)
-        """
-        if not vec1 or not vec2:
-            return 0.0
-
-        try:
-            # Convert to numpy arrays
-            a = np.array(vec1)
-            b = np.array(vec2)
-
-            # TODO: This is doing dot product, not cosine similarity.
-            # Is this intended?
-            # Calculate cosine similarity
-            dot_product = np.dot(a, b)
-            norm_a = np.linalg.norm(a)
-            norm_b = np.linalg.norm(b)
-
-            if norm_a == 0 or norm_b == 0:
-                return 0.0
-
-            return dot_product / (norm_a * norm_b)
-
-        except Exception as e:
-            print(f"Error calculating cosine similarity: {e}")
-            return 0.0
-
-
 def create_document_retriever(
-    vector_store: VectorStore, max_source_count: int = 10, similarity_threshold: float = 0.4
+    vector_store_config: VectorStoreConfig, max_source_count: int = 10, similarity_threshold: float = 0.4
 ) -> DocumentRetrieverProgram:
     """
     Factory function to create a DocumentRetrieverProgram instance.
@@ -286,7 +211,7 @@ def create_document_retriever(
         Configured DocumentRetrieverProgram instance
     """
     return DocumentRetrieverProgram(
-        vector_store=vector_store,
+        vector_store_config=vector_store_config,
         max_source_count=max_source_count,
         similarity_threshold=similarity_threshold,
     )

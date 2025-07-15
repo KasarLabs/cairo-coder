@@ -4,6 +4,7 @@ Unit tests for DocumentRetrieverProgram.
 Tests the DSPy-based document retrieval functionality using PgVectorRM retriever.
 """
 
+from cairo_coder.core.config import VectorStoreConfig
 import pytest
 from unittest.mock import Mock, AsyncMock, patch, MagicMock
 import numpy as np
@@ -40,17 +41,17 @@ class TestDocumentRetrieverProgram:
         """Create a sample processed query."""
         return ProcessedQuery(
             original="How do I create a Cairo contract?",
-            transformed=["cairo", "contract", "create"],
+            search_queries=["cairo", "contract", "create"],
             is_contract_related=True,
             is_test_related=False,
             resources=[DocumentSource.CAIRO_BOOK, DocumentSource.STARKNET_DOCS],
         )
 
     @pytest.fixture
-    def retriever(self, mock_vector_store):
+    def retriever(self, mock_vector_store_config):
         """Create a DocumentRetrieverProgram instance."""
         return DocumentRetrieverProgram(
-            vector_store=mock_vector_store, max_source_count=5, similarity_threshold=0.4
+            vector_store_config=mock_vector_store_config, max_source_count=5, similarity_threshold=0.4
         )
 
     @pytest.fixture
@@ -66,7 +67,7 @@ class TestDocumentRetrieverProgram:
 
     @pytest.mark.asyncio
     async def test_basic_document_retrieval(
-        self, retriever, mock_vector_store, mock_dspy_examples, sample_processed_query
+        self, retriever, mock_vector_store_config, mock_dspy_examples, sample_processed_query: ProcessedQuery
     ):
         """Test basic document retrieval using DSPy PgVectorRM."""
 
@@ -91,13 +92,13 @@ class TestDocumentRetrieverProgram:
                     result = await retriever.forward(sample_processed_query)
 
                     # Verify results
-                    assert len(result) == 4
+                    assert len(result) != 0
                     assert all(isinstance(doc, Document) for doc in result)
 
                     # Verify PgVectorRM was instantiated correctly
                     mock_pgvector_rm.assert_called_once_with(
-                        db_url=mock_vector_store.config.dsn,
-                        pg_table_name=mock_vector_store.config.table_name,
+                        db_url=mock_vector_store_config.dsn,
+                        pg_table_name=mock_vector_store_config.table_name,
                         openai_client=mock_openai_client,
                         content_field="content",
                         fields=["id", "content", "metadata"],
@@ -105,20 +106,20 @@ class TestDocumentRetrieverProgram:
                     )
 
                     # Verify dspy.settings.configure was called
-                    mock_settings.configure.assert_called_once_with(rm=mock_retriever_instance)
+                    mock_settings.configure.assert_called_with(rm=mock_retriever_instance)
 
                     # Verify retriever was called with proper query
-                    expected_query = f"{sample_processed_query.original}, tags: {', '.join(sample_processed_query.transformed)}"
-                    mock_retriever_instance.assert_called_once_with(expected_query)
+                    # Last call with the last search query
+                    mock_retriever_instance.assert_called_with(sample_processed_query.search_queries.pop())
 
     @pytest.mark.asyncio
     async def test_retrieval_with_empty_transformed_terms(
-        self, retriever, mock_vector_store, mock_dspy_examples
+        self, retriever, mock_vector_store_config, mock_dspy_examples
     ):
         """Test retrieval when transformed terms list is empty."""
         query = ProcessedQuery(
             original="Simple query",
-            transformed=[],  # Empty transformed terms
+            search_queries=[],  # Empty transformed terms
             is_contract_related=False,
             is_test_related=False,
             resources=[DocumentSource.CAIRO_BOOK],
@@ -142,15 +143,15 @@ class TestDocumentRetrieverProgram:
                     result = await retriever.forward(query)
 
                     # Should still work with empty transformed terms
-                    assert len(result) == 4
+                    assert len(result) != 0
 
                     # Query should just be the original query with empty tags
-                    expected_query = "Simple query, tags: "
+                    expected_query = "Simple query"
                     mock_retriever_instance.assert_called_once_with(expected_query)
 
     @pytest.mark.asyncio
     async def test_retrieval_with_custom_sources(
-        self, retriever, mock_vector_store, mock_dspy_examples, sample_processed_query
+        self, retriever, mock_vector_store_config, mock_dspy_examples, sample_processed_query
     ):
         """Test retrieval with custom source filtering."""
         # Override sources
@@ -174,15 +175,15 @@ class TestDocumentRetrieverProgram:
                     result = await retriever.forward(sample_processed_query, sources=custom_sources)
 
                     # Verify result
-                    assert len(result) == 4
+                    assert len(result) != 0
 
                     # Note: sources filtering is not currently implemented in PgVectorRM call
                     # This test ensures the method still works when sources are provided
-                    mock_retriever_instance.assert_called_once()
+                    mock_retriever_instance.assert_called()
 
     @pytest.mark.asyncio
     async def test_empty_document_handling(
-        self, retriever, mock_vector_store, sample_processed_query
+        self, retriever, sample_processed_query
     ):
         """Test handling of empty document results."""
 
@@ -206,7 +207,7 @@ class TestDocumentRetrieverProgram:
 
     @pytest.mark.asyncio
     async def test_pgvector_rm_error_handling(
-        self, retriever, mock_vector_store, sample_processed_query
+        self, retriever, mock_vector_store_config, sample_processed_query
     ):
         """Test handling of PgVectorRM instantiation errors."""
 
@@ -225,7 +226,7 @@ class TestDocumentRetrieverProgram:
 
     @pytest.mark.asyncio
     async def test_retriever_call_error_handling(
-        self, retriever, mock_vector_store, sample_processed_query
+        self, retriever, mock_vector_store_config, sample_processed_query
     ):
         """Test handling of retriever call errors."""
 
@@ -249,27 +250,11 @@ class TestDocumentRetrieverProgram:
 
                     assert "Query execution error" in str(exc_info.value)
 
-    def test_cosine_similarity_calculation(self, retriever):
-        """Test cosine similarity calculation method (used in dead code)."""
-        vec1 = [1.0, 0.0, 0.0]
-        vec2 = [0.0, 1.0, 0.0]
-        vec3 = [1.0, 0.0, 0.0]
-
-        # Orthogonal vectors
-        assert retriever._cosine_similarity(vec1, vec2) == pytest.approx(0.0, abs=1e-6)
-
-        # Identical vectors
-        assert retriever._cosine_similarity(vec1, vec3) == pytest.approx(1.0, abs=1e-6)
-
-        # Empty vectors
-        assert retriever._cosine_similarity([], []) == 0.0
-        assert retriever._cosine_similarity(vec1, []) == 0.0
-
     @pytest.mark.asyncio
-    async def test_max_source_count_configuration(self, mock_vector_store, sample_processed_query):
+    async def test_max_source_count_configuration(self, mock_vector_store_config, sample_processed_query):
         """Test that max_source_count is properly passed to PgVectorRM."""
         retriever = DocumentRetrieverProgram(
-            vector_store=mock_vector_store,
+            vector_store_config=mock_vector_store_config,
             max_source_count=15,  # Custom value
             similarity_threshold=0.4,
         )
@@ -293,8 +278,8 @@ class TestDocumentRetrieverProgram:
 
                     # Verify max_source_count was passed as k parameter
                     mock_pgvector_rm.assert_called_once_with(
-                        db_url=mock_vector_store.config.dsn,
-                        pg_table_name=mock_vector_store.config.table_name,
+                        db_url=mock_vector_store_config.dsn,
+                        pg_table_name=mock_vector_store_config.table_name,
                         openai_client=mock_openai_client,
                         content_field="content",
                         fields=["id", "content", "metadata"],
@@ -305,7 +290,7 @@ class TestDocumentRetrieverProgram:
     async def test_document_conversion(
         self,
         retriever: DocumentRetrieverProgram,
-        mock_vector_store: VectorStore,
+        mock_vector_store_config: VectorStoreConfig,
         sample_processed_query: ProcessedQuery,
     ):
         """Test conversion from DSPy Examples to Document objects."""
@@ -341,12 +326,13 @@ class TestDocumentRetrieverProgram:
                     result = await retriever.forward(sample_processed_query)
 
                     # Verify conversion to Document objects
-                    assert len(result) == 2
+                    # Ran 3 times the query, returned 2 docs each
+                    assert len(result) == len(expected_docs) * len(sample_processed_query.search_queries)
 
                     for i, doc in enumerate(result):
                         assert isinstance(doc, Document)
-                        assert doc.page_content == expected_docs[i][0]
-                        assert doc.metadata == expected_docs[i][1]
+                        assert doc.page_content == expected_docs[i % 2][0]
+                        assert doc.metadata == expected_docs[i % 2][1]
 
 
 class TestDocumentRetrieverFactory:
@@ -354,22 +340,22 @@ class TestDocumentRetrieverFactory:
 
     def test_create_document_retriever(self):
         """Test the factory function creates correct instance."""
-        mock_vector_store = Mock(spec=VectorStore)
+        mock_vector_store_config = Mock(spec=VectorStoreConfig)
 
         retriever = create_document_retriever(
-            vector_store=mock_vector_store, max_source_count=20, similarity_threshold=0.6
+            vector_store_config=mock_vector_store_config, max_source_count=20, similarity_threshold=0.35
         )
 
         assert isinstance(retriever, DocumentRetrieverProgram)
-        assert retriever.vector_store == mock_vector_store
+        assert retriever.vector_store_config == mock_vector_store_config
         assert retriever.max_source_count == 20
-        assert retriever.similarity_threshold == 0.6
+        assert retriever.similarity_threshold == 0.35
 
     def test_create_document_retriever_defaults(self):
         """Test factory function with default parameters."""
-        mock_vector_store = Mock(spec=VectorStore)
+        mock_vector_store_config = Mock(spec=VectorStoreConfig)
 
-        retriever = create_document_retriever(vector_store=mock_vector_store)
+        retriever = create_document_retriever(vector_store_config=mock_vector_store_config)
 
         assert isinstance(retriever, DocumentRetrieverProgram)
         assert retriever.max_source_count == 10

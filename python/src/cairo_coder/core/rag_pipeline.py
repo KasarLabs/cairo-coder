@@ -10,6 +10,7 @@ from typing import AsyncGenerator, List, Optional, Dict, Any
 import asyncio
 from dataclasses import dataclass
 
+from cairo_coder.core.config import VectorStoreConfig
 from cairo_coder.core.llm import AgentLoggingCallback
 import dspy
 
@@ -20,7 +21,6 @@ from cairo_coder.core.types import (
     ProcessedQuery,
     StreamEvent
 )
-from cairo_coder.core.vector_store import VectorStore
 from cairo_coder.dspy.query_processor import QueryProcessorProgram
 from cairo_coder.dspy.document_retriever import DocumentRetrieverProgram
 from cairo_coder.dspy.generation_program import GenerationProgram, McpGenerationProgram
@@ -32,7 +32,7 @@ logger = structlog.get_logger(__name__)
 class RagPipelineConfig:
     """Configuration for RAG Pipeline."""
     name: str
-    vector_store: VectorStore
+    vector_store_config: VectorStoreConfig
     query_processor: QueryProcessorProgram
     document_retriever: DocumentRetrieverProgram
     generation_program: GenerationProgram
@@ -91,10 +91,9 @@ class RagPipeline(dspy.Module):
         Yields:
             StreamEvent objects for real-time updates
         """
-        logger.info("Forwarding RAG pipeline", query=query, chat_history=chat_history, mcp_mode=mcp_mode, sources=sources)
         # TODO: This is the place where we should select the proper LLM configuration.
         # TODO: For now we just Hard-code DSPY - GEMINI
-        dspy.configure(lm=dspy.LM("gemini/gemini-2.5-flash"))
+        dspy.configure(lm=dspy.LM("gemini/gemini-2.5-flash", max_tokens=20000))
         dspy.configure(callbacks=[AgentLoggingCallback()])
         try:
             # Stage 1: Process query
@@ -212,24 +211,7 @@ class RagPipeline(dspy.Module):
 
         context_parts = []
 
-        # Add query analysis summary
-        context_parts.append(f"Query Analysis:")
-        context_parts.append(f"- Original query: {processed_query.original}")
-        context_parts.append(f"- Search terms: {', '.join(processed_query.transformed)}")
-        context_parts.append(f"- Contract-related: {processed_query.is_contract_related}")
-        context_parts.append(f"- Test-related: {processed_query.is_test_related}")
-        context_parts.append("")
-
         # Add templates if applicable
-        if processed_query.is_contract_related and self.config.contract_template:
-            context_parts.append("Contract Development Guidelines:")
-            context_parts.append(self.config.contract_template)
-            context_parts.append("")
-
-        if processed_query.is_test_related and self.config.test_template:
-            context_parts.append("Testing Guidelines:")
-            context_parts.append(self.config.test_template)
-            context_parts.append("")
 
         # Add retrieved documentation
         context_parts.append("Relevant Documentation:")
@@ -247,6 +229,16 @@ class RagPipeline(dspy.Module):
             context_parts.append(doc.page_content)
             context_parts.append("")
             context_parts.append("---")
+            context_parts.append("")
+
+        if processed_query.is_contract_related and self.config.contract_template:
+            context_parts.append("Contract Development Guidelines:")
+            context_parts.append(self.config.contract_template)
+            context_parts.append("")
+
+        if processed_query.is_test_related and self.config.test_template:
+            context_parts.append("Testing Guidelines:")
+            context_parts.append(self.config.test_template)
             context_parts.append("")
 
         return "\n".join(context_parts)
@@ -277,7 +269,7 @@ class RagPipelineFactory:
     @staticmethod
     def create_pipeline(
         name: str,
-        vector_store: VectorStore,
+        vector_store_config: VectorStoreConfig,
         query_processor: Optional[QueryProcessorProgram] = None,
         document_retriever: Optional[DocumentRetrieverProgram] = None,
         generation_program: Optional[GenerationProgram] = None,
@@ -320,7 +312,7 @@ class RagPipelineFactory:
 
         if document_retriever is None:
             document_retriever = create_document_retriever(
-                vector_store=vector_store,
+                vector_store_config=vector_store_config,
                 max_source_count=max_source_count,
                 similarity_threshold=similarity_threshold
             )
@@ -334,7 +326,7 @@ class RagPipelineFactory:
         # Create configuration
         config = RagPipelineConfig(
             name=name,
-            vector_store=vector_store,
+            vector_store_config=vector_store_config,
             query_processor=query_processor,
             document_retriever=document_retriever,
             generation_program=generation_program,
@@ -351,7 +343,7 @@ class RagPipelineFactory:
     @staticmethod
     def create_scarb_pipeline(
         name: str,
-        vector_store: VectorStore,
+        vector_store_config: VectorStoreConfig,
         **kwargs
     ) -> RagPipeline:
         """
@@ -359,7 +351,7 @@ class RagPipelineFactory:
 
         Args:
             name: Pipeline name
-            vector_store: Vector store for document retrieval
+            vector_store_config: Vector store for document retrieval
             **kwargs: Additional configuration options
 
         Returns:
@@ -376,7 +368,7 @@ class RagPipelineFactory:
 
         return RagPipelineFactory.create_pipeline(
             name=name,
-            vector_store=vector_store,
+            vector_store_config=vector_store_config,
             generation_program=scarb_generation_program,
             **kwargs
         )
@@ -384,7 +376,7 @@ class RagPipelineFactory:
 
 def create_rag_pipeline(
     name: str,
-    vector_store: VectorStore,
+    vector_store_config: VectorStoreConfig,
     **kwargs
 ) -> RagPipeline:
     """
@@ -392,10 +384,10 @@ def create_rag_pipeline(
 
     Args:
         name: Pipeline name
-        vector_store: Vector store for document retrieval
+        vector_store_config: Vector store for document retrieval
         **kwargs: Additional configuration options
 
     Returns:
         Configured RagPipeline instance
     """
-    return RagPipelineFactory.create_pipeline(name, vector_store, **kwargs)
+    return RagPipelineFactory.create_pipeline(name, vector_store_config, **kwargs)

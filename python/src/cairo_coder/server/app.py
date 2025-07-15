@@ -14,6 +14,7 @@ from typing import Dict, List, Optional, Any, Union, AsyncGenerator
 from datetime import datetime
 import traceback
 
+from cairo_coder.core.config import VectorStoreConfig
 from cairo_coder.core.rag_pipeline import RagPipeline
 from fastapi import FastAPI, HTTPException, Request, Header, Depends
 from fastapi.middleware.cors import CORSMiddleware
@@ -22,7 +23,6 @@ from pydantic import BaseModel, Field, validator
 import structlog
 
 from cairo_coder.core.types import Message, StreamEvent, DocumentSource
-from cairo_coder.core.vector_store import VectorStore
 from cairo_coder.core.agent_factory import AgentFactory, create_agent_factory
 from cairo_coder.config.manager import ConfigManager
 
@@ -118,7 +118,7 @@ class CairoCoderServer:
     DSPy-based RAG pipeline.
     """
 
-    def __init__(self, vector_store: VectorStore, config_manager: Optional[ConfigManager] = None):
+    def __init__(self, vector_store_config: VectorStoreConfig, config_manager: Optional[ConfigManager] = None):
         """
         Initialize the Cairo Coder server.
 
@@ -126,10 +126,10 @@ class CairoCoderServer:
             vector_store: Vector store for document retrieval
             config_manager: Optional configuration manager
         """
-        self.vector_store = vector_store
+        self.vector_store_config = vector_store_config
         self.config_manager = config_manager or ConfigManager()
         self.agent_factory = create_agent_factory(
-            vector_store=vector_store,
+            vector_store_config=vector_store_config,
             config_manager=self.config_manager
         )
 
@@ -270,7 +270,7 @@ class CairoCoderServer:
                 agent = self.agent_factory.create_agent(
                     query=query,
                     history=messages[:-1],  # Exclude last message
-                    vector_store=self.vector_store,
+                    vector_store_config=self.vector_store_config,
                     mcp_mode=mcp_mode
                 )
 
@@ -402,7 +402,6 @@ class CairoCoderServer:
         mcp_mode: bool
     ) -> ChatCompletionResponse:
         """Generate non-streaming chat completion response."""
-        logger.info("Generating chat completion response", agent=agent, query=query, history=history, mcp_mode=mcp_mode)
         response_id = str(uuid.uuid4())
         created = int(time.time())
 
@@ -479,7 +478,7 @@ class TokenTracker:
         })
 
 
-def create_app(vector_store: VectorStore, config_manager: Optional[ConfigManager] = None) -> FastAPI:
+def create_app(vector_store_config: VectorStoreConfig, config_manager: Optional[ConfigManager] = None) -> FastAPI:
     """
     Create FastAPI application.
 
@@ -490,11 +489,11 @@ def create_app(vector_store: VectorStore, config_manager: Optional[ConfigManager
     Returns:
         Configured FastAPI application
     """
-    server = CairoCoderServer(vector_store, config_manager)
+    server = CairoCoderServer(vector_store_config, config_manager)
     return server.app
 
 
-def get_vector_store() -> VectorStore:
+def get_vector_store_config() -> VectorStoreConfig:
     """
     Dependency to get vector store instance.
 
@@ -516,11 +515,11 @@ def get_vector_store() -> VectorStore:
         similarity_measure=config.vector_store.similarity_measure
     )
 
-    return VectorStore(vector_store_config)
+    return vector_store_config
 
 
 # Create FastAPI app instance
-app = create_app(get_vector_store())
+app = create_app(get_vector_store_config())
 
 def main():
     import uvicorn

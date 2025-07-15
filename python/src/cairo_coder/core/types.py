@@ -20,7 +20,7 @@ class Message(BaseModel):
     role: Role
     content: str
     name: Optional[str] = None
-    
+
     class Config:
         use_enum_values = True
 
@@ -40,7 +40,7 @@ class DocumentSource(str, Enum):
 class ProcessedQuery:
     """Processed query with extracted information."""
     original: str
-    transformed: Union[str, List[str]]
+    search_queries: List[str]
     is_contract_related: bool = False
     is_test_related: bool = False
     resources: List[DocumentSource] = field(default_factory=list)
@@ -51,17 +51,17 @@ class Document:
     """Document with content and metadata."""
     page_content: str
     metadata: Dict[str, Any] = field(default_factory=dict)
-    
+
     @property
     def source(self) -> Optional[str]:
         """Get document source from metadata."""
         return self.metadata.get("source")
-    
+
     @property
     def title(self) -> Optional[str]:
         """Get document title from metadata."""
         return self.metadata.get("title")
-    
+
     @property
     def url(self) -> Optional[str]:
         """Get document URL from metadata."""
@@ -74,7 +74,7 @@ class RagInput:
     query: str
     chat_history: List[Message]
     sources: Union[DocumentSource, List[DocumentSource]]
-    
+
     def __post_init__(self) -> None:
         """Ensure sources is a list."""
         if isinstance(self.sources, DocumentSource):
@@ -95,7 +95,7 @@ class StreamEvent:
     type: StreamEventType
     data: Any
     timestamp: datetime = field(default_factory=datetime.now)
-    
+
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary for JSON serialization."""
         return {
@@ -112,7 +112,7 @@ class ErrorResponse:
     message: str
     details: Optional[Dict[str, Any]] = None
     timestamp: datetime = field(default_factory=datetime.now)
-    
+
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary for JSON serialization."""
         return {
@@ -130,7 +130,7 @@ class AgentRequest(BaseModel):
     agent_id: Optional[str] = None
     mcp_mode: bool = False
     sources: Optional[List[DocumentSource]] = None
-    
+
     class Config:
         use_enum_values = True
 
