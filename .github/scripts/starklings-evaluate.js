@@ -215,7 +215,7 @@ async function testExercise(exercise, starklingsPath, runNumber = 1) {
        log(`Updated exercise file with generated code`);
        
        // Sauvegarder les fichiers de debug SEULEMENT pour le dernier run (run 10)
-       if (SAVE_RESPONSES && runNumber === 10) {
+       if (SAVE_RESPONSES && runNumber === 2) {
            const solutionFile = path.join(__dirname, '..', '..', 'debug', `${exercise.name}_solution.cairo`);
            fs.mkdirSync(path.dirname(solutionFile), { recursive: true });
            fs.writeFileSync(solutionFile, correctedCode);
@@ -248,7 +248,7 @@ async function testExercise(exercise, starklingsPath, runNumber = 1) {
            };
            
            // Sauvegarder les erreurs SEULEMENT pour le dernier run
-           if (SAVE_RESPONSES && runNumber === 10) {
+           if (SAVE_RESPONSES && runNumber === 2) {
                const errorFile = path.join(__dirname, '..', '..', 'debug', `${exercise.name}_error.txt`);
                fs.writeFileSync(errorFile, `Exit code: ${error.status}\n\nSTDOUT:\n${error.stdout}\n\nSTDERR:\n${error.stderr}`);
                log(`Error details saved to: ${errorFile}`);
@@ -328,55 +328,65 @@ function extractCairoCode(generatedResponse) {
 }
 
 function generateConsolidatedReport(allResults) {
-   if (allResults.length === 0) {
-       return { error: 'No successful runs' };
-   }
-   
-   const successRates = allResults.map(r => parseFloat(r.globalSuccessRate));
-   const averageSuccessRate = (successRates.reduce((sum, rate) => sum + rate, 0) / successRates.length).toFixed(1);
-   
-   const bestRun = allResults.reduce((best, current) => 
-       parseFloat(current.globalSuccessRate) > parseFloat(best.globalSuccessRate) ? current : best
-   );
-   
-   const worstRun = allResults.reduce((worst, current) => 
-       parseFloat(current.globalSuccessRate) < parseFloat(worst.globalSuccessRate) ? current : worst
-   );
-   
-   // Analyse par catégorie
-   const categoryStats = {};
-   allResults.forEach(run => {
-       run.categories.forEach(category => {
-           if (!categoryStats[category.category]) {
-               categoryStats[category.category] = {
-                   successRates: [],
-                   averageSuccessRate: 0,
-                   bestRate: 0,
-                   worstRate: 100
-               };
-           }
-           
-           const rate = parseFloat(category.successRate);
-           categoryStats[category.category].successRates.push(rate);
-           categoryStats[category.category].bestRate = Math.max(categoryStats[category.category].bestRate, rate);
-           categoryStats[category.category].worstRate = Math.min(categoryStats[category.category].worstRate, rate);
-       });
-   });
-   
-   // Calculer les moyennes par catégorie
-   Object.keys(categoryStats).forEach(category => {
-       const rates = categoryStats[category].successRates;
-       categoryStats[category].averageSuccessRate = (rates.reduce((sum, rate) => sum + rate, 0) / rates.length).toFixed(1);
-   });
-   
-   return {
-       totalRuns: allResults.length,
-       averageSuccessRate: averageSuccessRate,
-       bestRun: bestRun,
-       worstRun: worstRun,
-       categoryStats: categoryStats,
-       allRuns: allResults
-   };
+    if (allResults.length === 0) {
+        return { error: 'No successful runs' };
+    }
+    
+    // Taux de réussite global
+    const successRates = allResults.map(r => parseFloat(r.globalSuccessRate));
+    const averageSuccessRate = (successRates.reduce((sum, rate) => sum + rate, 0) / successRates.length).toFixed(1);
+    
+    // Taux de réussite par catégorie
+    const categoryStats = {};
+    allResults.forEach(run => {
+        run.categories.forEach(category => {
+            if (!categoryStats[category.category]) {
+                categoryStats[category.category] = {
+                    successRates: []
+                };
+            }
+            categoryStats[category.category].successRates.push(parseFloat(category.successRate));
+        });
+    });
+    
+    // Calculer les moyennes par catégorie
+    const categoryAverages = {};
+    Object.keys(categoryStats).forEach(category => {
+        const rates = categoryStats[category].successRates;
+        categoryAverages[category] = (rates.reduce((sum, rate) => sum + rate, 0) / rates.length).toFixed(1) + '%';
+    });
+    
+    // Collecter les erreurs par exercice et par run
+    const exerciseErrors = {};
+    allResults.forEach(run => {
+        run.categories.forEach(category => {
+            category.exercises.forEach(exercise => {
+                if (!exercise.success && exercise.error) {
+                    if (!exerciseErrors[exercise.name]) {
+                        exerciseErrors[exercise.name] = [];
+                    }
+                    
+                    // Ajouter l'erreur avec le numéro de run
+                    exerciseErrors[exercise.name].push({
+                        run: run.runNumber,
+                        type: exercise.error.type || 'COMPILATION_ERROR',
+                        message: exercise.error.message || 'Compilation failed',
+                        stdout: exercise.error.stdout ? exercise.error.stdout.substring(0, 500) : null,
+                        stderr: exercise.error.stderr ? exercise.error.stderr.substring(0, 500) : null
+                    });
+                }
+            });
+        });
+    });
+    
+    return {
+        summary: {
+            totalRuns: allResults.length,
+            globalSuccessRate: averageSuccessRate + '%'
+        },
+        categorySuccessRates: categoryAverages,
+        exerciseErrors: exerciseErrors
+    };
 }
 
 async function runSingleTest(runNumber) {
@@ -431,7 +441,7 @@ async function runSingleTest(runNumber) {
 
    // Calculer le total d'exercices
    const totalExercises = Object.values(categoriesToTest).reduce((sum, exercises) => sum + exercises.length, 0);
-   console.log(`\n🧪 [RUN ${runNumber}/10] Starting evaluation of ${totalExercises} exercises across ${Object.keys(categoriesToTest).length} categories...`);
+   console.log(`\n🧪 [RUN ${runNumber}/2] Starting evaluation of ${totalExercises} exercises across ${Object.keys(categoriesToTest).length} categories...`);
 
    // Traiter les catégories en parallèle
    const startTime = Date.now();
@@ -464,7 +474,7 @@ async function runSingleTest(runNumber) {
 }
 
 async function main() {
-   const NUM_RUNS = 10;
+   const NUM_RUNS = 2;
    const allResults = [];
    
    console.log(`🚀 Starting ${NUM_RUNS} successive test runs...`);
