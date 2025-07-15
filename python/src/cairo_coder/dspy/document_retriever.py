@@ -12,6 +12,7 @@ import numpy as np
 
 import openai
 import psycopg2
+from psycopg2 import sql
 
 import dspy
 from dspy.retrieve.pgvector_rm import PgVectorRM
@@ -22,6 +23,85 @@ from cairo_coder.core.vector_store import VectorStore
 import structlog
 
 logger = structlog.get_logger()
+
+
+class SourceFilteredPgVectorRM(PgVectorRM):
+    """
+    Extended PgVectorRM that supports filtering by document sources.
+    """
+
+    def __init__(self, sources: Optional[List[DocumentSource]] = None, **kwargs):
+        """
+        Initialize with optional source filtering.
+
+        Args:
+            sources: List of DocumentSource to filter by
+            **kwargs: Arguments passed to parent PgVectorRM
+        """
+        super().__init__(**kwargs)
+        self.sources = sources or []
+
+    def forward(self, query: str, k: int = None):
+        """Search with PgVector for k top passages for query using cosine similarity with source filtering
+
+        Args:
+            query  (str): The query to search for
+            k (int): The number of top passages to retrieve. Defaults to the value set in the constructor.
+        Returns:
+            dspy.Prediction: an object containing the retrieved passages.
+        """
+        # Embed query
+        query_embedding = self._get_embeddings(query)
+
+        retrieved_docs = []
+
+        fields = sql.SQL(",").join([sql.Identifier(f) for f in self.fields])
+
+        # Build WHERE clause for source filtering
+        where_clause = sql.SQL("")
+        args = []
+
+        # First arg - WHERE clause
+        # Add source filtering
+        if self.sources:
+            source_values = [source.value for source in self.sources]
+            where_clause = sql.SQL(" WHERE metadata->>'source' = ANY(%s::text[])")
+            args.append(source_values)
+
+        # Always add query embedding first (for ORDER BY)
+        args.append(query_embedding)
+
+        # Add similarity embedding if needed (for SELECT)
+        if self.include_similarity:
+            similarity_field = sql.SQL(",") + sql.SQL(
+                "1 - ({embedding_field} <=> %s::vector) AS similarity",
+            ).format(embedding_field=sql.Identifier(self.embedding_field))
+            fields += similarity_field
+            args.append(query_embedding)  # Second embedding for similarity calculation
+
+        # Add k parameter last
+        args.append(k if k else self.k)
+
+        sql_query = sql.SQL(
+            "select {fields} from {table}{where_clause} order by {embedding_field} <=> %s::vector limit %s",
+        ).format(
+            fields=fields,
+            table=sql.Identifier(self.pg_table_name),
+            where_clause=where_clause,
+            embedding_field=sql.Identifier(self.embedding_field),
+        )
+
+        with self.conn as conn:
+            with conn.cursor() as cur:
+                cur.execute(sql_query, args)
+                rows = cur.fetchall()
+                columns = [descrip[0] for descrip in cur.description]
+                for row in rows:
+                    data = dict(zip(columns, row))
+                    data["long_text"] = data[self.content_field]
+                    retrieved_docs.append(dspy.Example(**data))
+        # Return Prediction
+        return retrieved_docs
 
 
 class DocumentRetrieverProgram(dspy.Module):
@@ -104,13 +184,14 @@ class DocumentRetrieverProgram(dspy.Module):
             openai_client = openai.OpenAI()
             db_url = self.vector_store_config.dsn
             pg_table_name = self.vector_store_config.table_name
-            retriever = PgVectorRM(
+            retriever = SourceFilteredPgVectorRM(
                 db_url=db_url,
                 pg_table_name=pg_table_name,
                 openai_client=openai_client,
                 content_field="content",
                 fields=["id", "content", "metadata"],
                 k=self.max_source_count,
+                sources=sources,
             )
             dspy.settings.configure(rm=retriever)
 
@@ -121,19 +202,19 @@ class DocumentRetrieverProgram(dspy.Module):
 
             retrieved_examples: List[dspy.Example] = []
             for search_query in search_queries:
-                logger.info(f"Retrieving documents for search query: {search_query}")
                 retrieved_examples.extend(retriever(search_query))
 
-            # Convert to Document objects
-            documents = []
+            # Convert to Document objects and deduplicate using a set
+            documents = set()
             for ex in retrieved_examples:
                 doc = Document(
                     page_content=ex.content,
                     metadata=ex.metadata
                 )
-                documents.append(doc)
+                documents.add(doc)
 
-            return documents
+            logger.info(f"Retrieved {len(documents)} documents with titles: {[doc.metadata['title'] for doc in documents]}")
+            return list(documents)
 
         except Exception as e:
             import traceback
