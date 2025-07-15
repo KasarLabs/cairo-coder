@@ -225,7 +225,7 @@ export async function handleChatCompletion(
 
       agent.on('error', (error: any) => {
         console.error('Agent error:', error);
-        
+
         // Check if headers haven't been sent yet
         if (!res.headersSent) {
           res.status(500).json({
