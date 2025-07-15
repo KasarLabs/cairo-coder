@@ -64,6 +64,7 @@ sequenceDiagram
 
     PY-->>TS: Stream: {"type": "end"}
 ```
+
 ## Components and Interfaces
 
 ### 1. FastAPI Microservice Server
@@ -71,6 +72,7 @@ sequenceDiagram
 **Purpose**: HTTP/WebSocket server that handles requests from TypeScript backend
 
 **Interface**:
+
 ```python
 class AgentServer:
     async def process_agent_request(
@@ -83,6 +85,7 @@ class AgentServer:
 ```
 
 **Key Features**:
+
 - WebSocket support for real-time streaming
 - Request validation and error handling
 - CORS configuration for cross-origin requests
@@ -93,6 +96,7 @@ class AgentServer:
 **Purpose**: Creates and configures agents based on agent ID or default configuration
 
 **Interface**:
+
 ```python
 class AgentFactory:
     @staticmethod
@@ -118,6 +122,7 @@ class AgentFactory:
 **Purpose**: Orchestrates the three-stage RAG workflow using DSPy modules
 
 **Interface**:
+
 ```python
 class RagPipeline(dspy.Module):
     """Main pipeline that chains query processing, retrieval, and generation."""
@@ -172,11 +177,13 @@ class RagPipeline(dspy.Module):
 
         yield StreamEvent(type="end", data=None)
 ```
+
 ### 4. DSPy Program Mappings
 
 #### Query Processing Components
 
 **Retrieval Signature** (maps from retrieval.program.ts):
+
 ```python
 class CairoQueryAnalysis(dspy.Signature):
     """Analyze a Cairo programming query to extract search terms and identify relevant documentation sources."""
@@ -200,6 +207,7 @@ retrieval_program = dspy.ChainOfThought(CairoQueryAnalysis)
 ```
 
 **QueryProcessor Module** (maps from queryProcessor.program.ts):
+
 ```python
 class QueryProcessor(dspy.Module):
     """Processes user queries into structured format for retrieval."""
@@ -248,6 +256,7 @@ class QueryProcessor(dspy.Module):
 #### Document Retrieval Component
 
 **DocumentRetriever Module** (maps from documentRetriever.program.ts):
+
 ```python
 class DocumentRetriever(dspy.Module):
     """Retrieves and ranks relevant documents from vector store."""
@@ -331,6 +340,7 @@ class DocumentRetriever(dspy.Module):
 #### Generation Components
 
 **Cairo Generation Signature** (maps from generation.program.ts):
+
 ```python
 class CairoCodeGeneration(dspy.Signature):
     """Generate Cairo smart contract code based on context and user query."""
@@ -358,7 +368,8 @@ generation_program = dspy.ChainOfThought(
 )
 ```
 
-**Scarb-specific Programs** (maps from scarb-*.program.ts):
+**Scarb-specific Programs** (maps from scarb-\*.program.ts):
+
 ```python
 class ScarbQueryAnalysis(dspy.Signature):
     """Analyze Scarb build tool queries to extract relevant search terms."""
@@ -415,11 +426,13 @@ def load_optimized_programs(programs_dir: str = "optimized_programs"):
 
     return programs
 ```
+
 ### 5. Vector Store Integration
 
 **Purpose**: Interface with PostgreSQL vector database for document retrieval
 
 **Interface**:
+
 ```python
 class VectorStore:
     def __init__(self, config: VectorStoreConfig):
@@ -445,6 +458,7 @@ class VectorStore:
 **Purpose**: Configure and manage multiple LLM providers through DSPy's unified interface
 
 **Implementation**:
+
 ```python
 class LLMConfig:
     """Manages LLM configuration for DSPy."""
@@ -506,6 +520,7 @@ class AgentInitializer:
 ```
 
 **Streaming Support**:
+
 ```python
 from dspy.utils import streamify
 
@@ -530,7 +545,8 @@ class StreamingPipeline:
 **Purpose**: Load and manage configuration from TOML files and environment variables
 
 **Interface**:
-```python
+
+````python
 class ConfigManager:
     @staticmethod
     def load_config() -> Config:
@@ -591,8 +607,10 @@ class DocumentSource(Enum):
     OPENZEPPELIN_DOCS = "openzeppelin_docs"
     CORELIB_DOCS = "corelib_docs"
     SCARB_DOCS = "scarb_docs"
-```
+````
+
 ## Error Handling
+
 ### Error Categories
 
 1. **Configuration Errors**: Missing API keys, invalid agent IDs
@@ -617,6 +635,7 @@ class ErrorResponse:
 ### Unit Testing with DSPy
 
 **Testing DSPy Modules**:
+
 ```python
 import pytest
 import dspy
@@ -669,6 +688,7 @@ class TestDocumentRetriever:
 ```
 
 **Testing with DSPy Assertions**:
+
 ```python
 def test_generation_quality():
     """Test generation produces valid Cairo code."""
@@ -694,6 +714,7 @@ def test_generation_quality():
 ### Integration Testing
 
 **End-to-End Pipeline Test**:
+
 ```python
 @pytest.mark.integration
 class TestRagPipeline:
@@ -729,6 +750,7 @@ class TestRagPipeline:
 ### Performance Testing with DSPy
 
 **Optimization and Benchmarking**:
+
 ```python
 class PerformanceTests:
     def test_pipeline_optimization(self):
