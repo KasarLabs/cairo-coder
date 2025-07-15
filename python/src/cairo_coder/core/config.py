@@ -11,12 +11,12 @@ from .types import DocumentSource
 @dataclass
 class VectorStoreConfig:
     """Configuration for vector store connection."""
-    host: str = "localhost"
-    port: int = 5432
-    database: str = "cairo_coder"
-    user: str = "postgres"
-    password: str = ""
-    table_name: str = "documents"
+    host: str
+    port: int
+    database: str
+    user: str
+    password: str
+    table_name: str
     embedding_dimension: int = 2048  # text-embedding-3-large dimension
     similarity_measure: str = "cosine"  # cosine, dot_product, euclidean
 
@@ -39,13 +39,10 @@ class LLMProviderConfig:
 
     # Google Gemini
     gemini_api_key: Optional[str] = None
-    gemini_model: str = "gemini-1.5-pro"
+    gemini_model: str = "gemini-2.5-flash"
 
     # Common settings
     default_provider: str = "openai"
-    temperature: float = 0.0
-    max_tokens: Optional[int] = None
-    streaming: bool = True
 
     # Embedding model
     embedding_model: str = "text-embedding-3-large"
@@ -133,32 +130,20 @@ You are helping write Cairo tests. Consider:
 @dataclass
 class Config:
     """Main application configuration."""
-    # Server settings
-    host: str = "0.0.0.0"
-    port: int = 8000
-    debug: bool = False
-
     # Database
-    vector_store: VectorStoreConfig = field(default_factory=VectorStoreConfig)
+    vector_store: VectorStoreConfig
 
     # LLM providers
-    llm: LLMProviderConfig = field(default_factory=LLMProviderConfig)
+    llm: LLMProviderConfig
+
+    # Server settings
+    host: str = "0.0.0.0"
+    port: int = 3001
+    debug: bool = False
 
     # Agent configurations
     agents: Dict[str, AgentConfiguration] = field(default_factory=dict)
     default_agent_id: str = "cairo-coder"
-
-    # Logging
-    log_level: str = "INFO"
-    log_format: str = "json"  # json or text
-
-    # Monitoring
-    enable_metrics: bool = True
-    metrics_port: int = 9090
-
-    # Optimization
-    optimization_dir: str = "optimized_programs"
-    enable_optimization: bool = False
 
     def __post_init__(self) -> None:
         """Initialize default agents on top of custom ones."""

@@ -20,24 +20,17 @@ class TestConfigIntegration:
     def sample_config_file(self) -> Generator[Path, None, None]:
         """Create a temporary config file for testing."""
         config_data = {
-            "server": {
-                "host": "127.0.0.1",
-                "port": 8080,
-                "debug": True
-            },
-            "vector_db": {
-                "host": "test-db.example.com",
-                "port": 5433,
-                "database": "test_cairo",
-                "user": "test_user",
-                "password": "test_password",
-                "table_name": "test_documents",
-                "similarity_measure": "cosine"
+            "VECTOR_DB": {
+                "POSTGRES_HOST": "test-db.example.com",
+                "POSTGRES_PORT": 5433,
+                "POSTGRES_DB": "test_cairo",
+                "POSTGRES_USER": "test_user",
+                "POSTGRES_PASSWORD": "test_password",
+                "POSTGRES_TABLE_NAME": "test_documents",
+                "SIMILARITY_MEASURE": "cosine"
             },
             "providers": {
                 "default": "openai",
-                "temperature": 0.1,
-                "streaming": True,
                 "embedding_model": "text-embedding-3-large",
                 "openai": {
                     "api_key": "test-openai-key",
@@ -87,11 +80,6 @@ class TestConfigIntegration:
 
         config = ConfigManager.load_config(sample_config_file)
 
-        # Verify server settings
-        assert config.host == "127.0.0.1"
-        assert config.port == 8080
-        assert config.debug is True
-
         # Verify database settings
         assert config.vector_store.host == "test-db.example.com"
         assert config.vector_store.port == 5433
@@ -103,21 +91,11 @@ class TestConfigIntegration:
 
         # Verify LLM provider settings
         assert config.llm.default_provider == "openai"
-        assert config.llm.temperature == 0.1
-        assert config.llm.streaming is True
         assert config.llm.embedding_model == "text-embedding-3-large"
         assert config.llm.openai_api_key == "test-openai-key"
         assert config.llm.openai_model == "gpt-4"
         assert config.llm.anthropic_api_key == "test-anthropic-key"
         assert config.llm.anthropic_model == "claude-3-sonnet"
-
-        # Verify logging settings
-        assert config.log_level == "DEBUG"
-        assert config.log_format == "json"
-
-        # Verify monitoring settings
-        assert config.enable_metrics is True
-        assert config.metrics_port == 9191
 
         # Verify agent configuration
         assert "test-agent" in config.agents
@@ -166,6 +144,7 @@ class TestConfigIntegration:
         # Test validation failures
         config.llm.openai_api_key = None
         config.llm.anthropic_api_key = None
+        config.llm.gemini_api_key = None
         with pytest.raises(ValueError, match="At least one LLM provider"):
             ConfigManager.validate_config(config)
 
@@ -191,13 +170,6 @@ class TestConfigIntegration:
         # Try to get non-existent agent
         with pytest.raises(ValueError, match="Agent 'unknown' not found"):
             ConfigManager.get_agent_config(config, "unknown")
-
-    def test_logging_setup_integration(self, sample_config_file: Path) -> None:
-        """Test that logging can be set up from configuration."""
-        config = ConfigManager.load_config(sample_config_file)
-
-        # This should not raise any exceptions
-        setup_logging(config.log_level, config.log_format)
 
     @pytest.mark.asyncio
     async def test_missing_config_file(self) -> None:
