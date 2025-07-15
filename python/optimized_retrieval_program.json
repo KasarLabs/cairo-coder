@@ -1,0 +1,63 @@
+{
+  "predict": {
+    "traces": [],
+    "train": [],
+    "demos": [
+      {
+        "query": "Refactor this contract to add access control on public functions",
+        "search_queries": [
+          "Access control library for Cairo smart contracts",
+          "Asserting the caller of a contract entrypoint",
+          "Component for access control",
+          "Writing Starknet Smart Contracts"
+        ],
+        "resources": ["openzeppelin_docs", "cairo_book"],
+        "chat_history": ""
+      },
+      {
+        "query": "Implement an ERC20 token with mint and burn mechanism",
+        "search_queries": [
+          "Creating ERC20 tokens with Openzeppelin",
+          "Adding mint and burn entrypoints to ERC20",
+          "Writing Starknet Smart Contracts",
+          "Integrating Openzeppelin library in Cairo project"
+        ],
+        "resources": ["openzeppelin_docs", "cairo_book"],
+        "chat_history": ""
+      }
+    ],
+    "signature": {
+      "instructions": "You are an AI assistant specialized in Starknet and Cairo smart contract development. Your task is to process a user's programming query, provide a detailed reasoning for how to approach it, generate effective search queries, and identify the most relevant documentation resources.\n\nFor each `Query` in the `Chat History`:\n1.  **Reasoning**: Explain your thought process step-by-step. Analyze the user's intent, identify key concepts (e.g., ERC20, mint\/burn, OpenZeppelin), and outline the necessary steps or information required to fulfill the request. This reasoning should be comprehensive and directly justify the subsequent search queries and resource selection.\n2.  **Search Queries**: Based on your reasoning, generate a list of highly specific and effective search queries that a developer would use to find the necessary information. These queries should be tailored to the Starknet\/Cairo ecosystem, frequently include terms like \"Cairo\", \"Starknet\", \"OpenZeppelin\", and specific contract functionalities, and aim to efficiently locate relevant information.\n3.  **Resources**: Identify the most authoritative and relevant documentation sources from the available options (e.g., `openzeppelin_docs`, `cairo_book`). Select only those directly applicable to the query and your reasoning.",
+      "fields": [
+        {
+          "prefix": "Chat History:",
+          "description": "Previous conversation context for better understanding of the query. May be empty."
+        },
+        {
+          "prefix": "Query:",
+          "description": "User's Cairo\/Starknet programming question or request that needs to be processed"
+        },
+        {
+          "prefix": "Reasoning: Let's think step by step in order to",
+          "description": "${reasoning}"
+        },
+        {
+          "prefix": "Search Queries:",
+          "description": "List of specific search queries to make to a vector store to find relevant documentation. Each query should be a sentence describing an action to take to fulfill the user's request"
+        },
+        {
+          "prefix": "Resources:",
+          "description": "List of documentation sources. Available sources: cairo_book: The Cairo Programming Language Book. Essential for core language syntax, semantics, types (felt252, structs, enums, Vec), traits, generics, control flow, memory management, writing tests, organizing a project, standard library usage, starknet interactions. Crucial for smart contract structure, storage, events, ABI, syscalls, contract deployment, interaction, L1<>L2 messaging, Starknet-specific attributes., starknet_docs: The Starknet Documentation. For Starknet protocol, architecture, APIs, syscalls, network interaction, deployment, ecosystem tools (Starkli, indexers), general Starknet knowledge. This should not be included for Coding and Programming questions, but rather, only for questions about Starknet itself., starknet_foundry: The Starknet Foundry Documentation. For using the Foundry toolchain: writing, compiling, testing (unit tests, integration tests), and debugging Starknet contracts., cairo_by_example: Cairo by Example Documentation. Provides practical Cairo code snippets for specific language features or common patterns. Useful for how-to syntax questions. This should not be included for Smart Contract questions, but for all other Cairo programming questions., openzeppelin_docs: OpenZeppelin Cairo Contracts Documentation. For using the OZ library: standard implementations (ERC20, ERC721), access control, security patterns, contract upgradeability. Crucial for building standard-compliant contracts., corelib_docs: Cairo Core Library Documentation. For using the Cairo core library: basic types, stdlib functions, stdlib structs, macros, and other core concepts. Essential for Cairo programming questions., scarb_docs: Scarb Documentation. For using the Scarb package manager: building, compiling, generating compilation artifacts, managing dependencies, configuration of Scarb.toml."
+        }
+      ]
+    },
+    "lm": null
+  },
+  "metadata": {
+    "dependency_versions": {
+      "python": "3.12",
+      "dspy": "2.6.27",
+      "cloudpickle": "3.1"
+    }
+  }
+}

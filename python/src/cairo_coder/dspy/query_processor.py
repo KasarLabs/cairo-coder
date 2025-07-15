@@ -6,6 +6,7 @@ into structured format for document retrieval, including search terms extraction
 and resource identification.
 """
 
+import os
 import structlog
 import re
 from typing import List, Optional
@@ -51,7 +52,7 @@ class CairoQueryAnalysis(Signature):
     search_queries: List[str] = OutputField(
         desc="List of specific search queries to make to a vector store to find relevant documentation. Each query should be a sentence describing an action to take to fulfill the user's request"
     )
-    resources: str = OutputField(
+    resources: List[str] = OutputField(
         desc="List of documentation sources. Available sources: " + ", ".join([f"{key}: {value}" for key, value in RESOURCE_DESCRIPTIONS.items()])
     )
 
@@ -67,6 +68,10 @@ class QueryProcessorProgram(dspy.Module):
     def __init__(self):
         super().__init__()
         self.retrieval_program = dspy.ChainOfThought(CairoQueryAnalysis)
+        # Validate that the file exists
+        if not os.path.exists("optimized_retrieval_program.json"):
+            raise FileNotFoundError("optimized_retrieval_program.json not found")
+        self.retrieval_program.load("optimized_retrieval_program.json")
 
         # Common keywords for query analysis
         self.contract_keywords = {
@@ -77,7 +82,7 @@ class QueryProcessorProgram(dspy.Module):
 
         self.test_keywords = {
             'test', 'testing', 'assert', 'mock', 'fixture', 'unit', 'integration',
-            'should_panic', 'expected', 'setup', 'teardown', 'coverage'
+            'should_panic', 'expected', 'setup', 'teardown', 'coverage', 'foundry'
         }
 
     def forward(self, query: str, chat_history: Optional[str] = None) -> ProcessedQuery:
@@ -91,9 +96,6 @@ class QueryProcessorProgram(dspy.Module):
         Returns:
             ProcessedQuery with search terms, resource identification, and categorization
         """
-        if chat_history is None:
-            chat_history = ""
-
         # Execute the DSPy retrieval program
         result = self.retrieval_program.forward(
             query=query,
@@ -114,7 +116,7 @@ class QueryProcessorProgram(dspy.Module):
             is_test_related=self._is_test_query(query),
             resources=resources
         )
-    def _validate_resources(self, resources_str: str) -> List[DocumentSource]:
+    def _validate_resources(self, resources: List[str]) -> List[DocumentSource]:
         """
         Validate and convert resource strings to DocumentSource enum values.
 
@@ -124,14 +126,12 @@ class QueryProcessorProgram(dspy.Module):
         Returns:
             List of valid DocumentSource enum values
         """
-        if not resources_str or resources_str is None:
+        if not resources or resources is None:
             return [DocumentSource.CAIRO_BOOK]  # Default fallback
 
         # Parse resource names
-        resource_names = [r.strip() for r in str(resources_str).split(',')]
         valid_resources = []
-
-        for name in resource_names:
+        for name in resources:
             if not name:
                 continue
 
@@ -146,6 +146,7 @@ class QueryProcessorProgram(dspy.Module):
                 continue
 
         # Return valid resources or default fallback
+        # TODO: Upon failure, this should return an error message to the user.
         return valid_resources if valid_resources else [DocumentSource.CAIRO_BOOK]
 
     def _is_contract_query(self, query: str) -> bool:

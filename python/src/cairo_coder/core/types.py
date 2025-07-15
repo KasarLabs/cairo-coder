@@ -45,8 +45,7 @@ class ProcessedQuery:
     is_test_related: bool = False
     resources: List[DocumentSource] = field(default_factory=list)
 
-
-@dataclass
+@dataclass(frozen=True)
 class Document:
     """Document with content and metadata."""
     page_content: str
@@ -67,6 +66,11 @@ class Document:
         """Get document URL from metadata."""
         return self.metadata.get("url")
 
+    def __hash__(self) -> int:
+        """Make Document hashable by using page_content and a frozen representation of metadata."""
+        # Convert metadata dict to a sorted tuple of key-value pairs for hashing
+        metadata_items = tuple(sorted(self.metadata.items())) if self.metadata else ()
+        return hash((self.page_content, metadata_items))
 
 @dataclass
 class RagInput:
