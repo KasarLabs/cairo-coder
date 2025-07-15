@@ -41,6 +41,8 @@ dependencies = [
   "dspy>=2.6.27",
   "psycopg2>=2.9.10",
   "pgvector>=0.4.1",
+  "marimo>=0.14.11",
+  "mlflow>=2.20",
 ]
 
 [project.optional-dependencies]
