@@ -72,6 +72,7 @@ This document outlines the requirements for porting the Cairo Coder agents packa
        resources = dspy.OutputField(desc="List of relevant documentation sources")
    ```
 3. WHEN composing AI workflows THEN the system SHALL use `dspy.Module` base class and chain DSPy modules:
+
    ```python
    class RagPipeline(dspy.Module):
        def __init__(self, config):
@@ -87,7 +88,9 @@ This document outlines the requirements for porting the Cairo Coder agents packa
            answer = self.answer_generator(query=query, context=docs, chat_history=history)
            return answer
    ```
+
 4. WHEN optimizing performance THEN the system SHALL support DSPy teleprompters (optimizers):
+
    ```python
    # Use MIPROv2 for automatic prompt optimization
    optimizer = dspy.MIPROv2(metric=cairo_accuracy_metric, auto="medium")
@@ -101,7 +104,9 @@ This document outlines the requirements for porting the Cairo Coder agents packa
    optimizer = dspy.BootstrapFewShot(metric=cairo_accuracy_metric, max_bootstrapped_demos=4)
    optimized_pipeline = optimizer.compile(rag_pipeline, trainset=cairo_examples)
    ```
+
 5. WHEN saving/loading programs THEN the system SHALL use DSPy's serialization:
+
    ```python
    # Save optimized program with learned prompts and demonstrations
    optimized_pipeline.save("optimized_cairo_rag.json")
@@ -117,6 +122,7 @@ This document outlines the requirements for porting the Cairo Coder agents packa
 #### Acceptance Criteria
 
 1. WHEN implementing QueryProcessorProgram THEN it SHALL map to a DSPy module using ChainOfThought:
+
    ```python
    class QueryProcessor(dspy.Module):
        def __init__(self, retrieval_program):
@@ -138,6 +144,7 @@ This document outlines the requirements for porting the Cairo Coder agents packa
    ```
 
 2. WHEN implementing DocumentRetrieverProgram THEN it SHALL map to a DSPy module maintaining the three-step process:
+
    ```python
    class DocumentRetriever(dspy.Module):
        def __init__(self, config: RagSearchConfig):
@@ -163,6 +170,7 @@ This document outlines the requirements for porting the Cairo Coder agents packa
    ```
 
 3. WHEN implementing GenerationProgram THEN it SHALL use DSPy's ChainOfThought with reasoning:
+
    ```python
    class CairoGeneration(dspy.Signature):
        """Generate Cairo smart contract code based on context and query."""
@@ -181,6 +189,7 @@ This document outlines the requirements for porting the Cairo Coder agents packa
    ```
 
 4. WHEN implementing specialized Scarb programs THEN they SHALL use domain-specific signatures:
+
    ```python
    class ScarbRetrieval(dspy.Signature):
        """Extract search terms for Scarb build tool queries."""
@@ -213,6 +222,7 @@ This document outlines the requirements for porting the Cairo Coder agents packa
 #### Acceptance Criteria
 
 1. WHEN configuring LLM providers THEN the system SHALL use DSPy's unified LM interface:
+
    ```python
    # Configure different providers
    openai_lm = dspy.LM(model="openai/gpt-4o", api_key=config.openai_key)
@@ -224,6 +234,7 @@ This document outlines the requirements for porting the Cairo Coder agents packa
    ```
 
 2. WHEN implementing model routing THEN the system SHALL support provider selection:
+
    ```python
    class LLMRouter:
        def __init__(self, config: Config):
@@ -240,6 +251,7 @@ This document outlines the requirements for porting the Cairo Coder agents packa
    ```
 
 3. WHEN streaming responses THEN the system SHALL use DSPy's streaming capabilities:
+
    ```python
    from dspy.utils import streamify
 
@@ -252,6 +264,7 @@ This document outlines the requirements for porting the Cairo Coder agents packa
    ```
 
 4. WHEN tracking usage THEN the system SHALL leverage DSPy's built-in tracking:
+
    ```python
    # DSPy automatically tracks usage for each LM call
    response = pipeline(query=query, history=history)
@@ -265,6 +278,7 @@ This document outlines the requirements for porting the Cairo Coder agents packa
    ```
 
 5. WHEN handling errors THEN the system SHALL use DSPy's error handling:
+
    ```python
    try:
        response = pipeline(query=query, history=history)

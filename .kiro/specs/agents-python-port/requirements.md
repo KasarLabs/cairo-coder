@@ -72,6 +72,7 @@ This document outlines the requirements for porting the Cairo Coder agents packa
        resources = dspy.OutputField(desc="List of relevant documentation sources")
    ```
 3. WHEN composing AI workflows THEN the system SHALL use `dspy.Module` base class and chain DSPy modules:
+
    ```python
    class RagPipeline(dspy.Module):
        def __init__(self, config):
@@ -79,7 +80,7 @@ This document outlines the requirements for porting the Cairo Coder agents packa
            self.query_processor = dspy.ChainOfThought(QueryTransformation)
            self.document_retriever = DocumentRetriever(config)
            self.answer_generator = dspy.ChainOfThought(AnswerGeneration)
-       
+
        def forward(self, query, history):
            # Chain modules together
            processed = self.query_processor(query=query, chat_history=history)
@@ -87,7 +88,9 @@ This document outlines the requirements for porting the Cairo Coder agents packa
            answer = self.answer_generator(query=query, context=docs, chat_history=history)
            return answer
    ```
+
 4. WHEN optimizing performance THEN the system SHALL support DSPy teleprompters (optimizers):
+
    ```python
    # Use MIPROv2 for automatic prompt optimization
    optimizer = dspy.MIPROv2(metric=cairo_accuracy_metric, auto="medium")
@@ -96,16 +99,18 @@ This document outlines the requirements for porting the Cairo Coder agents packa
        trainset=cairo_examples,
        requires_permission_to_run=False
    )
-   
+
    # Or use BootstrapFewShot for simpler optimization
    optimizer = dspy.BootstrapFewShot(metric=cairo_accuracy_metric, max_bootstrapped_demos=4)
    optimized_pipeline = optimizer.compile(rag_pipeline, trainset=cairo_examples)
    ```
+
 5. WHEN saving/loading programs THEN the system SHALL use DSPy's serialization:
+
    ```python
    # Save optimized program with learned prompts and demonstrations
    optimized_pipeline.save("optimized_cairo_rag.json")
-   
+
    # Load for inference
    pipeline = dspy.load("optimized_cairo_rag.json")
    ```
@@ -117,16 +122,17 @@ This document outlines the requirements for porting the Cairo Coder agents packa
 #### Acceptance Criteria
 
 1. WHEN implementing QueryProcessorProgram THEN it SHALL map to a DSPy module using ChainOfThought:
+
    ```python
    class QueryProcessor(dspy.Module):
        def __init__(self, retrieval_program):
            super().__init__()
            self.retrieval_program = retrieval_program
-       
+
        def forward(self, chat_history: str, query: str) -> ProcessedQuery:
            # Use the retrieval program (mapped from retrieval.program.ts)
            result = self.retrieval_program(chat_history=chat_history, query=query)
-           
+
            # Build ProcessedQuery matching TypeScript structure
            return ProcessedQuery(
                original=query,
@@ -138,6 +144,7 @@ This document outlines the requirements for porting the Cairo Coder agents packa
    ```
 
 2. WHEN implementing DocumentRetrieverProgram THEN it SHALL map to a DSPy module maintaining the three-step process:
+
    ```python
    class DocumentRetriever(dspy.Module):
        def __init__(self, config: RagSearchConfig):
@@ -145,7 +152,7 @@ This document outlines the requirements for porting the Cairo Coder agents packa
            self.config = config
            self.vector_store = config.vector_store
            self.embedder = dspy.Embedder(model="text-embedding-3-large")
-       
+
        async def forward(self, processed_query: ProcessedQuery, sources: List[DocumentSource]):
            # Step 1: Fetch documents (maps to fetchDocuments)
            docs = await self.vector_store.similarity_search(
@@ -153,16 +160,17 @@ This document outlines the requirements for porting the Cairo Coder agents packa
                k=self.config.max_source_count,
                sources=sources
            )
-           
+
            # Step 2: Rerank documents (maps to rerankDocuments)
            query_embedding = await self.embedder.embed([processed_query.original])
            ranked_docs = self._rerank_by_similarity(docs, query_embedding[0])
-           
+
            # Step 3: Attach sources (maps to attachSources)
            return self._attach_metadata(ranked_docs)
    ```
 
 3. WHEN implementing GenerationProgram THEN it SHALL use DSPy's ChainOfThought with reasoning:
+
    ```python
    class CairoGeneration(dspy.Signature):
        """Generate Cairo smart contract code based on context and query."""
@@ -170,7 +178,7 @@ This document outlines the requirements for porting the Cairo Coder agents packa
        query = dspy.InputField(desc="User's Cairo programming question")
        context = dspy.InputField(desc="Retrieved documentation and examples")
        answer = dspy.OutputField(desc="Cairo code solution with explanation")
-   
+
    # Maps to generation.program.ts
    generation_program = dspy.ChainOfThought(
        CairoGeneration,
@@ -181,6 +189,7 @@ This document outlines the requirements for porting the Cairo Coder agents packa
    ```
 
 4. WHEN implementing specialized Scarb programs THEN they SHALL use domain-specific signatures:
+
    ```python
    class ScarbRetrieval(dspy.Signature):
        """Extract search terms for Scarb build tool queries."""
@@ -188,7 +197,7 @@ This document outlines the requirements for porting the Cairo Coder agents packa
        query = dspy.InputField()
        search_terms = dspy.OutputField(desc="Scarb-specific search terms")
        resources = dspy.OutputField(desc="Always includes 'scarb_docs'")
-   
+
    class ScarbGeneration(dspy.Signature):
        """Generate Scarb configuration and command guidance."""
        chat_history = dspy.InputField()
@@ -213,17 +222,19 @@ This document outlines the requirements for porting the Cairo Coder agents packa
 #### Acceptance Criteria
 
 1. WHEN configuring LLM providers THEN the system SHALL use DSPy's unified LM interface:
+
    ```python
    # Configure different providers
    openai_lm = dspy.LM(model="openai/gpt-4o", api_key=config.openai_key)
    anthropic_lm = dspy.LM(model="anthropic/claude-3-5-sonnet", api_key=config.anthropic_key)
    gemini_lm = dspy.LM(model="google/gemini-1.5-pro", api_key=config.gemini_key)
-   
+
    # Set default LM for all DSPy modules
    dspy.configure(lm=openai_lm)
    ```
 
 2. WHEN implementing model routing THEN the system SHALL support provider selection:
+
    ```python
    class LLMRouter:
        def __init__(self, config: Config):
@@ -233,48 +244,51 @@ This document outlines the requirements for porting the Cairo Coder agents packa
                "gemini": dspy.LM(model=config.gemini_model, api_key=config.gemini_key)
            }
            self.default_provider = config.default_provider
-       
+
        def get_lm(self, provider: Optional[str] = None) -> dspy.LM:
            provider = provider or self.default_provider
            return self.providers.get(provider, self.providers[self.default_provider])
    ```
 
 3. WHEN streaming responses THEN the system SHALL use DSPy's streaming capabilities:
+
    ```python
    from dspy.utils import streamify
-   
+
    async def stream_generation(pipeline: dspy.Module, query: str, history: List[Message]):
        # Enable streaming for the pipeline
        streaming_pipeline = streamify(pipeline)
-       
+
        async for chunk in streaming_pipeline(query=query, history=history):
            yield {"type": "response", "data": chunk}
    ```
 
 4. WHEN tracking usage THEN the system SHALL leverage DSPy's built-in tracking:
+
    ```python
    # DSPy automatically tracks usage for each LM call
    response = pipeline(query=query, history=history)
-   
+
    # Access usage information
    usage_info = dspy.inspect_history(n=1)
    tokens_used = usage_info[-1].get("usage", {}).get("total_tokens", 0)
-   
+
    # Log usage for monitoring
    logger.info(f"Tokens used: {tokens_used}")
    ```
 
 5. WHEN handling errors THEN the system SHALL use DSPy's error handling:
+
    ```python
    try:
        response = pipeline(query=query, history=history)
    except dspy.errors.LMError as e:
        # Handle LLM-specific errors (rate limits, API failures)
        logger.error(f"LLM error: {e}")
-       
+
        # Retry with exponential backoff (built into DSPy)
        response = pipeline.forward_with_retry(
-           query=query, 
+           query=query,
            history=history,
            max_retries=3
        )
