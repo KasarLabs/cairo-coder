@@ -109,33 +109,6 @@ class TestGenerationProgram:
         call_args = generation_program.generation_program.call_args[1]
         assert call_args["chat_history"] == chat_history
 
-    def test_contract_context_enhancement(self, generation_program: GenerationProgram):
-        """Test context enhancement for contract-related queries."""
-        query = "How do I create a contract with storage?"
-        context = "Basic Cairo documentation..."
-
-        result = generation_program.forward(query, context)
-
-        # Verify contract template was added to context
-        call_args = generation_program.generation_program.call_args[1]
-        enhanced_context = call_args["context"]
-        assert """The content inside the <contract> tag""" in enhanced_context
-
-    def test_test_context_enhancement(self, generation_program):
-        """Test context enhancement for test-related queries."""
-        query = "How do I write tests for Cairo contracts?"
-        context = "Testing documentation..."
-
-        result = generation_program.forward(query, context)
-
-        # Verify test template was added to context
-        call_args = generation_program.generation_program.call_args[1]
-        enhanced_context = call_args["context"]
-        assert (
-            """The content inside the <contract_test> tag is the test code for the 'Registry' contract. It is assumed
-that the contract is part of a package named 'registry'. When writing tests, follow the important rules."""
-            in enhanced_context
-        )
 
     def test_scarb_generation_program(self, scarb_generation_program):
         """Test Scarb-specific code generation."""

@@ -337,7 +337,7 @@ class TestDocumentRetrieverProgram:
                     )
 
                     # Verify conversion to Document objects
-                    assert len(result) == len(expected_docs)
+                    assert len(result) == len(expected_docs) + 1 # (Contract template)
 
                     # Convert result to (content, metadata) tuples for comparison
                     result_tuples = [(doc.page_content, doc.metadata) for doc in result]
@@ -345,6 +345,175 @@ class TestDocumentRetrieverProgram:
                     # Check that all expected documents are present (order doesn't matter)
                     for expected_content, expected_metadata in expected_docs:
                         assert (expected_content, expected_metadata) in result_tuples
+
+    @pytest.mark.asyncio
+    async def test_contract_context_enhancement(
+        self, retriever, mock_vector_store_config, mock_dspy_examples
+    ):
+        """Test context enhancement for contract-related queries."""
+        # Create a contract-related query
+        query = ProcessedQuery(
+            original="How do I create a contract with storage?",
+            search_queries=["contract", "storage"],
+            is_contract_related=True,
+            is_test_related=False,
+            resources=[DocumentSource.CAIRO_BOOK],
+        )
+
+        with patch("cairo_coder.dspy.document_retriever.openai.OpenAI") as mock_openai_class:
+            mock_openai_client = Mock()
+            mock_openai_class.return_value = mock_openai_client
+
+            with patch("cairo_coder.dspy.document_retriever.SourceFilteredPgVectorRM") as mock_pgvector_rm:
+                mock_retriever_instance = Mock(return_value=mock_dspy_examples)
+                mock_pgvector_rm.return_value = mock_retriever_instance
+
+                # Mock dspy module
+                mock_dspy = Mock()
+                mock_settings = Mock()
+                mock_settings.configure = Mock()
+                mock_dspy.settings = mock_settings
+
+                with patch("cairo_coder.dspy.document_retriever.dspy", mock_dspy):
+                    result = await retriever.forward(query)
+
+                    # Verify contract template was added to context
+                    contract_template_found = False
+                    for doc in result:
+                        if doc.metadata.get("source") == "contract_template":
+                            contract_template_found = True
+                            # Verify it contains the contract template content
+                            assert "The content inside the <contract> tag" in doc.page_content
+                            assert "#[starknet::contract]" in doc.page_content
+                            assert "#[storage]" in doc.page_content
+                            break
+
+                    assert contract_template_found, "Contract template should be added for contract-related queries"
+
+    @pytest.mark.asyncio
+    async def test_test_context_enhancement(
+        self, retriever, mock_vector_store_config, mock_dspy_examples
+    ):
+        """Test context enhancement for test-related queries."""
+        # Create a test-related query
+        query = ProcessedQuery(
+            original="How do I write tests for Cairo contracts?",
+            search_queries=["test", "cairo"],
+            is_contract_related=False,
+            is_test_related=True,
+            resources=[DocumentSource.CAIRO_BOOK],
+        )
+
+        with patch("cairo_coder.dspy.document_retriever.openai.OpenAI") as mock_openai_class:
+            mock_openai_client = Mock()
+            mock_openai_class.return_value = mock_openai_client
+
+            with patch("cairo_coder.dspy.document_retriever.SourceFilteredPgVectorRM") as mock_pgvector_rm:
+                mock_retriever_instance = Mock(return_value=mock_dspy_examples)
+                mock_pgvector_rm.return_value = mock_retriever_instance
+
+                # Mock dspy module
+                mock_dspy = Mock()
+                mock_settings = Mock()
+                mock_settings.configure = Mock()
+                mock_dspy.settings = mock_settings
+
+                with patch("cairo_coder.dspy.document_retriever.dspy", mock_dspy):
+                    result = await retriever.forward(query)
+
+                    # Verify test template was added to context
+                    test_template_found = False
+                    for doc in result:
+                        if doc.metadata.get("source") == "test_template":
+                            test_template_found = True
+                            # Verify it contains the test template content
+                            assert "The content inside the <contract_test> tag is the test code for the 'Registry' contract. It is assumed" in doc.page_content
+                            assert "that the contract is part of a package named 'registry'. When writing tests, follow the important rules." in doc.page_content
+                            assert "#[test]" in doc.page_content
+                            assert "assert(" in doc.page_content
+                            break
+
+                    assert test_template_found, "Test template should be added for test-related queries"
+
+    @pytest.mark.asyncio
+    async def test_both_templates_enhancement(
+        self, retriever, mock_vector_store_config, mock_dspy_examples
+    ):
+        """Test context enhancement when query relates to both contracts and tests."""
+        # Create a query that mentions both contracts and tests
+        query = ProcessedQuery(
+            original="How do I create a contract and write tests for it?",
+            search_queries=["contract", "test"],
+            is_contract_related=True,
+            is_test_related=True,
+            resources=[DocumentSource.CAIRO_BOOK],
+        )
+
+        with patch("cairo_coder.dspy.document_retriever.openai.OpenAI") as mock_openai_class:
+            mock_openai_client = Mock()
+            mock_openai_class.return_value = mock_openai_client
+
+            with patch("cairo_coder.dspy.document_retriever.SourceFilteredPgVectorRM") as mock_pgvector_rm:
+                mock_retriever_instance = Mock(return_value=mock_dspy_examples)
+                mock_pgvector_rm.return_value = mock_retriever_instance
+
+                # Mock dspy module
+                mock_dspy = Mock()
+                mock_settings = Mock()
+                mock_settings.configure = Mock()
+                mock_dspy.settings = mock_settings
+
+                with patch("cairo_coder.dspy.document_retriever.dspy", mock_dspy):
+                    result = await retriever.forward(query)
+
+                    # Verify both templates were added
+                    contract_template_found = False
+                    test_template_found = False
+
+                    for doc in result:
+                        if doc.metadata.get("source") == "contract_template":
+                            contract_template_found = True
+                        elif doc.metadata.get("source") == "test_template":
+                            test_template_found = True
+
+                    assert contract_template_found, "Contract template should be added for contract-related queries"
+                    assert test_template_found, "Test template should be added for test-related queries"
+
+    @pytest.mark.asyncio
+    async def test_no_template_enhancement(
+        self, retriever, mock_vector_store_config, mock_dspy_examples
+    ):
+        """Test that no templates are added for unrelated queries."""
+        # Create a query that's not related to contracts or tests
+        query = ProcessedQuery(
+            original="What is Cairo programming language?",
+            search_queries=["cairo", "programming"],
+            is_contract_related=False,
+            is_test_related=False,
+            resources=[DocumentSource.CAIRO_BOOK],
+        )
+
+        with patch("cairo_coder.dspy.document_retriever.openai.OpenAI") as mock_openai_class:
+            mock_openai_client = Mock()
+            mock_openai_class.return_value = mock_openai_client
+
+            with patch("cairo_coder.dspy.document_retriever.SourceFilteredPgVectorRM") as mock_pgvector_rm:
+                mock_retriever_instance = Mock(return_value=mock_dspy_examples)
+                mock_pgvector_rm.return_value = mock_retriever_instance
+
+                # Mock dspy module
+                mock_dspy = Mock()
+                mock_settings = Mock()
+                mock_settings.configure = Mock()
+                mock_dspy.settings = mock_settings
+
+                with patch("cairo_coder.dspy.document_retriever.dspy", mock_dspy):
+                    result = await retriever.forward(query)
+
+                    # Verify no templates were added
+                    template_sources = [doc.metadata.get("source") for doc in result]
+                    assert "contract_template" not in template_sources, "Contract template should not be added for non-contract queries"
+                    assert "test_template" not in template_sources, "Test template should not be added for non-test queries"
 
 class TestDocumentRetrieverFactory:
     """Test the document retriever factory function."""
