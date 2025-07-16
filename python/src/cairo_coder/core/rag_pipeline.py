@@ -93,7 +93,7 @@ class RagPipeline(dspy.Module):
         """
         # TODO: This is the place where we should select the proper LLM configuration.
         # TODO: For now we just Hard-code DSPY - GEMINI
-        dspy.configure(lm=dspy.LM("gemini/gemini-2.5-flash", max_tokens=20000))
+        dspy.configure(lm=dspy.LM("gemini/gemini-2.5-flash", max_tokens=30000))
         dspy.configure(callbacks=[AgentLoggingCallback()])
         try:
             # Stage 1: Process query
