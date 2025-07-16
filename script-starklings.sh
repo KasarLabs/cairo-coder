@@ -26,7 +26,7 @@ fi
 cd ..
 
 # Vérifier si le serveur répond
-if ! curl -s http://localhost:3002/ > /dev/null 2>&1; then
+if ! curl -s http://localhost:3001/ > /dev/null 2>&1; then
     echo "❌ Server failed to start"
     kill $SERVER_PID 2>/dev/null || true
     exit 1

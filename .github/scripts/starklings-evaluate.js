@@ -98,7 +98,7 @@ async function testServerConnection() {
   log('Testing server connection...');
 
   try {
-    const response = await fetch('http://localhost:3002/', {
+    const response = await fetch('http://localhost:3001/', {
       method: 'GET',
       timeout: 5000,
     });
@@ -145,7 +145,7 @@ Please provide only the corrected code, without any additional explanation or ma
       log(`API call attempt ${attempt}/${retries} for ${exercise.name}`);
 
       const response = await fetch(
-        'http://localhost:3002/v1/chat/completions',
+        'http://localhost:3001/v1/chat/completions',
         {
           method: 'POST',
           headers: {
