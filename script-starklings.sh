@@ -1,5 +1,30 @@
 #!/bin/bash
 
+
+# 1. Nettoyer les éventuels anciens dossiers
+echo "🧹 Cleaning up previous installations..."
+rm -rf starklings
+
+# 2. Cloner le repo starklings
+echo "📦 Cloning starklings repository..."
+git clone https://github.com/shramee/starklings.git
+if [ $? -ne 0 ]; then
+    echo "❌ Failed to clone starklings repository"
+    exit 1
+fi
+
+# 3. Changer vers la branche feat/upgrade-cairo-and-use-scarb
+echo "🔄 Switching to feat/upgrade-cairo-and-use-scarb branch..."
+cd starklings
+git checkout feat/upgrade-cairo-and-use-scarb
+if [ $? -ne 0 ]; then
+    echo "❌ Failed to switch to feat/upgrade-cairo-and-use-scarb branch"
+    exit 1
+fi
+
+# 4. Retourner au dossier parent
+cd ..
+
 # Vérifier si le serveur répond
 if ! curl -s http://localhost:3002/ > /dev/null 2>&1; then
     echo "❌ Server failed to start"

@@ -4,7 +4,7 @@ const path = require('path');
 
 // Configuration de débogage
 const DEBUG = true;
-const SINGLE_EXERCISE = process.env.SINGLE_EXERCISE || null; // ex: "intro1"
+const SINGLE_EXERCISE = process.env.SINGLE_EXERCISE || null; 
 const SAVE_RESPONSES = true;
 
 function log(message) {
@@ -215,7 +215,7 @@ async function testExercise(exercise, starklingsPath, runNumber = 1) {
        log(`Updated exercise file with generated code`);
        
        // Sauvegarder les fichiers de debug SEULEMENT pour le dernier run (run 10)
-       if (SAVE_RESPONSES && runNumber === 2) {
+       if (SAVE_RESPONSES && runNumber === 5) {
            const solutionFile = path.join(__dirname, '..', '..', 'debug', `${exercise.name}_solution.cairo`);
            fs.mkdirSync(path.dirname(solutionFile), { recursive: true });
            fs.writeFileSync(solutionFile, correctedCode);
@@ -224,7 +224,7 @@ async function testExercise(exercise, starklingsPath, runNumber = 1) {
        // Tester la solution
        try {
            log(`Running starklings for ${exercise.name}...`);
-           const result = execSync(`cargo run --bin starklings run ${exercise.name} 2>/dev/null`, {
+           const result = execSync(`cargo run --bin starklings run ${exercise.name}`, {
                cwd: starklingsPath,
                stdio: 'pipe',
                timeout: 300000,
@@ -248,7 +248,7 @@ async function testExercise(exercise, starklingsPath, runNumber = 1) {
            };
            
            // Sauvegarder les erreurs SEULEMENT pour le dernier run
-           if (SAVE_RESPONSES && runNumber === 2) {
+           if (SAVE_RESPONSES && runNumber === 5) {
                const errorFile = path.join(__dirname, '..', '..', 'debug', `${exercise.name}_error.txt`);
                fs.writeFileSync(errorFile, `Exit code: ${error.status}\n\nSTDOUT:\n${error.stdout}\n\nSTDERR:\n${error.stderr}`);
                log(`Error details saved to: ${errorFile}`);
@@ -356,18 +356,24 @@ function generateConsolidatedReport(allResults) {
         categoryAverages[category] = (rates.reduce((sum, rate) => sum + rate, 0) / rates.length).toFixed(1) + '%';
     });
     
-    // Collecter les erreurs par exercice et par run
-    const exerciseErrors = {};
+    // Collecter les erreurs par catégorie et par exercice
+    const exerciseErrorsByCategory = {};
     allResults.forEach(run => {
         run.categories.forEach(category => {
             category.exercises.forEach(exercise => {
                 if (!exercise.success && exercise.error) {
-                    if (!exerciseErrors[exercise.name]) {
-                        exerciseErrors[exercise.name] = [];
+                    // Initialiser la catégorie si elle n'existe pas
+                    if (!exerciseErrorsByCategory[category.category]) {
+                        exerciseErrorsByCategory[category.category] = {};
+                    }
+                    
+                    // Initialiser l'exercice si il n'existe pas
+                    if (!exerciseErrorsByCategory[category.category][exercise.name]) {
+                        exerciseErrorsByCategory[category.category][exercise.name] = [];
                     }
                     
                     // Ajouter l'erreur avec le numéro de run
-                    exerciseErrors[exercise.name].push({
+                    exerciseErrorsByCategory[category.category][exercise.name].push({
                         run: run.runNumber,
                         type: exercise.error.type || 'COMPILATION_ERROR',
                         message: exercise.error.message || 'Compilation failed',
@@ -385,7 +391,7 @@ function generateConsolidatedReport(allResults) {
             globalSuccessRate: averageSuccessRate + '%'
         },
         categorySuccessRates: categoryAverages,
-        exerciseErrors: exerciseErrors
+        exerciseErrorsByCategory: exerciseErrorsByCategory
     };
 }
 
@@ -441,7 +447,7 @@ async function runSingleTest(runNumber) {
 
    // Calculer le total d'exercices
    const totalExercises = Object.values(categoriesToTest).reduce((sum, exercises) => sum + exercises.length, 0);
-   console.log(`\n🧪 [RUN ${runNumber}/2] Starting evaluation of ${totalExercises} exercises across ${Object.keys(categoriesToTest).length} categories...`);
+   console.log(`\n🧪 [RUN ${runNumber}/5] Starting evaluation of ${totalExercises} exercises across ${Object.keys(categoriesToTest).length} categories...`);
 
    // Traiter les catégories en parallèle
    const startTime = Date.now();
@@ -474,7 +480,7 @@ async function runSingleTest(runNumber) {
 }
 
 async function main() {
-   const NUM_RUNS = 2;
+   const NUM_RUNS = 1;
    const allResults = [];
    
    console.log(`🚀 Starting ${NUM_RUNS} successive test runs...`);
@@ -501,9 +507,21 @@ async function main() {
    fs.writeFileSync(consolidatedReportPath, JSON.stringify(consolidatedReport, null, 2));
    
    console.log(`\n=== Final Summary (${NUM_RUNS} runs) ===`);
-   console.log(`Average success rate: ${consolidatedReport.averageSuccessRate}%`);
-   console.log(`Best run: ${consolidatedReport.bestRun.globalSuccessRate}% (Run ${consolidatedReport.bestRun.runNumber})`);
-   console.log(`Worst run: ${consolidatedReport.worstRun.globalSuccessRate}% (Run ${consolidatedReport.worstRun.runNumber})`);
+   console.log(`Average success rate: ${consolidatedReport.summary.globalSuccessRate}`);
+   
+   // Calculer le meilleur et pire run pour l'affichage
+   if (allResults.length > 0) {
+       const bestRun = allResults.reduce((best, current) => 
+           parseFloat(current.globalSuccessRate) > parseFloat(best.globalSuccessRate) ? current : best
+       );
+       
+       const worstRun = allResults.reduce((worst, current) => 
+           parseFloat(current.globalSuccessRate) < parseFloat(worst.globalSuccessRate) ? current : worst
+       );
+       
+       console.log(`Best run: ${bestRun.globalSuccessRate}% (Run ${bestRun.runNumber})`);
+       console.log(`Worst run: ${worstRun.globalSuccessRate}% (Run ${worstRun.runNumber})`);
+   }
    
    log(`All reports saved in: ${debugDir}`);
    log(`Consolidated report: ${consolidatedReportPath}`);
