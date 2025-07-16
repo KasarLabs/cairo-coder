@@ -345,8 +345,8 @@ class TestDefaultAgentConfigurations:
         assert "General-purpose Cairo programming assistant" in config.description
         assert DocumentSource.CAIRO_BOOK in config.sources
         assert DocumentSource.STARKNET_DOCS in config.sources
-        assert config.max_source_count == 10
-        assert config.similarity_threshold == 0.4
+        assert config.max_source_count == 5
+        assert config.similarity_threshold == 0.35
         assert config.contract_template is not None
         assert config.test_template is not None
 
@@ -359,38 +359,9 @@ class TestDefaultAgentConfigurations:
         assert "Scarb build tool" in config.description
         assert config.sources == [DocumentSource.SCARB_DOCS]
         assert config.max_source_count == 5
-        assert config.similarity_threshold == 0.4
+        assert config.similarity_threshold == 0.35
         assert config.contract_template is None
         assert config.test_template is None
-
-    def test_get_starknet_foundry_agent(self):
-        """Test getting Starknet Foundry agent configuration."""
-        config = DefaultAgentConfigurations.get_starknet_foundry_agent()
-
-        assert config.id == "foundry_assistant"
-        assert config.name == "Foundry Assistant"
-        assert "Starknet Foundry testing" in config.description
-        assert DocumentSource.STARKNET_FOUNDRY in config.sources
-        assert DocumentSource.CAIRO_BOOK in config.sources
-        assert config.max_source_count == 8
-        assert config.similarity_threshold == 0.4
-        assert config.contract_template is None
-        assert config.test_template is not None
-
-    def test_get_openzeppelin_agent(self):
-        """Test getting OpenZeppelin agent configuration."""
-        config = DefaultAgentConfigurations.get_openzeppelin_agent()
-
-        assert config.id == "openzeppelin_assistant"
-        assert config.name == "OpenZeppelin Assistant"
-        assert "OpenZeppelin Cairo contracts" in config.description
-        assert DocumentSource.OPENZEPPELIN_DOCS in config.sources
-        assert DocumentSource.CAIRO_BOOK in config.sources
-        assert config.max_source_count == 8
-        assert config.similarity_threshold == 0.4
-        assert config.contract_template is not None
-        assert config.test_template is None
-
 
 class TestAgentFactoryConfig:
     """Test suite for AgentFactoryConfig."""
@@ -445,8 +416,6 @@ class TestCreateAgentFactory:
             available_agents = factory.get_available_agents()
             assert "default" in available_agents
             assert "scarb_assistant" in available_agents
-            assert "foundry_assistant" in available_agents
-            assert "openzeppelin_assistant" in available_agents
 
     def test_create_agent_factory_with_custom_config(self, mock_vector_store_config):
         """Test creating agent factory with custom configuration."""

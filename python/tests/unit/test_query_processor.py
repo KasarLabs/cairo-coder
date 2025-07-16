@@ -5,6 +5,7 @@ Tests the DSPy-based query processing functionality including search term extrac
 resource identification, and query categorization.
 """
 
+from typing import List
 from unittest.mock import Mock, patch
 import pytest
 import dspy
@@ -49,25 +50,25 @@ class TestQueryProcessorProgram:
         assert isinstance(result.resources, list)
         assert all(isinstance(r, DocumentSource) for r in result.resources)
 
-    def test_resource_validation(self, processor):
+    def test_resource_validation(self, processor: QueryProcessorProgram):
         """Test validation of resource strings."""
         # Test valid resources
-        resources_str = "cairo_book, starknet_docs, openzeppelin_docs"
-        validated = processor._validate_resources(resources_str)
+        resources: List[str] = ["cairo_book", "starknet_docs", "openzeppelin_docs"]
+        validated = processor._validate_resources(resources)
 
         assert DocumentSource.CAIRO_BOOK in validated
         assert DocumentSource.STARKNET_DOCS in validated
         assert DocumentSource.OPENZEPPELIN_DOCS in validated
 
         # Test invalid resources with fallback
-        resources_str = "invalid_source, another_invalid"
-        validated = processor._validate_resources(resources_str)
+        resources: List[str] = ["invalid_source", "another_invalid"]
+        validated = processor._validate_resources(resources)
 
         assert validated == [DocumentSource.CAIRO_BOOK]  # Default fallback
 
         # Test mixed valid and invalid
-        resources_str = "cairo_book, invalid_source, starknet_docs"
-        validated = processor._validate_resources(resources_str)
+        resources: List[str] = ["cairo_book", "invalid_source", "starknet_docs"]
+        validated = processor._validate_resources(resources)
 
         assert DocumentSource.CAIRO_BOOK in validated
         assert DocumentSource.STARKNET_DOCS in validated

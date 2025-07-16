@@ -276,23 +276,3 @@ class DocumentRetrieverProgram(dspy.Module):
             import traceback
             logger.error(f"Error reranking documents: {traceback.format_exc()}")
             raise e
-
-def create_document_retriever(
-    vector_store_config: VectorStoreConfig, max_source_count: int = 10, similarity_threshold: float = 0.4
-) -> DocumentRetrieverProgram:
-    """
-    Factory function to create a DocumentRetrieverProgram instance.
-
-    Args:
-        vector_store: VectorStore instance for document retrieval
-        max_source_count: Maximum number of documents to retrieve
-        similarity_threshold: Minimum similarity score for document inclusion
-
-    Returns:
-        Configured DocumentRetrieverProgram instance
-    """
-    return DocumentRetrieverProgram(
-        vector_store_config=vector_store_config,
-        max_source_count=max_source_count,
-        similarity_threshold=similarity_threshold,
-    )

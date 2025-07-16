@@ -8,23 +8,20 @@ This package contains DSPy-based programs for the Cairo Coder RAG pipeline:
 """
 
 from .query_processor import QueryProcessorProgram, create_query_processor
-from .document_retriever import DocumentRetrieverProgram, create_document_retriever
+from .document_retriever import DocumentRetrieverProgram
 from .generation_program import (
-    GenerationProgram, 
+    GenerationProgram,
     McpGenerationProgram,
     create_generation_program,
     create_mcp_generation_program,
-    load_optimized_programs
 )
 
 __all__ = [
     "QueryProcessorProgram",
     "create_query_processor",
     "DocumentRetrieverProgram",
-    "create_document_retriever",
     "GenerationProgram",
     "McpGenerationProgram",
     "create_generation_program",
     "create_mcp_generation_program",
-    "load_optimized_programs",
 ]

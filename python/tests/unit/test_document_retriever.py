@@ -6,13 +6,13 @@ Tests the DSPy-based document retrieval functionality using PgVectorRM retriever
 
 from cairo_coder.core.config import VectorStoreConfig
 import pytest
-from unittest.mock import Mock, AsyncMock, patch, MagicMock
+from unittest.mock import Mock, AsyncMock, call, patch, MagicMock
 import numpy as np
 import dspy
 
 from cairo_coder.core.types import Document, DocumentSource, ProcessedQuery
 from cairo_coder.core.vector_store import VectorStore
-from cairo_coder.dspy.document_retriever import DocumentRetrieverProgram, create_document_retriever
+from cairo_coder.dspy.document_retriever import DocumentRetrieverProgram
 
 
 class TestDocumentRetrieverProgram:
@@ -77,7 +77,7 @@ class TestDocumentRetrieverProgram:
             mock_openai_class.return_value = mock_openai_client
 
             # Mock PgVectorRM
-            with patch("cairo_coder.dspy.document_retriever.PgVectorRM") as mock_pgvector_rm:
+            with patch("cairo_coder.dspy.document_retriever.SourceFilteredPgVectorRM") as mock_pgvector_rm:
                 mock_retriever_instance = Mock(return_value=mock_dspy_examples)
                 mock_pgvector_rm.return_value = mock_retriever_instance
 
@@ -95,7 +95,7 @@ class TestDocumentRetrieverProgram:
                     assert len(result) != 0
                     assert all(isinstance(doc, Document) for doc in result)
 
-                    # Verify PgVectorRM was instantiated correctly
+                    # Verify SourceFilteredPgVectorRM was instantiated correctly
                     mock_pgvector_rm.assert_called_once_with(
                         db_url=mock_vector_store_config.dsn,
                         pg_table_name=mock_vector_store_config.table_name,
@@ -103,6 +103,7 @@ class TestDocumentRetrieverProgram:
                         content_field="content",
                         fields=["id", "content", "metadata"],
                         k=5,  # max_source_count
+                        sources=sample_processed_query.resources,  # Include sources from query
                     )
 
                     # Verify dspy.settings.configure was called
@@ -129,7 +130,7 @@ class TestDocumentRetrieverProgram:
             mock_openai_client = Mock()
             mock_openai_class.return_value = mock_openai_client
 
-            with patch("cairo_coder.dspy.document_retriever.PgVectorRM") as mock_pgvector_rm:
+            with patch("cairo_coder.dspy.document_retriever.SourceFilteredPgVectorRM") as mock_pgvector_rm:
                 mock_retriever_instance = Mock(return_value=mock_dspy_examples)
                 mock_pgvector_rm.return_value = mock_retriever_instance
 
@@ -161,7 +162,7 @@ class TestDocumentRetrieverProgram:
             mock_openai_client = Mock()
             mock_openai_class.return_value = mock_openai_client
 
-            with patch("cairo_coder.dspy.document_retriever.PgVectorRM") as mock_pgvector_rm:
+            with patch("cairo_coder.dspy.document_retriever.SourceFilteredPgVectorRM") as mock_pgvector_rm:
                 mock_retriever_instance = Mock(return_value=mock_dspy_examples)
                 mock_pgvector_rm.return_value = mock_retriever_instance
 
@@ -191,7 +192,7 @@ class TestDocumentRetrieverProgram:
             mock_openai_client = Mock()
             mock_openai_class.return_value = mock_openai_client
 
-            with patch("cairo_coder.dspy.document_retriever.PgVectorRM") as mock_pgvector_rm:
+            with patch("cairo_coder.dspy.document_retriever.SourceFilteredPgVectorRM") as mock_pgvector_rm:
                 mock_retriever_instance = Mock(return_value=[])  # Empty results
                 mock_pgvector_rm.return_value = mock_retriever_instance
                 # Mock dspy module
@@ -215,7 +216,7 @@ class TestDocumentRetrieverProgram:
             mock_openai_client = Mock()
             mock_openai_class.return_value = mock_openai_client
 
-            with patch("cairo_coder.dspy.document_retriever.PgVectorRM") as mock_pgvector_rm:
+            with patch("cairo_coder.dspy.document_retriever.SourceFilteredPgVectorRM") as mock_pgvector_rm:
                 # Mock PgVectorRM to raise an exception
                 mock_pgvector_rm.side_effect = Exception("Database connection error")
 
@@ -234,7 +235,7 @@ class TestDocumentRetrieverProgram:
             mock_openai_client = Mock()
             mock_openai_class.return_value = mock_openai_client
 
-            with patch("cairo_coder.dspy.document_retriever.PgVectorRM") as mock_pgvector_rm:
+            with patch("cairo_coder.dspy.document_retriever.SourceFilteredPgVectorRM") as mock_pgvector_rm:
                 mock_retriever_instance = Mock(side_effect=Exception("Query execution error"))
                 mock_pgvector_rm.return_value = mock_retriever_instance
 
@@ -263,7 +264,7 @@ class TestDocumentRetrieverProgram:
             mock_openai_client = Mock()
             mock_openai_class.return_value = mock_openai_client
 
-            with patch("cairo_coder.dspy.document_retriever.PgVectorRM") as mock_pgvector_rm:
+            with patch("cairo_coder.dspy.document_retriever.SourceFilteredPgVectorRM") as mock_pgvector_rm:
                 mock_retriever_instance = Mock()
                 mock_retriever_instance = Mock(return_value=[])
                 mock_pgvector_rm.return_value = mock_retriever_instance
@@ -284,6 +285,7 @@ class TestDocumentRetrieverProgram:
                         content_field="content",
                         fields=["id", "content", "metadata"],
                         k=15,  # Should match max_source_count
+                        sources=sample_processed_query.resources,  # Include sources from query
                     )
 
     @pytest.mark.asyncio
@@ -312,7 +314,7 @@ class TestDocumentRetrieverProgram:
             mock_openai_client = Mock()
             mock_openai_class.return_value = mock_openai_client
 
-            with patch("cairo_coder.dspy.document_retriever.PgVectorRM") as mock_pgvector_rm:
+            with patch("cairo_coder.dspy.document_retriever.SourceFilteredPgVectorRM") as mock_pgvector_rm:
                 mock_retriever_instance = Mock(return_value=mock_examples)
                 mock_pgvector_rm.return_value = mock_retriever_instance
 
@@ -326,14 +328,23 @@ class TestDocumentRetrieverProgram:
                     result = await retriever.forward(sample_processed_query)
 
                     # Verify conversion to Document objects
-                    # Ran 3 times the query, returned 2 docs each
-                    assert len(result) == len(expected_docs) * len(sample_processed_query.search_queries)
+                    # Ran 3 times the query, returned 2 docs each - but de-duped
+                    mock_retriever_instance.assert_has_calls(
+                        [
+                            call(query) for query in sample_processed_query.search_queries
+                        ],
+                        any_order=True
+                    )
 
-                    for i, doc in enumerate(result):
-                        assert isinstance(doc, Document)
-                        assert doc.page_content == expected_docs[i % 2][0]
-                        assert doc.metadata == expected_docs[i % 2][1]
+                    # Verify conversion to Document objects
+                    assert len(result) == len(expected_docs)
 
+                    # Convert result to (content, metadata) tuples for comparison
+                    result_tuples = [(doc.page_content, doc.metadata) for doc in result]
+
+                    # Check that all expected documents are present (order doesn't matter)
+                    for expected_content, expected_metadata in expected_docs:
+                        assert (expected_content, expected_metadata) in result_tuples
 
 class TestDocumentRetrieverFactory:
     """Test the document retriever factory function."""
@@ -342,7 +353,7 @@ class TestDocumentRetrieverFactory:
         """Test the factory function creates correct instance."""
         mock_vector_store_config = Mock(spec=VectorStoreConfig)
 
-        retriever = create_document_retriever(
+        retriever = DocumentRetrieverProgram(
             vector_store_config=mock_vector_store_config, max_source_count=20, similarity_threshold=0.35
         )
 
@@ -355,7 +366,7 @@ class TestDocumentRetrieverFactory:
         """Test factory function with default parameters."""
         mock_vector_store_config = Mock(spec=VectorStoreConfig)
 
-        retriever = create_document_retriever(vector_store_config=mock_vector_store_config)
+        retriever = DocumentRetrieverProgram(vector_store_config=mock_vector_store_config)
 
         assert isinstance(retriever, DocumentRetrieverProgram)
         assert retriever.max_source_count == 10

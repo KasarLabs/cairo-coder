@@ -19,7 +19,6 @@ from cairo_coder.dspy.generation_program import (
     ScarbGeneration,
     create_generation_program,
     create_mcp_generation_program,
-    load_optimized_programs
 )
 
 
@@ -34,7 +33,7 @@ class TestGenerationProgram:
             answer="Here's a Cairo contract example:\n\n```cairo\n#[starknet::contract]\nmod SimpleContract {\n    // Contract implementation\n}\n```\n\nThis contract demonstrates basic Cairo syntax."
         )
 
-        with patch('dspy.ChainOfThought') as mock_cot:
+        with patch("dspy.ChainOfThought") as mock_cot:
             mock_cot.return_value = mock
             yield mock
 
@@ -60,21 +59,21 @@ class TestGenerationProgram:
             Document(
                 page_content="Cairo contracts are defined using #[starknet::contract] attribute.",
                 metadata={
-                    'source': 'cairo_book',
-                    'title': 'Cairo Contracts',
-                    'url': 'https://book.cairo-lang.org/contracts',
-                    'source_display': 'Cairo Book'
-                }
+                    "source": "cairo_book",
+                    "title": "Cairo Contracts",
+                    "url": "https://book.cairo-lang.org/contracts",
+                    "source_display": "Cairo Book",
+                },
             ),
             Document(
                 page_content="Storage variables are defined with #[storage] attribute.",
                 metadata={
-                    'source': 'starknet_docs',
-                    'title': 'Storage Variables',
-                    'url': 'https://docs.starknet.io/storage',
-                    'source_display': 'Starknet Documentation'
-                }
-            )
+                    "source": "starknet_docs",
+                    "title": "Storage Variables",
+                    "url": "https://docs.starknet.io/storage",
+                    "source_display": "Starknet Documentation",
+                },
+            ),
         ]
 
     def test_general_code_generation(self, generation_program):
@@ -91,9 +90,9 @@ class TestGenerationProgram:
         # Verify the generation program was called with correct parameters
         generation_program.generation_program.assert_called_once()
         call_args = generation_program.generation_program.call_args[1]
-        assert call_args['query'] == query
-        assert "cairo" in call_args['context'].lower()
-        assert call_args['chat_history'] == ""
+        assert call_args["query"] == query
+        assert "cairo" in call_args["context"].lower()
+        assert call_args["chat_history"] == ""
 
     def test_generation_with_chat_history(self, generation_program):
         """Test code generation with chat history."""
@@ -108,9 +107,9 @@ class TestGenerationProgram:
 
         # Verify chat history was passed
         call_args = generation_program.generation_program.call_args[1]
-        assert call_args['chat_history'] == chat_history
+        assert call_args["chat_history"] == chat_history
 
-    def test_contract_context_enhancement(self, generation_program):
+    def test_contract_context_enhancement(self, generation_program: GenerationProgram):
         """Test context enhancement for contract-related queries."""
         query = "How do I create a contract with storage?"
         context = "Basic Cairo documentation..."
@@ -119,10 +118,8 @@ class TestGenerationProgram:
 
         # Verify contract template was added to context
         call_args = generation_program.generation_program.call_args[1]
-        enhanced_context = call_args['context']
-        assert "starknet::contract" in enhanced_context
-        assert "#[storage]" in enhanced_context
-        assert "external(v0)" in enhanced_context
+        enhanced_context = call_args["context"]
+        assert """The content inside the <contract> tag""" in enhanced_context
 
     def test_test_context_enhancement(self, generation_program):
         """Test context enhancement for test-related queries."""
@@ -133,16 +130,18 @@ class TestGenerationProgram:
 
         # Verify test template was added to context
         call_args = generation_program.generation_program.call_args[1]
-        enhanced_context = call_args['context']
-        assert "#[test]" in enhanced_context
-        assert "assert" in enhanced_context
-        assert "test functions" in enhanced_context
+        enhanced_context = call_args["context"]
+        assert (
+            """The content inside the <contract_test> tag is the test code for the 'Registry' contract. It is assumed
+that the contract is part of a package named 'registry'. When writing tests, follow the important rules."""
+            in enhanced_context
+        )
 
     def test_scarb_generation_program(self, scarb_generation_program):
         """Test Scarb-specific code generation."""
-        with patch.object(scarb_generation_program, 'generation_program') as mock_program:
+        with patch.object(scarb_generation_program, "generation_program") as mock_program:
             mock_program.return_value = dspy.Prediction(
-                answer="Here's your Scarb configuration:\n\n```toml\n[package]\nname = \"my-project\"\nversion = \"0.1.0\"\n```"
+                answer='Here\'s your Scarb configuration:\n\n```toml\n[package]\nname = "my-project"\nversion = "0.1.0"\n```'
             )
 
             query = "How do I configure Scarb for my project?"
@@ -173,7 +172,7 @@ class TestGenerationProgram:
         assert "storage" in formatted
 
         # Should limit to last 5 messages
-        lines = formatted.split('\n')
+        lines = formatted.split("\n")
         assert len(lines) <= 5
 
     def test_format_empty_chat_history(self, generation_program):
@@ -200,21 +199,21 @@ class TestMcpGenerationProgram:
             Document(
                 page_content="Cairo contracts are defined using #[starknet::contract] attribute.",
                 metadata={
-                    'source': 'cairo_book',
-                    'title': 'Cairo Contracts',
-                    'url': 'https://book.cairo-lang.org/contracts',
-                    'source_display': 'Cairo Book'
-                }
+                    "source": "cairo_book",
+                    "title": "Cairo Contracts",
+                    "url": "https://book.cairo-lang.org/contracts",
+                    "source_display": "Cairo Book",
+                },
             ),
             Document(
                 page_content="Storage variables are defined with #[storage] attribute.",
                 metadata={
-                    'source': 'starknet_docs',
-                    'title': 'Storage Variables',
-                    'url': 'https://docs.starknet.io/storage',
-                    'source_display': 'Starknet Documentation'
-                }
-            )
+                    "source": "starknet_docs",
+                    "title": "Storage Variables",
+                    "url": "https://docs.starknet.io/storage",
+                    "source_display": "Starknet Documentation",
+                },
+            ),
         ]
 
     def test_mcp_document_formatting(self, mcp_program, sample_documents):
@@ -244,12 +243,7 @@ class TestMcpGenerationProgram:
 
     def test_mcp_documents_with_missing_metadata(self, mcp_program):
         """Test MCP mode with documents missing metadata."""
-        documents = [
-            Document(
-                page_content="Some Cairo content",
-                metadata={}  # Missing metadata
-            )
-        ]
+        documents = [Document(page_content="Some Cairo content", metadata={})]  # Missing metadata
 
         result = mcp_program.forward(documents)
 
@@ -268,30 +262,30 @@ class TestCairoCodeGeneration:
         signature = CairoCodeGeneration
 
         # Check model fields exist
-        assert 'chat_history' in signature.model_fields
-        assert 'query' in signature.model_fields
-        assert 'context' in signature.model_fields
-        assert 'answer' in signature.model_fields
+        assert "chat_history" in signature.model_fields
+        assert "query" in signature.model_fields
+        assert "context" in signature.model_fields
+        assert "answer" in signature.model_fields
 
         # Check field types
-        chat_history_field = signature.model_fields['chat_history']
-        query_field = signature.model_fields['query']
-        context_field = signature.model_fields['context']
-        answer_field = signature.model_fields['answer']
+        chat_history_field = signature.model_fields["chat_history"]
+        query_field = signature.model_fields["query"]
+        context_field = signature.model_fields["context"]
+        answer_field = signature.model_fields["answer"]
 
-        assert chat_history_field.json_schema_extra['__dspy_field_type'] == 'input'
-        assert query_field.json_schema_extra['__dspy_field_type'] == 'input'
-        assert context_field.json_schema_extra['__dspy_field_type'] == 'input'
-        assert answer_field.json_schema_extra['__dspy_field_type'] == 'output'
+        assert chat_history_field.json_schema_extra["__dspy_field_type"] == "input"
+        assert query_field.json_schema_extra["__dspy_field_type"] == "input"
+        assert context_field.json_schema_extra["__dspy_field_type"] == "input"
+        assert answer_field.json_schema_extra["__dspy_field_type"] == "output"
 
     def test_field_descriptions(self):
         """Test that fields have meaningful descriptions."""
         signature = CairoCodeGeneration
 
-        chat_history_desc = signature.model_fields['chat_history'].json_schema_extra['desc']
-        query_desc = signature.model_fields['query'].json_schema_extra['desc']
-        context_desc = signature.model_fields['context'].json_schema_extra['desc']
-        answer_desc = signature.model_fields['answer'].json_schema_extra['desc']
+        chat_history_desc = signature.model_fields["chat_history"].json_schema_extra["desc"]
+        query_desc = signature.model_fields["query"].json_schema_extra["desc"]
+        context_desc = signature.model_fields["context"].json_schema_extra["desc"]
+        answer_desc = signature.model_fields["answer"].json_schema_extra["desc"]
 
         assert "conversation context" in chat_history_desc.lower()
         assert "cairo" in query_desc.lower()
@@ -308,22 +302,22 @@ class TestScarbGeneration:
         signature = ScarbGeneration
 
         # Check model fields exist
-        assert 'chat_history' in signature.model_fields
-        assert 'query' in signature.model_fields
-        assert 'context' in signature.model_fields
-        assert 'answer' in signature.model_fields
+        assert "chat_history" in signature.model_fields
+        assert "query" in signature.model_fields
+        assert "context" in signature.model_fields
+        assert "answer" in signature.model_fields
 
         # Check field types
-        answer_field = signature.model_fields['answer']
-        assert answer_field.json_schema_extra['__dspy_field_type'] == 'output'
+        answer_field = signature.model_fields["answer"]
+        assert answer_field.json_schema_extra["__dspy_field_type"] == "output"
 
     def test_field_descriptions(self):
         """Test that fields have meaningful descriptions."""
         signature = ScarbGeneration
 
-        query_desc = signature.model_fields['query'].json_schema_extra['desc']
-        context_desc = signature.model_fields['context'].json_schema_extra['desc']
-        answer_desc = signature.model_fields['answer'].json_schema_extra['desc']
+        query_desc = signature.model_fields["query"].json_schema_extra["desc"]
+        context_desc = signature.model_fields["context"].json_schema_extra["desc"]
+        answer_desc = signature.model_fields["answer"].json_schema_extra["desc"]
 
         assert "scarb" in query_desc.lower()
         assert "scarb" in context_desc.lower()
@@ -355,50 +349,3 @@ class TestFactoryFunctions:
         """Test the MCP generation program factory function."""
         program = create_mcp_generation_program()
         assert isinstance(program, McpGenerationProgram)
-
-    def test_load_optimized_programs(self):
-        """Test loading optimized programs."""
-        with patch('os.path.exists') as mock_exists:
-            mock_exists.return_value = False  # No optimized programs exist
-
-            programs = load_optimized_programs("test_dir")
-
-            # Should return fallback programs
-            assert 'general_generation' in programs
-            assert 'scarb_generation' in programs
-            assert 'mcp_generation' in programs
-
-            assert isinstance(programs['general_generation'], GenerationProgram)
-            assert isinstance(programs['scarb_generation'], GenerationProgram)
-            assert isinstance(programs['mcp_generation'], McpGenerationProgram)
-
-    def test_load_optimized_programs_with_files(self):
-        """Test loading optimized programs when files exist."""
-        with patch('os.path.exists') as mock_exists, \
-             patch('dspy.load') as mock_load:
-
-            mock_exists.return_value = True
-            mock_load.return_value = Mock()  # Mock loaded program
-
-            programs = load_optimized_programs("test_dir")
-
-            # Should load optimized programs
-            assert mock_load.call_count == 3
-            assert 'general_generation' in programs
-            assert 'scarb_generation' in programs
-            assert 'mcp_generation' in programs
-
-    def test_load_optimized_programs_with_errors(self):
-        """Test loading optimized programs with load errors."""
-        with patch('os.path.exists') as mock_exists, \
-             patch('dspy.load') as mock_load:
-
-            mock_exists.return_value = True
-            mock_load.side_effect = Exception("Load error")
-
-            programs = load_optimized_programs("test_dir")
-
-            # Should fallback to default programs on error
-            assert isinstance(programs['general_generation'], GenerationProgram)
-            assert isinstance(programs['scarb_generation'], GenerationProgram)
-            assert isinstance(programs['mcp_generation'], McpGenerationProgram)
