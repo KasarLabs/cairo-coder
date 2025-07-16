@@ -385,7 +385,7 @@ class TestRagPipelineFactory:
     def test_create_pipeline_with_defaults(self, mock_vector_store_config):
         """Test creating pipeline with default components."""
         with patch('cairo_coder.dspy.create_query_processor') as mock_create_qp, \
-             patch('cairo_coder.dspy.create_document_retriever') as mock_create_dr, \
+             patch('cairo_coder.dspy.DocumentRetrieverProgram') as mock_create_dr, \
              patch('cairo_coder.dspy.create_generation_program') as mock_create_gp, \
              patch('cairo_coder.dspy.create_mcp_generation_program') as mock_create_mcp:
 

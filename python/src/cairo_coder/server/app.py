@@ -20,7 +20,7 @@ from fastapi import FastAPI, HTTPException, Request, Header, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse, Response
 from pydantic import BaseModel, Field, validator
-import structlog
+from cairo_coder.utils.logging import setup_logging, get_logger
 
 from cairo_coder.core.types import Message, StreamEvent, DocumentSource
 from cairo_coder.core.agent_factory import AgentFactory, create_agent_factory
@@ -28,7 +28,8 @@ from cairo_coder.config.manager import ConfigManager
 
 
 # Configure structured logging
-logger = structlog.get_logger(__name__)
+setup_logging()
+logger = get_logger(__name__)
 
 
 # OpenAI-compatible Request/Response Models

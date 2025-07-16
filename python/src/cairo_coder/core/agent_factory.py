@@ -314,8 +314,8 @@ class DefaultAgentConfigurations:
             name="Cairo Assistant",
             description="General-purpose Cairo programming assistant",
             sources=[DocumentSource.CAIRO_BOOK, DocumentSource.STARKNET_DOCS],
-            max_source_count=10,
-            similarity_threshold=0.4,
+            max_source_count=5,
+            similarity_threshold=0.35,
             contract_template="""
 When writing Cairo contracts:
 1. Use #[starknet::contract] for contract modules
@@ -344,53 +344,10 @@ When writing Cairo tests:
             description="Specialized assistant for Scarb build tool",
             sources=[DocumentSource.SCARB_DOCS],
             max_source_count=5,
-            similarity_threshold=0.4,
+            similarity_threshold=0.35,
             contract_template=None,
             test_template=None
         )
-
-    @staticmethod
-    def get_starknet_foundry_agent() -> AgentConfiguration:
-        """Get the Starknet Foundry agent configuration."""
-        return AgentConfiguration(
-            id="foundry_assistant",
-            name="Foundry Assistant",
-            description="Specialized assistant for Starknet Foundry testing",
-            sources=[DocumentSource.STARKNET_FOUNDRY, DocumentSource.CAIRO_BOOK],
-            max_source_count=8,
-            similarity_threshold=0.4,
-            contract_template=None,
-            test_template="""
-When writing Foundry tests:
-1. Use forge test command for running tests
-2. Include proper test setup with deploy functions
-3. Use cheatcodes for advanced testing scenarios
-4. Test contract interactions thoroughly
-5. Include integration tests for complex workflows
-            """
-        )
-
-    @staticmethod
-    def get_openzeppelin_agent() -> AgentConfiguration:
-        """Get the OpenZeppelin agent configuration."""
-        return AgentConfiguration(
-            id="openzeppelin_assistant",
-            name="OpenZeppelin Assistant",
-            description="Specialized assistant for OpenZeppelin Cairo contracts",
-            sources=[DocumentSource.OPENZEPPELIN_DOCS, DocumentSource.CAIRO_BOOK],
-            max_source_count=8,
-            similarity_threshold=0.4,
-            contract_template="""
-When using OpenZeppelin contracts:
-1. Import OpenZeppelin components properly
-2. Use standard interfaces (IERC20, IERC721, etc.)
-3. Follow security best practices
-4. Implement proper access controls
-5. Use upgradeable patterns when needed
-            """,
-            test_template=None
-        )
-
 
 def create_agent_factory(
     vector_store_config: VectorStoreConfig,
@@ -415,8 +372,6 @@ def create_agent_factory(
     default_configs = {
         "default": DefaultAgentConfigurations.get_default_agent(),
         "scarb_assistant": DefaultAgentConfigurations.get_scarb_agent(),
-        "foundry_assistant": DefaultAgentConfigurations.get_starknet_foundry_agent(),
-        "openzeppelin_assistant": DefaultAgentConfigurations.get_openzeppelin_agent()
     }
 
     # Add custom agents if provided

@@ -24,9 +24,9 @@ from cairo_coder.core.types import (
 from cairo_coder.dspy.query_processor import QueryProcessorProgram
 from cairo_coder.dspy.document_retriever import DocumentRetrieverProgram
 from cairo_coder.dspy.generation_program import GenerationProgram, McpGenerationProgram
-import structlog
+from cairo_coder.utils.logging import get_logger
 
-logger = structlog.get_logger(__name__)
+logger = get_logger(__name__)
 
 @dataclass
 class RagPipelineConfig:
@@ -301,7 +301,7 @@ class RagPipelineFactory:
         """
         from cairo_coder.dspy import (
             create_query_processor,
-            create_document_retriever,
+            DocumentRetrieverProgram,
             create_generation_program,
             create_mcp_generation_program
         )
@@ -311,7 +311,7 @@ class RagPipelineFactory:
             query_processor = create_query_processor()
 
         if document_retriever is None:
-            document_retriever = create_document_retriever(
+            document_retriever = DocumentRetrieverProgram(
                 vector_store_config=vector_store_config,
                 max_source_count=max_source_count,
                 similarity_threshold=similarity_threshold
