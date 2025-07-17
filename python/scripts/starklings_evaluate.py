@@ -6,6 +6,7 @@ by generating solutions and testing if they compile successfully.
 """
 
 import asyncio
+import shutil
 import sys
 from datetime import datetime
 from pathlib import Path
@@ -231,9 +232,12 @@ async def run_evaluation(
             total_runs=len(all_runs),
             overall_success_rate=f"{consolidated.overall_success_rate:.2%}"
         )
+
     else:
         logger.error("No successful runs completed")
         sys.exit(1)
+    # Clear starklings-cairo1 directory
+    shutil.rmtree(starklings_path)
 
 
 if __name__ == "__main__":
