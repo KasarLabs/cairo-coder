@@ -57,7 +57,7 @@ Using Docker is highly recommended for a streamlined setup. For instructions on 
     **a. Database Container Initialization (`.env` file):**
     Create a `.env` file in the root directory with the following content. This is used by Docker to initialize the database on its first run.
 
-    ```
+    ```toml
     POSTGRES_USER="cairocoder"
     POSTGRES_PASSWORD="YOUR_SECURE_PASSWORD"
     POSTGRES_DB="cairocoder"
@@ -78,8 +78,8 @@ Using Docker is highly recommended for a streamlined setup. For instructions on 
     POSTGRES_USER="cairocoder"
     POSTGRES_PASSWORD="cairocoder"
     POSTGRES_DB="cairocoder"
-    POSTGRES_HOST="localhost"
-    POSTGRES_PORT="5455"
+    POSTGRES_HOST="postgres"
+    POSTGRES_PORT="5432"
     POSTGRES_TABLE_NAME="documents"
     SIMILARITY_MEASURE="cosine"
     ```
@@ -118,7 +118,7 @@ Cairo Coder provides a simple REST API compatible with the OpenAI format for eas
 
 ### Endpoint: `POST /v1/chat/completions`
 
-### Request Format:
+### Request Format
 
 ```bash
 curl -X POST http://localhost:3001/v1/chat/completions \
