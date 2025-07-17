@@ -1,82 +1,9 @@
 # Cairo Coder Configuration
-
-[server]
-host = "0.0.0.0"
-port = 8000
-debug = false
-
-[vector_db]
-host = "localhost"
-port = 5432
-database = "cairo_coder"
-user = "postgres"
-password = "postgres"         # Override with POSTGRES_PASSWORD env var
-table_name = "documents"
-similarity_measure = "cosine" # cosine, dot_product, or euclidean
-
-[providers]
-default = "openai"                         # openai, anthropic, or gemini
-temperature = 0.0
-streaming = true
-embedding_model = "text-embedding-3-large"
-
-[providers.openai]
-# api_key = "your-api-key"  # Set via OPENAI_API_KEY env var
-model = "gpt-4o"
-
-[providers.anthropic]
-# api_key = "your-api-key"  # Set via ANTHROPIC_API_KEY env var
-model = "claude-3-5-sonnet"
-
-[providers.gemini]
-# api_key = "your-api-key"  # Set via GEMINI_API_KEY env var
-model = "gemini-1.5-pro"
-
-[logging]
-level = "INFO"  # DEBUG, INFO, WARNING, ERROR
-format = "json" # json or text
-
-[monitoring]
-enable_metrics = true
-metrics_port = 9090
-
-[optimization]
-dir = "optimized_programs"
-enable = false
-
-# Agent Configurations
-
-[agents.cairo-coder]
-name = "Cairo Coder"
-description = "General Cairo programming assistant"
-sources = ["cairo_book", "starknet_docs", "cairo_by_example", "corelib_docs"]
-max_source_count = 10
-similarity_threshold = 0.4
-retrieval_program = "default"
-generation_program = "default"
-contract_template = """
-You are helping write a Cairo smart contract. Consider:
-- Contract structure with #[contract] attribute
-- Storage variables and access patterns
-- External/view functions and their signatures
-- Event definitions and emissions
-- Error handling and custom errors
-- Interface implementations
-"""
-test_template = """
-You are helping write Cairo tests. Consider:
-- Test module structure with #[cfg(test)]
-- Test functions with #[test] attribute
-- Assertions and test utilities
-- Mock contracts and test fixtures
-- Test coverage and edge cases
-"""
-
-[agents.scarb-assistant]
-name = "Scarb Assistant"
-description = "Specialized assistant for Scarb build tool"
-sources = ["scarb_docs"]
-max_source_count = 5
-similarity_threshold = 0.3
-retrieval_program = "scarb_retrieval"
-generation_program = "scarb_generation"
+[VECTOR_DB]
+POSTGRES_USER = "cairocoder"
+POSTGRES_PASSWORD = "cairocoder"
+POSTGRES_DB = "cairocoder"
+POSTGRES_HOST = "localhost"
+POSTGRES_PORT = "5432"
+POSTGRES_TABLE_NAME = "documents"
+SIMILARITY_MEASURE = "cosine"

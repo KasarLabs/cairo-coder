@@ -20,7 +20,7 @@ classifiers = [
   "Programming Language :: Python :: 3.12",
 ]
 dependencies = [
-  "dspy-ai[pgvector]>=2.5.0",
+  "dspy-ai>=2.5.0",
   "fastapi>=0.115.0",
   "uvicorn[standard]>=0.32.0",
   "websockets>=13.0",
@@ -46,6 +46,7 @@ dependencies = [
   "pytest>=8.4.1",
   "pytest-asyncio>=1.0.0",
   "langsmith>=0.4.6",
+  "psycopg2-binary>=2.9.10",
 ]
 
 [project.optional-dependencies]
