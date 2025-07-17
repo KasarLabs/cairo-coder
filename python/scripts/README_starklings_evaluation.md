@@ -40,7 +40,7 @@ uv run starklings_evaluate --verbose
 
 ### CLI Options
 
-```
+```bash
 Options:
   -r, --runs INTEGER          Number of evaluation runs to perform [default: 1]
   -c, --category TEXT         Filter exercises by category
@@ -56,7 +56,7 @@ Options:
 
 ## Output Structure
 
-```
+```bash
 starklings_results/
 └── run_20240117_143022/
     ├── starklings_run_1_20240117_143022.json    # Individual run report
@@ -72,6 +72,7 @@ starklings_results/
 ## Report Format
 
 ### Consolidated Report (JSON)
+
 ```json
 {
   "total_runs": 3,
@@ -91,6 +92,7 @@ starklings_results/
 ```
 
 ### Summary Report (Markdown)
+
 - Overall success rates
 - Category breakdowns
 - Exercise-level statistics
@@ -100,7 +102,7 @@ starklings_results/
 
 ### Architecture
 
-```
+```bash
 starklings_evaluation/
 ├── __init__.py
 ├── models.py           # Data structures
@@ -138,10 +140,12 @@ This Python implementation maintains compatibility with the original JavaScript 
 ### Common Issues
 
 1. **API Connection Failed**
+
    - Ensure Cairo Coder backend is running
    - Check API endpoint configuration
 
 2. **Starklings Repository Not Found**
+
    - Script will automatically clone the repository
    - Ensure git is installed and accessible
 
@@ -152,11 +156,13 @@ This Python implementation maintains compatibility with the original JavaScript 
 ### Debug Mode
 
 Use `--verbose` flag for detailed logging:
+
 ```bash
 uv run starklings_evaluate --verbose
 ```
 
 Check debug files in output directory for:
+
 - Generated code for each exercise
 - Detailed error messages
 - API response data

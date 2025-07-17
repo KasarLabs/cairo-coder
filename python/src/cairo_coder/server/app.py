@@ -521,8 +521,14 @@ def get_vector_store_config() -> VectorStoreConfig:
 app = create_app(get_vector_store_config())
 
 def main():
+    import argparse
     import uvicorn
     import dspy
+
+    parser = argparse.ArgumentParser(description="Cairo Coder Server")
+    parser.add_argument("--dev", action="store_true", help="Enable development mode with reload")
+    parser.add_argument("--workers", type=int, default=5, help="Number of workers to run")
+    args = parser.parse_args()
 
     config = ConfigManager.load_config()
     # TODO: configure DSPy with the proper LM.
@@ -532,8 +538,9 @@ def main():
         "cairo_coder.server.app:app",
         host="0.0.0.0",
         port=3001,
-        reload=True,
-        log_level="info"
+        reload=args.dev,
+        log_level="info",
+        workers=args.workers
     )
 
 
