@@ -70,7 +70,12 @@ def check_compilation(code: str) -> Dict[str, Any]:
 
             next_index = len(list(error_logs_dir.glob("run_*.cairo")))
             failed_file = error_logs_dir / f"run_{next_index}.cairo"
-            failed_file.write_text(code, encoding="utf-8")
+
+            # Append error message as comment to the code
+            error_lines = error_msg.split('\n')
+            commented_error = '\n'.join(f"// {line}" for line in error_lines)
+            code_with_error = f"{commented_error}\n\n{code}"
+            failed_file.write_text(code_with_error, encoding="utf-8")
 
             logger.debug("Saved failed compilation code", file=str(failed_file))
             return {"success": False, "error": error_msg}

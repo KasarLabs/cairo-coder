@@ -67,13 +67,14 @@ cairo-coder = "cairo_coder.server.app:main"
 cairo-coder-api = "cairo_coder.api.server:run"
 generate_starklings_dataset = "cairo_coder.optimizers.generation.generate_starklings_dataset:cli_main"
 optimize_generation = "cairo_coder.optimizers.generation.optimize_generation:main"
+starklings_evaluate = "starklings_evaluate:main"
 
 [project.urls]
 "Homepage" = "https://github.com/cairo-coder/cairo-coder"
 "Bug Tracker" = "https://github.com/cairo-coder/cairo-coder/issues"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/cairo_coder"]
+packages = ["src/cairo_coder", "scripts/starklings_evaluation", "scripts"]
 
 [tool.hatch.metadata]
 allow-direct-references = true
