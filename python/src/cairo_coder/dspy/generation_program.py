@@ -5,7 +5,7 @@ This module implements the GenerationProgram that generates Cairo code responses
 based on user queries and retrieved documentation context.
 """
 
-from typing import List, Optional, AsyncGenerator
+from typing import List, Optional, AsyncGenerator, Dict
 import asyncio
 
 import dspy
@@ -114,8 +114,13 @@ class GenerationProgram(dspy.Module):
                 )
             )
 
+    def get_lm_usage(self) -> Dict[str, int]:
+        """
+        Get the total number of tokens used by the LLM.
+        """
+        return self.generation_program.get_lm_usage()
 
-    def forward(self, query: str, context: str, chat_history: Optional[str] = None) -> str:
+    def forward(self, query: str, context: str, chat_history: Optional[str] = None) -> dspy.Predict:
         """
         Generate Cairo code response based on query and context.
 
@@ -137,7 +142,7 @@ class GenerationProgram(dspy.Module):
             chat_history=chat_history
         )
 
-        return result.answer
+        return result
 
     async def forward_streaming(self, query: str, context: str,
                               chat_history: Optional[str] = None) -> AsyncGenerator[str, None]:

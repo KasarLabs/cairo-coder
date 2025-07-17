@@ -11,6 +11,7 @@ import json
 import time
 import uuid
 from typing import Dict, List, Optional, Any, Union, AsyncGenerator
+import dspy
 from datetime import datetime
 import traceback
 
@@ -157,6 +158,10 @@ class CairoCoderServer:
         # Setup routes
         self._setup_routes()
 
+        dspy.configure(lm=dspy.LM("gemini/gemini-2.5-flash", max_tokens=30000))
+        dspy.configure(callbacks=[AgentLoggingCallback()])
+        dspy.configure(track_usage=True)
+
     def _setup_routes(self):
         """Setup FastAPI routes matching TypeScript backend."""
 
@@ -288,7 +293,7 @@ class CairoCoderServer:
                     }
                 )
             else:
-                return await self._generate_chat_completion(agent, query, messages[:-1], mcp_mode)
+                return self._generate_chat_completion(agent, query, messages[:-1], mcp_mode)
 
         except ValueError as e:
             raise HTTPException(
@@ -300,6 +305,8 @@ class CairoCoderServer:
                 )).dict()
             )
         except Exception as e:
+            import traceback
+            traceback.print_exc()
             logger.error("Error in chat completion", error=str(e))
             raise HTTPException(
                 status_code=500,
@@ -340,7 +347,7 @@ class CairoCoderServer:
         content_buffer = ""
 
         try:
-            async for event in agent.forward(
+            async for event in agent.forward_streaming(
                 query=query,
                 chat_history=history,
                 mcp_mode=mcp_mode
@@ -396,7 +403,7 @@ class CairoCoderServer:
         yield f"data: {json.dumps(final_chunk)}\n\n"
         yield "data: [DONE]\n\n"
 
-    async def _generate_chat_completion(
+    def _generate_chat_completion(
         self,
         agent: RagPipeline,
         query: str,
@@ -408,31 +415,21 @@ class CairoCoderServer:
         created = int(time.time())
 
         # Process agent and collect response
-        sources_data = None
-        content_buffer = ""
-
-        try:
-            async for event in agent.forward_streaming(
+        response = agent.forward(
                 query=query,
                 chat_history=history,
                 mcp_mode=mcp_mode
-            ):
-                if event.type == "sources":
-                    sources_data = event.data
-                elif event.type == "response":
-                    content_buffer += event.data
-                elif event.type == "end":
-                    break
+            )
 
-        except Exception as e:
-            logger.error("Error in generation", error=str(e))
-            content_buffer = f"Error: {str(e)}"
+        answer = response.answer
 
         # TODO: Use DSPy to calculate token usage.
         # Calculate token usage (simplified)
-        prompt_tokens = sum(len(msg.content.split()) for msg in history) + len(query.split())
-        completion_tokens = len(content_buffer.split())
-        total_tokens = prompt_tokens + completion_tokens
+        lm_usage = response.get_lm_usage()
+        # Aggregate, for all entries, together the prompt_tokens, completion_tokens, total_tokens fields
+        total_prompt_tokens = sum(entry.get("prompt_tokens", 0) for entry in lm_usage.values())
+        total_completion_tokens = sum(entry.get("completion_tokens", 0) for entry in lm_usage.values())
+        total_tokens = sum(entry.get("total_tokens", 0) for entry in lm_usage.values())
 
         return ChatCompletionResponse(
             id=response_id,
@@ -440,13 +437,13 @@ class CairoCoderServer:
             choices=[
                 ChatCompletionChoice(
                     index=0,
-                    message=ChatMessage(role="assistant", content=content_buffer),
+                    message=ChatMessage(role="assistant", content=answer),
                     finish_reason="stop"
                 )
             ],
             usage=ChatCompletionUsage(
-                prompt_tokens=prompt_tokens,
-                completion_tokens=completion_tokens,
+                prompt_tokens=total_prompt_tokens,
+                completion_tokens=total_completion_tokens,
                 total_tokens=total_tokens
             )
         )
@@ -531,8 +528,6 @@ def main():
     # TODO: configure DSPy with the proper LM.
     # TODO: Find a proper pattern for it?
     # TODO: multi-model management?
-    dspy.configure(lm=dspy.LM("gemini/gemini-2.5-flash", max_tokens=30000))
-    dspy.configure(callbacks=[AgentLoggingCallback()])
     uvicorn.run(
         "cairo_coder.server.app:app",
         host="0.0.0.0",

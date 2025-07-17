@@ -83,9 +83,11 @@ class TestGenerationProgram:
 
         result = generation_program.forward(query, context)
 
-        assert isinstance(result, str)
-        assert len(result) > 0
-        assert "cairo" in result.lower()
+        # Result should be a dspy.Predict object with an answer attribute
+        assert hasattr(result, 'answer')
+        assert isinstance(result.answer, str)
+        assert len(result.answer) > 0
+        assert "cairo" in result.answer.lower()
 
         # Verify the generation program was called with correct parameters
         generation_program.generation_program.assert_called_once()
@@ -102,8 +104,10 @@ class TestGenerationProgram:
 
         result = generation_program.forward(query, context, chat_history)
 
-        assert isinstance(result, str)
-        assert len(result) > 0
+        # Result should be a dspy.Predict object with an answer attribute
+        assert hasattr(result, 'answer')
+        assert isinstance(result.answer, str)
+        assert len(result.answer) > 0
 
         # Verify chat history was passed
         call_args = generation_program.generation_program.call_args[1]
@@ -122,8 +126,10 @@ class TestGenerationProgram:
 
             result = scarb_generation_program.forward(query, context)
 
-            assert isinstance(result, str)
-            assert "scarb" in result.lower() or "toml" in result.lower()
+            # Result should be a dspy.Predict object with an answer attribute
+            assert hasattr(result, 'answer')
+            assert isinstance(result.answer, str)
+            assert "scarb" in result.answer.lower() or "toml" in result.answer.lower()
             mock_program.assert_called_once()
 
     def test_format_chat_history(self, generation_program):
