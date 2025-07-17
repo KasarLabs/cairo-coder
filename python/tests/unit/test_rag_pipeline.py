@@ -48,7 +48,7 @@ class TestRagPipeline:
     def mock_document_retriever(self):
         """Create a mock document retriever."""
         retriever = Mock(spec=DocumentRetrieverProgram)
-        retriever.forward = AsyncMock(return_value=[
+        retriever.forward = Mock(return_value=[
             Document(
                 page_content="Cairo contracts are defined using #[starknet::contract].",
                 metadata={
@@ -130,12 +130,12 @@ Storage variables use #[storage] attribute.
         return RagPipeline(pipeline_config)
 
     @pytest.mark.asyncio
-    async def test_normal_pipeline_execution(self, pipeline):
+    async def test_normal_pipeline_execution(self, pipeline: RagPipeline):
         """Test normal pipeline execution with generation."""
         query = "How do I create a Cairo contract?"
 
         events = []
-        async for event in pipeline.forward(query=query):
+        async for event in pipeline.forward_streaming(query=query):
             events.append(event)
 
         # Verify event sequence
@@ -166,7 +166,7 @@ Storage variables use #[storage] attribute.
         query = "How do I create a Cairo contract?"
 
         events = []
-        async for event in pipeline.forward(query=query, mcp_mode=True):
+        async for event in pipeline.forward_streaming(query=query, mcp_mode=True):
             events.append(event)
 
         # Verify event sequence
@@ -194,7 +194,7 @@ Storage variables use #[storage] attribute.
         ]
 
         events = []
-        async for event in pipeline.forward(query=query, chat_history=chat_history):
+        async for event in pipeline.forward_streaming(query=query, chat_history=chat_history):
             events.append(event)
 
         # Verify pipeline executed successfully
@@ -214,7 +214,7 @@ Storage variables use #[storage] attribute.
         sources = [DocumentSource.SCARB_DOCS]
 
         events = []
-        async for event in pipeline.forward(query=query, sources=sources):
+        async for event in pipeline.forward_streaming(query=query, sources=sources):
             events.append(event)
 
         # Verify custom sources were used
@@ -231,7 +231,7 @@ Storage variables use #[storage] attribute.
         query = "How do I create a contract?"
 
         events = []
-        async for event in pipeline.forward(query=query):
+        async for event in pipeline.forward_streaming(query=query):
             events.append(event)
 
         # Should have an error event

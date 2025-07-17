@@ -411,7 +411,7 @@ class CairoCoderServer:
         content_buffer = ""
 
         try:
-            async for event in agent.forward(
+            async for event in agent.forward_streaming(
                 query=query,
                 chat_history=history,
                 mcp_mode=mcp_mode

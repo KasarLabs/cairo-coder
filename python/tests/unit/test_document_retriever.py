@@ -89,7 +89,7 @@ class TestDocumentRetrieverProgram:
 
                 with patch("cairo_coder.dspy.document_retriever.dspy", mock_dspy):
                     # Execute retrieval
-                    result = await retriever.forward(sample_processed_query)
+                    result = retriever.forward(sample_processed_query)
 
                     # Verify results
                     assert len(result) != 0
@@ -141,7 +141,7 @@ class TestDocumentRetrieverProgram:
                 mock_dspy.settings = mock_settings
 
                 with patch("cairo_coder.dspy.document_retriever.dspy", mock_dspy):
-                    result = await retriever.forward(query)
+                    result = retriever.forward(query)
 
                     # Should still work with empty transformed terms
                     assert len(result) != 0
@@ -173,7 +173,7 @@ class TestDocumentRetrieverProgram:
                 mock_dspy.settings = mock_settings
 
                 with patch("cairo_coder.dspy.document_retriever.dspy", mock_dspy):
-                    result = await retriever.forward(sample_processed_query, sources=custom_sources)
+                    result = retriever.forward(sample_processed_query, sources=custom_sources)
 
                     # Verify result
                     assert len(result) != 0
@@ -202,7 +202,7 @@ class TestDocumentRetrieverProgram:
                 mock_dspy.settings = mock_settings
 
                 with patch("cairo_coder.dspy.document_retriever.dspy", mock_dspy):
-                    result = await retriever.forward(sample_processed_query)
+                    result = retriever.forward(sample_processed_query)
 
                     assert result == []
 
@@ -221,7 +221,7 @@ class TestDocumentRetrieverProgram:
                 mock_pgvector_rm.side_effect = Exception("Database connection error")
 
                 with pytest.raises(Exception) as exc_info:
-                    await retriever.forward(sample_processed_query)
+                    retriever.forward(sample_processed_query)
 
                 assert "Database connection error" in str(exc_info.value)
 
@@ -247,7 +247,7 @@ class TestDocumentRetrieverProgram:
 
                 with patch("cairo_coder.dspy.document_retriever.dspy", mock_dspy):
                     with pytest.raises(Exception) as exc_info:
-                        await retriever.forward(sample_processed_query)
+                        retriever.forward(sample_processed_query)
 
                     assert "Query execution error" in str(exc_info.value)
 
@@ -275,7 +275,7 @@ class TestDocumentRetrieverProgram:
                 mock_dspy.settings = mock_settings
 
                 with patch("cairo_coder.dspy.document_retriever.dspy", mock_dspy):
-                    await retriever.forward(sample_processed_query)
+                    retriever.forward(sample_processed_query)
 
                     # Verify max_source_count was passed as k parameter
                     mock_pgvector_rm.assert_called_once_with(
@@ -325,7 +325,7 @@ class TestDocumentRetrieverProgram:
                 mock_dspy.settings = mock_settings
 
                 with patch("cairo_coder.dspy.document_retriever.dspy", mock_dspy):
-                    result = await retriever.forward(sample_processed_query)
+                    result = retriever.forward(sample_processed_query)
 
                     # Verify conversion to Document objects
                     # Ran 3 times the query, returned 2 docs each - but de-duped
@@ -375,7 +375,7 @@ class TestDocumentRetrieverProgram:
                 mock_dspy.settings = mock_settings
 
                 with patch("cairo_coder.dspy.document_retriever.dspy", mock_dspy):
-                    result = await retriever.forward(query)
+                    result = retriever.forward(query)
 
                     # Verify contract template was added to context
                     contract_template_found = False
@@ -419,7 +419,7 @@ class TestDocumentRetrieverProgram:
                 mock_dspy.settings = mock_settings
 
                 with patch("cairo_coder.dspy.document_retriever.dspy", mock_dspy):
-                    result = await retriever.forward(query)
+                    result = retriever.forward(query)
 
                     # Verify test template was added to context
                     test_template_found = False
@@ -464,7 +464,7 @@ class TestDocumentRetrieverProgram:
                 mock_dspy.settings = mock_settings
 
                 with patch("cairo_coder.dspy.document_retriever.dspy", mock_dspy):
-                    result = await retriever.forward(query)
+                    result = retriever.forward(query)
 
                     # Verify both templates were added
                     contract_template_found = False
@@ -508,7 +508,7 @@ class TestDocumentRetrieverProgram:
                 mock_dspy.settings = mock_settings
 
                 with patch("cairo_coder.dspy.document_retriever.dspy", mock_dspy):
-                    result = await retriever.forward(query)
+                    result = retriever.forward(query)
 
                     # Verify no templates were added
                     template_sources = [doc.metadata.get("source") for doc in result]
