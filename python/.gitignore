@@ -158,3 +158,6 @@ config.toml
 logs/
 data/
 *.db
+
+mlartifacts/
+mlruns/

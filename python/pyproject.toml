@@ -43,6 +43,8 @@ dependencies = [
   "pgvector>=0.4.1",
   "marimo>=0.14.11",
   "mlflow>=2.20",
+  "pytest>=8.4.1",
+  "pytest-asyncio>=1.0.0",
 ]
 
 [project.optional-dependencies]
