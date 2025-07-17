@@ -11,8 +11,8 @@ import asyncio
 from dataclasses import dataclass
 
 from cairo_coder.core.config import VectorStoreConfig
-from cairo_coder.core.llm import AgentLoggingCallback
 import dspy
+from dspy.utils.callback import BaseCallback
 
 from cairo_coder.core.types import (
     Document,
@@ -27,6 +27,29 @@ from cairo_coder.dspy.generation_program import GenerationProgram, McpGeneration
 from cairo_coder.utils.logging import get_logger
 
 logger = get_logger(__name__)
+
+# 1. Define a custom callback class that extends BaseCallback class
+class AgentLoggingCallback(BaseCallback):
+
+    def on_module_start(
+        self,
+        call_id: str,
+        instance: Any,
+        inputs: Dict[str, Any],
+    ):
+        logger.info("Starting module", call_id=call_id, inputs=inputs)
+
+    # 2. Implement on_module_end handler to run a custom logging code.
+    def on_module_end(self, call_id, outputs, exception):
+        step = "Reasoning" if self._is_reasoning_output(outputs) else "Acting"
+        print(f"== {step} Step ===")
+        for k, v in outputs.items():
+            print(f"  {k}: {v}")
+        print("\n")
+
+    def _is_reasoning_output(self, outputs):
+        return any(k.startswith("Thought") for k in outputs.keys())
+
 
 @dataclass
 class RagPipelineConfig:

@@ -25,29 +25,6 @@ class VectorStoreConfig:
         """Get PostgreSQL connection string."""
         return f"postgresql://{self.user}:{self.password}@{self.host}:{self.port}/{self.database}"
 
-
-@dataclass
-class LLMProviderConfig:
-    """Configuration for LLM providers."""
-    # OpenAI
-    openai_api_key: Optional[str] = None
-    openai_model: str = "gpt-4o"
-
-    # Anthropic
-    anthropic_api_key: Optional[str] = None
-    anthropic_model: str = "claude-3-5-sonnet"
-
-    # Google Gemini
-    gemini_api_key: Optional[str] = None
-    gemini_model: str = "gemini-2.5-flash"
-
-    # Common settings
-    default_provider: str = "openai"
-
-    # Embedding model
-    embedding_model: str = "text-embedding-3-large"
-
-
 @dataclass
 class RagSearchConfig:
     """Configuration for RAG search pipeline."""
@@ -133,14 +110,12 @@ class Config:
     # Database
     vector_store: VectorStoreConfig
 
-    # LLM providers
-    llm: LLMProviderConfig
-
     # Server settings
     host: str = "0.0.0.0"
     port: int = 3001
     debug: bool = False
 
+    # TODO: because only set with defaults at post-init, should not be there.
     # Agent configurations
     agents: Dict[str, AgentConfiguration] = field(default_factory=dict)
     default_agent_id: str = "cairo-coder"

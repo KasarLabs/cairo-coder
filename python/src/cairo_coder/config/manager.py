@@ -10,11 +10,8 @@ from pydantic_settings import BaseSettings
 from ..core.config import (
     AgentConfiguration,
     Config,
-    LLMProviderConfig,
     VectorStoreConfig,
 )
-from ..core.types import DocumentSource
-
 
 class ConfigManager:
     """Manages application configuration from TOML files and environment variables."""
@@ -75,54 +72,8 @@ class ConfigManager:
         if os.getenv("POSTGRES_PASSWORD") is not None:
             vector_store_config.password = os.getenv("POSTGRES_PASSWORD", vector_store_config.password)
 
-        # Update LLM provider settings
-        if "providers" in config_dict:
-            providers = config_dict["providers"]
-            llm_config = LLMProviderConfig(
-                openai_api_key=providers.get("openai", {}).get("api_key"),
-                openai_model=providers.get("openai", {}).get("model"),
-                anthropic_api_key=providers.get("anthropic", {}).get("api_key"),
-                anthropic_model=providers.get("anthropic", {}).get("model"),
-                gemini_api_key=providers.get("gemini", {}).get("api_key"),
-                gemini_model=providers.get("gemini", {}).get("model"),
-                default_provider=providers.get("default"),
-                embedding_model=providers.get("embedding_model"),
-            )
-
-        # Override with environment variables if explicitly set
-        llm_config.openai_api_key = os.getenv("OPENAI_API_KEY", llm_config.openai_api_key)
-        llm_config.anthropic_api_key = os.getenv("ANTHROPIC_API_KEY", llm_config.anthropic_api_key)
-        llm_config.gemini_api_key = os.getenv("GEMINI_API_KEY", llm_config.gemini_api_key)
-
-        # Load agent configurations
-        config_agents = {}
-        if "agents" in config_dict:
-            for agent_id, agent_data in config_dict["agents"].items():
-                sources = []
-                for source_str in agent_data.get("sources", []):
-                    try:
-                        sources.append(DocumentSource(source_str))
-                    except ValueError:
-                        raise ValueError(f"Invalid source: {source_str}")
-
-                agent_config = AgentConfiguration(
-                    id=agent_id,
-                    name=agent_data.get("name", agent_id),
-                    description=agent_data.get("description", ""),
-                    sources=sources,
-                    contract_template=agent_data.get("contract_template"),
-                    test_template=agent_data.get("test_template"),
-                    max_source_count=agent_data.get("max_source_count", 10),
-                    similarity_threshold=agent_data.get("similarity_threshold", 0.4),
-                    retrieval_program_name=agent_data.get("retrieval_program", "default"),
-                    generation_program_name=agent_data.get("generation_program", "default"),
-                )
-                config_agents[agent_id] = agent_config
-
         config = Config(
             vector_store=vector_store_config,
-            llm=llm_config,
-            agents=config_agents,
             default_agent_id="cairo-coder",
         )
 
@@ -162,27 +113,6 @@ class ConfigManager:
         Raises:
             ValueError: If configuration is invalid.
         """
-        # Check for at least one LLM provider
-        if not any([
-            config.llm.openai_api_key,
-            config.llm.anthropic_api_key,
-            config.llm.gemini_api_key
-        ]):
-            raise ValueError("At least one LLM provider API key must be configured")
-
-        # Check default provider is configured
-        provider_map = {
-            "openai": config.llm.openai_api_key,
-            "anthropic": config.llm.anthropic_api_key,
-            "gemini": config.llm.gemini_api_key,
-        }
-
-        if config.llm.default_provider not in provider_map:
-            raise ValueError(f"Unknown default provider: {config.llm.default_provider}")
-
-        if not provider_map[config.llm.default_provider]:
-            raise ValueError(f"Default provider '{config.llm.default_provider}' has no API key configured")
-
         # Check database configuration
         if not config.vector_store.password:
             raise ValueError("Database password is required")
