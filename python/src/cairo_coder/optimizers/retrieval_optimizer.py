@@ -21,9 +21,6 @@ def _():
     lm = dspy.LM('gemini/gemini-2.5-flash', max_tokens=10000)
     dspy.configure(lm=lm)
     retrieval_program = dspy.ChainOfThought(CairoQueryAnalysis)
-    if not os.path.exists("optimized_retrieval_program.json"):
-        raise FileNotFoundError("optimized_retrieval_program.json not found")
-    retrieval_program.load("optimized_retrieval_program.json")
     return dspy, lm, retrieval_program
 
 
@@ -431,7 +428,7 @@ def _(Evaluate, metric, optimized_retrieval_program, test_set):
 
 @app.cell
 def _(optimized_retrieval_program):
-    optimized_retrieval_program.save("optimized_retrieval_program.json")
+    optimized_retrieval_program.save("optimizers/results/optimized_retrieval_program.json")
 
     return
 

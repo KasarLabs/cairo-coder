@@ -118,7 +118,7 @@ def mock_agent():
     """
     agent = Mock(spec=RagPipeline)
 
-    async def mock_forward(query: str, chat_history: Optional[List[Message]] = None,
+    async def mock_forward_streaming(query: str, chat_history: Optional[List[Message]] = None,
                           mcp_mode: bool = False, **kwargs) -> AsyncGenerator[StreamEvent, None]:
         """Mock forward method that yields standard stream events."""
         events = [
@@ -130,7 +130,15 @@ def mock_agent():
         for event in events:
             yield event
 
+    agent.forward_streaming = mock_forward_streaming
+
+    async def mock_forward(query: str, chat_history: Optional[List[Message]] = None,
+                          mcp_mode: bool = False, **kwargs) -> str:
+        """Mock forward method that returns a string."""
+        return "Hello! I'm Cairo Coder."
+
     agent.forward = mock_forward
+
     return agent
 
 

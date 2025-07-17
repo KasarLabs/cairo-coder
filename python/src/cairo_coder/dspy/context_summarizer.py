@@ -30,7 +30,7 @@ class CairoContextSummarization(dspy.Signature):
 
 # Example for few-shot learning
 EXAMPLE = dspy.Example(
-    query="Complete the following Cairo code:\n\n```cairo\nfn add(a: felt252, b: felt252) -> felt252 {\n    // TODO: implement addition\n}\n```",
+    query="Complete the following Cairo code and address the TODOs:\n\n```cairo\nfn add(a: felt252, b: felt252) -> felt252 {\n    // TODO: implement addition\n}\n```",
     raw_context="""# Functions in Cairo
 
 Functions are defined using the `fn` keyword followed by the function name, parameters, and return type.

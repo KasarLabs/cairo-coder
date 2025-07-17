@@ -80,10 +80,6 @@ class RagPipeline(dspy.Module):
         mcp_mode: bool = False,
         sources: Optional[List[DocumentSource]] = None
     ) -> str:
-
-        # TODO: remove duplication with streaming forward.
-        dspy.configure(lm=dspy.LM("gemini/gemini-2.5-flash", max_tokens=30000))
-
         chat_history_str = self._format_chat_history(chat_history or [])
         processed_query = self.query_processor.forward(
             query=query,
@@ -135,8 +131,6 @@ class RagPipeline(dspy.Module):
         """
         # TODO: This is the place where we should select the proper LLM configuration.
         # TODO: For now we just Hard-code DSPY - GEMINI
-        dspy.configure(lm=dspy.LM("gemini/gemini-2.5-flash", max_tokens=30000))
-        dspy.configure(callbacks=[AgentLoggingCallback()])
         try:
             # Stage 1: Process query
             yield StreamEvent(type="processing", data="Processing query...")
@@ -380,7 +374,14 @@ class RagPipelineFactory:
             test_template=test_template
         )
 
-        return RagPipeline(config)
+        rag_program = RagPipeline(config)
+        # Load optimizer
+        COMPILED_PROGRAM_PATH = "optimizers/results/optimized_rag.json"
+        if not os.path.exists(COMPILED_PROGRAM_PATH):
+            raise FileNotFoundError(f"{COMPILED_PROGRAM_PATH} not found")
+        rag_program.load(COMPILED_PROGRAM_PATH)
+
+        return rag_program
 
     @staticmethod
     def create_scarb_pipeline(
