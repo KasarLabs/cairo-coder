@@ -48,3 +48,6 @@ packages/**/dist
 !.trunk/trunk.yaml
 !.trunk/configs
 !.trunk/.gitignore
+
+starklings/
+debug/
