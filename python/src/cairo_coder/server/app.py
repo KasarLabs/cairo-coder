@@ -157,6 +157,8 @@ class CairoCoderServer:
         # Setup routes
         self._setup_routes()
 
+        # TODO: This is the place where we should select the proper LLM configuration.
+        # TODO: For now we just Hard-code DSPY - GEMINI
         dspy.configure(lm=dspy.LM("gemini/gemini-2.5-flash", max_tokens=30000))
         dspy.configure(callbacks=[AgentLoggingCallback()])
         dspy.configure(track_usage=True)
@@ -229,6 +231,19 @@ class CairoCoderServer:
             return await self._handle_chat_completion(request, req, agent_id, mcp_mode)
 
         @self.app.post("/v1/chat/completions")
+        async def chat_completions(
+            request: ChatCompletionRequest,
+            req: Request,
+            mcp: Optional[str] = Header(None),
+            x_mcp_mode: Optional[str] = Header(None, alias="x-mcp-mode")
+        ):
+            """Legacy chat completions endpoint - matches TypeScript backend."""
+            # Determine MCP mode
+            mcp_mode = bool(mcp or x_mcp_mode)
+
+            return await self._handle_chat_completion(request, req, None, mcp_mode)
+
+        @self.app.post("/chat/completions")
         async def chat_completions(
             request: ChatCompletionRequest,
             req: Request,

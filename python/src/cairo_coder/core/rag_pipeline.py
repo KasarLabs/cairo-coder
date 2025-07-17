@@ -152,8 +152,6 @@ class RagPipeline(dspy.Module):
         Yields:
             StreamEvent objects for real-time updates
         """
-        # TODO: This is the place where we should select the proper LLM configuration.
-        # TODO: For now we just Hard-code DSPY - GEMINI
         try:
             # Stage 1: Process query
             yield StreamEvent(type="processing", data="Processing query...")
