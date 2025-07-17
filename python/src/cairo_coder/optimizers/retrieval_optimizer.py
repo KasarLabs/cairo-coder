@@ -321,7 +321,6 @@ def _(dspy):
                 system_search_queries=pred.search_queries,
                 system_resources=pred.resources
             )
-            # TODO: we should assign a small amount of the score on the correctness of the resources used.
             score_semantic = f1_score(scores.precision, scores.recall)
             score_resource_jaccard = jaccard(set(example.resources), set(pred.resources))
 
