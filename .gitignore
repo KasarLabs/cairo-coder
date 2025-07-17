@@ -51,3 +51,9 @@ packages/**/dist
 
 starklings/
 debug/
+
+fixtures/runner_crate/target
+
+.snfoundry_cache
+
+python/starklings_results/
