@@ -4,30 +4,37 @@
     "train": [],
     "demos": [
       {
+        "augmented": true,
         "query": "Refactor this contract to add access control on public functions",
+        "chat_history": "",
+        "reasoning": "To add access control to public functions in a Cairo contract, the most common and recommended approach is to use the OpenZeppelin Cairo Contracts library. This library provides battle-tested implementations for various access control mechanisms.\n\nHere's a step-by-step reasoning:\n\n1.  **Identify the need:** The user wants to restrict who can call certain public functions.\n2.  **Choose an access control mechanism:**\n    *   **Ownable:** This is the simplest form of access control, where only a single designated owner address can execute specific functions. It's suitable for contracts managed by a single entity.\n    *   **AccessControl:** This provides a more flexible, role-based access control system, allowing you to define different roles (e.g., `ADMIN_ROLE`, `MINTER_ROLE`) and grant\/revoke these roles to multiple addresses. This is suitable for more complex scenarios with multiple administrators or different permission levels.\n    For a general request like \"add access control,\" `Ownable` is a good starting point due to its simplicity. If more complex role management is needed, `AccessControl` would be the next step.\n3.  **Integrate OpenZeppelin's `Ownable` contract:**\n    *   **Dependency:** First, you'll need to add the OpenZeppelin Cairo Contracts as a dependency in your `Scarb.toml`.\n    *   **Component Usage:** In Cairo, OpenZeppelin contracts are typically integrated as components. You'll need to `use` the `OwnableComponent` and `derive` it for your contract.\n    *   **Initialization:** The `OwnableComponent` requires an `initializer` function to be called, typically in your contract's constructor, to set the initial owner.\n    *   **Restriction:** To restrict a function, you'll call `OwnableComponent::only_owner()` at the beginning of the function. This will revert the transaction if the caller is not the owner.\n4.  **Refactoring:** You will need to identify which of your existing public functions (`#[external]`) require access control and then add the `OwnableComponent::only_owner()` check to them. You'll also need to modify your contract's constructor to call the `OwnableComponent::initializer`.",
         "search_queries": [
-          "Access control library for Cairo smart contracts",
-          "Asserting the caller of a contract entrypoint",
-          "Component for access control",
-          "Writing Starknet Smart Contracts"
+          "OpenZeppelin Cairo Ownable contract",
+          "Cairo smart contract access control",
+          "How to use Ownable in Cairo",
+          "Starknet contract only_owner",
+          "OpenZeppelin Cairo AccessControl contract",
+          "Scarb add OpenZeppelin dependency"
         ],
-        "resources": ["openzeppelin_docs", "cairo_book"],
-        "chat_history": ""
+        "resources": ["openzeppelin_docs", "cairo_book", "scarb_docs"]
       },
       {
+        "augmented": true,
         "query": "Implement an ERC20 token with mint and burn mechanism",
+        "chat_history": "",
+        "reasoning": "The user wants to implement an ERC20 token, which is a standard for fungible tokens on EVM-compatible chains, adapted for Starknet using Cairo. The request specifically includes minting and burning functionalities.\n\nTo fulfill this, the most efficient and secure approach is to leverage the OpenZeppelin Cairo Contracts library, which provides battle-tested implementations of standard tokens like ERC20.\n\nMy plan is:\n1.  **Identify the core component**: The `ERC20` contract from OpenZeppelin Cairo.\n2.  **Locate minting functionality**: OpenZeppelin's `ERC20` contract typically includes `_mint` and `_burn` internal functions that can be exposed via public functions with appropriate access control.\n3.  **Consider access control**: Minting and burning should generally be restricted to authorized entities (e.g., the contract deployer, or a specific 'minter' role). OpenZeppelin provides access control mechanisms like `Ownable` or `AccessControl` that can be integrated. The `ERC20` contract itself might have a `mint` function that is `only_owner` or similar.\n4.  **Cairo specifics**: Understand how to import and extend OpenZeppelin contracts in Cairo, and how to define public functions that call the internal `_mint` and `_burn` methods.\n\nTherefore, the search queries will focus on finding the OpenZeppelin ERC20 contract, its mint\/burn methods, and how to use them in a Cairo project.",
         "search_queries": [
-          "Creating ERC20 tokens with Openzeppelin",
-          "Adding mint and burn entrypoints to ERC20",
-          "Writing Starknet Smart Contracts",
-          "Integrating Openzeppelin library in Cairo project"
+          "OpenZeppelin Cairo ERC20 contract",
+          "Cairo ERC20 mint function",
+          "Cairo ERC20 burn function",
+          "Implement ERC20 in Starknet Cairo",
+          "OpenZeppelin Cairo Ownable contract"
         ],
-        "resources": ["openzeppelin_docs", "cairo_book"],
-        "chat_history": ""
+        "resources": ["openzeppelin_docs", "cairo_book"]
       }
     ],
     "signature": {
-      "instructions": "You are an AI assistant specialized in Starknet and Cairo smart contract development. Your task is to process a user's programming query, provide a detailed reasoning for how to approach it, generate effective search queries, and identify the most relevant documentation resources.\n\nFor each `Query` in the `Chat History`:\n1.  **Reasoning**: Explain your thought process step-by-step. Analyze the user's intent, identify key concepts (e.g., ERC20, mint\/burn, OpenZeppelin), and outline the necessary steps or information required to fulfill the request. This reasoning should be comprehensive and directly justify the subsequent search queries and resource selection.\n2.  **Search Queries**: Based on your reasoning, generate a list of highly specific and effective search queries that a developer would use to find the necessary information. These queries should be tailored to the Starknet\/Cairo ecosystem, frequently include terms like \"Cairo\", \"Starknet\", \"OpenZeppelin\", and specific contract functionalities, and aim to efficiently locate relevant information.\n3.  **Resources**: Identify the most authoritative and relevant documentation sources from the available options (e.g., `openzeppelin_docs`, `cairo_book`). Select only those directly applicable to the query and your reasoning.",
+      "instructions": "You are an expert AI assistant specializing in Starknet and Cairo smart contract development, with a deep and practical understanding of the OpenZeppelin Cairo Contracts library. Your core mission is to empower developers by providing precise guidance and resources to efficiently implement features or resolve challenges related to Cairo-based smart contracts.\n\nFor the user's `Query` provided in the `Chat History`, you must perform the following tasks:\n\n1.  **Reasoning**:\n    *   Initiate your thought process by stating: \"Let's think step by step in order to...\".\n    *   Conduct a thorough analysis of the user's intent and the underlying problem they aim to solve.\n    *   Clearly identify all pertinent technical concepts, established standards (e.g., ERC20, ERC721), and specific functionalities (e.g., minting, burning, access control, upgrades) that are relevant to the query.\n    *   Formulate a comprehensive, logical, and secure plan outlining the optimal approach to address the query. This plan should explicitly consider and prioritize the integration of battle-tested OpenZeppelin Cairo Contracts components where they provide an efficient and secure solution.\n    *   Provide clear justifications for your chosen methodology, explaining why specific libraries, design patterns, or access control mechanisms are recommended. This detailed reasoning is paramount as it directly underpins and validates the subsequent search queries and resource selections.\n\n2.  **Search Queries**:\n    *   Generate a focused list of 3 to 6 highly specific and effective search queries.\n    *   These queries must be meticulously crafted to yield direct and relevant documentation, code examples, or tutorials within the Starknet\/Cairo ecosystem.\n    *   Ensure queries frequently incorporate essential terms such as \"Cairo\", \"Starknet\", \"OpenZeppelin\", and precise contract or function names (e.g., \"ERC20\", \"Ownable\", \"AccessControl\", \"mint\", \"burn\", \"upgradeable contract\").\n    *   The goal is to efficiently guide a developer to the exact information needed.\n\n3.  **Resources**:\n    *   From the predefined set of authoritative options (`openzeppelin_docs`, `cairo_book`, `scarb_docs`), identify and list only the most directly applicable and essential documentation sources.\n    *   Select resources that are indispensable for a developer to fully comprehend and successfully implement the solution detailed in your reasoning.\n\nEnsure your response strictly adheres to the specified output format for each field.",
       "fields": [
         {
           "prefix": "Chat History:",

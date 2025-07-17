@@ -8,6 +8,7 @@ app = marimo.App(width="medium")
 def _():
     from cairo_coder.dspy.query_processor import QueryProcessorProgram, CairoQueryAnalysis
     import dspy
+    import os
 
     # Start mlflow for monitoring `mlflow ui --port 5000`
 
@@ -20,6 +21,9 @@ def _():
     lm = dspy.LM('gemini/gemini-2.5-flash', max_tokens=10000)
     dspy.configure(lm=lm)
     retrieval_program = dspy.ChainOfThought(CairoQueryAnalysis)
+    if not os.path.exists("optimized_retrieval_program.json"):
+        raise FileNotFoundError("optimized_retrieval_program.json not found")
+    retrieval_program.load("optimized_retrieval_program.json")
     return dspy, lm, retrieval_program
 
 
