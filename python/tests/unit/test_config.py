@@ -2,14 +2,14 @@
 
 import os
 import tempfile
+from collections.abc import Generator
 from pathlib import Path
-from typing import Generator
 
 import pytest
 import toml
 
 from cairo_coder.config.manager import ConfigManager
-from cairo_coder.core.config import AgentConfiguration, Config
+from cairo_coder.core.config import AgentConfiguration
 from cairo_coder.core.types import DocumentSource
 
 
@@ -64,7 +64,7 @@ class TestConfigManager:
     def test_load_config_fails_if_no_config_file(self) -> None:
         """Test loading configuration with no config file."""
         with pytest.raises(FileNotFoundError, match="Configuration file not found at"):
-            config = ConfigManager.load_config(Path("nonexistent.toml"))
+            ConfigManager.load_config(Path("nonexistent.toml"))
 
     def test_load_toml_config(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """Test loading configuration from TOML file."""
@@ -86,7 +86,7 @@ class TestConfigManager:
                 "POSTGRES_USER": "test_user",
                 "POSTGRES_PASSWORD": "test_password",
                 "POSTGRES_TABLE_NAME": "test_table",
-                "SIMILARITY_MEASURE": "cosine"
+                "SIMILARITY_MEASURE": "cosine",
             },
             "providers": {
                 "default": "anthropic",
@@ -110,7 +110,9 @@ class TestConfigManager:
         finally:
             temp_path.unlink()
 
-    def test_environment_override(self, monkeypatch: pytest.MonkeyPatch, mock_config_file: Path) -> None:
+    def test_environment_override(
+        self, monkeypatch: pytest.MonkeyPatch, mock_config_file: Path
+    ) -> None:
         """Test environment variable overrides."""
         # Set environment variables
         monkeypatch.setenv("POSTGRES_HOST", "env-host")
@@ -168,10 +170,7 @@ class TestConfigManager:
         config = ConfigManager.load_config(mock_config_file)
         config.vector_store.password = "test-pass"
         config.agents["test"] = AgentConfiguration(
-            id="test",
-            name="Test",
-            description="Test agent",
-            sources=[]
+            id="test", name="Test", description="Test agent", sources=[]
         )
         with pytest.raises(ValueError, match="has no sources configured"):
             ConfigManager.validate_config(config)

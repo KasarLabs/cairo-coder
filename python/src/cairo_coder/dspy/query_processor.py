@@ -7,54 +7,47 @@ and resource identification.
 """
 
 import os
-from langsmith import traceable
-import structlog
-import re
-from typing import List, Optional
 
 import dspy
+import structlog
 from dspy import InputField, OutputField, Signature
+from langsmith import traceable
 
 from cairo_coder.core.types import DocumentSource, ProcessedQuery
 
 logger = structlog.get_logger(__name__)
 
 RESOURCE_DESCRIPTIONS = {
-  "cairo_book":
-    'The Cairo Programming Language Book. Essential for core language syntax, semantics, types (felt252, structs, enums, Vec), traits, generics, control flow, memory management, writing tests, organizing a project, standard library usage, starknet interactions. Crucial for smart contract structure, storage, events, ABI, syscalls, contract deployment, interaction, L1<>L2 messaging, Starknet-specific attributes.',
-  "starknet_docs":
-    'The Starknet Documentation. For Starknet protocol, architecture, APIs, syscalls, network interaction, deployment, ecosystem tools (Starkli, indexers), general Starknet knowledge. This should not be included for Coding and Programming questions, but rather, only for questions about Starknet itself.',
-  "starknet_foundry":
-    'The Starknet Foundry Documentation. For using the Foundry toolchain: writing, compiling, testing (unit tests, integration tests), and debugging Starknet contracts.',
-  "cairo_by_example":
-    'Cairo by Example Documentation. Provides practical Cairo code snippets for specific language features or common patterns. Useful for how-to syntax questions. This should not be included for Smart Contract questions, but for all other Cairo programming questions.',
-  "openzeppelin_docs":
-    'OpenZeppelin Cairo Contracts Documentation. For using the OZ library: standard implementations (ERC20, ERC721), access control, security patterns, contract upgradeability. Crucial for building standard-compliant contracts.',
-  "corelib_docs":
-    'Cairo Core Library Documentation. For using the Cairo core library: basic types, stdlib functions, stdlib structs, macros, and other core concepts. Essential for Cairo programming questions.',
-  "scarb_docs":
-    'Scarb Documentation. For using the Scarb package manager: building, compiling, generating compilation artifacts, managing dependencies, configuration of Scarb.toml.',
-};
+    "cairo_book": "The Cairo Programming Language Book. Essential for core language syntax, semantics, types (felt252, structs, enums, Vec), traits, generics, control flow, memory management, writing tests, organizing a project, standard library usage, starknet interactions. Crucial for smart contract structure, storage, events, ABI, syscalls, contract deployment, interaction, L1<>L2 messaging, Starknet-specific attributes.",
+    "starknet_docs": "The Starknet Documentation. For Starknet protocol, architecture, APIs, syscalls, network interaction, deployment, ecosystem tools (Starkli, indexers), general Starknet knowledge. This should not be included for Coding and Programming questions, but rather, only for questions about Starknet itself.",
+    "starknet_foundry": "The Starknet Foundry Documentation. For using the Foundry toolchain: writing, compiling, testing (unit tests, integration tests), and debugging Starknet contracts.",
+    "cairo_by_example": "Cairo by Example Documentation. Provides practical Cairo code snippets for specific language features or common patterns. Useful for how-to syntax questions. This should not be included for Smart Contract questions, but for all other Cairo programming questions.",
+    "openzeppelin_docs": "OpenZeppelin Cairo Contracts Documentation. For using the OZ library: standard implementations (ERC20, ERC721), access control, security patterns, contract upgradeability. Crucial for building standard-compliant contracts.",
+    "corelib_docs": "Cairo Core Library Documentation. For using the Cairo core library: basic types, stdlib functions, stdlib structs, macros, and other core concepts. Essential for Cairo programming questions.",
+    "scarb_docs": "Scarb Documentation. For using the Scarb package manager: building, compiling, generating compilation artifacts, managing dependencies, configuration of Scarb.toml.",
+}
+
 
 class CairoQueryAnalysis(Signature):
     """
     Analyze a Cairo programming query to extract search terms and identify relevant documentation sources.
     """
 
-    chat_history: Optional[str] = InputField(
+    chat_history: str | None = InputField(
         desc="Previous conversation context for better understanding of the query. May be empty.",
-        default=""
+        default="",
     )
 
     query: str = InputField(
         desc="User's Cairo/Starknet programming question or request that needs to be processed"
     )
 
-    search_queries: List[str] = OutputField(
+    search_queries: list[str] = OutputField(
         desc="List of specific search queries to make to a vector store to find relevant documentation. Each query should be a sentence describing an action to take to fulfill the user's request"
     )
-    resources: List[str] = OutputField(
-        desc="List of documentation sources. Available sources: " + ", ".join([f"{key}: {value}" for key, value in RESOURCE_DESCRIPTIONS.items()])
+    resources: list[str] = OutputField(
+        desc="List of documentation sources. Available sources: "
+        + ", ".join([f"{key}: {value}" for key, value in RESOURCE_DESCRIPTIONS.items()])
     )
 
 
@@ -70,25 +63,50 @@ class QueryProcessorProgram(dspy.Module):
         super().__init__()
         self.retrieval_program = dspy.ChainOfThought(CairoQueryAnalysis)
         # Validate that the file exists
-        COMPILED_PROGRAM_PATH = "optimizers/results/optimized_retrieval_program.json"
-        if not os.path.exists(COMPILED_PROGRAM_PATH):
-            raise FileNotFoundError(f"{COMPILED_PROGRAM_PATH} not found")
-        self.retrieval_program.load(COMPILED_PROGRAM_PATH)
+        compiled_program_path = "optimizers/results/optimized_retrieval_program.json"
+        if not os.path.exists(compiled_program_path):
+            raise FileNotFoundError(f"{compiled_program_path} not found")
+        self.retrieval_program.load(compiled_program_path)
 
         # Common keywords for query analysis
         self.contract_keywords = {
-            'contract', 'interface', 'trait', 'impl', 'storage', 'starknet',
-            'constructor', 'external', 'view', 'event', 'emit', 'component',
-            'ownership', 'upgradeable', 'proxy', 'dispatcher', 'abi'
+            "contract",
+            "interface",
+            "trait",
+            "impl",
+            "storage",
+            "starknet",
+            "constructor",
+            "external",
+            "view",
+            "event",
+            "emit",
+            "component",
+            "ownership",
+            "upgradeable",
+            "proxy",
+            "dispatcher",
+            "abi",
         }
 
         self.test_keywords = {
-            'test', 'testing', 'assert', 'mock', 'fixture', 'unit', 'integration',
-            'should_panic', 'expected', 'setup', 'teardown', 'coverage', 'foundry'
+            "test",
+            "testing",
+            "assert",
+            "mock",
+            "fixture",
+            "unit",
+            "integration",
+            "should_panic",
+            "expected",
+            "setup",
+            "teardown",
+            "coverage",
+            "foundry",
         }
 
     @traceable(name="QueryProcessorProgram", run_type="llm")
-    def forward(self, query: str, chat_history: Optional[str] = None) -> ProcessedQuery:
+    def forward(self, query: str, chat_history: str | None = None) -> ProcessedQuery:
         """
         Process a user query into a structured format for document retrieval.
 
@@ -100,10 +118,7 @@ class QueryProcessorProgram(dspy.Module):
             ProcessedQuery with search terms, resource identification, and categorization
         """
         # Execute the DSPy retrieval program
-        result = self.retrieval_program.forward(
-            query=query,
-            chat_history=chat_history
-        )
+        result = self.retrieval_program.forward(query=query, chat_history=chat_history)
 
         # Parse and validate the results
         search_queries = result.search_queries
@@ -117,9 +132,10 @@ class QueryProcessorProgram(dspy.Module):
             search_queries=search_queries,
             is_contract_related=self._is_contract_query(query),
             is_test_related=self._is_test_query(query),
-            resources=resources
+            resources=resources,
         )
-    def _validate_resources(self, resources: List[str]) -> List[DocumentSource]:
+
+    def _validate_resources(self, resources: list[str]) -> list[DocumentSource]:
         """
         Validate and convert resource strings to DocumentSource enum values.
 
@@ -141,7 +157,7 @@ class QueryProcessorProgram(dspy.Module):
             # Try to match to DocumentSource enum
             try:
                 # Handle different naming conventions
-                normalized_name = name.lower().replace('-', '_').replace(' ', '_')
+                normalized_name = name.lower().replace("-", "_").replace(" ", "_")
                 source = DocumentSource(normalized_name)
                 valid_resources.append(source)
             except ValueError:
@@ -177,6 +193,7 @@ class QueryProcessorProgram(dspy.Module):
         """
         query_lower = query.lower()
         return any(keyword in query_lower for keyword in self.test_keywords)
+
 
 def create_query_processor() -> QueryProcessorProgram:
     """

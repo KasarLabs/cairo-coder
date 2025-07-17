@@ -1,15 +1,13 @@
 """Integration tests for vector store with real database operations."""
 
-import asyncio
 import json
-import os
-from typing import AsyncGenerator, List
-from unittest.mock import AsyncMock, MagicMock, patch
+from collections.abc import AsyncGenerator
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
 from cairo_coder.core.config import VectorStoreConfig
-from cairo_coder.core.types import Document, DocumentSource
+from cairo_coder.core.types import DocumentSource
 from cairo_coder.core.vector_store import VectorStore
 
 
@@ -26,7 +24,7 @@ class TestVectorStoreIntegration:
             user="test_user",
             password="test_pass",
             table_name="test_documents",
-            embedding_dimension=1536
+            embedding_dimension=1536,
         )
 
     @pytest.fixture
@@ -44,9 +42,7 @@ class TestVectorStoreIntegration:
 
     @pytest.fixture
     async def vector_store(
-        self,
-        vector_store_config: VectorStoreConfig,
-        mock_pool: AsyncMock
+        self, vector_store_config: VectorStoreConfig, mock_pool: AsyncMock
     ) -> AsyncGenerator[VectorStore, None]:
         """Create vector store with mocked database."""
         store = VectorStore(vector_store_config)
@@ -66,7 +62,9 @@ class TestVectorStoreIntegration:
     #     yield store
 
     @pytest.mark.asyncio
-    async def test_database_connection(self, vector_store: VectorStore, mock_pool: AsyncMock) -> None:
+    async def test_database_connection(
+        self, vector_store: VectorStore, mock_pool: AsyncMock
+    ) -> None:
         """Test basic database connection."""
         # Mock the connection response
         mock_conn = mock_pool.acquire.return_value.__aenter__.return_value
@@ -79,16 +77,14 @@ class TestVectorStoreIntegration:
 
     @pytest.mark.asyncio
     async def test_add_and_retrieve_documents(
-        self,
-        vector_store: VectorStore,
-        mock_pool: AsyncMock
+        self, vector_store: VectorStore, mock_pool: AsyncMock
     ) -> None:
         """Test adding documents and retrieving them without embeddings."""
         # Mock the count_by_source query result
         mock_conn = mock_pool.acquire.return_value.__aenter__.return_value
         mock_conn.fetch.return_value = [
             {"source": DocumentSource.CAIRO_BOOK.value, "count": 1},
-            {"source": DocumentSource.STARKNET_DOCS.value, "count": 1}
+            {"source": DocumentSource.STARKNET_DOCS.value, "count": 1},
         ]
 
         # Test count by source
@@ -116,19 +112,16 @@ class TestVectorStoreIntegration:
 
     @pytest.mark.asyncio
     async def test_similarity_search_with_mock_embeddings(
-        self,
-        vector_store: VectorStore,
-        mock_pool: AsyncMock,
-        monkeypatch: pytest.MonkeyPatch
+        self, vector_store: VectorStore, mock_pool: AsyncMock, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """Test similarity search with mocked embeddings."""
+
         # Mock the embedding methods
-        async def mock_embed_text(text: str) -> List[float]:
+        async def mock_embed_text(text: str) -> list[float]:
             # Return different embeddings based on content
             if "cairo" in text.lower():
                 return [1.0, 0.0, 0.0] + [0.0] * (vector_store.config.embedding_dimension - 3)
-            else:
-                return [0.0, 1.0, 0.0] + [0.0] * (vector_store.config.embedding_dimension - 3)
+            return [0.0, 1.0, 0.0] + [0.0] * (vector_store.config.embedding_dimension - 3)
 
         monkeypatch.setattr(vector_store, "_embed_text", mock_embed_text)
 
@@ -139,21 +132,18 @@ class TestVectorStoreIntegration:
                 "id": "doc1",
                 "content": "Cairo is a programming language",
                 "metadata": json.dumps({"source": DocumentSource.CAIRO_BOOK.value}),
-                "similarity": 0.95
+                "similarity": 0.95,
             },
             {
                 "id": "doc2",
                 "content": "Starknet is a Layer 2 solution",
                 "metadata": json.dumps({"source": DocumentSource.STARKNET_DOCS.value}),
-                "similarity": 0.85
-            }
+                "similarity": 0.85,
+            },
         ]
 
         # Search for Cairo-related content
-        results = await vector_store.similarity_search(
-            query="Tell me about Cairo",
-            k=2
-        )
+        results = await vector_store.similarity_search(query="Tell me about Cairo", k=2)
 
         # Should return Cairo document first due to embedding similarity
         assert len(results) == 2

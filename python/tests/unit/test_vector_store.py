@@ -1,7 +1,7 @@
 """Tests for PostgreSQL vector store integration."""
 
 import json
-from typing import Any, Dict, List
+from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -24,7 +24,7 @@ class TestVectorStore:
             user="test_user",
             password="test_pass",
             table_name="test_documents",
-            similarity_measure="cosine"
+            similarity_measure="cosine",
         )
 
     @pytest.fixture
@@ -42,13 +42,9 @@ class TestVectorStore:
         return pool
 
     @pytest.fixture
-    def mock_embedding_response(self) -> Dict[str, Any]:
+    def mock_embedding_response(self) -> dict[str, Any]:
         """Create mock embedding response."""
-        return {
-            "data": [
-                {"embedding": [0.1, 0.2, 0.3, 0.4, 0.5]}
-            ]
-        }
+        return {"data": [{"embedding": [0.1, 0.2, 0.3, 0.4, 0.5]}]}
 
     @pytest.mark.asyncio
     async def test_initialize(self, vector_store: VectorStore) -> None:
@@ -66,10 +62,7 @@ class TestVectorStore:
 
             assert vector_store.pool is mock_pool
             mock_create_pool.assert_called_once_with(
-                dsn=vector_store.config.dsn,
-                min_size=2,
-                max_size=10,
-                command_timeout=60
+                dsn=vector_store.config.dsn, min_size=2, max_size=10, command_timeout=60
             )
 
     @pytest.mark.asyncio
@@ -83,11 +76,7 @@ class TestVectorStore:
         assert vector_store.pool is None
 
     @pytest.mark.asyncio
-    async def test_similarity_search(
-        self,
-        vector_store: VectorStore,
-        mock_pool: AsyncMock
-    ) -> None:
+    async def test_similarity_search(self, vector_store: VectorStore, mock_pool: AsyncMock) -> None:
         """Test similarity search functionality."""
         # Mock embedding generation
         with patch.object(vector_store, "_embed_text") as mock_embed:
@@ -102,14 +91,14 @@ class TestVectorStore:
                     "id": "doc1",
                     "content": "Cairo programming guide",
                     "metadata": json.dumps({"source": "cairo_book", "title": "Guide"}),
-                    "similarity": 0.95
+                    "similarity": 0.95,
                 },
                 {
                     "id": "doc2",
                     "content": "Starknet documentation",
                     "metadata": json.dumps({"source": "starknet_docs", "title": "Docs"}),
-                    "similarity": 0.85
-                }
+                    "similarity": 0.85,
+                },
             ]
             mock_conn.fetch.return_value = mock_rows
 
@@ -117,8 +106,7 @@ class TestVectorStore:
 
             # Perform search
             results = await vector_store.similarity_search(
-                query="How to write Cairo contracts?",
-                k=5
+                query="How to write Cairo contracts?", k=5
             )
 
             # Verify results
@@ -139,9 +127,7 @@ class TestVectorStore:
 
     @pytest.mark.asyncio
     async def test_similarity_search_with_sources(
-        self,
-        vector_store: VectorStore,
-        mock_pool: AsyncMock
+        self, vector_store: VectorStore, mock_pool: AsyncMock
     ) -> None:
         """Test similarity search with source filtering."""
         with patch.object(vector_store, "_embed_text") as mock_embed:
@@ -155,9 +141,7 @@ class TestVectorStore:
 
             # Search with single source
             await vector_store.similarity_search(
-                query="test",
-                k=5,
-                sources=DocumentSource.CAIRO_BOOK
+                query="test", k=5, sources=DocumentSource.CAIRO_BOOK
             )
 
             # Verify source filtering in query
@@ -168,9 +152,7 @@ class TestVectorStore:
 
             # Search with multiple sources
             await vector_store.similarity_search(
-                query="test",
-                k=3,
-                sources=[DocumentSource.CAIRO_BOOK, DocumentSource.STARKNET_DOCS]
+                query="test", k=3, sources=[DocumentSource.CAIRO_BOOK, DocumentSource.STARKNET_DOCS]
             )
 
             call_args = mock_conn.fetch.call_args[0]
@@ -178,17 +160,10 @@ class TestVectorStore:
             assert call_args[3] == 3
 
     @pytest.mark.asyncio
-    async def test_add_documents(
-        self,
-        vector_store: VectorStore,
-        mock_pool: AsyncMock
-    ) -> None:
+    async def test_add_documents(self, vector_store: VectorStore, mock_pool: AsyncMock) -> None:
         """Test adding documents to vector store."""
         with patch.object(vector_store, "_embed_texts") as mock_embed:
-            mock_embed.return_value = [
-                [0.1, 0.2, 0.3],
-                [0.4, 0.5, 0.6]
-            ]
+            mock_embed.return_value = [[0.1, 0.2, 0.3], [0.4, 0.5, 0.6]]
 
             mock_conn = AsyncMock()
             mock_pool.acquire.return_value.__aenter__.return_value = mock_conn
@@ -199,21 +174,20 @@ class TestVectorStore:
             documents = [
                 Document(
                     page_content="Cairo contract example",
-                    metadata={"source": "cairo_book", "chapter": 1}
+                    metadata={"source": "cairo_book", "chapter": 1},
                 ),
                 Document(
                     page_content="Starknet deployment guide",
-                    metadata={"source": "starknet_docs", "section": "deployment"}
-                )
+                    metadata={"source": "starknet_docs", "section": "deployment"},
+                ),
             ]
 
             await vector_store.add_documents(documents)
 
             # Verify embedding generation
-            mock_embed.assert_called_once_with([
-                "Cairo contract example",
-                "Starknet deployment guide"
-            ])
+            mock_embed.assert_called_once_with(
+                ["Cairo contract example", "Starknet deployment guide"]
+            )
 
             # Verify database insertion
             mock_conn.executemany.assert_called_once()
@@ -230,9 +204,7 @@ class TestVectorStore:
 
     @pytest.mark.asyncio
     async def test_add_documents_with_ids(
-        self,
-        vector_store: VectorStore,
-        mock_pool: AsyncMock
+        self, vector_store: VectorStore, mock_pool: AsyncMock
     ) -> None:
         """Test adding documents with specific IDs."""
         with patch.object(vector_store, "_embed_texts") as mock_embed:
@@ -243,12 +215,7 @@ class TestVectorStore:
 
             vector_store.pool = mock_pool
 
-            documents = [
-                Document(
-                    page_content="Test document",
-                    metadata={"source": "test"}
-                )
-            ]
+            documents = [Document(page_content="Test document", metadata={"source": "test"})]
             ids = ["custom-id-123"]
 
             await vector_store.add_documents(documents, ids)
@@ -261,11 +228,7 @@ class TestVectorStore:
             assert rows[0][0] == "custom-id-123"  # Custom ID
 
     @pytest.mark.asyncio
-    async def test_delete_by_source(
-        self,
-        vector_store: VectorStore,
-        mock_pool: AsyncMock
-    ) -> None:
+    async def test_delete_by_source(self, vector_store: VectorStore, mock_pool: AsyncMock) -> None:
         """Test deleting documents by source."""
         mock_conn = AsyncMock()
         mock_pool.acquire.return_value.__aenter__.return_value = mock_conn
@@ -283,29 +246,21 @@ class TestVectorStore:
         assert call_args[1] == "cairo_book"
 
     @pytest.mark.asyncio
-    async def test_count_by_source(
-        self,
-        vector_store: VectorStore,
-        mock_pool: AsyncMock
-    ) -> None:
+    async def test_count_by_source(self, vector_store: VectorStore, mock_pool: AsyncMock) -> None:
         """Test counting documents by source."""
         mock_conn = AsyncMock()
         mock_pool.acquire.return_value.__aenter__.return_value = mock_conn
         mock_conn.fetch.return_value = [
             {"source": "cairo_book", "count": 150},
             {"source": "starknet_docs", "count": 75},
-            {"source": "scarb_docs", "count": 30}
+            {"source": "scarb_docs", "count": 30},
         ]
 
         vector_store.pool = mock_pool
 
         counts = await vector_store.count_by_source()
 
-        assert counts == {
-            "cairo_book": 150,
-            "starknet_docs": 75,
-            "scarb_docs": 30
-        }
+        assert counts == {"cairo_book": 150, "starknet_docs": 75, "scarb_docs": 30}
 
         mock_conn.fetch.assert_called_once()
         call_args = mock_conn.fetch.call_args[0]

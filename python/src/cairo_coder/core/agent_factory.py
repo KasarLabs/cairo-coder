@@ -5,23 +5,22 @@ This module implements the AgentFactory class that creates and configures
 RAG Pipeline agents based on agent IDs and configurations.
 """
 
-from typing import Dict, List, Optional
-import asyncio
 from dataclasses import dataclass, field
 
-from cairo_coder.core.types import Document, DocumentSource, Message
-from cairo_coder.core.rag_pipeline import RagPipeline, RagPipelineFactory
-from cairo_coder.core.config import AgentConfiguration, VectorStoreConfig
 from cairo_coder.config.manager import ConfigManager
+from cairo_coder.core.config import AgentConfiguration, VectorStoreConfig
+from cairo_coder.core.rag_pipeline import RagPipeline, RagPipelineFactory
+from cairo_coder.core.types import DocumentSource, Message
 
 
 @dataclass
 class AgentFactoryConfig:
     """Configuration for Agent Factory."""
+
     vector_store_config: VectorStoreConfig
     config_manager: ConfigManager
-    default_agent_config: Optional[AgentConfiguration] = None
-    agent_configs: Dict[str, AgentConfiguration] = field(default_factory=dict)
+    default_agent_config: AgentConfiguration | None = None
+    agent_configs: dict[str, AgentConfiguration] = field(default_factory=dict)
 
 
 class AgentFactory:
@@ -46,17 +45,17 @@ class AgentFactory:
         self.default_agent_config = config.default_agent_config
 
         # Cache for created agents to avoid recreation
-        self._agent_cache: Dict[str, RagPipeline] = {}
+        self._agent_cache: dict[str, RagPipeline] = {}
 
     @staticmethod
     def create_agent(
         query: str,
-        history: List[Message],
+        history: list[Message],
         vector_store_config: VectorStoreConfig,
         mcp_mode: bool = False,
-        sources: Optional[List[DocumentSource]] = None,
+        sources: list[DocumentSource] | None = None,
         max_source_count: int = 10,
-        similarity_threshold: float = 0.4
+        similarity_threshold: float = 0.4,
     ) -> RagPipeline:
         """
         Create a default agent for general Cairo programming assistance.
@@ -78,24 +77,23 @@ class AgentFactory:
             sources = AgentFactory._infer_sources_from_query(query)
 
         # Create pipeline with appropriate configuration
-        pipeline = RagPipelineFactory.create_pipeline(
+        return RagPipelineFactory.create_pipeline(
             name="default_agent",
             vector_store_config=vector_store_config,
             sources=sources,
             max_source_count=max_source_count,
-            similarity_threshold=similarity_threshold
+            similarity_threshold=similarity_threshold,
         )
 
-        return pipeline
 
     @staticmethod
     async def create_agent_by_id(
         query: str,
-        history: List[Message],
+        history: list[Message],
         agent_id: str,
         vector_store_config: VectorStoreConfig,
-        config_manager: Optional[ConfigManager] = None,
-        mcp_mode: bool = False
+        config_manager: ConfigManager | None = None,
+        mcp_mode: bool = False,
     ) -> RagPipeline:
         """
         Create an agent based on a specific agent ID configuration.
@@ -120,26 +118,21 @@ class AgentFactory:
 
         try:
             agent_config = config_manager.get_agent_config(agent_id)
-        except KeyError:
-            raise ValueError(f"Agent configuration not found for ID: {agent_id}")
+        except KeyError as e:
+            raise ValueError(f"Agent configuration not found for ID: {agent_id}") from e
 
         # Create pipeline based on agent configuration
-        pipeline = await AgentFactory._create_pipeline_from_config(
+        return await AgentFactory._create_pipeline_from_config(
             agent_config=agent_config,
             vector_store_config=vector_store_config,
             query=query,
             history=history,
-            mcp_mode=mcp_mode
+            mcp_mode=mcp_mode,
         )
 
-        return pipeline
 
     async def get_or_create_agent(
-        self,
-        agent_id: str,
-        query: str,
-        history: List[Message],
-        mcp_mode: bool = False
+        self, agent_id: str, query: str, history: list[Message], mcp_mode: bool = False
     ) -> RagPipeline:
         """
         Get an existing agent from cache or create a new one.
@@ -165,7 +158,7 @@ class AgentFactory:
             agent_id=agent_id,
             vector_store_config=self.vector_store_config,
             config_manager=self.config_manager,
-            mcp_mode=mcp_mode
+            mcp_mode=mcp_mode,
         )
 
         # Cache the agent
@@ -177,7 +170,7 @@ class AgentFactory:
         """Clear the agent cache."""
         self._agent_cache.clear()
 
-    def get_available_agents(self) -> List[str]:
+    def get_available_agents(self) -> list[str]:
         """
         Get list of available agent IDs.
 
@@ -186,7 +179,7 @@ class AgentFactory:
         """
         return list(self.agent_configs.keys())
 
-    def get_agent_info(self, agent_id: str) -> Dict[str, any]:
+    def get_agent_info(self, agent_id: str) -> dict[str, any]:
         """
         Get information about a specific agent.
 
@@ -204,18 +197,18 @@ class AgentFactory:
 
         config = self.agent_configs[agent_id]
         return {
-            'id': config.id,
-            'name': config.name,
-            'description': config.description,
-            'sources': [source.value for source in config.sources],
-            'max_source_count': config.max_source_count,
-            'similarity_threshold': config.similarity_threshold,
-            'contract_template': config.contract_template,
-            'test_template': config.test_template
+            "id": config.id,
+            "name": config.name,
+            "description": config.description,
+            "sources": [source.value for source in config.sources],
+            "max_source_count": config.max_source_count,
+            "similarity_threshold": config.similarity_threshold,
+            "contract_template": config.contract_template,
+            "test_template": config.test_template,
         }
 
     @staticmethod
-    def _infer_sources_from_query(query: str) -> List[DocumentSource]:
+    def _infer_sources_from_query(query: str) -> list[DocumentSource]:
         """
         Infer appropriate documentation sources from the query.
 
@@ -230,13 +223,20 @@ class AgentFactory:
 
         # Source-specific keywords
         source_keywords = {
-            DocumentSource.SCARB_DOCS: ['scarb', 'build', 'package', 'dependency', 'toml'],
-            DocumentSource.STARKNET_FOUNDRY: ['foundry', 'forge', 'cast', 'test', 'anvil'],
-            DocumentSource.OPENZEPPELIN_DOCS: ['openzeppelin', 'oz', 'token', 'erc', 'standard'],
-            DocumentSource.CORELIB_DOCS: ['corelib', 'core', 'builtin', 'primitive'],
-            DocumentSource.CAIRO_BY_EXAMPLE: ['example', 'tutorial', 'guide', 'walkthrough'],
-            DocumentSource.STARKNET_DOCS: ['starknet', 'account', 'transaction', 'fee', 'l2', 'contract'],
-            DocumentSource.CAIRO_BOOK: ['cairo', 'syntax', 'language', 'type', 'variable']
+            DocumentSource.SCARB_DOCS: ["scarb", "build", "package", "dependency", "toml"],
+            DocumentSource.STARKNET_FOUNDRY: ["foundry", "forge", "cast", "test", "anvil"],
+            DocumentSource.OPENZEPPELIN_DOCS: ["openzeppelin", "oz", "token", "erc", "standard"],
+            DocumentSource.CORELIB_DOCS: ["corelib", "core", "builtin", "primitive"],
+            DocumentSource.CAIRO_BY_EXAMPLE: ["example", "tutorial", "guide", "walkthrough"],
+            DocumentSource.STARKNET_DOCS: [
+                "starknet",
+                "account",
+                "transaction",
+                "fee",
+                "l2",
+                "contract",
+            ],
+            DocumentSource.CAIRO_BOOK: ["cairo", "syntax", "language", "type", "variable"],
         }
 
         # Check for specific source keywords
@@ -255,8 +255,8 @@ class AgentFactory:
         agent_config: AgentConfiguration,
         vector_store_config: VectorStoreConfig,
         query: str,
-        history: List[Message],
-        mcp_mode: bool = False
+        history: list[Message],
+        mcp_mode: bool = False,
     ) -> RagPipeline:
         """
         Create a RAG Pipeline from agent configuration.
@@ -285,7 +285,7 @@ class AgentFactory:
                 max_source_count=agent_config.max_source_count,
                 similarity_threshold=agent_config.similarity_threshold,
                 contract_template=agent_config.contract_template,
-                test_template=agent_config.test_template
+                test_template=agent_config.test_template,
             )
         else:
             pipeline = RagPipelineFactory.create_pipeline(
@@ -295,7 +295,7 @@ class AgentFactory:
                 max_source_count=agent_config.max_source_count,
                 similarity_threshold=agent_config.similarity_threshold,
                 contract_template=agent_config.contract_template,
-                test_template=agent_config.test_template
+                test_template=agent_config.test_template,
             )
 
         return pipeline
@@ -332,7 +332,7 @@ When writing Cairo tests:
 3. Test both success and failure cases
 4. Use descriptive test names
 5. Include assertions with clear messages
-            """
+            """,
         )
 
     @staticmethod
@@ -346,13 +346,14 @@ When writing Cairo tests:
             max_source_count=5,
             similarity_threshold=0.35,
             contract_template=None,
-            test_template=None
+            test_template=None,
         )
+
 
 def create_agent_factory(
     vector_store_config: VectorStoreConfig,
-    config_manager: Optional[ConfigManager] = None,
-    custom_agents: Optional[Dict[str, AgentConfiguration]] = None
+    config_manager: ConfigManager | None = None,
+    custom_agents: dict[str, AgentConfiguration] | None = None,
 ) -> AgentFactory:
     """
     Create an AgentFactory with default configurations.
@@ -383,7 +384,7 @@ def create_agent_factory(
         vector_store_config=vector_store_config,
         config_manager=config_manager,
         default_agent_config=default_configs["default"],
-        agent_configs=default_configs
+        agent_configs=default_configs,
     )
 
     return AgentFactory(factory_config)

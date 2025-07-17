@@ -5,20 +5,19 @@ Tests the agent creation and configuration functionality including
 default agents, custom agents, and agent caching.
 """
 
-import pytest
-from unittest.mock import Mock, AsyncMock, patch
+from unittest.mock import Mock, patch
 
-from cairo_coder.core.types import Document, DocumentSource, Message
-from cairo_coder.core.vector_store import VectorStore
-from cairo_coder.core.config import AgentConfiguration
-from cairo_coder.config.manager import ConfigManager
+import pytest
+
 from cairo_coder.core.agent_factory import (
     AgentFactory,
     AgentFactoryConfig,
     DefaultAgentConfigurations,
-    create_agent_factory
+    create_agent_factory,
 )
+from cairo_coder.core.config import AgentConfiguration
 from cairo_coder.core.rag_pipeline import RagPipeline
+from cairo_coder.core.types import DocumentSource, Message
 
 
 class TestAgentFactory:
@@ -31,7 +30,7 @@ class TestAgentFactory:
             vector_store_config=mock_vector_store_config,
             config_manager=mock_config_manager,
             default_agent_config=sample_agent_configs["default"],
-            agent_configs=sample_agent_configs
+            agent_configs=sample_agent_configs,
         )
 
     @pytest.fixture
@@ -44,24 +43,27 @@ class TestAgentFactory:
         query = "How do I create a Cairo contract?"
         history = [Message(role="user", content="Hello")]
 
-        with patch('cairo_coder.core.agent_factory.RagPipelineFactory.create_pipeline') as mock_create:
+        with patch(
+            "cairo_coder.core.agent_factory.RagPipelineFactory.create_pipeline"
+        ) as mock_create:
             mock_pipeline = Mock(spec=RagPipeline)
             mock_create.return_value = mock_pipeline
 
             agent = AgentFactory.create_agent(
-                query=query,
-                history=history,
-                vector_store_config=mock_vector_store_config
+                query=query, history=history, vector_store_config=mock_vector_store_config
             )
 
             assert agent == mock_pipeline
             mock_create.assert_called_once()
             call_args = mock_create.call_args[1]
-            assert call_args['name'] == "default_agent"
-            assert call_args['vector_store_config'] == mock_vector_store_config
-            assert set(call_args['sources']) == {DocumentSource.CAIRO_BOOK, DocumentSource.STARKNET_DOCS}
-            assert call_args['max_source_count'] == 10
-            assert call_args['similarity_threshold'] == 0.4
+            assert call_args["name"] == "default_agent"
+            assert call_args["vector_store_config"] == mock_vector_store_config
+            assert set(call_args["sources"]) == {
+                DocumentSource.CAIRO_BOOK,
+                DocumentSource.STARKNET_DOCS,
+            }
+            assert call_args["max_source_count"] == 10
+            assert call_args["similarity_threshold"] == 0.4
 
     def test_create_agent_with_custom_sources(self, mock_vector_store_config):
         """Test creating agent with custom sources."""
@@ -69,7 +71,9 @@ class TestAgentFactory:
         history = []
         sources = [DocumentSource.SCARB_DOCS]
 
-        with patch('cairo_coder.core.agent_factory.RagPipelineFactory.create_pipeline') as mock_create:
+        with patch(
+            "cairo_coder.core.agent_factory.RagPipelineFactory.create_pipeline"
+        ) as mock_create:
             mock_pipeline = Mock(spec=RagPipeline)
             mock_create.return_value = mock_pipeline
 
@@ -79,7 +83,7 @@ class TestAgentFactory:
                 vector_store_config=mock_vector_store_config,
                 sources=sources,
                 max_source_count=5,
-                similarity_threshold=0.6
+                similarity_threshold=0.6,
             )
 
             assert agent == mock_pipeline
@@ -88,7 +92,7 @@ class TestAgentFactory:
                 vector_store_config=mock_vector_store_config,
                 sources=sources,
                 max_source_count=5,
-                similarity_threshold=0.6
+                similarity_threshold=0.6,
             )
 
     @pytest.mark.asyncio
@@ -98,7 +102,9 @@ class TestAgentFactory:
         history = [Message(role="user", content="Hello")]
         agent_id = "test_agent"
 
-        with patch('cairo_coder.core.agent_factory.AgentFactory._create_pipeline_from_config') as mock_create:
+        with patch(
+            "cairo_coder.core.agent_factory.AgentFactory._create_pipeline_from_config"
+        ) as mock_create:
             mock_pipeline = Mock(spec=RagPipeline)
             mock_create.return_value = mock_pipeline
 
@@ -107,7 +113,7 @@ class TestAgentFactory:
                 history=history,
                 agent_id=agent_id,
                 vector_store_config=mock_vector_store_config,
-                config_manager=mock_config_manager
+                config_manager=mock_config_manager,
             )
 
             assert agent == mock_pipeline
@@ -115,7 +121,9 @@ class TestAgentFactory:
             mock_create.assert_called_once()
 
     @pytest.mark.asyncio
-    async def test_create_agent_by_id_not_found(self, mock_vector_store_config, mock_config_manager):
+    async def test_create_agent_by_id_not_found(
+        self, mock_vector_store_config, mock_config_manager
+    ):
         """Test creating agent by ID when agent not found."""
         mock_config_manager.get_agent_config.side_effect = KeyError("Agent not found")
 
@@ -129,7 +137,7 @@ class TestAgentFactory:
                 history=history,
                 agent_id=agent_id,
                 vector_store_config=mock_vector_store_config,
-                config_manager=mock_config_manager
+                config_manager=mock_config_manager,
             )
 
     @pytest.mark.asyncio
@@ -139,14 +147,12 @@ class TestAgentFactory:
         history = []
         agent_id = "test_agent"
 
-        with patch.object(agent_factory, 'create_agent_by_id') as mock_create:
+        with patch.object(agent_factory, "create_agent_by_id") as mock_create:
             mock_pipeline = Mock(spec=RagPipeline)
             mock_create.return_value = mock_pipeline
 
             agent = await agent_factory.get_or_create_agent(
-                agent_id=agent_id,
-                query=query,
-                history=history
+                agent_id=agent_id, query=query, history=history
             )
 
             assert agent == mock_pipeline
@@ -156,7 +162,7 @@ class TestAgentFactory:
                 agent_id=agent_id,
                 vector_store_config=agent_factory.vector_store_config,
                 config_manager=agent_factory.config_manager,
-                mcp_mode=False
+                mcp_mode=False,
             )
 
             # Verify agent was cached
@@ -176,11 +182,9 @@ class TestAgentFactory:
         cache_key = f"{agent_id}_False"
         agent_factory._agent_cache[cache_key] = mock_pipeline
 
-        with patch.object(agent_factory, 'create_agent_by_id') as mock_create:
+        with patch.object(agent_factory, "create_agent_by_id") as mock_create:
             agent = await agent_factory.get_or_create_agent(
-                agent_id=agent_id,
-                query=query,
-                history=history
+                agent_id=agent_id, query=query, history=history
             )
 
             assert agent == mock_pipeline
@@ -209,12 +213,12 @@ class TestAgentFactory:
         """Test getting agent information."""
         info = agent_factory.get_agent_info("test_agent")
 
-        assert info['id'] == "test_agent"
-        assert info['name'] == "Test Agent"
-        assert info['description'] == "Test agent for testing"
-        assert info['sources'] == ["cairo_book"]
-        assert info['max_source_count'] == 5
-        assert info['similarity_threshold'] == 0.5
+        assert info["id"] == "test_agent"
+        assert info["name"] == "Test Agent"
+        assert info["description"] == "Test agent for testing"
+        assert info["sources"] == ["cairo_book"]
+        assert info["max_source_count"] == 5
+        assert info["similarity_threshold"] == 0.5
 
     def test_get_agent_info_not_found(self, agent_factory):
         """Test getting agent information for non-existent agent."""
@@ -273,10 +277,12 @@ class TestAgentFactory:
             description="General purpose agent",
             sources=[DocumentSource.CAIRO_BOOK],
             max_source_count=10,
-            similarity_threshold=0.4
+            similarity_threshold=0.4,
         )
 
-        with patch('cairo_coder.core.agent_factory.RagPipelineFactory.create_pipeline') as mock_create:
+        with patch(
+            "cairo_coder.core.agent_factory.RagPipelineFactory.create_pipeline"
+        ) as mock_create:
             mock_pipeline = Mock(spec=RagPipeline)
             mock_create.return_value = mock_pipeline
 
@@ -284,7 +290,7 @@ class TestAgentFactory:
                 agent_config=agent_config,
                 vector_store_config=mock_vector_store_config,
                 query="Test query",
-                history=[]
+                history=[],
             )
 
             assert pipeline == mock_pipeline
@@ -295,7 +301,7 @@ class TestAgentFactory:
                 max_source_count=10,
                 similarity_threshold=0.4,
                 contract_template=None,
-                test_template=None
+                test_template=None,
             )
 
     @pytest.mark.asyncio
@@ -307,10 +313,12 @@ class TestAgentFactory:
             description="Scarb-specific agent",
             sources=[DocumentSource.SCARB_DOCS],
             max_source_count=5,
-            similarity_threshold=0.4
+            similarity_threshold=0.4,
         )
 
-        with patch('cairo_coder.core.agent_factory.RagPipelineFactory.create_scarb_pipeline') as mock_create:
+        with patch(
+            "cairo_coder.core.agent_factory.RagPipelineFactory.create_scarb_pipeline"
+        ) as mock_create:
             mock_pipeline = Mock(spec=RagPipeline)
             mock_create.return_value = mock_pipeline
 
@@ -318,7 +326,7 @@ class TestAgentFactory:
                 agent_config=agent_config,
                 vector_store_config=mock_vector_store_config,
                 query="Test query",
-                history=[]
+                history=[],
             )
 
             assert pipeline == mock_pipeline
@@ -329,7 +337,7 @@ class TestAgentFactory:
                 max_source_count=5,
                 similarity_threshold=0.4,
                 contract_template=None,
-                test_template=None
+                test_template=None,
             )
 
 
@@ -363,6 +371,7 @@ class TestDefaultAgentConfigurations:
         assert config.contract_template is None
         assert config.test_template is None
 
+
 class TestAgentFactoryConfig:
     """Test suite for AgentFactoryConfig."""
 
@@ -377,7 +386,7 @@ class TestAgentFactoryConfig:
             vector_store_config=mock_vector_store_config,
             config_manager=mock_config_manager,
             default_agent_config=default_config,
-            agent_configs=agent_configs
+            agent_configs=agent_configs,
         )
 
         assert config.vector_store_config == mock_vector_store_config
@@ -388,8 +397,7 @@ class TestAgentFactoryConfig:
     def test_agent_factory_config_defaults(self, mock_vector_store_config):
         """Test agent factory configuration with defaults."""
         config = AgentFactoryConfig(
-            vector_store_config=mock_vector_store_config,
-            config_manager=Mock()
+            vector_store_config=mock_vector_store_config, config_manager=Mock()
         )
 
         assert config.default_agent_config is None
@@ -402,7 +410,7 @@ class TestCreateAgentFactory:
     def test_create_agent_factory_defaults(self, mock_vector_store_config):
         """Test creating agent factory with defaults."""
 
-        with patch('cairo_coder.core.agent_factory.ConfigManager') as mock_config_class:
+        with patch("cairo_coder.core.agent_factory.ConfigManager") as mock_config_class:
             mock_config_manager = Mock()
             mock_config_class.return_value = mock_config_manager
 
@@ -428,14 +436,14 @@ class TestCreateAgentFactory:
                 description="Custom agent for testing",
                 sources=[DocumentSource.CAIRO_BOOK],
                 max_source_count=5,
-                similarity_threshold=0.5
+                similarity_threshold=0.5,
             )
         }
 
         factory = create_agent_factory(
             vector_store_config=mock_vector_store_config,
             config_manager=mock_config_manager,
-            custom_agents=custom_agents
+            custom_agents=custom_agents,
         )
 
         assert isinstance(factory, AgentFactory)
@@ -458,19 +466,18 @@ class TestCreateAgentFactory:
                 description="Overridden default agent",
                 sources=[DocumentSource.SCARB_DOCS],
                 max_source_count=3,
-                similarity_threshold=0.7
+                similarity_threshold=0.7,
             )
         }
 
         factory = create_agent_factory(
-            vector_store_config=mock_vector_store_config,
-            custom_agents=custom_agents
+            vector_store_config=mock_vector_store_config, custom_agents=custom_agents
         )
 
         # Check that the default agent was overridden
         info = factory.get_agent_info("default")
-        assert info['name'] == "Custom Default Agent"
-        assert info['description'] == "Overridden default agent"
-        assert info['sources'] == ["scarb_docs"]
-        assert info['max_source_count'] == 3
-        assert info['similarity_threshold'] == 0.7
+        assert info["name"] == "Custom Default Agent"
+        assert info["description"] == "Overridden default agent"
+        assert info["sources"] == ["scarb_docs"]
+        assert info["max_source_count"] == 3
+        assert info["similarity_threshold"] == 0.7

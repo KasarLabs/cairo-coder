@@ -5,21 +5,21 @@ import asyncio
 import json
 import os
 import time
-from dataclasses import dataclass, asdict
+from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import List, Optional
+
 import dspy
+import structlog
 
 from cairo_coder.config.manager import ConfigManager
+from cairo_coder.dspy.context_summarizer import CairoContextSummarization
 from cairo_coder.dspy.document_retriever import DocumentRetrieverProgram
 from cairo_coder.dspy.query_processor import QueryProcessorProgram
-from cairo_coder.dspy.context_summarizer import CairoContextSummarization
 from cairo_coder.optimizers.generation.starklings_helper import (
     StarklingsExercise,
     ensure_starklings_repo,
     parse_starklings_info,
 )
-import structlog
 
 logger = structlog.get_logger(__name__)
 
@@ -27,6 +27,7 @@ logger = structlog.get_logger(__name__)
 @dataclass
 class GenerationExample:
     """A dataset entry for optimization."""
+
     query: str
     chat_history: str
     context: str
@@ -55,13 +56,16 @@ def get_context_for_query(full_query: str, config) -> str:
             return ""
 
         # Summarize the context with timeout
-        summarized_response = context_summarizer.forward(processed_query=processed_query, raw_context=raw_context)
+        summarized_response = context_summarizer.forward(
+            processed_query=processed_query, raw_context=raw_context
+        )
         return summarized_response.summarized_context
     except Exception as e:
         logger.error("Failed to get context", error=str(e), query=full_query[:100] + "...")
         return ""
 
-def process_exercise(exercise: StarklingsExercise, config) -> Optional[GenerationExample]:
+
+def process_exercise(exercise: StarklingsExercise, config) -> GenerationExample | None:
     """Process a single exercise into a dataset example."""
     try:
         # Read exercise code
@@ -71,16 +75,18 @@ def process_exercise(exercise: StarklingsExercise, config) -> Optional[Generatio
             return None
 
         # Read solution
-        solution_path = Path("temp/starklings-cairo1") / exercise.path.replace("exercises", "solutions")
+        solution_path = Path("temp/starklings-cairo1") / exercise.path.replace(
+            "exercises", "solutions"
+        )
         if not solution_path.exists():
             logger.warning("Solution file not found", path=str(solution_path), name=exercise.name)
             return None
 
         # Read files with error handling
         try:
-            with open(exercise_path, "r", encoding="utf-8") as f:
+            with open(exercise_path, encoding="utf-8") as f:
                 exercise_code = f.read().strip()
-            with open(solution_path, "r", encoding="utf-8") as f:
+            with open(solution_path, encoding="utf-8") as f:
                 solution_code = f.read().strip()
         except UnicodeDecodeError:
             logger.error("Failed to read files due to encoding issues", name=exercise.name)
@@ -111,7 +117,8 @@ def process_exercise(exercise: StarklingsExercise, config) -> Optional[Generatio
         logger.error("Failed to process exercise", name=exercise.name, error=str(e), traceback=True)
         return None
 
-async def generate_dataset() -> List[GenerationExample]:
+
+async def generate_dataset() -> list[GenerationExample]:
     """Generate the complete dataset from Starklings exercises."""
     # Load config once
     config = ConfigManager.load_config()
@@ -152,7 +159,7 @@ async def generate_dataset() -> List[GenerationExample]:
     return examples
 
 
-def save_dataset(examples: List[GenerationExample], output_path: str):
+def save_dataset(examples: list[GenerationExample], output_path: str):
     """Save dataset to JSON file."""
     logger.info("Saving dataset", examples=examples, output_path=output_path)
     # Ensure output directory exists
@@ -186,6 +193,7 @@ async def main():
 def cli_main():
     """CLI entry point for dataset generation."""
     asyncio.run(main())
+
 
 if __name__ == "__main__":
     cli_main()

@@ -1,9 +1,10 @@
 """DSPy module for summarizing Cairo/Starknet documentation context."""
 
-from typing import Optional
-from cairo_coder.core.types import ProcessedQuery
+
 import dspy
 import structlog
+
+from cairo_coder.core.types import ProcessedQuery
 
 logger = structlog.get_logger(__name__)
 
@@ -23,9 +24,15 @@ class CairoContextSummarization(dspy.Signature):
     The goal is to create a focused, information-dense context that enables accurate Cairo code generation.
     """
 
-    processed_query: ProcessedQuery = dspy.InputField(desc="The user's query that must be answered with Cairo code examples or solutions.")
-    raw_context: str = dspy.InputField(desc="Documentation context containing relevant Cairo/Starknet information to inform the response to summarize.")
-    summarized_context: str = dspy.OutputField(desc="The condensed summary preserving all technical details and code examples.")
+    processed_query: ProcessedQuery = dspy.InputField(
+        desc="The user's query that must be answered with Cairo code examples or solutions."
+    )
+    raw_context: str = dspy.InputField(
+        desc="Documentation context containing relevant Cairo/Starknet information to inform the response to summarize."
+    )
+    summarized_context: str = dspy.OutputField(
+        desc="The condensed summary preserving all technical details and code examples."
+    )
 
 
 # Example for few-shot learning
@@ -87,5 +94,5 @@ Testing:
 fn test_add() {
     assert(add(2, 3) == 5, 'test failed');
 }
-```"""
+```""",
 ).with_inputs("query", "raw_context")

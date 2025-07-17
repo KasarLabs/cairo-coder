@@ -104,6 +104,7 @@ ignore = [
   "E501", # line too long (handled by black)
   "B008", # do not perform function calls in argument defaults
   "T201", # print statements (we use structlog)
+  "N803", # Argument lowercase
 ]
 
 [tool.black]

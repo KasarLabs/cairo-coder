@@ -10,18 +10,15 @@ def _():
     import json
     import time
     from pathlib import Path
-    from typing import List
 
     import dspy
+    import psycopg2
     import structlog
     from dspy import MIPROv2
-
-    from cairo_coder.dspy.generation_program import GenerationProgram
-    from cairo_coder.optimizers.generation.utils import generation_metric
-    from cairo_coder.config.manager import ConfigManager
-    import requests
-    import psycopg2
     from psycopg2 import OperationalError
+
+    from cairo_coder.config.manager import ConfigManager
+    from cairo_coder.optimizers.generation.utils import generation_metric
 
     logger = structlog.get_logger(__name__)
     global_config = ConfigManager.load_config()
@@ -33,17 +30,17 @@ def _():
             port=postgres_config.port,
             database=postgres_config.database,
             user=postgres_config.user,
-            password=postgres_config.password
+            password=postgres_config.password,
         )
         conn.close()
         logger.info("PostgreSQL connection successful")
     except OperationalError as e:
-        raise Exception(f"PostgreSQL is not running or not accessible: {e}")
-
+        raise Exception(f"PostgreSQL is not running or not accessible: {e}") from e
 
     """Optional: Set up MLflow tracking for experiment monitoring."""
     # Uncomment to enable MLflow tracking
     import mlflow
+
     mlflow.set_tracking_uri("http://127.0.0.1:5000")
     mlflow.set_experiment("DSPy-Generation")
     mlflow.dspy.autolog()
@@ -53,9 +50,8 @@ def _():
     dspy.settings.configure(lm=lm)
     logger.info("Configured DSPy with Gemini 2.5 Flash")
 
-
     return (
-        List,
+        list,
         MIPROv2,
         Path,
         dspy,
@@ -70,11 +66,11 @@ def _():
 
 @app.cell
 def _(List, Path, dspy, json, logger):
-    #"""Load the Starklings dataset - for rag pipeline, just keep the query and expected."""
+    # """Load the Starklings dataset - for rag pipeline, just keep the query and expected."""
 
     def load_dataset(dataset_path: str) -> List[dspy.Example]:
         """Load dataset from JSON file."""
-        with open(dataset_path, "r", encoding="utf-8") as f:
+        with open(dataset_path, encoding="utf-8") as f:
             data = json.load(f)
 
         examples = []
@@ -118,7 +114,10 @@ def _(global_config):
     """Initialize the generation program."""
     # Initialize program
     from cairo_coder.core.rag_pipeline import create_rag_pipeline
-    rag_pipeline_program = create_rag_pipeline(name="cairo-coder", vector_store_config=global_config.vector_store)
+
+    rag_pipeline_program = create_rag_pipeline(
+        name="cairo-coder", vector_store_config=global_config.vector_store
+    )
     return (rag_pipeline_program,)
 
 
@@ -133,7 +132,7 @@ async def _(generation_metric, logger, rag_pipeline_program, trainset):
         scores = []
 
         for i, example in enumerate(examples[:5]):
-            prediction = "";
+            prediction = ""
             try:
                 prediction = rag_pipeline_program.forward(
                     query=example.query,
@@ -149,6 +148,7 @@ async def _(generation_metric, logger, rag_pipeline_program, trainset):
                 )
             except Exception as e:
                 import traceback
+
                 print(traceback.format_exc())
                 logger.error("Error in baseline evaluation", example=i, error=str(e))
                 scores.append(0.0)
@@ -191,10 +191,7 @@ def _(
         # Run optimization
         start_time = time.time()
         optimized_program = optimizer.compile(
-            rag_pipeline_program,
-            trainset=trainset,
-            valset=valset,
-            requires_permission_to_run=False
+            rag_pipeline_program, trainset=trainset, valset=valset, requires_permission_to_run=False
         )
         duration = time.time() - start_time
 
@@ -255,7 +252,7 @@ def _(baseline_score, final_score, lm, logger, optimization_duration):
         estimated_cost_usd=cost,
     )
 
-    print(f"\nOptimization Summary:")
+    print("\nOptimization Summary:")
     print(f"Baseline Score: {baseline_score:.3f}")
     print(f"Final Score: {final_score:.3f}")
     print(f"Improvement: {improvement:.3f}")
@@ -308,7 +305,6 @@ def _(optimized_program):
     """Test the optimized program with a sample query."""
     # Test with a sample query
     test_query = "Write a simple Cairo contract that implements a counter"
-    test_context = "Use the latest Cairo syntax and best practices"
 
     response = optimized_program(
         query=test_query,

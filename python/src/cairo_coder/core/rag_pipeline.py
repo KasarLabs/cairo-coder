@@ -6,39 +6,31 @@ RAG workflow: Query Processing → Document Retrieval → Generation.
 """
 
 import os
-from typing import AsyncGenerator, List, Optional, Dict, Any
-import asyncio
+from collections.abc import AsyncGenerator
 from dataclasses import dataclass
+from typing import Any
 
-from cairo_coder.core.config import VectorStoreConfig
 import dspy
 from dspy.utils.callback import BaseCallback
+from langsmith import traceable
 
-from cairo_coder.core.types import (
-    Document,
-    DocumentSource,
-    Message,
-    ProcessedQuery,
-    StreamEvent
-)
-from cairo_coder.dspy.query_processor import QueryProcessorProgram
+from cairo_coder.core.config import VectorStoreConfig
+from cairo_coder.core.types import Document, DocumentSource, Message, ProcessedQuery, StreamEvent
 from cairo_coder.dspy.document_retriever import DocumentRetrieverProgram
 from cairo_coder.dspy.generation_program import GenerationProgram, McpGenerationProgram
+from cairo_coder.dspy.query_processor import QueryProcessorProgram
 from cairo_coder.utils.logging import get_logger
-from langsmith import traceable
-from langsmith.run_trees import RunTree
-
 
 logger = get_logger(__name__)
 
+
 # 1. Define a custom callback class that extends BaseCallback class
 class AgentLoggingCallback(BaseCallback):
-
     def on_module_start(
         self,
         call_id: str,
         instance: Any,
-        inputs: Dict[str, Any],
+        inputs: dict[str, Any],
     ):
         logger.debug("Starting module", call_id=call_id, inputs=inputs)
 
@@ -51,7 +43,8 @@ class AgentLoggingCallback(BaseCallback):
         logger.debug("\n")
 
     def _is_reasoning_output(self, outputs):
-        return any(k.startswith("Thought") for k in outputs.keys())
+        return any(k.startswith("Thought") for k in outputs)
+
 
 class LangsmithTracingCallback(BaseCallback):
     @traceable()
@@ -66,6 +59,7 @@ class LangsmithTracingCallback(BaseCallback):
 @dataclass
 class RagPipelineConfig:
     """Configuration for RAG Pipeline."""
+
     name: str
     vector_store_config: VectorStoreConfig
     query_processor: QueryProcessorProgram
@@ -74,9 +68,9 @@ class RagPipelineConfig:
     mcp_generation_program: McpGenerationProgram
     max_source_count: int = 10
     similarity_threshold: float = 0.4
-    sources: Optional[List[DocumentSource]] = None
-    contract_template: Optional[str] = None
-    test_template: Optional[str] = None
+    sources: list[DocumentSource] | None = None
+    contract_template: str | None = None
+    test_template: str | None = None
 
 
 class RagPipeline(dspy.Module):
@@ -104,54 +98,45 @@ class RagPipeline(dspy.Module):
         self.mcp_generation_program = config.mcp_generation_program
 
         # Pipeline state
-        self._current_processed_query: Optional[ProcessedQuery] = None
-        self._current_documents: List[Document] = []
+        self._current_processed_query: ProcessedQuery | None = None
+        self._current_documents: list[Document] = []
 
     # Waits for streaming to finish before returning the response
     @traceable(name="RagPipeline", run_type="chain")
     def forward(
         self,
         query: str,
-        chat_history: Optional[List[Message]] = None,
+        chat_history: list[Message] | None = None,
         mcp_mode: bool = False,
-        sources: Optional[List[DocumentSource]] = None
+        sources: list[DocumentSource] | None = None,
     ) -> dspy.Predict:
         chat_history_str = self._format_chat_history(chat_history or [])
-        processed_query = self.query_processor.forward(
-            query=query,
-            chat_history=chat_history_str
-        )
+        processed_query = self.query_processor.forward(query=query, chat_history=chat_history_str)
         logger.debug("Processed query", processed_query=processed_query)
         self._current_processed_query = processed_query
 
         # Use provided sources or fall back to processed query sources
         retrieval_sources = sources or processed_query.resources
         documents = self.document_retriever.forward(
-            processed_query=processed_query,
-            sources=retrieval_sources
+            processed_query=processed_query, sources=retrieval_sources
         )
         self._current_documents = documents
 
         if mcp_mode:
-            raw_response = self.mcp_generation_program.forward(documents)
-            return raw_response
+            return self.mcp_generation_program.forward(documents)
 
         context = self._prepare_context(documents, processed_query)
-        response = self.generation_program.forward(
-            query=query,
-            context=context,
-            chat_history=chat_history_str
+
+        return self.generation_program.forward(
+            query=query, context=context, chat_history=chat_history_str
         )
-
-        return response
-
 
     async def forward_streaming(
         self,
         query: str,
-        chat_history: Optional[List[Message]] = None,
+        chat_history: list[Message] | None = None,
         mcp_mode: bool = False,
-        sources: Optional[List[DocumentSource]] = None
+        sources: list[DocumentSource] | None = None,
     ) -> AsyncGenerator[StreamEvent, None]:
         """
         Execute the complete RAG pipeline with streaming support.
@@ -171,8 +156,7 @@ class RagPipeline(dspy.Module):
 
             chat_history_str = self._format_chat_history(chat_history or [])
             processed_query = self.query_processor.forward(
-                query=query,
-                chat_history=chat_history_str
+                query=query, chat_history=chat_history_str
             )
             logger.debug("Processed query", processed_query=processed_query)
             self._current_processed_query = processed_query
@@ -184,8 +168,7 @@ class RagPipeline(dspy.Module):
             yield StreamEvent(type="processing", data="Retrieving relevant documents...")
 
             documents = self.document_retriever.forward(
-                processed_query=processed_query,
-                sources=retrieval_sources
+                processed_query=processed_query, sources=retrieval_sources
             )
             self._current_documents = documents
 
@@ -207,9 +190,7 @@ class RagPipeline(dspy.Module):
 
                 # Stream response generation
                 async for chunk in self.generation_program.forward_streaming(
-                    query=query,
-                    context=context,
-                    chat_history=chat_history_str
+                    query=query, context=context, chat_history=chat_history_str
                 ):
                     yield StreamEvent(type="response", data=chunk)
 
@@ -218,12 +199,9 @@ class RagPipeline(dspy.Module):
 
         except Exception as e:
             # Handle pipeline errors
-            yield StreamEvent(
-                type="error",
-                data=f"Pipeline error: {str(e)}"
-            )
+            yield StreamEvent(type="error", data=f"Pipeline error: {str(e)}")
 
-    def get_lm_usage(self) -> Dict[str, int]:
+    def get_lm_usage(self) -> dict[str, int]:
         """
         Get the total number of tokens used by the LLM.
         """
@@ -232,8 +210,7 @@ class RagPipeline(dspy.Module):
         # merge both dictionaries
         return {**generation_usage, **query_usage}
 
-
-    def _format_chat_history(self, chat_history: List[Message]) -> str:
+    def _format_chat_history(self, chat_history: list[Message]) -> str:
         """
         Format chat history for processing.
 
@@ -253,7 +230,7 @@ class RagPipeline(dspy.Module):
 
         return "\n".join(formatted_messages)
 
-    def _format_sources(self, documents: List[Document]) -> List[Dict[str, Any]]:
+    def _format_sources(self, documents: list[Document]) -> list[dict[str, Any]]:
         """
         Format documents for sources event.
 
@@ -266,16 +243,17 @@ class RagPipeline(dspy.Module):
         sources = []
         for doc in documents:
             source_info = {
-                'title': doc.metadata.get('title', 'Untitled'),
-                'url': doc.metadata.get('url', '#'),
-                'source_display': doc.metadata.get('source_display', 'Unknown Source'),
-                'content_preview': doc.page_content[:200] + ('...' if len(doc.page_content) > 200 else '')
+                "title": doc.metadata.get("title", "Untitled"),
+                "url": doc.metadata.get("url", "#"),
+                "source_display": doc.metadata.get("source_display", "Unknown Source"),
+                "content_preview": doc.page_content[:200]
+                + ("..." if len(doc.page_content) > 200 else ""),
             }
             sources.append(source_info)
 
         return sources
 
-    def _prepare_context(self, documents: List[Document], processed_query: ProcessedQuery) -> str:
+    def _prepare_context(self, documents: list[Document], processed_query: ProcessedQuery) -> str:
         """
         Prepare context for generation from retrieved documents.
 
@@ -298,9 +276,9 @@ class RagPipeline(dspy.Module):
         context_parts.append("")
 
         for i, doc in enumerate(documents, 1):
-            source_name = doc.metadata.get('source_display', 'Unknown Source')
-            title = doc.metadata.get('title', f'Document {i}')
-            url = doc.metadata.get('url', '#')
+            source_name = doc.metadata.get("source_display", "Unknown Source")
+            title = doc.metadata.get("title", f"Document {i}")
+            url = doc.metadata.get("url", "#")
 
             context_parts.append(f"## {i}. {title}")
             context_parts.append(f"Source: {source_name}")
@@ -323,7 +301,7 @@ class RagPipeline(dspy.Module):
 
         return "\n".join(context_parts)
 
-    def get_current_state(self) -> Dict[str, Any]:
+    def get_current_state(self) -> dict[str, Any]:
         """
         Get current pipeline state for debugging.
 
@@ -331,15 +309,15 @@ class RagPipeline(dspy.Module):
             Dictionary with current pipeline state
         """
         return {
-            'processed_query': self._current_processed_query,
-            'documents_count': len(self._current_documents),
-            'documents': self._current_documents,
-            'config': {
-                'name': self.config.name,
-                'max_source_count': self.config.max_source_count,
-                'similarity_threshold': self.config.similarity_threshold,
-                'sources': self.config.sources
-            }
+            "processed_query": self._current_processed_query,
+            "documents_count": len(self._current_documents),
+            "documents": self._current_documents,
+            "config": {
+                "name": self.config.name,
+                "max_source_count": self.config.max_source_count,
+                "similarity_threshold": self.config.similarity_threshold,
+                "sources": self.config.sources,
+            },
         }
 
 
@@ -350,15 +328,15 @@ class RagPipelineFactory:
     def create_pipeline(
         name: str,
         vector_store_config: VectorStoreConfig,
-        query_processor: Optional[QueryProcessorProgram] = None,
-        document_retriever: Optional[DocumentRetrieverProgram] = None,
-        generation_program: Optional[GenerationProgram] = None,
-        mcp_generation_program: Optional[McpGenerationProgram] = None,
+        query_processor: QueryProcessorProgram | None = None,
+        document_retriever: DocumentRetrieverProgram | None = None,
+        generation_program: GenerationProgram | None = None,
+        mcp_generation_program: McpGenerationProgram | None = None,
         max_source_count: int = 10,
         similarity_threshold: float = 0.4,
-        sources: Optional[List[DocumentSource]] = None,
-        contract_template: Optional[str] = None,
-        test_template: Optional[str] = None
+        sources: list[DocumentSource] | None = None,
+        contract_template: str | None = None,
+        test_template: str | None = None,
     ) -> RagPipeline:
         """
         Create a RAG Pipeline with default or provided components.
@@ -380,10 +358,10 @@ class RagPipelineFactory:
             Configured RagPipeline instance
         """
         from cairo_coder.dspy import (
-            create_query_processor,
             DocumentRetrieverProgram,
             create_generation_program,
-            create_mcp_generation_program
+            create_mcp_generation_program,
+            create_query_processor,
         )
 
         # Create default components if not provided
@@ -394,7 +372,7 @@ class RagPipelineFactory:
             document_retriever = DocumentRetrieverProgram(
                 vector_store_config=vector_store_config,
                 max_source_count=max_source_count,
-                similarity_threshold=similarity_threshold
+                similarity_threshold=similarity_threshold,
             )
 
         if generation_program is None:
@@ -415,23 +393,21 @@ class RagPipelineFactory:
             similarity_threshold=similarity_threshold,
             sources=sources,
             contract_template=contract_template,
-            test_template=test_template
+            test_template=test_template,
         )
 
         rag_program = RagPipeline(config)
         # Load optimizer
-        COMPILED_PROGRAM_PATH = "optimizers/results/optimized_rag.json"
-        if not os.path.exists(COMPILED_PROGRAM_PATH):
-            raise FileNotFoundError(f"{COMPILED_PROGRAM_PATH} not found")
-        rag_program.load(COMPILED_PROGRAM_PATH)
+        compiled_program_path = "optimizers/results/optimized_rag.json"
+        if not os.path.exists(compiled_program_path):
+            raise FileNotFoundError(f"{compiled_program_path} not found")
+        rag_program.load(compiled_program_path)
 
         return rag_program
 
     @staticmethod
     def create_scarb_pipeline(
-        name: str,
-        vector_store_config: VectorStoreConfig,
-        **kwargs
+        name: str, vector_store_config: VectorStoreConfig, **kwargs
     ) -> RagPipeline:
         """
         Create a Scarb-specialized RAG Pipeline.
@@ -450,22 +426,18 @@ class RagPipelineFactory:
         scarb_generation_program = create_generation_program("scarb")
 
         # Set Scarb-specific defaults
-        kwargs.setdefault('sources', [DocumentSource.SCARB_DOCS])
-        kwargs.setdefault('max_source_count', 5)
+        kwargs.setdefault("sources", [DocumentSource.SCARB_DOCS])
+        kwargs.setdefault("max_source_count", 5)
 
         return RagPipelineFactory.create_pipeline(
             name=name,
             vector_store_config=vector_store_config,
             generation_program=scarb_generation_program,
-            **kwargs
+            **kwargs,
         )
 
 
-def create_rag_pipeline(
-    name: str,
-    vector_store_config: VectorStoreConfig,
-    **kwargs
-) -> RagPipeline:
+def create_rag_pipeline(name: str, vector_store_config: VectorStoreConfig, **kwargs) -> RagPipeline:
     """
     Convenience function to create a RAG Pipeline.
 

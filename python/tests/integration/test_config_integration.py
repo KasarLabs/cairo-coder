@@ -2,15 +2,13 @@
 
 import os
 import tempfile
+from collections.abc import Generator
 from pathlib import Path
-from typing import Generator
 
 import pytest
 import toml
 
 from cairo_coder.config.manager import ConfigManager
-from cairo_coder.core.config import Config
-from cairo_coder.utils.logging import setup_logging
 
 
 class TestConfigIntegration:
@@ -27,28 +25,16 @@ class TestConfigIntegration:
                 "POSTGRES_USER": "test_user",
                 "POSTGRES_PASSWORD": "test_password",
                 "POSTGRES_TABLE_NAME": "test_documents",
-                "SIMILARITY_MEASURE": "cosine"
+                "SIMILARITY_MEASURE": "cosine",
             },
             "providers": {
                 "default": "openai",
                 "embedding_model": "text-embedding-3-large",
-                "openai": {
-                    "api_key": "test-openai-key",
-                    "model": "gpt-4"
-                },
-                "anthropic": {
-                    "api_key": "test-anthropic-key",
-                    "model": "claude-3-sonnet"
-                }
+                "openai": {"api_key": "test-openai-key", "model": "gpt-4"},
+                "anthropic": {"api_key": "test-anthropic-key", "model": "claude-3-sonnet"},
             },
-            "logging": {
-                "level": "DEBUG",
-                "format": "json"
-            },
-            "monitoring": {
-                "enable_metrics": True,
-                "metrics_port": 9191
-            },
+            "logging": {"level": "DEBUG", "format": "json"},
+            "monitoring": {"enable_metrics": True, "metrics_port": 9191},
             "agents": {
                 "test-agent": {
                     "name": "Test Agent",
@@ -57,9 +43,9 @@ class TestConfigIntegration:
                     "max_source_count": 5,
                     "similarity_threshold": 0.5,
                     "contract_template": "Test contract template",
-                    "test_template": "Test template"
+                    "test_template": "Test template",
                 }
-            }
+            },
         }
 
         with tempfile.NamedTemporaryFile(mode="w", suffix=".toml", delete=False) as f:
@@ -71,11 +57,21 @@ class TestConfigIntegration:
         # Cleanup
         os.unlink(temp_path)
 
-    def test_load_full_configuration(self, sample_config_file: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_load_full_configuration(
+        self, sample_config_file: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         """Test loading a complete configuration file."""
         # Clear any existing environment variables
-        for var in ["POSTGRES_HOST", "POSTGRES_PORT", "POSTGRES_DB", "POSTGRES_USER", "POSTGRES_PASSWORD",
-                    "OPENAI_API_KEY", "ANTHROPIC_API_KEY", "GEMINI_API_KEY"]:
+        for var in [
+            "POSTGRES_HOST",
+            "POSTGRES_PORT",
+            "POSTGRES_DB",
+            "POSTGRES_USER",
+            "POSTGRES_PASSWORD",
+            "OPENAI_API_KEY",
+            "ANTHROPIC_API_KEY",
+            "GEMINI_API_KEY",
+        ]:
             monkeypatch.delenv(var, raising=False)
 
         config = ConfigManager.load_config(sample_config_file)
@@ -90,9 +86,7 @@ class TestConfigIntegration:
         assert config.vector_store.similarity_measure == "cosine"
 
     def test_environment_override_integration(
-        self,
-        sample_config_file: Path,
-        monkeypatch: pytest.MonkeyPatch
+        self, sample_config_file: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """Test that environment variables properly override config file values."""
         # Set environment overrides

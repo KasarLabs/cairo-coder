@@ -1,11 +1,10 @@
 """PostgreSQL vector store integration for document retrieval."""
 
 import json
-from typing import Any, Dict, List, Optional, Union
 
 import asyncpg
-import numpy as np
 import dspy
+import numpy as np
 
 from ..utils.logging import get_logger
 from .config import VectorStoreConfig
@@ -14,6 +13,7 @@ from .types import Document, DocumentSource
 logger = get_logger(__name__)
 
 BATCH_SIZE = 2048
+
 
 class VectorStore:
     """PostgreSQL vector store for document storage and retrieval."""
@@ -26,18 +26,17 @@ class VectorStore:
             config: Vector store configuration.
         """
         self.config = config
-        self.pool: Optional[asyncpg.Pool] = None
+        self.pool: asyncpg.Pool | None = None
 
-        self.embedder: dspy.Embedder = dspy.Embedder("openai/text-embedding-3-large", batch_size=BATCH_SIZE)
+        self.embedder: dspy.Embedder = dspy.Embedder(
+            "openai/text-embedding-3-large", batch_size=BATCH_SIZE
+        )
 
     async def initialize(self) -> None:
         """Initialize database connection pool."""
         if self.pool is None:
             self.pool = await asyncpg.create_pool(
-                dsn=self.config.dsn,
-                min_size=2,
-                max_size=10,
-                command_timeout=60
+                dsn=self.config.dsn, min_size=2, max_size=10, command_timeout=60
             )
             logger.info("Vector store initialized", dsn=self.config.dsn)
 
@@ -52,8 +51,8 @@ class VectorStore:
         self,
         query: str,
         k: int = 5,
-        sources: Optional[Union[DocumentSource, List[DocumentSource]]] = None
-    ) -> List[Document]:
+        sources: DocumentSource | list[DocumentSource] | None = None,
+    ) -> list[Document]:
         """
         Search for similar documents using vector similarity.
 
@@ -98,32 +97,23 @@ class VectorStore:
 
         if sources:
             source_values = [s.value for s in sources]
-            base_query += f"""
+            base_query += """
             WHERE metadata->>'source' = ANY($2::text[])
             """
 
         # TODO what is this LIMIT number?
         base_query += f"""
             ORDER BY {order_expr}
-            LIMIT ${'3' if sources else '2'}
+            LIMIT ${"3" if sources else "2"}
         """
 
         async with self.pool.acquire() as conn:
             # Execute query
             if sources:
                 source_values = [s.value for s in sources]
-                rows = await conn.fetch(
-                    base_query,
-                    query_embedding,
-                    source_values,
-                    k
-                )
+                rows = await conn.fetch(base_query, query_embedding, source_values, k)
             else:
-                rows = await conn.fetch(
-                    base_query,
-                    query_embedding,
-                    k
-                )
+                rows = await conn.fetch(base_query, query_embedding, k)
 
             # Convert to Document objects
             documents = []
@@ -132,25 +122,20 @@ class VectorStore:
                 metadata["similarity"] = float(row["similarity"])
                 metadata["id"] = row["id"]
 
-                doc = Document(
-                    page_content=row["content"],
-                    metadata=metadata
-                )
+                doc = Document(page_content=row["content"], metadata=metadata)
                 documents.append(doc)
 
             logger.debug(
                 "Similarity search completed",
                 query_length=len(query),
                 num_results=len(documents),
-                sources=[s.value for s in sources] if sources else None
+                sources=[s.value for s in sources] if sources else None,
             )
 
             return documents
 
     async def add_documents(
-        self,
-        documents: List[Document],
-        ids: Optional[List[str]] = None
+        self, documents: list[Document], ids: list[str] | None = None
     ) -> None:
         """
         Add documents to the vector store.
@@ -171,7 +156,7 @@ class VectorStore:
 
         # Prepare data for insertion
         rows = []
-        for i, (doc, embedding) in enumerate(zip(documents, embeddings)):
+        for i, (doc, embedding) in enumerate(zip(documents, embeddings, strict=False)):
             doc_id = ids[i] if ids else None
             metadata_json = json.dumps(doc.metadata)
             rows.append((doc_id, doc.page_content, embedding, metadata_json))
@@ -190,7 +175,7 @@ class VectorStore:
                         metadata = EXCLUDED.metadata,
                         updated_at = NOW()
                     """,
-                    rows
+                    rows,
                 )
             else:
                 # Insert without IDs (auto-generate)
@@ -199,13 +184,11 @@ class VectorStore:
                     INSERT INTO {self.config.table_name} (content, embedding, metadata)
                     VALUES ($1, $2::vector, $3::jsonb)
                     """,
-                    [(r[1], r[2], r[3]) for r in rows]
+                    [(r[1], r[2], r[3]) for r in rows],
                 )
 
         logger.info(
-            "Documents added to vector store",
-            num_documents=len(documents),
-            with_ids=bool(ids)
+            "Documents added to vector store", num_documents=len(documents), with_ids=bool(ids)
         )
 
     async def delete_by_source(self, source: DocumentSource) -> int:
@@ -227,19 +210,15 @@ class VectorStore:
                 DELETE FROM {self.config.table_name}
                 WHERE metadata->>'source' = $1
                 """,
-                source.value
+                source.value,
             )
 
             deleted_count = int(result.split()[-1])
-            logger.info(
-                "Documents deleted by source",
-                source=source.value,
-                count=deleted_count
-            )
+            logger.info("Documents deleted by source", source=source.value, count=deleted_count)
 
             return deleted_count
 
-    async def count_by_source(self) -> Dict[str, int]:
+    async def count_by_source(self) -> dict[str, int]:
         """
         Get document count by source.
 
@@ -266,7 +245,7 @@ class VectorStore:
 
             return counts
 
-    async def _embed_text(self, text: str) -> List[float]:
+    async def _embed_text(self, text: str) -> list[float]:
         """
         Generate embedding for a single text.
 
@@ -279,14 +258,13 @@ class VectorStore:
         embeddings = self.embedder([text])
         # DSPy Embedder returns a 2D array/list, we need the first row
         # Always convert to list to ensure compatibility with asyncpg
-        if hasattr(embeddings, 'tolist'):
+        if hasattr(embeddings, "tolist"):
             # numpy array
             return embeddings[0].tolist()
-        else:
-            # already a list
-            return list(embeddings[0])
+        # already a list
+        return list(embeddings[0])
 
-    async def _embed_texts(self, texts: List[str]) -> List[List[float]]:
+    async def _embed_texts(self, texts: list[str]) -> list[list[float]]:
         """
         Generate embeddings for multiple texts.
 
@@ -300,13 +278,13 @@ class VectorStore:
         all_embeddings = []
 
         for i in range(0, len(texts), BATCH_SIZE):
-            batch = texts[i:i + BATCH_SIZE]
+            batch = texts[i : i + BATCH_SIZE]
 
             # DSPy Embedder returns embeddings as 2D array/list
             embeddings = self.embedder(batch)
 
             # Convert to list of lists if numpy array
-            if hasattr(embeddings, 'tolist'):
+            if hasattr(embeddings, "tolist"):
                 embeddings = embeddings.tolist()
 
             all_embeddings.extend(embeddings)
@@ -314,7 +292,7 @@ class VectorStore:
         return all_embeddings
 
     @staticmethod
-    def cosine_similarity(a: List[float], b: List[float]) -> float:
+    def cosine_similarity(a: list[float], b: list[float]) -> float:
         """
         Calculate cosine similarity between two vectors.
 
