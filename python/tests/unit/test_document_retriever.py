@@ -83,9 +83,6 @@ class TestDocumentRetrieverProgram:
 
                 # Mock dspy module
                 mock_dspy = Mock()
-                mock_settings = Mock()
-                mock_settings.configure = Mock()
-                mock_dspy.settings = mock_settings
 
                 with patch("cairo_coder.dspy.document_retriever.dspy", mock_dspy):
                     # Execute retrieval
@@ -105,9 +102,6 @@ class TestDocumentRetrieverProgram:
                         k=5,  # max_source_count
                         sources=sample_processed_query.resources,  # Include sources from query
                     )
-
-                    # Verify dspy.settings.configure was called
-                    mock_settings.configure.assert_called_with(rm=mock_retriever_instance)
 
                     # Verify retriever was called with proper query
                     # Last call with the last search query

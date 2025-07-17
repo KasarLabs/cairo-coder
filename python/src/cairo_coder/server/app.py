@@ -15,6 +15,7 @@ from datetime import datetime
 import traceback
 
 from cairo_coder.core.config import VectorStoreConfig
+from cairo_coder.core.llm import AgentLoggingCallback
 from cairo_coder.core.rag_pipeline import RagPipeline
 from fastapi import FastAPI, HTTPException, Request, Header, Depends
 from fastapi.middleware.cors import CORSMiddleware
@@ -524,8 +525,14 @@ app = create_app(get_vector_store_config())
 
 def main():
     import uvicorn
+    import dspy
 
     config = ConfigManager.load_config()
+    # TODO: configure DSPy with the proper LM.
+    # TODO: Find a proper pattern for it?
+    # TODO: multi-model management?
+    dspy.configure(lm=dspy.LM("gemini/gemini-2.5-flash", max_tokens=30000))
+    dspy.configure(callbacks=[AgentLoggingCallback()])
     uvicorn.run(
         "cairo_coder.server.app:app",
         host="0.0.0.0",

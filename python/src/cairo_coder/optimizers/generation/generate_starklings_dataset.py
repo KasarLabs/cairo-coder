@@ -91,7 +91,7 @@ def process_exercise(exercise: StarklingsExercise, config) -> Optional[Generatio
             return None
 
         # Format query
-        query = f"Complete the following Cairo code:\n\n```cairo\n{exercise_code}\n```\n\nHint: {exercise.hint}"
+        query = f"Complete the following Cairo code and address the TODOs:\n\n```cairo\n{exercise_code}\n```\n\nHint: {exercise.hint}"
 
         # Get context with retry
         context = get_context_for_query(query, config)
@@ -113,9 +113,6 @@ def process_exercise(exercise: StarklingsExercise, config) -> Optional[Generatio
 
 async def generate_dataset() -> List[GenerationExample]:
     """Generate the complete dataset from Starklings exercises."""
-    # Configure DSPy once at the start
-    dspy.configure(lm=dspy.LM("gemini/gemini-2.5-flash", max_tokens=20000))
-
     # Load config once
     config = ConfigManager.load_config()
 

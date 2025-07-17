@@ -95,31 +95,13 @@ def generation_metric(expected: dspy.Example, predicted: str, trace=None) -> flo
         # Extract code from both
         predicted_code = extract_cairo_code(predicted)
         expected_code = extract_cairo_code(expected_answer)
-
-        # Check if code is expected
-        has_expected_code = expected_code is not None and expected_code.strip()
-        has_predicted_code = predicted_code is not None and predicted_code.strip()
-
-        # Calculate has_code_when_expected score
-        if has_expected_code:
-            has_code_when_expected = 1.0 if has_predicted_code else 0.0
-        else:
-            has_code_when_expected = 0.0 if has_predicted_code else 1.0
-
         # Calculate compilation score
-        compilation_score = 1.0
-        if has_predicted_code:
-            compile_result = check_compilation(predicted_code)
-            compilation_score = 1.0 if compile_result["success"] else 0.0
 
-        # Weighted score: 80% compilation, 20% code presence
-        score = 0.8 * compilation_score + 0.2 * has_code_when_expected
+        compile_result = check_compilation(predicted_code)
+        score = 1.0 if compile_result["success"] else 0.0
 
-        logger.debug(
-            "Generation metric calculated",
-            score=score,
-            compilation_score=compilation_score,
-        )
+
+        logger.debug("Generation metric calculated", score=score)
 
         # For optimizer use (trace parameter)
         if trace is not None:

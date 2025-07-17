@@ -472,7 +472,6 @@ class DocumentRetrieverProgram(dspy.Module):
                 k=self.max_source_count,
                 sources=sources,
             )
-            dspy.settings.configure(rm=retriever)
 
             # TODO improve with proper re-phrased text.
             search_queries = processed_query.search_queries

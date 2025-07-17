@@ -25,7 +25,7 @@ def openai_mock_agent():
     """Create a mock agent with OpenAI-specific forward method."""
     mock_agent = Mock()
 
-    async def mock_forward(query: str, chat_history: List[Message] = None, mcp_mode: bool = False):
+    async def mock_forward_streaming(query: str, chat_history: List[Message] = None, mcp_mode: bool = False):
         """Mock agent forward method that yields StreamEvent objects."""
         if mcp_mode:
             # MCP mode returns sources
@@ -41,8 +41,18 @@ def openai_mock_agent():
             yield StreamEvent(type="response", data=" How can I help you?")
         yield StreamEvent(type="end", data="")
 
+
+    async def mock_forward(query: str, chat_history: List[Message] = None, mcp_mode: bool = False):
+        """Mock agent forward method that returns a string."""
+        if mcp_mode:
+            return "Cairo is a programming language"
+        else:
+            return "Hello! I'm Cairo Coder. How can I help you?"
+
+    mock_agent.forward_streaming = mock_forward_streaming
     mock_agent.forward = mock_forward
     return mock_agent
+
 
 class TestCairoCoderServer:
     """Test suite for CairoCoderServer class."""
@@ -589,7 +599,7 @@ class TestMCPModeCompatibility:
         """Test MCP mode returns sources in non-streaming response."""
         server, client = mock_setup
 
-        async def mock_forward(query: str, chat_history: List[Message] = None, mcp_mode: bool = False):
+        async def mock_forward_streaming(query: str, chat_history: List[Message] = None, mcp_mode: bool = False):
             assert mcp_mode == True
             yield StreamEvent(type="sources", data=[
                 {"pageContent": "Test content", "metadata": {"source": "test"}}
@@ -597,7 +607,13 @@ class TestMCPModeCompatibility:
             yield StreamEvent(type="response", data="MCP response")
             yield StreamEvent(type="end", data="")
 
+        mock_agent.forward_streaming = mock_forward_streaming
+
+        async def mock_forward(query: str, chat_history: List[Message] = None, mcp_mode: bool = False):
+            return "MCP response"
+
         mock_agent.forward = mock_forward
+
         server.agent_factory.create_agent = Mock(return_value=mock_agent)
 
         response = client.post("/v1/chat/completions",
@@ -691,12 +707,18 @@ class TestMCPModeCompatibility:
         server, client = mock_setup
 
         mock_agent = Mock()
-        async def mock_forward(query: str, chat_history: List[Message] = None, mcp_mode: bool = False):
+        async def mock_forward_streaming(query: str, chat_history: List[Message] = None, mcp_mode: bool = False):
             assert mcp_mode == True
             yield StreamEvent(type="response", data="Agent MCP response")
             yield StreamEvent(type="end", data="")
 
+        mock_agent.forward_streaming = mock_forward_streaming
+
+        async def mock_forward(query: str, chat_history: List[Message] = None, mcp_mode: bool = False):
+            return "Agent MCP response"
+
         mock_agent.forward = mock_forward
+
         server.agent_factory.get_or_create_agent = AsyncMock(return_value=mock_agent)
 
         response = client.post("/v1/agents/cairo-coder/chat/completions",

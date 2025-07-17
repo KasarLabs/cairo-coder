@@ -16,6 +16,7 @@ import structlog
 
 logger = structlog.get_logger(__name__)
 
+# TODO: Find a way to properly "erase" common mistakes like PrintTrait imports.
 class CairoCodeGeneration(Signature):
     """
     Generate high-quality Cairo code solutions and explanations for user queries.
@@ -29,6 +30,9 @@ class CairoCodeGeneration(Signature):
     6. Maintain consistency with Cairo language conventions
 
     The program should produce production-ready code that compiles successfully and follows Cairo/Starknet best practices.
+
+    When generating Cairo Code, all `starknet` imports should be included explicitly (e.g. use starknet::storage::*, use starknet::ContractAddress, etc.)
+    However, most `core` library imports are already included (like panic, println, etc.) - dont include them if they're not explicitly mentioned in the context.
     """
 
     chat_history: Optional[str] = InputField(
