@@ -46,7 +46,6 @@ packages/**/dist
 
 .trunk
 !.trunk/trunk.yaml
-!.trunk/configs
 !.trunk/.gitignore
 
 starklings/

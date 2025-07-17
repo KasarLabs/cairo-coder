@@ -16,8 +16,7 @@ from datetime import datetime
 import traceback
 
 from cairo_coder.core.config import VectorStoreConfig
-from cairo_coder.core.llm import AgentLoggingCallback
-from cairo_coder.core.rag_pipeline import RagPipeline
+from cairo_coder.core.rag_pipeline import AgentLoggingCallback, RagPipeline
 from fastapi import FastAPI, HTTPException, Request, Header, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse, Response

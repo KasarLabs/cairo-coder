@@ -107,9 +107,6 @@ class TestConfigManager:
             assert config.vector_store.host == "db.example.com"
             assert config.vector_store.port == 5433
             assert config.vector_store.database == "test_db"
-            assert config.llm.default_provider == "anthropic"
-            assert config.llm.anthropic_api_key == "test-key"
-            assert config.llm.anthropic_model == "claude-3-opus"
         finally:
             temp_path.unlink()
 
@@ -133,9 +130,6 @@ class TestConfigManager:
         assert config.vector_store.database == "env-db"
         assert config.vector_store.user == "env-user"
         assert config.vector_store.password == "env-pass"
-        assert config.llm.openai_api_key == "env-openai-key"
-        assert config.llm.anthropic_api_key == "env-anthropic-key"
-        assert config.llm.gemini_api_key == "env-gemini-key"
 
     def test_get_agent_config(self, mock_config_file: Path) -> None:
         """Test retrieving agent configuration."""
@@ -159,46 +153,19 @@ class TestConfigManager:
 
     def test_validate_config(self, mock_config_file: Path) -> None:
         """Test configuration validation."""
-        # Valid config with API key
+        # Valid config
         config = ConfigManager.load_config(mock_config_file)
-        config.llm.openai_api_key = "test-key"
         config.vector_store.password = "test-pass"
         ConfigManager.validate_config(config)
 
-        # No API keys
-        config = ConfigManager.load_config(mock_config_file)
-        config.llm.openai_api_key = None
-        config.llm.anthropic_api_key = None
-        config.llm.gemini_api_key = None
-        with pytest.raises(ValueError, match="At least one LLM provider"):
-            ConfigManager.validate_config(config)
-
-        # Invalid default provider
-        config = ConfigManager.load_config(mock_config_file)
-        config.llm.openai_api_key = "test-key"
-        config.llm.default_provider = "unknown"
-        config.vector_store.password = "test-pass"
-        with pytest.raises(ValueError, match="Unknown default provider"):
-            ConfigManager.validate_config(config)
-
-        # Default provider without API key
-        config = ConfigManager.load_config(mock_config_file)
-        config.llm.openai_api_key = None
-        config.llm.default_provider = "openai"  # No OpenAI key
-        config.vector_store.password = "test-pass"
-        with pytest.raises(ValueError, match="has no API key configured"):
-            ConfigManager.validate_config(config)
-
         # No database password
         config = ConfigManager.load_config(mock_config_file)
-        config.llm.openai_api_key = "test-key"
         config.vector_store.password = ""
         with pytest.raises(ValueError, match="Database password is required"):
             ConfigManager.validate_config(config)
 
         # Agent without sources
         config = ConfigManager.load_config(mock_config_file)
-        config.llm.openai_api_key = "test-key"
         config.vector_store.password = "test-pass"
         config.agents["test"] = AgentConfiguration(
             id="test",
@@ -211,7 +178,6 @@ class TestConfigManager:
 
         # Invalid default agent
         config = ConfigManager.load_config(mock_config_file)
-        config.llm.openai_api_key = "test-key"
         config.vector_store.password = "test-pass"
         config.default_agent_id = "unknown"
         config.agents = {}  # No agents

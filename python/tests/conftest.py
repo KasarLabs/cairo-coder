@@ -46,10 +46,6 @@ def mock_config_manager():
     """
     manager = Mock(spec=ConfigManager)
     manager.load_config.return_value = Config(
-        llm={
-            "openai": {"api_key": "test-key"},
-            "default_provider": "openai"
-        },
         vector_store=VectorStoreConfig(
             host="localhost",
             port=5432,
@@ -137,13 +133,13 @@ def mock_agent():
     def mock_forward(query: str, chat_history: List[Message] = None, mcp_mode: bool = False):
         """Mock agent forward method that returns a Predict object."""
         mock_predict = Mock()
-        
+
         # Set up the answer attribute based on mode
         if mcp_mode:
             mock_predict.answer = "Cairo is a programming language"
         else:
             mock_predict.answer = "Hello! I'm Cairo Coder. How can I help you?"
-        
+
         # Set up the get_lm_usage method
         mock_predict.get_lm_usage = Mock(return_value={
             "gemini/gemini-2.5-flash": {
@@ -152,7 +148,7 @@ def mock_agent():
                 "total_tokens": 300
             }
         })
-        
+
         return mock_predict
 
     # Assign both sync and async forward methods
