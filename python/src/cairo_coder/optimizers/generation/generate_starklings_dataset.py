@@ -33,7 +33,7 @@ class GenerationExample:
     expected: str
 
 
-async def get_context_for_query(full_query: str, config) -> str:
+def get_context_for_query(full_query: str, config) -> str:
     """Get context using RAG and summarize it."""
     try:
         # Create instances per task to avoid shared state issues
@@ -45,10 +45,7 @@ async def get_context_for_query(full_query: str, config) -> str:
 
         # Get raw context from vector store with timeout
         raw_context = ""
-        retrieved_docs = await asyncio.wait_for(
-            document_retriever.forward(processed_query),
-            timeout=30.0  # 30 second timeout
-        )
+        retrieved_docs = document_retriever.forward(processed_query)
 
         for doc in retrieved_docs:
             raw_context += doc.page_content
@@ -60,15 +57,11 @@ async def get_context_for_query(full_query: str, config) -> str:
         # Summarize the context with timeout
         summarized_response = context_summarizer.forward(processed_query=processed_query, raw_context=raw_context)
         return summarized_response.summarized_context
-
-    except asyncio.TimeoutError:
-        logger.error("Context retrieval timed out", query=full_query[:100] + "...")
-        return ""
     except Exception as e:
         logger.error("Failed to get context", error=str(e), query=full_query[:100] + "...")
         return ""
 
-async def process_exercise(exercise: StarklingsExercise, config) -> Optional[GenerationExample]:
+def process_exercise(exercise: StarklingsExercise, config) -> Optional[GenerationExample]:
     """Process a single exercise into a dataset example."""
     try:
         # Read exercise code
@@ -101,7 +94,7 @@ async def process_exercise(exercise: StarklingsExercise, config) -> Optional[Gen
         query = f"Complete the following Cairo code:\n\n```cairo\n{exercise_code}\n```\n\nHint: {exercise.hint}"
 
         # Get context with retry
-        context = await get_context_for_query(query, config)
+        context = get_context_for_query(query, config)
         if not context:
             logger.warning("Skipping exercise due to missing context", name=exercise.name)
             return None

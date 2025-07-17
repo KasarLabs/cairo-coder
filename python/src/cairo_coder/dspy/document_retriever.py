@@ -412,7 +412,7 @@ class DocumentRetrieverProgram(dspy.Module):
         self.similarity_threshold = similarity_threshold
         self.embedding_model = embedding_model
 
-    async def forward(
+    def forward(
         self, processed_query: ProcessedQuery, sources: Optional[List[DocumentSource]] = None
     ) -> List[Document]:
         """
@@ -430,7 +430,7 @@ class DocumentRetrieverProgram(dspy.Module):
             sources = processed_query.resources
 
         # Step 1: Fetch documents from vector store
-        documents = await self._fetch_documents(processed_query, sources)
+        documents = self._fetch_documents(processed_query, sources)
 
         # TODO: No source found means no answer can be given!
         if not documents:
@@ -445,7 +445,7 @@ class DocumentRetrieverProgram(dspy.Module):
 
         return documents
 
-    async def _fetch_documents(
+    def _fetch_documents(
         self, processed_query: ProcessedQuery, sources: List[DocumentSource]
     ) -> List[Document]:
         """

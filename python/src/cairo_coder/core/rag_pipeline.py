@@ -72,7 +72,49 @@ class RagPipeline(dspy.Module):
         self._current_processed_query: Optional[ProcessedQuery] = None
         self._current_documents: List[Document] = []
 
-    async def forward(
+    # Waits for streaming to finish before returning the response
+    def forward(
+        self,
+        query: str,
+        chat_history: Optional[List[Message]] = None,
+        mcp_mode: bool = False,
+        sources: Optional[List[DocumentSource]] = None
+    ) -> str:
+
+        # TODO: remove duplication with streaming forward.
+        dspy.configure(lm=dspy.LM("gemini/gemini-2.5-flash", max_tokens=30000))
+
+        chat_history_str = self._format_chat_history(chat_history or [])
+        processed_query = self.query_processor.forward(
+            query=query,
+            chat_history=chat_history_str
+        )
+        logger.info("Processed query", processed_query=processed_query)
+        self._current_processed_query = processed_query
+
+        # Use provided sources or fall back to processed query sources
+        retrieval_sources = sources or processed_query.resources
+        documents = self.document_retriever.forward(
+            processed_query=processed_query,
+            sources=retrieval_sources
+        )
+        self._current_documents = documents
+
+        if mcp_mode:
+            raw_response = self.mcp_generation_program.forward(documents)
+            return raw_response
+
+        context = self._prepare_context(documents, processed_query)
+        response = self.generation_program.forward(
+            query=query,
+            context=context,
+            chat_history=chat_history_str
+        )
+
+        return response
+
+
+    async def forward_streaming(
         self,
         query: str,
         chat_history: Optional[List[Message]] = None,
@@ -113,7 +155,7 @@ class RagPipeline(dspy.Module):
             # Stage 2: Retrieve documents
             yield StreamEvent(type="processing", data="Retrieving relevant documents...")
 
-            documents = await self.document_retriever.forward(
+            documents = self.document_retriever.forward(
                 processed_query=processed_query,
                 sources=retrieval_sources
             )

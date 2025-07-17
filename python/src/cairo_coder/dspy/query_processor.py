@@ -69,9 +69,10 @@ class QueryProcessorProgram(dspy.Module):
         super().__init__()
         self.retrieval_program = dspy.ChainOfThought(CairoQueryAnalysis)
         # Validate that the file exists
-        if not os.path.exists("optimized_retrieval_program.json"):
-            raise FileNotFoundError("optimized_retrieval_program.json not found")
-        self.retrieval_program.load("optimized_retrieval_program.json")
+        COMPILED_PROGRAM_PATH = "optimizers/results/optimized_retrieval_program.json"
+        if not os.path.exists(COMPILED_PROGRAM_PATH):
+            raise FileNotFoundError(f"{COMPILED_PROGRAM_PATH} not found")
+        self.retrieval_program.load(COMPILED_PROGRAM_PATH)
 
         # Common keywords for query analysis
         self.contract_keywords = {
@@ -107,8 +108,8 @@ class QueryProcessorProgram(dspy.Module):
         resources = self._validate_resources(result.resources)
 
         # Build structured query result
-        logger.info(f"Processed query: {query} \n"
-                    f"Generated: search_queries={search_queries}, resources={resources}")
+        logged_query = query[:50] + "..." if len(query) > 50 else query
+        logger.info(f"Processed query: {logged_query}")
         return ProcessedQuery(
             original=query,
             search_queries=search_queries,
