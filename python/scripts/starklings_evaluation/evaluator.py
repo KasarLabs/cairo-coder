@@ -2,11 +2,11 @@
 
 import asyncio
 import time
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
 
 import structlog
+
 from cairo_coder.optimizers.generation import utils
 from cairo_coder.optimizers.generation.starklings_helper import (
     StarklingsExercise,
@@ -42,8 +42,8 @@ class StarklingsEvaluator:
         self.model = model
         self.starklings_path = Path(starklings_path)
         self.timeout = timeout
-        self.exercises: List[StarklingsExercise] = []
-        self.exercises_by_category: Dict[str, List[StarklingsExercise]] = {}
+        self.exercises: list[StarklingsExercise] = []
+        self.exercises_by_category: dict[str, list[StarklingsExercise]] = {}
 
     def setup(self) -> bool:
         """Setup Starklings repository and parse exercises.
@@ -76,7 +76,7 @@ class StarklingsEvaluator:
         logger.info(
             "Starklings setup complete",
             total_exercises=len(self.exercises),
-            categories=list(self.exercises_by_category.keys())
+            categories=list(self.exercises_by_category.keys()),
         )
         return True
 
@@ -105,7 +105,7 @@ class StarklingsEvaluator:
 
         return prompt
 
-    def _read_exercise_file(self, exercise: StarklingsExercise) -> Optional[str]:
+    def _read_exercise_file(self, exercise: StarklingsExercise) -> str | None:
         """Read exercise file content.
 
         Args:
@@ -123,7 +123,7 @@ class StarklingsEvaluator:
                 "Failed to read exercise file",
                 exercise=exercise.name,
                 path=str(exercise_path),
-                error=str(e)
+                error=str(e),
             )
             return None
 
@@ -132,7 +132,7 @@ class StarklingsEvaluator:
         exercise: StarklingsExercise,
         generated_code: str,
         output_dir: Path,
-        error: Optional[str] = None
+        error: str | None = None,
     ) -> None:
         """Save debug files for an exercise.
 
@@ -188,7 +188,7 @@ class StarklingsEvaluator:
                 api_response={},
                 compilation_result={"success": False, "error": "Failed to read exercise file"},
                 success=False,
-                error_message="Failed to read exercise file"
+                error_message="Failed to read exercise file",
             )
 
         # Create prompt
@@ -226,15 +226,11 @@ class StarklingsEvaluator:
                 success=success,
                 error_message=compilation_result.get("error") if not success else None,
                 generation_time=generation_time,
-                compilation_time=compilation_time
+                compilation_time=compilation_time,
             )
 
         except Exception as e:
-            logger.error(
-                "Failed to evaluate exercise",
-                exercise=exercise.name,
-                error=str(e)
-            )
+            logger.error("Failed to evaluate exercise", exercise=exercise.name, error=str(e))
             # Save error for debugging
             self._save_debug_files(exercise, "", output_dir, error=str(e))
 
@@ -244,13 +240,13 @@ class StarklingsEvaluator:
                 api_response={},
                 compilation_result={"success": False, "error": str(e)},
                 success=False,
-                error_message=str(e)
+                error_message=str(e),
             )
 
     async def evaluate_category(
         self,
         category: str,
-        exercises: List[StarklingsExercise],
+        exercises: list[StarklingsExercise],
         api_client: CairoCoderAPIClient,
         output_dir: Path,
         max_concurrent: int = 5,
@@ -267,11 +263,7 @@ class StarklingsEvaluator:
         Returns:
             Category results
         """
-        logger.info(
-            "Evaluating category",
-            category=category,
-            exercises=len(exercises)
-        )
+        logger.info("Evaluating category", category=category, exercises=len(exercises))
 
         result = CategoryResult(category=category)
 
@@ -293,7 +285,7 @@ class StarklingsEvaluator:
             category=category,
             success_rate=result.success_rate,
             successful=result.successful_exercises,
-            total=result.total_exercises
+            total=result.total_exercises,
         )
 
         return result
@@ -302,7 +294,7 @@ class StarklingsEvaluator:
         self,
         run_id: int,
         output_dir: Path,
-        category_filter: Optional[str] = None,
+        category_filter: str | None = None,
         max_concurrent: int = 5,
     ) -> EvaluationRun:
         """Run a complete evaluation.
@@ -316,17 +308,13 @@ class StarklingsEvaluator:
         Returns:
             Evaluation run results
         """
-        logger.info(
-            "Starting evaluation run",
-            run_id=run_id,
-            category_filter=category_filter
-        )
+        logger.info("Starting evaluation run", run_id=run_id, category_filter=category_filter)
 
         run = EvaluationRun(
             run_id=run_id,
-            timestamp=datetime.now(),
+            timestamp=datetime.now(timezone.utc),
             api_endpoint=self.api_endpoint,
-            model=self.model
+            model=self.model,
         )
 
         # Filter categories if needed
@@ -338,23 +326,17 @@ class StarklingsEvaluator:
                 logger.warning(
                     "Category not found",
                     category=category_filter,
-                    available=list(self.exercises_by_category.keys())
+                    available=list(self.exercises_by_category.keys()),
                 )
                 return run
 
         # Evaluate each category
         async with CairoCoderAPIClient(
-            base_url=self.api_endpoint,
-            model=self.model,
-            timeout=self.timeout
+            base_url=self.api_endpoint, model=self.model, timeout=self.timeout
         ) as api_client:
             for category, exercises in categories_to_eval.items():
                 category_result = await self.evaluate_category(
-                    category,
-                    exercises,
-                    api_client,
-                    output_dir,
-                    max_concurrent
+                    category, exercises, api_client, output_dir, max_concurrent
                 )
                 run.categories[category] = category_result
 
@@ -364,7 +346,7 @@ class StarklingsEvaluator:
             overall_success_rate=run.overall_success_rate,
             successful=run.successful_exercises,
             total=run.total_exercises,
-            time=run.total_time
+            time=run.total_time,
         )
 
         return run

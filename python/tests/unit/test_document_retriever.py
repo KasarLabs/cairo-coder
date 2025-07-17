@@ -4,14 +4,13 @@ Unit tests for DocumentRetrieverProgram.
 Tests the DSPy-based document retrieval functionality using PgVectorRM retriever.
 """
 
-from cairo_coder.core.config import VectorStoreConfig
-import pytest
-from unittest.mock import Mock, AsyncMock, call, patch, MagicMock
-import numpy as np
-import dspy
+from unittest.mock import Mock, call, patch
 
+import dspy
+import pytest
+
+from cairo_coder.core.config import VectorStoreConfig
 from cairo_coder.core.types import Document, DocumentSource, ProcessedQuery
-from cairo_coder.core.vector_store import VectorStore
 from cairo_coder.dspy.document_retriever import DocumentRetrieverProgram
 
 
@@ -51,7 +50,9 @@ class TestDocumentRetrieverProgram:
     def retriever(self, mock_vector_store_config):
         """Create a DocumentRetrieverProgram instance."""
         return DocumentRetrieverProgram(
-            vector_store_config=mock_vector_store_config, max_source_count=5, similarity_threshold=0.4
+            vector_store_config=mock_vector_store_config,
+            max_source_count=5,
+            similarity_threshold=0.4,
         )
 
     @pytest.fixture
@@ -67,7 +68,11 @@ class TestDocumentRetrieverProgram:
 
     @pytest.mark.asyncio
     async def test_basic_document_retrieval(
-        self, retriever, mock_vector_store_config, mock_dspy_examples, sample_processed_query: ProcessedQuery
+        self,
+        retriever,
+        mock_vector_store_config,
+        mock_dspy_examples,
+        sample_processed_query: ProcessedQuery,
     ):
         """Test basic document retrieval using DSPy PgVectorRM."""
 
@@ -77,7 +82,9 @@ class TestDocumentRetrieverProgram:
             mock_openai_class.return_value = mock_openai_client
 
             # Mock PgVectorRM
-            with patch("cairo_coder.dspy.document_retriever.SourceFilteredPgVectorRM") as mock_pgvector_rm:
+            with patch(
+                "cairo_coder.dspy.document_retriever.SourceFilteredPgVectorRM"
+            ) as mock_pgvector_rm:
                 mock_retriever_instance = Mock(return_value=mock_dspy_examples)
                 mock_pgvector_rm.return_value = mock_retriever_instance
 
@@ -105,7 +112,9 @@ class TestDocumentRetrieverProgram:
 
                     # Verify retriever was called with proper query
                     # Last call with the last search query
-                    mock_retriever_instance.assert_called_with(sample_processed_query.search_queries.pop())
+                    mock_retriever_instance.assert_called_with(
+                        sample_processed_query.search_queries.pop()
+                    )
 
     @pytest.mark.asyncio
     async def test_retrieval_with_empty_transformed_terms(
@@ -124,7 +133,9 @@ class TestDocumentRetrieverProgram:
             mock_openai_client = Mock()
             mock_openai_class.return_value = mock_openai_client
 
-            with patch("cairo_coder.dspy.document_retriever.SourceFilteredPgVectorRM") as mock_pgvector_rm:
+            with patch(
+                "cairo_coder.dspy.document_retriever.SourceFilteredPgVectorRM"
+            ) as mock_pgvector_rm:
                 mock_retriever_instance = Mock(return_value=mock_dspy_examples)
                 mock_pgvector_rm.return_value = mock_retriever_instance
 
@@ -156,7 +167,9 @@ class TestDocumentRetrieverProgram:
             mock_openai_client = Mock()
             mock_openai_class.return_value = mock_openai_client
 
-            with patch("cairo_coder.dspy.document_retriever.SourceFilteredPgVectorRM") as mock_pgvector_rm:
+            with patch(
+                "cairo_coder.dspy.document_retriever.SourceFilteredPgVectorRM"
+            ) as mock_pgvector_rm:
                 mock_retriever_instance = Mock(return_value=mock_dspy_examples)
                 mock_pgvector_rm.return_value = mock_retriever_instance
 
@@ -177,16 +190,16 @@ class TestDocumentRetrieverProgram:
                     mock_retriever_instance.assert_called()
 
     @pytest.mark.asyncio
-    async def test_empty_document_handling(
-        self, retriever, sample_processed_query
-    ):
+    async def test_empty_document_handling(self, retriever, sample_processed_query):
         """Test handling of empty document results."""
 
         with patch("cairo_coder.dspy.document_retriever.openai.OpenAI") as mock_openai_class:
             mock_openai_client = Mock()
             mock_openai_class.return_value = mock_openai_client
 
-            with patch("cairo_coder.dspy.document_retriever.SourceFilteredPgVectorRM") as mock_pgvector_rm:
+            with patch(
+                "cairo_coder.dspy.document_retriever.SourceFilteredPgVectorRM"
+            ) as mock_pgvector_rm:
                 mock_retriever_instance = Mock(return_value=[])  # Empty results
                 mock_pgvector_rm.return_value = mock_retriever_instance
                 # Mock dspy module
@@ -210,7 +223,9 @@ class TestDocumentRetrieverProgram:
             mock_openai_client = Mock()
             mock_openai_class.return_value = mock_openai_client
 
-            with patch("cairo_coder.dspy.document_retriever.SourceFilteredPgVectorRM") as mock_pgvector_rm:
+            with patch(
+                "cairo_coder.dspy.document_retriever.SourceFilteredPgVectorRM"
+            ) as mock_pgvector_rm:
                 # Mock PgVectorRM to raise an exception
                 mock_pgvector_rm.side_effect = Exception("Database connection error")
 
@@ -229,7 +244,9 @@ class TestDocumentRetrieverProgram:
             mock_openai_client = Mock()
             mock_openai_class.return_value = mock_openai_client
 
-            with patch("cairo_coder.dspy.document_retriever.SourceFilteredPgVectorRM") as mock_pgvector_rm:
+            with patch(
+                "cairo_coder.dspy.document_retriever.SourceFilteredPgVectorRM"
+            ) as mock_pgvector_rm:
                 mock_retriever_instance = Mock(side_effect=Exception("Query execution error"))
                 mock_pgvector_rm.return_value = mock_retriever_instance
 
@@ -246,7 +263,9 @@ class TestDocumentRetrieverProgram:
                     assert "Query execution error" in str(exc_info.value)
 
     @pytest.mark.asyncio
-    async def test_max_source_count_configuration(self, mock_vector_store_config, sample_processed_query):
+    async def test_max_source_count_configuration(
+        self, mock_vector_store_config, sample_processed_query
+    ):
         """Test that max_source_count is properly passed to PgVectorRM."""
         retriever = DocumentRetrieverProgram(
             vector_store_config=mock_vector_store_config,
@@ -258,7 +277,9 @@ class TestDocumentRetrieverProgram:
             mock_openai_client = Mock()
             mock_openai_class.return_value = mock_openai_client
 
-            with patch("cairo_coder.dspy.document_retriever.SourceFilteredPgVectorRM") as mock_pgvector_rm:
+            with patch(
+                "cairo_coder.dspy.document_retriever.SourceFilteredPgVectorRM"
+            ) as mock_pgvector_rm:
                 mock_retriever_instance = Mock()
                 mock_retriever_instance = Mock(return_value=[])
                 mock_pgvector_rm.return_value = mock_retriever_instance
@@ -308,7 +329,9 @@ class TestDocumentRetrieverProgram:
             mock_openai_client = Mock()
             mock_openai_class.return_value = mock_openai_client
 
-            with patch("cairo_coder.dspy.document_retriever.SourceFilteredPgVectorRM") as mock_pgvector_rm:
+            with patch(
+                "cairo_coder.dspy.document_retriever.SourceFilteredPgVectorRM"
+            ) as mock_pgvector_rm:
                 mock_retriever_instance = Mock(return_value=mock_examples)
                 mock_pgvector_rm.return_value = mock_retriever_instance
 
@@ -324,14 +347,12 @@ class TestDocumentRetrieverProgram:
                     # Verify conversion to Document objects
                     # Ran 3 times the query, returned 2 docs each - but de-duped
                     mock_retriever_instance.assert_has_calls(
-                        [
-                            call(query) for query in sample_processed_query.search_queries
-                        ],
-                        any_order=True
+                        [call(query) for query in sample_processed_query.search_queries],
+                        any_order=True,
                     )
 
                     # Verify conversion to Document objects
-                    assert len(result) == len(expected_docs) + 1 # (Contract template)
+                    assert len(result) == len(expected_docs) + 1  # (Contract template)
 
                     # Convert result to (content, metadata) tuples for comparison
                     result_tuples = [(doc.page_content, doc.metadata) for doc in result]
@@ -358,7 +379,9 @@ class TestDocumentRetrieverProgram:
             mock_openai_client = Mock()
             mock_openai_class.return_value = mock_openai_client
 
-            with patch("cairo_coder.dspy.document_retriever.SourceFilteredPgVectorRM") as mock_pgvector_rm:
+            with patch(
+                "cairo_coder.dspy.document_retriever.SourceFilteredPgVectorRM"
+            ) as mock_pgvector_rm:
                 mock_retriever_instance = Mock(return_value=mock_dspy_examples)
                 mock_pgvector_rm.return_value = mock_retriever_instance
 
@@ -382,7 +405,9 @@ class TestDocumentRetrieverProgram:
                             assert "#[storage]" in doc.page_content
                             break
 
-                    assert contract_template_found, "Contract template should be added for contract-related queries"
+                    assert contract_template_found, (
+                        "Contract template should be added for contract-related queries"
+                    )
 
     @pytest.mark.asyncio
     async def test_test_context_enhancement(
@@ -402,7 +427,9 @@ class TestDocumentRetrieverProgram:
             mock_openai_client = Mock()
             mock_openai_class.return_value = mock_openai_client
 
-            with patch("cairo_coder.dspy.document_retriever.SourceFilteredPgVectorRM") as mock_pgvector_rm:
+            with patch(
+                "cairo_coder.dspy.document_retriever.SourceFilteredPgVectorRM"
+            ) as mock_pgvector_rm:
                 mock_retriever_instance = Mock(return_value=mock_dspy_examples)
                 mock_pgvector_rm.return_value = mock_retriever_instance
 
@@ -421,13 +448,21 @@ class TestDocumentRetrieverProgram:
                         if doc.metadata.get("source") == "test_template":
                             test_template_found = True
                             # Verify it contains the test template content
-                            assert "The content inside the <contract_test> tag is the test code for the 'Registry' contract. It is assumed" in doc.page_content
-                            assert "that the contract is part of a package named 'registry'. When writing tests, follow the important rules." in doc.page_content
+                            assert (
+                                "The content inside the <contract_test> tag is the test code for the 'Registry' contract. It is assumed"
+                                in doc.page_content
+                            )
+                            assert (
+                                "that the contract is part of a package named 'registry'. When writing tests, follow the important rules."
+                                in doc.page_content
+                            )
                             assert "#[test]" in doc.page_content
                             assert "assert(" in doc.page_content
                             break
 
-                    assert test_template_found, "Test template should be added for test-related queries"
+                    assert test_template_found, (
+                        "Test template should be added for test-related queries"
+                    )
 
     @pytest.mark.asyncio
     async def test_both_templates_enhancement(
@@ -447,7 +482,9 @@ class TestDocumentRetrieverProgram:
             mock_openai_client = Mock()
             mock_openai_class.return_value = mock_openai_client
 
-            with patch("cairo_coder.dspy.document_retriever.SourceFilteredPgVectorRM") as mock_pgvector_rm:
+            with patch(
+                "cairo_coder.dspy.document_retriever.SourceFilteredPgVectorRM"
+            ) as mock_pgvector_rm:
                 mock_retriever_instance = Mock(return_value=mock_dspy_examples)
                 mock_pgvector_rm.return_value = mock_retriever_instance
 
@@ -470,8 +507,12 @@ class TestDocumentRetrieverProgram:
                         elif doc.metadata.get("source") == "test_template":
                             test_template_found = True
 
-                    assert contract_template_found, "Contract template should be added for contract-related queries"
-                    assert test_template_found, "Test template should be added for test-related queries"
+                    assert contract_template_found, (
+                        "Contract template should be added for contract-related queries"
+                    )
+                    assert test_template_found, (
+                        "Test template should be added for test-related queries"
+                    )
 
     @pytest.mark.asyncio
     async def test_no_template_enhancement(
@@ -491,7 +532,9 @@ class TestDocumentRetrieverProgram:
             mock_openai_client = Mock()
             mock_openai_class.return_value = mock_openai_client
 
-            with patch("cairo_coder.dspy.document_retriever.SourceFilteredPgVectorRM") as mock_pgvector_rm:
+            with patch(
+                "cairo_coder.dspy.document_retriever.SourceFilteredPgVectorRM"
+            ) as mock_pgvector_rm:
                 mock_retriever_instance = Mock(return_value=mock_dspy_examples)
                 mock_pgvector_rm.return_value = mock_retriever_instance
 
@@ -506,8 +549,13 @@ class TestDocumentRetrieverProgram:
 
                     # Verify no templates were added
                     template_sources = [doc.metadata.get("source") for doc in result]
-                    assert "contract_template" not in template_sources, "Contract template should not be added for non-contract queries"
-                    assert "test_template" not in template_sources, "Test template should not be added for non-test queries"
+                    assert "contract_template" not in template_sources, (
+                        "Contract template should not be added for non-contract queries"
+                    )
+                    assert "test_template" not in template_sources, (
+                        "Test template should not be added for non-test queries"
+                    )
+
 
 class TestDocumentRetrieverFactory:
     """Test the document retriever factory function."""
@@ -517,7 +565,9 @@ class TestDocumentRetrieverFactory:
         mock_vector_store_config = Mock(spec=VectorStoreConfig)
 
         retriever = DocumentRetrieverProgram(
-            vector_store_config=mock_vector_store_config, max_source_count=20, similarity_threshold=0.35
+            vector_store_config=mock_vector_store_config,
+            max_source_count=20,
+            similarity_threshold=0.35,
         )
 
         assert isinstance(retriever, DocumentRetrieverProgram)

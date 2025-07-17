@@ -5,27 +5,21 @@ This module provides common fixtures and utilities used across multiple test fil
 to reduce code duplication and ensure consistency.
 """
 
-import pytest
 import asyncio
-from unittest.mock import Mock, AsyncMock, patch
-from typing import List, Dict, Any, Optional, AsyncGenerator
-from pathlib import Path
-import json
-import dspy
+from collections.abc import AsyncGenerator
+from unittest.mock import AsyncMock, Mock
 
-from cairo_coder.core.types import (
-    Document, DocumentSource, Message, ProcessedQuery, StreamEvent
-)
-from cairo_coder.core.config import AgentConfiguration, Config, VectorStoreConfig
-from cairo_coder.core.vector_store import VectorStore
+import pytest
+
 from cairo_coder.config.manager import ConfigManager
 from cairo_coder.core.agent_factory import AgentFactory
-from cairo_coder.core.rag_pipeline import RagPipeline
-
+from cairo_coder.core.config import AgentConfiguration, Config, VectorStoreConfig
+from cairo_coder.core.types import Document, DocumentSource, Message, ProcessedQuery, StreamEvent
 
 # =============================================================================
 # Common Mock Fixtures
 # =============================================================================
+
 
 @pytest.fixture
 def mock_vector_store_config():
@@ -36,6 +30,7 @@ def mock_vector_store_config():
     mock_config.dsn = "postgresql://test_user:test_pass@localhost:5432/test_db"
     mock_config.table_name = "test_table"
     return mock_config
+
 
 @pytest.fixture
 def mock_config_manager():
@@ -52,7 +47,7 @@ def mock_config_manager():
             database="test_db",
             user="test_user",
             password="test_pass",
-            table_name="test_table"
+            table_name="test_table",
         )
     )
     manager.get_agent_config.return_value = AgentConfiguration(
@@ -61,7 +56,7 @@ def mock_config_manager():
         description="Test agent for testing",
         sources=[DocumentSource.CAIRO_BOOK],
         max_source_count=5,
-        similarity_threshold=0.5
+        similarity_threshold=0.5,
     )
     manager.dsn = "postgresql://test_user:test_pass@localhost:5432/test_db"
     return manager
@@ -90,7 +85,10 @@ def mock_agent_factory():
     """
     factory = Mock(spec=AgentFactory)
     factory.get_available_agents.return_value = [
-        "default", "scarb_assistant", "starknet_assistant", "openzeppelin_assistant"
+        "default",
+        "scarb_assistant",
+        "starknet_assistant",
+        "openzeppelin_assistant",
     ]
     factory.get_agent_info.return_value = {
         "id": "default",
@@ -98,7 +96,7 @@ def mock_agent_factory():
         "description": "General Cairo programming assistant",
         "sources": ["cairo_book", "cairo_docs"],
         "max_source_count": 10,
-        "similarity_threshold": 0.4
+        "similarity_threshold": 0.4,
     }
     factory.create_agent = Mock()
     factory.get_or_create_agent = AsyncMock()
@@ -106,23 +104,26 @@ def mock_agent_factory():
     return factory
 
 
-
-
 @pytest.fixture(autouse=True)
 def mock_agent():
     """Create a mock agent with OpenAI-specific forward method."""
     mock_agent = Mock()
 
-    async def mock_forward_streaming(query: str, chat_history: List[Message] = None, mcp_mode: bool = False):
+    async def mock_forward_streaming(
+        query: str, chat_history: list[Message] = None, mcp_mode: bool = False
+    ):
         """Mock agent forward_streaming method that yields StreamEvent objects."""
         if mcp_mode:
             # MCP mode returns sources
-            yield StreamEvent(type="sources", data=[
-                {
-                    "pageContent": "Cairo is a programming language",
-                    "metadata": {"source": "cairo-docs", "page": 1}
-                }
-            ])
+            yield StreamEvent(
+                type="sources",
+                data=[
+                    {
+                        "pageContent": "Cairo is a programming language",
+                        "metadata": {"source": "cairo-docs", "page": 1},
+                    }
+                ],
+            )
             yield StreamEvent(type="response", data="Cairo is a programming language")
         else:
             # Normal mode returns response
@@ -130,7 +131,7 @@ def mock_agent():
             yield StreamEvent(type="response", data=" How can I help you?")
         yield StreamEvent(type="end", data="")
 
-    def mock_forward(query: str, chat_history: List[Message] = None, mcp_mode: bool = False):
+    def mock_forward(query: str, chat_history: list[Message] = None, mcp_mode: bool = False):
         """Mock agent forward method that returns a Predict object."""
         mock_predict = Mock()
 
@@ -141,13 +142,15 @@ def mock_agent():
             mock_predict.answer = "Hello! I'm Cairo Coder. How can I help you?"
 
         # Set up the get_lm_usage method
-        mock_predict.get_lm_usage = Mock(return_value={
-            "gemini/gemini-2.5-flash": {
-                "prompt_tokens": 100,
-                "completion_tokens": 200,
-                "total_tokens": 300
+        mock_predict.get_lm_usage = Mock(
+            return_value={
+                "gemini/gemini-2.5-flash": {
+                    "prompt_tokens": 100,
+                    "completion_tokens": 200,
+                    "total_tokens": 300,
+                }
             }
-        })
+        )
 
         return mock_predict
 
@@ -155,6 +158,7 @@ def mock_agent():
     mock_agent.forward = mock_forward
     mock_agent.forward_streaming = mock_forward_streaming
     return mock_agent
+
 
 @pytest.fixture
 def mock_pool():
@@ -183,6 +187,7 @@ def mock_pool():
 # Sample Data Fixtures
 # =============================================================================
 
+
 @pytest.fixture
 def sample_documents():
     """
@@ -194,43 +199,43 @@ def sample_documents():
         Document(
             page_content="Cairo is a programming language for writing provable programs.",
             metadata={
-                'source': 'cairo_book',
-                'score': 0.9,
-                'title': 'Introduction to Cairo',
-                'url': 'https://book.cairo-lang.org/ch01-00-getting-started.html',
-                'source_display': 'Cairo Book'
-            }
+                "source": "cairo_book",
+                "score": 0.9,
+                "title": "Introduction to Cairo",
+                "url": "https://book.cairo-lang.org/ch01-00-getting-started.html",
+                "source_display": "Cairo Book",
+            },
         ),
         Document(
             page_content="Starknet is a validity rollup (also known as a ZK rollup).",
             metadata={
-                'source': 'starknet_docs',
-                'score': 0.8,
-                'title': 'What is Starknet',
-                'url': 'https://docs.starknet.io/documentation/architecture_and_concepts/Network_Architecture/overview/',
-                'source_display': 'Starknet Docs'
-            }
+                "source": "starknet_docs",
+                "score": 0.8,
+                "title": "What is Starknet",
+                "url": "https://docs.starknet.io/documentation/architecture_and_concepts/Network_Architecture/overview/",
+                "source_display": "Starknet Docs",
+            },
         ),
         Document(
             page_content="Scarb is the Cairo package manager and build tool.",
             metadata={
-                'source': 'scarb_docs',
-                'score': 0.7,
-                'title': 'Scarb Overview',
-                'url': 'https://docs.swmansion.com/scarb/',
-                'source_display': 'Scarb Docs'
-            }
+                "source": "scarb_docs",
+                "score": 0.7,
+                "title": "Scarb Overview",
+                "url": "https://docs.swmansion.com/scarb/",
+                "source_display": "Scarb Docs",
+            },
         ),
         Document(
             page_content="OpenZeppelin provides secure smart contract libraries for Cairo.",
             metadata={
-                'source': 'openzeppelin_docs',
-                'score': 0.6,
-                'title': 'OpenZeppelin Cairo',
-                'url': 'https://docs.openzeppelin.com/contracts-cairo/',
-                'source_display': 'OpenZeppelin Docs'
-            }
-        )
+                "source": "openzeppelin_docs",
+                "score": 0.6,
+                "title": "OpenZeppelin Cairo",
+                "url": "https://docs.openzeppelin.com/contracts-cairo/",
+                "source_display": "OpenZeppelin Docs",
+            },
+        ),
     ]
 
 
@@ -246,7 +251,7 @@ def sample_processed_query():
         search_queries=["cairo contract", "smart contract creation", "cairo programming"],
         is_contract_related=True,
         is_test_related=False,
-        resources=[DocumentSource.CAIRO_BOOK, DocumentSource.STARKNET_DOCS]
+        resources=[DocumentSource.CAIRO_BOOK, DocumentSource.STARKNET_DOCS],
     )
 
 
@@ -261,7 +266,7 @@ def sample_messages():
         Message(role="system", content="You are a helpful Cairo programming assistant."),
         Message(role="user", content="How do I create a smart contract in Cairo?"),
         Message(role="assistant", content="To create a smart contract in Cairo, you need to..."),
-        Message(role="user", content="Can you show me an example?")
+        Message(role="user", content="Can you show me an example?"),
     ]
 
 
@@ -279,7 +284,7 @@ def sample_agent_configs():
             description="General Cairo programming assistant",
             sources=[DocumentSource.CAIRO_BOOK, DocumentSource.STARKNET_DOCS],
             max_source_count=10,
-            similarity_threshold=0.4
+            similarity_threshold=0.4,
         ),
         "test_agent": AgentConfiguration(
             id="test_agent",
@@ -287,7 +292,7 @@ def sample_agent_configs():
             description="Test agent for testing",
             sources=[DocumentSource.CAIRO_BOOK],
             max_source_count=5,
-            similarity_threshold=0.5
+            similarity_threshold=0.5,
         ),
         "scarb_agent": AgentConfiguration(
             id="scarb_agent",
@@ -295,7 +300,7 @@ def sample_agent_configs():
             description="Scarb build tool and package manager agent",
             sources=[DocumentSource.SCARB_DOCS],
             max_source_count=5,
-            similarity_threshold=0.5
+            similarity_threshold=0.5,
         ),
         "scarb_assistant": AgentConfiguration(
             id="scarb_assistant",
@@ -303,7 +308,7 @@ def sample_agent_configs():
             description="Scarb build tool and package manager assistant",
             sources=[DocumentSource.SCARB_DOCS],
             max_source_count=5,
-            similarity_threshold=0.5
+            similarity_threshold=0.5,
         ),
         "starknet_assistant": AgentConfiguration(
             id="starknet_assistant",
@@ -311,7 +316,7 @@ def sample_agent_configs():
             description="Starknet-specific development assistant",
             sources=[DocumentSource.STARKNET_DOCS, DocumentSource.STARKNET_FOUNDRY],
             max_source_count=8,
-            similarity_threshold=0.45
+            similarity_threshold=0.45,
         ),
         "openzeppelin_assistant": AgentConfiguration(
             id="openzeppelin_assistant",
@@ -319,8 +324,8 @@ def sample_agent_configs():
             description="OpenZeppelin Cairo contracts assistant",
             sources=[DocumentSource.OPENZEPPELIN_DOCS],
             max_source_count=6,
-            similarity_threshold=0.5
-        )
+            similarity_threshold=0.5,
+        ),
     }
 
 
@@ -336,26 +341,23 @@ def sample_config():
             "openai": {"api_key": "test-openai-key", "model": "gpt-4"},
             "anthropic": {"api_key": "test-anthropic-key", "model": "claude-3-sonnet"},
             "google": {"api_key": "test-google-key", "model": "gemini-1.5-pro"},
-            "default_provider": "openai"
+            "default_provider": "openai",
         },
         vector_db=VectorStoreConfig(
             host="localhost",
             port=5432,
             database="cairo_coder_test",
             user="test_user",
-            password="test_password"
+            password="test_password",
         ),
         agents={
             "default": {
                 "sources": ["cairo_book", "starknet_docs"],
                 "max_source_count": 10,
-                "similarity_threshold": 0.4
+                "similarity_threshold": 0.4,
             }
         },
-        logging={
-            "level": "INFO",
-            "format": "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-        }
+        logging={"level": "INFO", "format": "%(asctime)s - %(name)s - %(levelname)s - %(message)s"},
     )
 
 
@@ -377,6 +379,7 @@ def sample_embeddings():
 # =============================================================================
 # Test Configuration Fixtures
 # =============================================================================
+
 
 @pytest.fixture
 def temp_config_file(tmp_path):
@@ -434,7 +437,7 @@ def test_env_vars(monkeypatch):
         "POSTGRES_PORT": "5432",
         "POSTGRES_DB": "cairo_coder_test",
         "POSTGRES_USER": "test_user",
-        "POSTGRES_PASSWORD": "test_password"
+        "POSTGRES_PASSWORD": "test_password",
     }
 
     for key, value in test_vars.items():
@@ -447,8 +450,10 @@ def test_env_vars(monkeypatch):
 # Utility Functions
 # =============================================================================
 
-def create_test_document(content: str, source: str = "cairo_book",
-                        score: float = 0.8, **metadata) -> Document:
+
+def create_test_document(
+    content: str, source: str = "cairo_book", score: float = 0.8, **metadata
+) -> Document:
     """
     Create a test document with standard metadata.
 
@@ -462,11 +467,11 @@ def create_test_document(content: str, source: str = "cairo_book",
         Document object with the provided content and metadata
     """
     base_metadata = {
-        'source': source,
-        'score': score,
-        'title': f'Test Document from {source}',
-        'url': f'https://example.com/{source}',
-        'source_display': source.replace('_', ' ').title()
+        "source": source,
+        "score": score,
+        "title": f"Test Document from {source}",
+        "url": f"https://example.com/{source}",
+        "source_display": source.replace("_", " ").title(),
     }
     base_metadata.update(metadata)
 
@@ -487,10 +492,13 @@ def create_test_message(role: str, content: str) -> Message:
     return Message(role=role, content=content)
 
 
-def create_test_processed_query(original: str, search_queries: List[str] = None,
-                               is_contract_related: bool = False,
-                               is_test_related: bool = False,
-                               resources: List[DocumentSource] = None) -> ProcessedQuery:
+def create_test_processed_query(
+    original: str,
+    search_queries: list[str] = None,
+    is_contract_related: bool = False,
+    is_test_related: bool = False,
+    resources: list[DocumentSource] = None,
+) -> ProcessedQuery:
     """
     Create a test processed query with specified parameters.
 
@@ -514,11 +522,13 @@ def create_test_processed_query(original: str, search_queries: List[str] = None,
         search_queries=search_queries,
         is_contract_related=is_contract_related,
         is_test_related=is_test_related,
-        resources=resources
+        resources=resources,
     )
 
 
-async def create_test_stream_events(response_text: str = "Test response") -> AsyncGenerator[StreamEvent, None]:
+async def create_test_stream_events(
+    response_text: str = "Test response",
+) -> AsyncGenerator[StreamEvent, None]:
     """
     Create a test stream of events for testing streaming functionality.
 
@@ -532,7 +542,7 @@ async def create_test_stream_events(response_text: str = "Test response") -> Asy
         StreamEvent(type="processing", data="Processing query..."),
         StreamEvent(type="sources", data=[{"title": "Test Doc", "url": "#"}]),
         StreamEvent(type="response", data=response_text),
-        StreamEvent(type="end", data=None)
+        StreamEvent(type="end", data=None),
     ]
 
     for event in events:
@@ -543,13 +553,16 @@ async def create_test_stream_events(response_text: str = "Test response") -> Asy
 # Parametrized Fixtures
 # =============================================================================
 
-@pytest.fixture(params=[
-    DocumentSource.CAIRO_BOOK,
-    DocumentSource.STARKNET_DOCS,
-    DocumentSource.SCARB_DOCS,
-    DocumentSource.OPENZEPPELIN_DOCS,
-    DocumentSource.CAIRO_BY_EXAMPLE
-])
+
+@pytest.fixture(
+    params=[
+        DocumentSource.CAIRO_BOOK,
+        DocumentSource.STARKNET_DOCS,
+        DocumentSource.SCARB_DOCS,
+        DocumentSource.OPENZEPPELIN_DOCS,
+        DocumentSource.CAIRO_BY_EXAMPLE,
+    ]
+)
 def document_source(request):
     """Parametrized fixture for testing with different document sources."""
     return request.param
@@ -571,6 +584,7 @@ def max_source_count(request):
 # Event Loop Fixture
 # =============================================================================
 
+
 @pytest.fixture(scope="session")
 def event_loop():
     """
@@ -586,6 +600,7 @@ def event_loop():
 # =============================================================================
 # Cleanup Fixtures
 # =============================================================================
+
 
 @pytest.fixture(autouse=True)
 def cleanup_mocks():

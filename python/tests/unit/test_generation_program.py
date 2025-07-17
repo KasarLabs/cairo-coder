@@ -5,17 +5,16 @@ Tests the DSPy-based code generation functionality including Cairo code generati
 Scarb configuration, and MCP mode document formatting.
 """
 
-import pytest
 from unittest.mock import Mock, patch
-import asyncio
 
 import dspy
+import pytest
 
 from cairo_coder.core.types import Document, Message
 from cairo_coder.dspy.generation_program import (
+    CairoCodeGeneration,
     GenerationProgram,
     McpGenerationProgram,
-    CairoCodeGeneration,
     ScarbGeneration,
     create_generation_program,
     create_mcp_generation_program,
@@ -84,7 +83,7 @@ class TestGenerationProgram:
         result = generation_program.forward(query, context)
 
         # Result should be a dspy.Predict object with an answer attribute
-        assert hasattr(result, 'answer')
+        assert hasattr(result, "answer")
         assert isinstance(result.answer, str)
         assert len(result.answer) > 0
         assert "cairo" in result.answer.lower()
@@ -105,14 +104,13 @@ class TestGenerationProgram:
         result = generation_program.forward(query, context, chat_history)
 
         # Result should be a dspy.Predict object with an answer attribute
-        assert hasattr(result, 'answer')
+        assert hasattr(result, "answer")
         assert isinstance(result.answer, str)
         assert len(result.answer) > 0
 
         # Verify chat history was passed
         call_args = generation_program.generation_program.call_args[1]
         assert call_args["chat_history"] == chat_history
-
 
     def test_scarb_generation_program(self, scarb_generation_program):
         """Test Scarb-specific code generation."""
@@ -127,7 +125,7 @@ class TestGenerationProgram:
             result = scarb_generation_program.forward(query, context)
 
             # Result should be a dspy.Predict object with an answer attribute
-            assert hasattr(result, 'answer')
+            assert hasattr(result, "answer")
             assert isinstance(result.answer, str)
             assert "scarb" in result.answer.lower() or "toml" in result.answer.lower()
             mock_program.assert_called_once()

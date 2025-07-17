@@ -6,27 +6,27 @@ of the TypeScript backend at packages/backend/src/, providing the same OpenAI-co
 API endpoints and behaviors.
 """
 
-import asyncio
 import json
 import time
 import uuid
-from typing import Dict, List, Optional, Any, Union, AsyncGenerator
+from collections.abc import AsyncGenerator
+
 import dspy
-from datetime import datetime
-import traceback
-
-from cairo_coder.core.config import VectorStoreConfig
-from cairo_coder.core.rag_pipeline import AgentLoggingCallback, LangsmithTracingCallback, RagPipeline
-from fastapi import FastAPI, HTTPException, Request, Header, Depends
+from fastapi import FastAPI, Header, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import StreamingResponse, Response
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field, validator
-from cairo_coder.utils.logging import setup_logging, get_logger
 
-from cairo_coder.core.types import Message, StreamEvent, DocumentSource
-from cairo_coder.core.agent_factory import AgentFactory, create_agent_factory
 from cairo_coder.config.manager import ConfigManager
-
+from cairo_coder.core.agent_factory import create_agent_factory
+from cairo_coder.core.config import VectorStoreConfig
+from cairo_coder.core.rag_pipeline import (
+    AgentLoggingCallback,
+    LangsmithTracingCallback,
+    RagPipeline,
+)
+from cairo_coder.core.types import Message
+from cairo_coder.utils.logging import get_logger, setup_logging
 
 # Configure structured logging
 setup_logging()
@@ -36,45 +36,49 @@ logger = get_logger(__name__)
 # OpenAI-compatible Request/Response Models
 class ChatMessage(BaseModel):
     """OpenAI-compatible chat message."""
+
     role: str = Field(..., description="Message role: system, user, or assistant")
     content: str = Field(..., description="Message content")
-    name: Optional[str] = Field(None, description="Optional name for the message")
+    name: str | None = Field(None, description="Optional name for the message")
 
 
 class ChatCompletionRequest(BaseModel):
     """OpenAI-compatible chat completion request."""
-    messages: List[ChatMessage] = Field(..., description="List of messages")
+
+    messages: list[ChatMessage] = Field(..., description="List of messages")
     model: str = Field("cairo-coder", description="Model to use")
-    max_tokens: Optional[int] = Field(None, description="Maximum tokens to generate")
-    temperature: Optional[float] = Field(None, description="Temperature for generation")
-    top_p: Optional[float] = Field(None, description="Top-p for generation")
-    n: Optional[int] = Field(1, description="Number of completions")
-    stop: Optional[Union[str, List[str]]] = Field(None, description="Stop sequences")
-    presence_penalty: Optional[float] = Field(None, description="Presence penalty")
-    frequency_penalty: Optional[float] = Field(None, description="Frequency penalty")
-    logit_bias: Optional[Dict[str, float]] = Field(None, description="Logit bias")
-    user: Optional[str] = Field(None, description="User identifier")
+    max_tokens: int | None = Field(None, description="Maximum tokens to generate")
+    temperature: float | None = Field(None, description="Temperature for generation")
+    top_p: float | None = Field(None, description="Top-p for generation")
+    n: int | None = Field(1, description="Number of completions")
+    stop: str | list[str] | None = Field(None, description="Stop sequences")
+    presence_penalty: float | None = Field(None, description="Presence penalty")
+    frequency_penalty: float | None = Field(None, description="Frequency penalty")
+    logit_bias: dict[str, float] | None = Field(None, description="Logit bias")
+    user: str | None = Field(None, description="User identifier")
     stream: bool = Field(False, description="Whether to stream responses")
 
-    @validator('messages')
-    def validate_messages(cls, v):
+    @validator("messages")
+    def validate_messages(self, v):
         if not v:
-            raise ValueError('Messages array cannot be empty')
-        if v[-1].role != 'user':
-            raise ValueError('Last message must be from user')
+            raise ValueError("Messages array cannot be empty")
+        if v[-1].role != "user":
+            raise ValueError("Last message must be from user")
         return v
 
 
 class ChatCompletionChoice(BaseModel):
     """OpenAI-compatible chat completion choice."""
+
     index: int = Field(..., description="Choice index")
-    message: Optional[ChatMessage] = Field(None, description="Generated message")
-    delta: Optional[ChatMessage] = Field(None, description="Delta for streaming")
-    finish_reason: Optional[str] = Field(None, description="Reason for finishing")
+    message: ChatMessage | None = Field(None, description="Generated message")
+    delta: ChatMessage | None = Field(None, description="Delta for streaming")
+    finish_reason: str | None = Field(None, description="Reason for finishing")
 
 
 class ChatCompletionUsage(BaseModel):
     """OpenAI-compatible usage statistics."""
+
     prompt_tokens: int = Field(..., description="Tokens in prompt")
     completion_tokens: int = Field(..., description="Tokens in completion")
     total_tokens: int = Field(..., description="Total tokens")
@@ -82,32 +86,36 @@ class ChatCompletionUsage(BaseModel):
 
 class ChatCompletionResponse(BaseModel):
     """OpenAI-compatible chat completion response."""
+
     id: str = Field(..., description="Response ID")
     object: str = Field("chat.completion", description="Object type")
     created: int = Field(..., description="Creation timestamp")
     model: str = Field("cairo-coder", description="Model used")
-    choices: List[ChatCompletionChoice] = Field(..., description="Completion choices")
-    usage: Optional[ChatCompletionUsage] = Field(None, description="Usage statistics")
+    choices: list[ChatCompletionChoice] = Field(..., description="Completion choices")
+    usage: ChatCompletionUsage | None = Field(None, description="Usage statistics")
 
 
 class AgentInfo(BaseModel):
     """Agent information model."""
+
     id: str = Field(..., description="Agent ID")
     name: str = Field(..., description="Agent name")
     description: str = Field(..., description="Agent description")
-    sources: List[str] = Field(..., description="Document sources")
+    sources: list[str] = Field(..., description="Document sources")
 
 
 class ErrorDetail(BaseModel):
     """OpenAI-compatible error detail."""
+
     message: str = Field(..., description="Error message")
     type: str = Field(..., description="Error type")
-    code: Optional[str] = Field(None, description="Error code")
-    param: Optional[str] = Field(None, description="Parameter name")
+    code: str | None = Field(None, description="Error code")
+    param: str | None = Field(None, description="Parameter name")
 
 
 class ErrorResponse(BaseModel):
     """OpenAI-compatible error response."""
+
     error: ErrorDetail = Field(..., description="Error details")
 
 
@@ -120,7 +128,9 @@ class CairoCoderServer:
     DSPy-based RAG pipeline.
     """
 
-    def __init__(self, vector_store_config: VectorStoreConfig, config_manager: Optional[ConfigManager] = None):
+    def __init__(
+        self, vector_store_config: VectorStoreConfig, config_manager: ConfigManager | None = None
+    ):
         """
         Initialize the Cairo Coder server.
 
@@ -131,15 +141,14 @@ class CairoCoderServer:
         self.vector_store_config = vector_store_config
         self.config_manager = config_manager or ConfigManager()
         self.agent_factory = create_agent_factory(
-            vector_store_config=vector_store_config,
-            config_manager=self.config_manager
+            vector_store_config=vector_store_config, config_manager=self.config_manager
         )
 
         # Initialize FastAPI app
         self.app = FastAPI(
             title="Cairo Coder",
             description="OpenAI-compatible API for Cairo programming assistance",
-            version="1.0.0"
+            version="1.0.0",
         )
 
         # Configure CORS - allow all origins like TypeScript backend
@@ -181,12 +190,14 @@ class CairoCoderServer:
                 for agent_id in available_agents:
                     try:
                         info = self.agent_factory.get_agent_info(agent_id)
-                        agents_info.append(AgentInfo(
-                            id=info['id'],
-                            name=info['name'],
-                            description=info['description'],
-                            sources=info['sources']
-                        ))
+                        agents_info.append(
+                            AgentInfo(
+                                id=info["id"],
+                                name=info["name"],
+                                description=info["description"],
+                                sources=info["sources"],
+                            )
+                        )
                     except Exception as e:
                         logger.warning("Failed to get agent info", agent_id=agent_id, error=str(e))
 
@@ -195,35 +206,37 @@ class CairoCoderServer:
                 logger.error("Failed to list agents", error=str(e))
                 raise HTTPException(
                     status_code=500,
-                    detail=ErrorResponse(error=ErrorDetail(
-                        message="Failed to list agents",
-                        type="server_error",
-                        code="internal_error"
-                    )).dict()
-                )
+                    detail=ErrorResponse(
+                        error=ErrorDetail(
+                            message="Failed to list agents",
+                            type="server_error",
+                            code="internal_error",
+                        )
+                    ).dict()) from e
 
         @self.app.post("/v1/agents/{agent_id}/chat/completions")
         async def agent_chat_completions(
             agent_id: str,
             request: ChatCompletionRequest,
             req: Request,
-            mcp: Optional[str] = Header(None),
-            x_mcp_mode: Optional[str] = Header(None, alias="x-mcp-mode")
+            mcp: str | None = Header(None),
+            x_mcp_mode: str | None = Header(None, alias="x-mcp-mode"),
         ):
             """Agent-specific chat completions - matches TypeScript backend."""
             # Validate agent exists
             try:
                 self.agent_factory.get_agent_info(agent_id)
-            except ValueError:
+            except ValueError as e:
                 raise HTTPException(
                     status_code=404,
-                    detail=ErrorResponse(error=ErrorDetail(
-                        message=f"Agent '{agent_id}' not found",
-                        type="invalid_request_error",
-                        code="agent_not_found",
-                        param="agent_id"
-                    )).dict()
-                )
+                    detail=ErrorResponse(
+                        error=ErrorDetail(
+                            message=f"Agent '{agent_id}' not found",
+                            type="invalid_request_error",
+                            code="agent_not_found",
+                            param="agent_id",
+                        )
+                    ).dict()) from e
 
             # Determine MCP mode
             mcp_mode = bool(mcp or x_mcp_mode)
@@ -231,11 +244,11 @@ class CairoCoderServer:
             return await self._handle_chat_completion(request, req, agent_id, mcp_mode)
 
         @self.app.post("/v1/chat/completions")
-        async def chat_completions(
+        async def v1_chat_completions(
             request: ChatCompletionRequest,
             req: Request,
-            mcp: Optional[str] = Header(None),
-            x_mcp_mode: Optional[str] = Header(None, alias="x-mcp-mode")
+            mcp: str | None = Header(None),
+            x_mcp_mode: str | None = Header(None, alias="x-mcp-mode"),
         ):
             """Legacy chat completions endpoint - matches TypeScript backend."""
             # Determine MCP mode
@@ -247,8 +260,8 @@ class CairoCoderServer:
         async def chat_completions(
             request: ChatCompletionRequest,
             req: Request,
-            mcp: Optional[str] = Header(None),
-            x_mcp_mode: Optional[str] = Header(None, alias="x-mcp-mode")
+            mcp: str | None = Header(None),
+            x_mcp_mode: str | None = Header(None, alias="x-mcp-mode"),
         ):
             """Legacy chat completions endpoint - matches TypeScript backend."""
             # Determine MCP mode
@@ -260,8 +273,8 @@ class CairoCoderServer:
         self,
         request: ChatCompletionRequest,
         req: Request,
-        agent_id: Optional[str] = None,
-        mcp_mode: bool = False
+        agent_id: str | None = None,
+        mcp_mode: bool = False,
     ):
         """Handle chat completion request - replicates TypeScript chatCompletionHandler."""
         try:
@@ -284,14 +297,14 @@ class CairoCoderServer:
                     agent_id=agent_id,
                     query=query,
                     history=messages[:-1],  # Exclude last message
-                    mcp_mode=mcp_mode
+                    mcp_mode=mcp_mode,
                 )
             else:
                 agent = self.agent_factory.create_agent(
                     query=query,
                     history=messages[:-1],  # Exclude last message
                     vector_store_config=self.vector_store_config,
-                    mcp_mode=mcp_mode
+                    mcp_mode=mcp_mode,
                 )
 
             # Handle streaming vs non-streaming
@@ -302,40 +315,35 @@ class CairoCoderServer:
                     headers={
                         "Cache-Control": "no-cache",
                         "Connection": "keep-alive",
-                        "X-Accel-Buffering": "no"
-                    }
+                        "X-Accel-Buffering": "no",
+                    },
                 )
-            else:
-                return self._generate_chat_completion(agent, query, messages[:-1], mcp_mode)
+            return self._generate_chat_completion(agent, query, messages[:-1], mcp_mode)
 
         except ValueError as e:
             raise HTTPException(
                 status_code=400,
-                detail=ErrorResponse(error=ErrorDetail(
-                    message=str(e),
-                    type="invalid_request_error",
-                    code="invalid_request"
-                )).dict()
-            )
+                detail=ErrorResponse(
+                    error=ErrorDetail(
+                        message=str(e), type="invalid_request_error", code="invalid_request"
+                    )
+                ).dict()) from e
+
         except Exception as e:
             import traceback
+
             traceback.print_exc()
             logger.error("Error in chat completion", error=str(e))
             raise HTTPException(
                 status_code=500,
-                detail=ErrorResponse(error=ErrorDetail(
-                    message="Internal server error",
-                    type="server_error",
-                    code="internal_error"
-                )).dict()
-            )
+                detail=ErrorResponse(
+                    error=ErrorDetail(
+                        message="Internal server error", type="server_error", code="internal_error"
+                    )
+                ).dict()) from e
 
     async def _stream_chat_completion(
-        self,
-        agent,
-        query: str,
-        history: List[Message],
-        mcp_mode: bool
+        self, agent, query: str, history: list[Message], mcp_mode: bool
     ) -> AsyncGenerator[str, None]:
         """Stream chat completion response - replicates TypeScript streaming."""
         response_id = str(uuid.uuid4())
@@ -347,26 +355,19 @@ class CairoCoderServer:
             "object": "chat.completion.chunk",
             "created": created,
             "model": "cairo-coder",
-            "choices": [{
-                "index": 0,
-                "delta": {"role": "assistant"},
-                "finish_reason": None
-            }]
+            "choices": [{"index": 0, "delta": {"role": "assistant"}, "finish_reason": None}],
         }
         yield f"data: {json.dumps(initial_chunk)}\n\n"
 
         # Process agent and stream responses
-        sources_data = None
         content_buffer = ""
 
         try:
             async for event in agent.forward_streaming(
-                query=query,
-                chat_history=history,
-                mcp_mode=mcp_mode
+                query=query, chat_history=history, mcp_mode=mcp_mode
             ):
                 if event.type == "sources":
-                    sources_data = event.data
+                    pass
                 elif event.type == "response":
                     content_buffer += event.data
 
@@ -376,11 +377,9 @@ class CairoCoderServer:
                         "object": "chat.completion.chunk",
                         "created": created,
                         "model": "cairo-coder",
-                        "choices": [{
-                            "index": 0,
-                            "delta": {"content": event.data},
-                            "finish_reason": None
-                        }]
+                        "choices": [
+                            {"index": 0, "delta": {"content": event.data}, "finish_reason": None}
+                        ],
                     }
                     yield f"data: {json.dumps(chunk)}\n\n"
                 elif event.type == "end":
@@ -393,11 +392,13 @@ class CairoCoderServer:
                 "object": "chat.completion.chunk",
                 "created": created,
                 "model": "cairo-coder",
-                "choices": [{
-                    "index": 0,
-                    "delta": {"content": f"\n\nError: {str(e)}"},
-                    "finish_reason": "stop"
-                }]
+                "choices": [
+                    {
+                        "index": 0,
+                        "delta": {"content": f"\n\nError: {str(e)}"},
+                        "finish_reason": "stop",
+                    }
+                ],
             }
             yield f"data: {json.dumps(error_chunk)}\n\n"
 
@@ -407,21 +408,13 @@ class CairoCoderServer:
             "object": "chat.completion.chunk",
             "created": created,
             "model": "cairo-coder",
-            "choices": [{
-                "index": 0,
-                "delta": {},
-                "finish_reason": "stop"
-            }]
+            "choices": [{"index": 0, "delta": {}, "finish_reason": "stop"}],
         }
         yield f"data: {json.dumps(final_chunk)}\n\n"
         yield "data: [DONE]\n\n"
 
     def _generate_chat_completion(
-        self,
-        agent: RagPipeline,
-        query: str,
-        history: List[Message],
-        mcp_mode: bool
+        self, agent: RagPipeline, query: str, history: list[Message], mcp_mode: bool
     ) -> ChatCompletionResponse:
         """Generate non-streaming chat completion response."""
         response_id = str(uuid.uuid4())
@@ -430,17 +423,10 @@ class CairoCoderServer:
         # Process agent and collect response
         # Create random session id
         thread_id = str(uuid.uuid4())
-        langsmith_extra = {
-            "metadata": {
-                "thread_id": thread_id
-            }
-        }
+        langsmith_extra = {"metadata": {"thread_id": thread_id}}
         response = agent.forward(
-                query=query,
-                chat_history=history,
-                mcp_mode=mcp_mode,
-                langsmith_extra=langsmith_extra
-            )
+            query=query, chat_history=history, mcp_mode=mcp_mode, langsmith_extra=langsmith_extra
+        )
 
         answer = response.answer
 
@@ -449,7 +435,9 @@ class CairoCoderServer:
         lm_usage = response.get_lm_usage()
         # Aggregate, for all entries, together the prompt_tokens, completion_tokens, total_tokens fields
         total_prompt_tokens = sum(entry.get("prompt_tokens", 0) for entry in lm_usage.values())
-        total_completion_tokens = sum(entry.get("completion_tokens", 0) for entry in lm_usage.values())
+        total_completion_tokens = sum(
+            entry.get("completion_tokens", 0) for entry in lm_usage.values()
+        )
         total_tokens = sum(entry.get("total_tokens", 0) for entry in lm_usage.values())
 
         return ChatCompletionResponse(
@@ -459,14 +447,14 @@ class CairoCoderServer:
                 ChatCompletionChoice(
                     index=0,
                     message=ChatMessage(role="assistant", content=answer),
-                    finish_reason="stop"
+                    finish_reason="stop",
                 )
             ],
             usage=ChatCompletionUsage(
                 prompt_tokens=total_prompt_tokens,
                 completion_tokens=total_completion_tokens,
-                total_tokens=total_tokens
-            )
+                total_tokens=total_tokens,
+            ),
         )
 
 
@@ -482,23 +470,23 @@ class TokenTracker:
             self.sessions[session_id] = {
                 "prompt_tokens": 0,
                 "completion_tokens": 0,
-                "total_tokens": 0
+                "total_tokens": 0,
             }
 
         self.sessions[session_id]["prompt_tokens"] += prompt_tokens
         self.sessions[session_id]["completion_tokens"] += completion_tokens
         self.sessions[session_id]["total_tokens"] += prompt_tokens + completion_tokens
 
-    def get_session_usage(self, session_id: str) -> Dict[str, int]:
+    def get_session_usage(self, session_id: str) -> dict[str, int]:
         """Get session token usage."""
-        return self.sessions.get(session_id, {
-            "prompt_tokens": 0,
-            "completion_tokens": 0,
-            "total_tokens": 0
-        })
+        return self.sessions.get(
+            session_id, {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}
+        )
 
 
-def create_app(vector_store_config: VectorStoreConfig, config_manager: Optional[ConfigManager] = None) -> FastAPI:
+def create_app(
+    vector_store_config: VectorStoreConfig, config_manager: ConfigManager | None = None
+) -> FastAPI:
     """
     Create FastAPI application.
 
@@ -522,36 +510,37 @@ def get_vector_store_config() -> VectorStoreConfig:
     """
     # This would be configured based on your setup
     from cairo_coder.core.config import VectorStoreConfig
+
     config = ConfigManager.load_config()
 
     # Load from environment or config
-    vector_store_config = VectorStoreConfig(
+
+    return VectorStoreConfig(
         host=config.vector_store.host,
         port=config.vector_store.port,
         database=config.vector_store.database,
         user=config.vector_store.user,
         password=config.vector_store.password,
         table_name=config.vector_store.table_name,
-        similarity_measure=config.vector_store.similarity_measure
+        similarity_measure=config.vector_store.similarity_measure,
     )
-
-    return vector_store_config
 
 
 # Create FastAPI app instance
 app = create_app(get_vector_store_config())
 
+
 def main():
     import argparse
+
     import uvicorn
-    import dspy
 
     parser = argparse.ArgumentParser(description="Cairo Coder Server")
     parser.add_argument("--dev", action="store_true", help="Enable development mode with reload")
     parser.add_argument("--workers", type=int, default=5, help="Number of workers to run")
     args = parser.parse_args()
 
-    config = ConfigManager.load_config()
+    ConfigManager.load_config()
     # TODO: configure DSPy with the proper LM.
     # TODO: Find a proper pattern for it?
     # TODO: multi-model management?
@@ -561,7 +550,7 @@ def main():
         port=3001,
         reload=args.dev,
         log_level="info",
-        workers=args.workers
+        workers=args.workers,
     )
 
 

@@ -2,10 +2,9 @@
 
 import os
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any
 
 import toml
-from pydantic_settings import BaseSettings
 
 from ..core.config import (
     AgentConfiguration,
@@ -13,11 +12,12 @@ from ..core.config import (
     VectorStoreConfig,
 )
 
+
 class ConfigManager:
     """Manages application configuration from TOML files and environment variables."""
 
     @staticmethod
-    def load_config(config_path: Optional[Path] = None) -> Config:
+    def load_config(config_path: Path | None = None) -> Config:
         """
         Load configuration from TOML file and environment variables.
 
@@ -39,13 +39,12 @@ class ConfigManager:
         # Validate config
 
         # Load base configuration from TOML
-        config_dict: Dict[str, Any] = {}
+        config_dict: dict[str, Any] = {}
         if config_path:
-            with open(config_path, "r") as f:
+            with open(config_path) as f:
                 config_dict = toml.load(f)
 
-
-        if not "VECTOR_DB" in config_dict:
+        if "VECTOR_DB" not in config_dict:
             raise ValueError("VECTOR_DB section is required in config.toml")
 
         # Update vector store settings
@@ -64,23 +63,25 @@ class ConfigManager:
         if os.getenv("POSTGRES_HOST") is not None:
             vector_store_config.host = os.getenv("POSTGRES_HOST", vector_store_config.host)
         if os.getenv("POSTGRES_PORT") is not None:
-            vector_store_config.port = int(os.getenv("POSTGRES_PORT", str(vector_store_config.port)))
+            vector_store_config.port = int(
+                os.getenv("POSTGRES_PORT", str(vector_store_config.port))
+            )
         if os.getenv("POSTGRES_DB") is not None:
             vector_store_config.database = os.getenv("POSTGRES_DB", vector_store_config.database)
         if os.getenv("POSTGRES_USER") is not None:
             vector_store_config.user = os.getenv("POSTGRES_USER", vector_store_config.user)
         if os.getenv("POSTGRES_PASSWORD") is not None:
-            vector_store_config.password = os.getenv("POSTGRES_PASSWORD", vector_store_config.password)
+            vector_store_config.password = os.getenv(
+                "POSTGRES_PASSWORD", vector_store_config.password
+            )
 
-        config = Config(
+        return Config(
             vector_store=vector_store_config,
             default_agent_id="cairo-coder",
         )
 
-        return config
-
     @staticmethod
-    def get_agent_config(config: Config, agent_id: Optional[str] = None) -> AgentConfiguration:
+    def get_agent_config(config: Config, agent_id: str | None = None) -> AgentConfiguration:
         """
         Get agent configuration by ID.
 
@@ -124,4 +125,6 @@ class ConfigManager:
 
         # Check default agent exists
         if config.default_agent_id not in config.agents:
-            raise ValueError(f"Default agent '{config.default_agent_id}' not found in configuration")
+            raise ValueError(
+                f"Default agent '{config.default_agent_id}' not found in configuration"
+            )

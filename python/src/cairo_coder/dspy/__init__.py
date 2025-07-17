@@ -7,7 +7,6 @@ This package contains DSPy-based programs for the Cairo Coder RAG pipeline:
 - GenerationProgram: Generates Cairo code responses from retrieved context
 """
 
-from .query_processor import QueryProcessorProgram, create_query_processor
 from .document_retriever import DocumentRetrieverProgram
 from .generation_program import (
     GenerationProgram,
@@ -15,6 +14,7 @@ from .generation_program import (
     create_generation_program,
     create_mcp_generation_program,
 )
+from .query_processor import QueryProcessorProgram, create_query_processor
 
 __all__ = [
     "QueryProcessorProgram",

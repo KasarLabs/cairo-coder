@@ -5,13 +5,13 @@ Tests the DSPy-based query processing functionality including search term extrac
 resource identification, and query categorization.
 """
 
-from typing import List
 from unittest.mock import Mock, patch
-import pytest
+
 import dspy
+import pytest
 
 from cairo_coder.core.types import DocumentSource, ProcessedQuery
-from cairo_coder.dspy.query_processor import QueryProcessorProgram, CairoQueryAnalysis
+from cairo_coder.dspy.query_processor import CairoQueryAnalysis, QueryProcessorProgram
 
 
 class TestQueryProcessorProgram:
@@ -23,10 +23,10 @@ class TestQueryProcessorProgram:
         mock = Mock()
         mock.forward.return_value = dspy.Prediction(
             search_queries=["cairo, contract, storage, variable"],
-            resources="cairo_book, starknet_docs"
+            resources="cairo_book, starknet_docs",
         )
 
-        with patch('dspy.ChainOfThought') as mock_cot:
+        with patch("dspy.ChainOfThought") as mock_cot:
             mock_cot.return_value = mock
             yield mock
 
@@ -53,7 +53,7 @@ class TestQueryProcessorProgram:
     def test_resource_validation(self, processor: QueryProcessorProgram):
         """Test validation of resource strings."""
         # Test valid resources
-        resources: List[str] = ["cairo_book", "starknet_docs", "openzeppelin_docs"]
+        resources: list[str] = ["cairo_book", "starknet_docs", "openzeppelin_docs"]
         validated = processor._validate_resources(resources)
 
         assert DocumentSource.CAIRO_BOOK in validated
@@ -61,19 +61,18 @@ class TestQueryProcessorProgram:
         assert DocumentSource.OPENZEPPELIN_DOCS in validated
 
         # Test invalid resources with fallback
-        resources: List[str] = ["invalid_source", "another_invalid"]
+        resources: list[str] = ["invalid_source", "another_invalid"]
         validated = processor._validate_resources(resources)
 
         assert validated == [DocumentSource.CAIRO_BOOK]  # Default fallback
 
         # Test mixed valid and invalid
-        resources: List[str] = ["cairo_book", "invalid_source", "starknet_docs"]
+        resources: list[str] = ["cairo_book", "invalid_source", "starknet_docs"]
         validated = processor._validate_resources(resources)
 
         assert DocumentSource.CAIRO_BOOK in validated
         assert DocumentSource.STARKNET_DOCS in validated
         assert len(validated) == 2
-
 
     def test_test_detection(self, processor):
         """Test detection of test-related queries."""
@@ -82,7 +81,7 @@ class TestQueryProcessorProgram:
             "Unit testing best practices",
             "How to assert in Cairo tests?",
             "Mock setup for integration tests",
-            "Test fixture configuration"
+            "Test fixture configuration",
         ]
 
         for query in test_queries:
@@ -91,7 +90,7 @@ class TestQueryProcessorProgram:
         non_test_queries = [
             "How to create a contract?",
             "What are Cairo data types?",
-            "StarkNet deployment guide"
+            "StarkNet deployment guide",
         ]
 
         for query in non_test_queries:
@@ -99,16 +98,14 @@ class TestQueryProcessorProgram:
 
     def test_empty_query_handling(self, processor):
         """Test handling of empty or whitespace queries."""
-        with patch.object(processor, 'retrieval_program') as mock_program:
-            mock_program.return_value = dspy.Prediction(
-                search_terms="",
-                resources=""
-            )
+        with patch.object(processor, "retrieval_program") as mock_program:
+            mock_program.return_value = dspy.Prediction(search_terms="", resources="")
 
             result = processor.forward("")
 
             assert result.original == ""
             assert result.resources == [DocumentSource.CAIRO_BOOK]  # Default fallback
+
 
 class TestCairoQueryAnalysis:
     """Test suite for CairoQueryAnalysis signature."""
@@ -118,30 +115,30 @@ class TestCairoQueryAnalysis:
         signature = CairoQueryAnalysis
 
         # Check model fields exist
-        assert 'chat_history' in signature.model_fields
-        assert 'query' in signature.model_fields
-        assert 'search_queries' in signature.model_fields
-        assert 'resources' in signature.model_fields
+        assert "chat_history" in signature.model_fields
+        assert "query" in signature.model_fields
+        assert "search_queries" in signature.model_fields
+        assert "resources" in signature.model_fields
 
         # Check field types
-        chat_history_field = signature.model_fields['chat_history']
-        query_field = signature.model_fields['query']
-        search_terms_field = signature.model_fields['search_queries']
-        resources_field = signature.model_fields['resources']
+        chat_history_field = signature.model_fields["chat_history"]
+        query_field = signature.model_fields["query"]
+        search_terms_field = signature.model_fields["search_queries"]
+        resources_field = signature.model_fields["resources"]
 
-        assert chat_history_field.json_schema_extra['__dspy_field_type'] == 'input'
-        assert query_field.json_schema_extra['__dspy_field_type'] == 'input'
-        assert search_terms_field.json_schema_extra['__dspy_field_type'] == 'output'
-        assert resources_field.json_schema_extra['__dspy_field_type'] == 'output'
+        assert chat_history_field.json_schema_extra["__dspy_field_type"] == "input"
+        assert query_field.json_schema_extra["__dspy_field_type"] == "input"
+        assert search_terms_field.json_schema_extra["__dspy_field_type"] == "output"
+        assert resources_field.json_schema_extra["__dspy_field_type"] == "output"
 
     def test_field_descriptions(self):
         """Test that fields have meaningful descriptions."""
         signature = CairoQueryAnalysis
 
-        chat_history_desc = signature.model_fields['chat_history'].json_schema_extra['desc']
-        query_desc = signature.model_fields['query'].json_schema_extra['desc']
-        search_queries_desc = signature.model_fields['search_queries'].json_schema_extra['desc']
-        resources_desc = signature.model_fields['resources'].json_schema_extra['desc']
+        chat_history_desc = signature.model_fields["chat_history"].json_schema_extra["desc"]
+        query_desc = signature.model_fields["query"].json_schema_extra["desc"]
+        search_queries_desc = signature.model_fields["search_queries"].json_schema_extra["desc"]
+        resources_desc = signature.model_fields["resources"].json_schema_extra["desc"]
 
         assert "conversation context" in chat_history_desc.lower()
         assert "cairo" in query_desc.lower()

@@ -5,17 +5,17 @@ This module implements the GenerationProgram that generates Cairo code responses
 based on user queries and retrieved documentation context.
 """
 
-from typing import List, Optional, AsyncGenerator, Dict
-import asyncio
+from collections.abc import AsyncGenerator
 
 import dspy
-from dspy import InputField, OutputField, Signature
-
-from cairo_coder.core.types import Document, Message, StreamEvent
-from langsmith import traceable
 import structlog
+from dspy import InputField, OutputField, Signature
+from langsmith import traceable
+
+from cairo_coder.core.types import Document, Message
 
 logger = structlog.get_logger(__name__)
+
 
 # TODO: Find a way to properly "erase" common mistakes like PrintTrait imports.
 class CairoCodeGeneration(Signature):
@@ -36,9 +36,8 @@ class CairoCodeGeneration(Signature):
     However, most `core` library imports are already included (like panic, println, etc.) - dont include them if they're not explicitly mentioned in the context.
     """
 
-    chat_history: Optional[str] = InputField(
-        desc="Previous conversation context for continuity and better understanding",
-        default=""
+    chat_history: str | None = InputField(
+        desc="Previous conversation context for continuity and better understanding", default=""
     )
 
     query: str = InputField(
@@ -61,18 +60,11 @@ class ScarbGeneration(Signature):
     This signature is specialized for Scarb build tool related queries.
     """
 
-    chat_history: Optional[str] = InputField(
-        desc="Previous conversation context",
-        default=""
-    )
+    chat_history: str | None = InputField(desc="Previous conversation context", default="")
 
-    query: str = InputField(
-        desc="User's Scarb-related question or request"
-    )
+    query: str = InputField(desc="User's Scarb-related question or request")
 
-    context: str = InputField(
-        desc="Scarb documentation and examples relevant to the query"
-    )
+    context: str = InputField(desc="Scarb documentation and examples relevant to the query")
 
     answer: str = OutputField(
         desc="Scarb commands, TOML configurations, or troubleshooting steps with proper formatting and explanations"
@@ -103,26 +95,26 @@ class GenerationProgram(dspy.Module):
                 ScarbGeneration,
                 rationale_field=dspy.OutputField(
                     prefix="Reasoning: Let me analyze the Scarb requirements step by step.",
-                    desc="Step-by-step analysis of the Scarb task and solution approach"
-                )
+                    desc="Step-by-step analysis of the Scarb task and solution approach",
+                ),
             )
         else:
             self.generation_program = dspy.ChainOfThought(
                 CairoCodeGeneration,
                 rationale_field=dspy.OutputField(
                     prefix="Reasoning: Let me analyze the Cairo requirements step by step.",
-                    desc="Step-by-step analysis of the Cairo programming task and solution approach"
-                )
+                    desc="Step-by-step analysis of the Cairo programming task and solution approach",
+                ),
             )
 
-    def get_lm_usage(self) -> Dict[str, int]:
+    def get_lm_usage(self) -> dict[str, int]:
         """
         Get the total number of tokens used by the LLM.
         """
         return self.generation_program.get_lm_usage()
 
     @traceable(name="GenerationProgram", run_type="llm")
-    def forward(self, query: str, context: str, chat_history: Optional[str] = None) -> dspy.Predict:
+    def forward(self, query: str, context: str, chat_history: str | None = None) -> dspy.Predict:
         """
         Generate Cairo code response based on query and context.
 
@@ -138,16 +130,11 @@ class GenerationProgram(dspy.Module):
             chat_history = ""
 
         # Execute the generation program
-        result = self.generation_program(
-            query=query,
-            context=context,
-            chat_history=chat_history
-        )
+        return self.generation_program(query=query, context=context, chat_history=chat_history)
 
-        return result
-
-    async def forward_streaming(self, query: str, context: str,
-                              chat_history: Optional[str] = None) -> AsyncGenerator[str, None]:
+    async def forward_streaming(
+        self, query: str, context: str, chat_history: str | None = None
+    ) -> AsyncGenerator[str, None]:
         """
         Generate Cairo code response with streaming support using DSPy's native streaming.
 
@@ -165,15 +152,13 @@ class GenerationProgram(dspy.Module):
         # Create a streamified version of the generation program
         stream_generation = dspy.streamify(
             self.generation_program,
-            stream_listeners=[dspy.streaming.StreamListener(signature_field_name="answer")]
+            stream_listeners=[dspy.streaming.StreamListener(signature_field_name="answer")],
         )
 
         try:
             # Execute the streaming generation
             output_stream = stream_generation(
-                query=query,
-                context=context,
-                chat_history=chat_history
+                query=query, context=context, chat_history=chat_history
             )
 
             # Process the stream and yield tokens
@@ -192,8 +177,7 @@ class GenerationProgram(dspy.Module):
         except Exception as e:
             yield f"Error generating response: {str(e)}"
 
-
-    def _format_chat_history(self, chat_history: List[Message]) -> str:
+    def _format_chat_history(self, chat_history: list[Message]) -> str:
         """
         Format chat history for inclusion in the generation prompt.
 
@@ -225,7 +209,7 @@ class McpGenerationProgram(dspy.Module):
     def __init__(self):
         super().__init__()
 
-    def forward(self, documents: List[Document]) -> str:
+    def forward(self, documents: list[Document]) -> str:
         """
         Format documents for MCP mode response.
 
@@ -240,9 +224,9 @@ class McpGenerationProgram(dspy.Module):
 
         formatted_docs = []
         for i, doc in enumerate(documents, 1):
-            source = doc.metadata.get('source_display', 'Unknown Source')
-            url = doc.metadata.get('url', '#')
-            title = doc.metadata.get('title', f'Document {i}')
+            source = doc.metadata.get("source_display", "Unknown Source")
+            url = doc.metadata.get("url", "#")
+            title = doc.metadata.get("title", f"Document {i}")
 
             formatted_doc = f"""
 ## {i}. {title}

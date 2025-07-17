@@ -6,19 +6,17 @@ functionality, ensuring API compatibility and correct behavior.
 """
 
 import json
-from cairo_coder.core.config import VectorStoreConfig
-import pytest
-from unittest.mock import Mock, AsyncMock, patch, MagicMock
-from fastapi.testclient import TestClient
-from fastapi import FastAPI
 import uuid
-from typing import Dict, Any, List, AsyncGenerator
+from unittest.mock import AsyncMock, Mock, patch
 
-from cairo_coder.server.app import CairoCoderServer, create_app
-from cairo_coder.core.vector_store import VectorStore
-from cairo_coder.core.types import Message, StreamEvent, DocumentSource
+import pytest
+from fastapi import FastAPI
+from fastapi.testclient import TestClient
+
 from cairo_coder.config.manager import ConfigManager
-import dspy
+from cairo_coder.core.config import VectorStoreConfig
+from cairo_coder.core.types import Message, StreamEvent
+from cairo_coder.server.app import CairoCoderServer, create_app
 
 
 class TestCairoCoderServer:
@@ -27,15 +25,17 @@ class TestCairoCoderServer:
     @pytest.fixture
     def server(self, mock_vector_store_config, mock_config_manager):
         """Create a CairoCoderServer instance for testing."""
-        with patch('cairo_coder.server.app.create_agent_factory') as mock_factory_creator:
+        with patch("cairo_coder.server.app.create_agent_factory") as mock_factory_creator:
             mock_factory = Mock()
             mock_factory.get_available_agents = Mock(return_value=["cairo-coder"])
-            mock_factory.get_agent_info = Mock(return_value={
-                "id": "cairo-coder",
-                "name": "Cairo Coder",
-                "description": "Cairo programming assistant",
-                "sources": ["cairo-docs"]
-            })
+            mock_factory.get_agent_info = Mock(
+                return_value={
+                    "id": "cairo-coder",
+                    "name": "Cairo Coder",
+                    "description": "Cairo programming assistant",
+                    "sources": ["cairo-docs"],
+                }
+            )
             mock_factory_creator.return_value = mock_factory
 
             server = CairoCoderServer(mock_vector_store_config, mock_config_manager)
@@ -79,29 +79,30 @@ class TestCairoCoderServer:
 
     def test_chat_completions_validation_empty_messages(self, client):
         """Test validation of empty messages array."""
-        response = client.post("/v1/chat/completions", json={
-            "messages": []
-        })
+        response = client.post("/v1/chat/completions", json={"messages": []})
         assert response.status_code == 422  # Pydantic validation error
 
     def test_chat_completions_validation_last_message_not_user(self, client):
         """Test validation that last message must be from user."""
-        response = client.post("/v1/chat/completions", json={
-            "messages": [
-                {"role": "user", "content": "Hello"},
-                {"role": "assistant", "content": "Hi there!"}
-            ]
-        })
+        response = client.post(
+            "/v1/chat/completions",
+            json={
+                "messages": [
+                    {"role": "user", "content": "Hello"},
+                    {"role": "assistant", "content": "Hi there!"},
+                ]
+            },
+        )
         assert response.status_code == 422  # Pydantic validation error
 
     def test_chat_completions_non_streaming(self, client, server, mock_agent):
         """Test non-streaming chat completions."""
         server.agent_factory.create_agent = Mock(return_value=mock_agent)
 
-        response = client.post("/v1/chat/completions", json={
-            "messages": [{"role": "user", "content": "Hello"}],
-            "stream": False
-        })
+        response = client.post(
+            "/v1/chat/completions",
+            json={"messages": [{"role": "user", "content": "Hello"}], "stream": False},
+        )
 
         assert response.status_code == 200
         data = response.json()
@@ -114,7 +115,10 @@ class TestCairoCoderServer:
         assert len(data["choices"]) == 1
         assert data["choices"][0]["index"] == 0
         assert data["choices"][0]["message"]["role"] == "assistant"
-        assert "Hello! I'm Cairo Coder. How can I help you?" in data["choices"][0]["message"]["content"]
+        assert (
+            "Hello! I'm Cairo Coder. How can I help you?"
+            in data["choices"][0]["message"]["content"]
+        )
         assert data["choices"][0]["finish_reason"] == "stop"
         assert "usage" in data
         assert data["usage"]["total_tokens"] > 0
@@ -123,21 +127,21 @@ class TestCairoCoderServer:
         """Test streaming chat completions."""
         server.agent_factory.create_agent = Mock(return_value=mock_agent)
 
-        response = client.post("/v1/chat/completions", json={
-            "messages": [{"role": "user", "content": "Hello"}],
-            "stream": True
-        })
+        response = client.post(
+            "/v1/chat/completions",
+            json={"messages": [{"role": "user", "content": "Hello"}], "stream": True},
+        )
 
         assert response.status_code == 200
         assert response.headers["content-type"] == "text/event-stream; charset=utf-8"
 
         # Parse streaming response
-        lines = response.text.strip().split('\n')
+        lines = response.text.strip().split("\n")
         chunks = []
         for line in lines:
-            if line.startswith('data: '):
+            if line.startswith("data: "):
                 data_str = line[6:]  # Remove 'data: ' prefix
-                if data_str != '[DONE]':
+                if data_str != "[DONE]":
                     chunks.append(json.loads(data_str))
 
         # Verify streaming chunks
@@ -157,18 +161,20 @@ class TestCairoCoderServer:
 
     def test_agent_chat_completions_valid_agent(self, client, server, mock_agent):
         """Test agent-specific chat completions with valid agent."""
-        server.agent_factory.get_agent_info = Mock(return_value={
-            "id": "cairo-coder",
-            "name": "Cairo Coder",
-            "description": "Cairo programming assistant",
-            "sources": ["cairo-docs"]
-        })
+        server.agent_factory.get_agent_info = Mock(
+            return_value={
+                "id": "cairo-coder",
+                "name": "Cairo Coder",
+                "description": "Cairo programming assistant",
+                "sources": ["cairo-docs"],
+            }
+        )
         server.agent_factory.get_or_create_agent = AsyncMock(return_value=mock_agent)
 
-        response = client.post("/v1/agents/cairo-coder/chat/completions", json={
-            "messages": [{"role": "user", "content": "Hello"}],
-            "stream": False
-        })
+        response = client.post(
+            "/v1/agents/cairo-coder/chat/completions",
+            json={"messages": [{"role": "user", "content": "Hello"}], "stream": False},
+        )
 
         assert response.status_code == 200
         data = response.json()
@@ -179,9 +185,10 @@ class TestCairoCoderServer:
         """Test agent-specific chat completions with invalid agent."""
         server.agent_factory.get_agent_info = Mock(side_effect=ValueError("Agent not found"))
 
-        response = client.post("/v1/agents/unknown-agent/chat/completions", json={
-            "messages": [{"role": "user", "content": "Hello"}]
-        })
+        response = client.post(
+            "/v1/agents/unknown-agent/chat/completions",
+            json={"messages": [{"role": "user", "content": "Hello"}]},
+        )
 
         assert response.status_code == 404
         data = response.json()
@@ -195,26 +202,31 @@ class TestCairoCoderServer:
         server.agent_factory.create_agent = Mock(return_value=mock_agent)
 
         # Test with x-mcp-mode header
-        response = client.post("/v1/chat/completions",
+        response = client.post(
+            "/v1/chat/completions",
             json={"messages": [{"role": "user", "content": "Cairo is a programming language"}]},
-            headers={"x-mcp-mode": "true"}
+            headers={"x-mcp-mode": "true"},
         )
         assert response.status_code == 200
 
         # Test with mcp header
-        response = client.post("/v1/chat/completions",
+        response = client.post(
+            "/v1/chat/completions",
             json={"messages": [{"role": "user", "content": "Test"}]},
-            headers={"mcp": "true"}
+            headers={"mcp": "true"},
         )
         assert response.status_code == 200
 
     def test_cors_headers(self, client):
         """Test CORS headers are properly set."""
-        response = client.options("/v1/chat/completions", headers={
-            "Origin": "https://example.com",
-            "Access-Control-Request-Method": "POST",
-            "Access-Control-Request-Headers": "Content-Type"
-        })
+        response = client.options(
+            "/v1/chat/completions",
+            headers={
+                "Origin": "https://example.com",
+                "Access-Control-Request-Method": "POST",
+                "Access-Control-Request-Headers": "Content-Type",
+            },
+        )
 
         # FastAPI with CORS middleware should handle OPTIONS automatically
         assert response.status_code in [200, 204]
@@ -223,9 +235,9 @@ class TestCairoCoderServer:
         """Test error handling when agent creation fails."""
         server.agent_factory.create_agent = Mock(side_effect=Exception("Agent creation failed"))
 
-        response = client.post("/v1/chat/completions", json={
-            "messages": [{"role": "user", "content": "Hello"}]
-        })
+        response = client.post(
+            "/v1/chat/completions", json={"messages": [{"role": "user", "content": "Hello"}]}
+        )
 
         assert response.status_code == 500
         data = response.json()
@@ -236,14 +248,17 @@ class TestCairoCoderServer:
         """Test proper conversion of messages to internal format."""
         server.agent_factory.create_agent = Mock(return_value=mock_agent)
 
-        response = client.post("/v1/chat/completions", json={
-            "messages": [
-                {"role": "system", "content": "You are a helpful assistant"},
-                {"role": "user", "content": "Hello"},
-                {"role": "assistant", "content": "Hi there!"},
-                {"role": "user", "content": "How are you?"}
-            ]
-        })
+        response = client.post(
+            "/v1/chat/completions",
+            json={
+                "messages": [
+                    {"role": "system", "content": "You are a helpful assistant"},
+                    {"role": "user", "content": "Hello"},
+                    {"role": "assistant", "content": "Hi there!"},
+                    {"role": "user", "content": "How are you?"},
+                ]
+            },
+        )
 
         assert response.status_code == 200
 
@@ -252,38 +267,40 @@ class TestCairoCoderServer:
         call_args = server.agent_factory.create_agent.call_args
 
         # Check that history excludes the last message
-        history = call_args.kwargs.get('history', [])
+        history = call_args.kwargs.get("history", [])
         assert len(history) == 3  # Excludes last user message
 
         # Check query is the last user message
-        query = call_args.kwargs.get('query')
+        query = call_args.kwargs.get("query")
         assert query == "How are you?"
 
     def test_streaming_error_handling(self, client, server):
         """Test error handling during streaming."""
         mock_agent = Mock()
 
-        async def mock_forward_error(query: str, chat_history: List[Message] = None, mcp_mode: bool = False):
+        async def mock_forward_error(
+            query: str, chat_history: list[Message] = None, mcp_mode: bool = False
+        ):
             yield StreamEvent(type="response", data="Starting response...")
             raise Exception("Stream error")
 
         mock_agent.forward = mock_forward_error
         server.agent_factory.create_agent = Mock(return_value=mock_agent)
 
-        response = client.post("/v1/chat/completions", json={
-            "messages": [{"role": "user", "content": "Hello"}],
-            "stream": True
-        })
+        response = client.post(
+            "/v1/chat/completions",
+            json={"messages": [{"role": "user", "content": "Hello"}], "stream": True},
+        )
 
         assert response.status_code == 200
 
         # Parse streaming response to check error handling
-        lines = response.text.strip().split('\n')
+        lines = response.text.strip().split("\n")
         chunks = []
         for line in lines:
-            if line.startswith('data: '):
+            if line.startswith("data: "):
                 data_str = line[6:]
-                if data_str != '[DONE]':
+                if data_str != "[DONE]":
                     chunks.append(json.loads(data_str))
 
         # Should have error chunk
@@ -302,13 +319,13 @@ class TestCairoCoderServer:
         server.agent_factory.create_agent = Mock(return_value=mock_agent)
 
         # Make two requests
-        response1 = client.post("/v1/chat/completions", json={
-            "messages": [{"role": "user", "content": "Hello"}]
-        })
+        response1 = client.post(
+            "/v1/chat/completions", json={"messages": [{"role": "user", "content": "Hello"}]}
+        )
 
-        response2 = client.post("/v1/chat/completions", json={
-            "messages": [{"role": "user", "content": "Hello"}]
-        })
+        response2 = client.post(
+            "/v1/chat/completions", json={"messages": [{"role": "user", "content": "Hello"}]}
+        )
 
         assert response1.status_code == 200
         assert response2.status_code == 200
@@ -331,7 +348,7 @@ class TestCreateApp:
         """Test that create_app returns a FastAPI instance."""
         mock_config_manager = Mock(spec=ConfigManager)
 
-        with patch('cairo_coder.server.app.create_agent_factory'):
+        with patch("cairo_coder.server.app.create_agent_factory"):
             app = create_app(mock_vector_store_config, mock_config_manager)
 
         assert isinstance(app, FastAPI)
@@ -341,9 +358,10 @@ class TestCreateApp:
     def test_create_app_with_defaults(self, mock_vector_store_config):
         """Test create_app with default config manager."""
 
-        with patch('cairo_coder.server.app.create_agent_factory'), \
-             patch('cairo_coder.server.app.ConfigManager') as mock_config_class:
-
+        with (
+            patch("cairo_coder.server.app.create_agent_factory"),
+            patch("cairo_coder.server.app.ConfigManager") as mock_config_class,
+        ):
             mock_config_class.return_value = Mock()
             app = create_app(mock_vector_store_config)
 
@@ -400,15 +418,17 @@ class TestOpenAICompatibility:
         mock_vector_store_config = Mock(spec=VectorStoreConfig)
         mock_config_manager = Mock(spec=ConfigManager)
 
-        with patch('cairo_coder.server.app.create_agent_factory') as mock_factory_creator:
+        with patch("cairo_coder.server.app.create_agent_factory") as mock_factory_creator:
             mock_factory = Mock()
             mock_factory.get_available_agents = Mock(return_value=["cairo-coder"])
-            mock_factory.get_agent_info = Mock(return_value={
-                "id": "cairo-coder",
-                "name": "Cairo Coder",
-                "description": "Cairo programming assistant",
-                "sources": ["cairo-docs"]
-            })
+            mock_factory.get_agent_info = Mock(
+                return_value={
+                    "id": "cairo-coder",
+                    "name": "Cairo Coder",
+                    "description": "Cairo programming assistant",
+                    "sources": ["cairo-docs"],
+                }
+            )
             mock_factory_creator.return_value = mock_factory
 
             server = CairoCoderServer(mock_vector_store_config, mock_config_manager)
@@ -421,10 +441,10 @@ class TestOpenAICompatibility:
         server, client = mock_setup
         server.agent_factory.create_agent = Mock(return_value=mock_agent)
 
-        response = client.post("/v1/chat/completions", json={
-            "messages": [{"role": "user", "content": "Hello"}],
-            "stream": False
-        })
+        response = client.post(
+            "/v1/chat/completions",
+            json={"messages": [{"role": "user", "content": "Hello"}], "stream": False},
+        )
 
         assert response.status_code == 200
         data = response.json()
@@ -457,20 +477,20 @@ class TestOpenAICompatibility:
         server, client = mock_setup
         server.agent_factory.create_agent = Mock(return_value=mock_agent)
 
-        response = client.post("/v1/chat/completions", json={
-            "messages": [{"role": "user", "content": "Hello"}],
-            "stream": True
-        })
+        response = client.post(
+            "/v1/chat/completions",
+            json={"messages": [{"role": "user", "content": "Hello"}], "stream": True},
+        )
 
         assert response.status_code == 200
 
         # Parse streaming chunks
-        lines = response.text.strip().split('\n')
+        lines = response.text.strip().split("\n")
         chunks = []
         for line in lines:
-            if line.startswith('data: '):
+            if line.startswith("data: "):
                 data_str = line[6:]
-                if data_str != '[DONE]':
+                if data_str != "[DONE]":
                     chunks.append(json.loads(data_str))
 
         # Check chunk structure
@@ -493,9 +513,10 @@ class TestOpenAICompatibility:
         # Test with invalid agent
         server.agent_factory.get_agent_info = Mock(side_effect=ValueError("Agent not found"))
 
-        response = client.post("/v1/agents/invalid/chat/completions", json={
-            "messages": [{"role": "user", "content": "Hello"}]
-        })
+        response = client.post(
+            "/v1/agents/invalid/chat/completions",
+            json={"messages": [{"role": "user", "content": "Hello"}]},
+        )
 
         assert response.status_code == 404
         data = response.json()
@@ -521,15 +542,17 @@ class TestMCPModeCompatibility:
         mock_vector_store_config = Mock(spec=VectorStoreConfig)
         mock_config_manager = Mock(spec=ConfigManager)
 
-        with patch('cairo_coder.server.app.create_agent_factory') as mock_factory_creator:
+        with patch("cairo_coder.server.app.create_agent_factory") as mock_factory_creator:
             mock_factory = Mock()
             mock_factory.get_available_agents = Mock(return_value=["cairo-coder"])
-            mock_factory.get_agent_info = Mock(return_value={
-                "id": "cairo-coder",
-                "name": "Cairo Coder",
-                "description": "Cairo programming assistant",
-                "sources": ["cairo-docs"]
-            })
+            mock_factory.get_agent_info = Mock(
+                return_value={
+                    "id": "cairo-coder",
+                    "name": "Cairo Coder",
+                    "description": "Cairo programming assistant",
+                    "sources": ["cairo-docs"],
+                }
+            )
             mock_factory_creator.return_value = mock_factory
 
             server = CairoCoderServer(mock_vector_store_config, mock_config_manager)
@@ -542,9 +565,10 @@ class TestMCPModeCompatibility:
         server, client = mock_setup
         server.agent_factory.create_agent = Mock(return_value=mock_agent)
 
-        response = client.post("/v1/chat/completions",
+        response = client.post(
+            "/v1/chat/completions",
             json={"messages": [{"role": "user", "content": "Test"}], "stream": False},
-            headers={"x-mcp-mode": "true"}
+            headers={"x-mcp-mode": "true"},
         )
 
         assert response.status_code == 200
@@ -560,21 +584,22 @@ class TestMCPModeCompatibility:
         server, client = mock_setup
         server.agent_factory.create_agent = Mock(return_value=mock_agent)
 
-        response = client.post("/v1/chat/completions",
+        response = client.post(
+            "/v1/chat/completions",
             json={"messages": [{"role": "user", "content": "Test"}], "stream": True},
-            headers={"x-mcp-mode": "true"}
+            headers={"x-mcp-mode": "true"},
         )
 
         assert response.status_code == 200
         assert response.headers["content-type"] == "text/event-stream; charset=utf-8"
 
         # Parse streaming response
-        lines = response.text.strip().split('\n')
+        lines = response.text.strip().split("\n")
         chunks = []
         for line in lines:
-            if line.startswith('data: '):
+            if line.startswith("data: "):
                 data_str = line[6:]
-                if data_str != '[DONE]':
+                if data_str != "[DONE]":
                     chunks.append(json.loads(data_str))
 
         # Should have content chunks
@@ -595,16 +620,18 @@ class TestMCPModeCompatibility:
         server.agent_factory.create_agent = Mock(return_value=mock_agent)
 
         # Test x-mcp-mode header
-        response = client.post("/v1/chat/completions",
+        response = client.post(
+            "/v1/chat/completions",
             json={"messages": [{"role": "user", "content": "Test"}]},
-            headers={"x-mcp-mode": "true"}
+            headers={"x-mcp-mode": "true"},
         )
         assert response.status_code == 200
 
         # Test mcp header
-        response = client.post("/v1/chat/completions",
+        response = client.post(
+            "/v1/chat/completions",
             json={"messages": [{"role": "user", "content": "Test"}]},
-            headers={"mcp": "true"}
+            headers={"mcp": "true"},
         )
         assert response.status_code == 200
 
@@ -614,9 +641,10 @@ class TestMCPModeCompatibility:
 
         server.agent_factory.get_or_create_agent = AsyncMock(return_value=mock_agent)
 
-        response = client.post("/v1/agents/cairo-coder/chat/completions",
+        response = client.post(
+            "/v1/agents/cairo-coder/chat/completions",
             json={"messages": [{"role": "user", "content": "Cairo is a programming language"}]},
-            headers={"x-mcp-mode": "true"}
+            headers={"x-mcp-mode": "true"},
         )
 
         assert response.status_code == 200

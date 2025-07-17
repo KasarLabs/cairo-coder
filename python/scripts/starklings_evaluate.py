@@ -8,7 +8,7 @@ by generating solutions and testing if they compile successfully.
 import asyncio
 import shutil
 import sys
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 import click
@@ -31,7 +31,7 @@ structlog.configure(
         structlog.processors.TimeStamper(fmt="iso"),
         structlog.processors.StackInfoRenderer(),
         structlog.processors.format_exc_info,
-        structlog.dev.ConsoleRenderer(colors=True)
+        structlog.dev.ConsoleRenderer(colors=True),
     ],
     context_class=dict,
     logger_factory=structlog.stdlib.LoggerFactory(),
@@ -42,66 +42,33 @@ logger = structlog.get_logger(__name__)
 
 
 @click.command()
-@click.option(
-    "--runs",
-    "-r",
-    type=int,
-    default=1,
-    help="Number of evaluation runs to perform"
-)
-@click.option(
-    "--category",
-    "-c",
-    type=str,
-    default=None,
-    help="Filter exercises by category"
-)
+@click.option("--runs", "-r", type=int, default=1, help="Number of evaluation runs to perform")
+@click.option("--category", "-c", type=str, default=None, help="Filter exercises by category")
 @click.option(
     "--output-dir",
     "-o",
     type=click.Path(path_type=Path),
     default="./starklings_results",
-    help="Output directory for results"
+    help="Output directory for results",
 )
 @click.option(
     "--api-endpoint",
     "-a",
     type=str,
     default="http://localhost:3001",
-    help="Cairo Coder API endpoint"
+    help="Cairo Coder API endpoint",
 )
-@click.option(
-    "--model",
-    "-m",
-    type=str,
-    default="cairo-coder",
-    help="Model name to use"
-)
+@click.option("--model", "-m", type=str, default="cairo-coder", help="Model name to use")
 @click.option(
     "--starklings-path",
     "-s",
     type=click.Path(path_type=Path),
     default="./starklings-cairo1",
-    help="Path to Starklings repository"
+    help="Path to Starklings repository",
 )
-@click.option(
-    "--max-concurrent",
-    type=int,
-    default=5,
-    help="Maximum concurrent API calls"
-)
-@click.option(
-    "--timeout",
-    type=int,
-    default=120,
-    help="API timeout in seconds"
-)
-@click.option(
-    "--verbose",
-    "-v",
-    is_flag=True,
-    help="Enable verbose logging"
-)
+@click.option("--max-concurrent", type=int, default=5, help="Maximum concurrent API calls")
+@click.option("--timeout", type=int, default=120, help="API timeout in seconds")
+@click.option("--verbose", "-v", is_flag=True, help="Enable verbose logging")
 def main(
     runs: int,
     category: str,
@@ -114,7 +81,13 @@ def main(
     verbose: bool,
 ):
     """Evaluate Cairo Coder on Starklings exercises."""
-    logger.info("Starting Starklings evaluation", runs=runs, category=category, api_endpoint=api_endpoint, model=model)
+    logger.info(
+        "Starting Starklings evaluation",
+        runs=runs,
+        category=category,
+        api_endpoint=api_endpoint,
+        model=model,
+    )
 
     # Set logging level
     if verbose:
@@ -124,6 +97,7 @@ def main(
             cache_logger_on_first_use=True,
         )
         import logging
+
         logging.basicConfig(
             format="%(message)s",
             stream=sys.stdout,
@@ -135,20 +109,22 @@ def main(
         runs=runs,
         category=category,
         api_endpoint=api_endpoint,
-        model=model
+        model=model,
     )
 
     # Run evaluation
-    asyncio.run(run_evaluation(
-        runs=runs,
-        category=category,
-        output_dir=output_dir,
-        api_endpoint=api_endpoint,
-        model=model,
-        starklings_path=starklings_path,
-        max_concurrent=max_concurrent,
-        timeout=timeout,
-    ))
+    asyncio.run(
+        run_evaluation(
+            runs=runs,
+            category=category,
+            output_dir=output_dir,
+            api_endpoint=api_endpoint,
+            model=model,
+            starklings_path=starklings_path,
+            max_concurrent=max_concurrent,
+            timeout=timeout,
+        )
+    )
 
 
 async def run_evaluation(
@@ -165,7 +141,7 @@ async def run_evaluation(
 
     # Create output directory
     output_dir = Path(output_dir)
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
     run_output_dir = output_dir / f"run_{timestamp}"
     run_output_dir.mkdir(parents=True, exist_ok=True)
 
@@ -207,12 +183,13 @@ async def run_evaluation(
                 f"Completed run {run_id}/{runs}",
                 success_rate=f"{run_result.overall_success_rate:.2%}",
                 successful=run_result.successful_exercises,
-                total=run_result.total_exercises
+                total=run_result.total_exercises,
             )
 
         except Exception as e:
             logger.error(f"Failed run {run_id}", error=str(e))
             import traceback
+
             traceback.print_exc()
 
     # Generate consolidated report if multiple runs
@@ -230,7 +207,7 @@ async def run_evaluation(
             "Evaluation complete",
             output_dir=str(run_output_dir),
             total_runs=len(all_runs),
-            overall_success_rate=f"{consolidated.overall_success_rate:.2%}"
+            overall_success_rate=f"{consolidated.overall_success_rate:.2%}",
         )
 
     else:

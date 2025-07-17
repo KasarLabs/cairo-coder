@@ -5,23 +5,16 @@ This module implements the DocumentRetrieverProgram that fetches and ranks
 relevant documents from the vector store based on processed queries.
 """
 
-import asyncio
-from typing import List, Optional, Tuple
-from cairo_coder.core.config import VectorStoreConfig
-from langsmith import traceable
-import numpy as np
-
-import openai
-import psycopg2
-from psycopg2 import sql
 
 import dspy
-from dspy.retrieve.pgvector_rm import PgVectorRM
-from openai import AsyncOpenAI
-
-from cairo_coder.core.types import Document, DocumentSource, ProcessedQuery
-from cairo_coder.core.vector_store import VectorStore
+import openai
 import structlog
+from dspy.retrieve.pgvector_rm import PgVectorRM
+from langsmith import traceable
+from psycopg2 import sql
+
+from cairo_coder.core.config import VectorStoreConfig
+from cairo_coder.core.types import Document, DocumentSource, ProcessedQuery
 
 logger = structlog.get_logger()
 
@@ -307,7 +300,7 @@ class SourceFilteredPgVectorRM(PgVectorRM):
     Extended PgVectorRM that supports filtering by document sources.
     """
 
-    def __init__(self, sources: Optional[List[DocumentSource]] = None, **kwargs):
+    def __init__(self, sources: list[DocumentSource] | None = None, **kwargs):
         """
         Initialize with optional source filtering.
 
@@ -369,15 +362,14 @@ class SourceFilteredPgVectorRM(PgVectorRM):
             embedding_field=sql.Identifier(self.embedding_field),
         )
 
-        with self.conn as conn:
-            with conn.cursor() as cur:
-                cur.execute(sql_query, args)
-                rows = cur.fetchall()
-                columns = [descrip[0] for descrip in cur.description]
-                for row in rows:
-                    data = dict(zip(columns, row))
-                    data["long_text"] = data[self.content_field]
-                    retrieved_docs.append(dspy.Example(**data))
+        with self.conn as conn, conn.cursor() as cur:
+            cur.execute(sql_query, args)
+            rows = cur.fetchall()
+            columns = [descrip[0] for descrip in cur.description]
+            for row in rows:
+                data = dict(zip(columns, row, strict=False))
+                data["long_text"] = data[self.content_field]
+                retrieved_docs.append(dspy.Example(**data))
         # Return Prediction
         return retrieved_docs
 
@@ -415,8 +407,8 @@ class DocumentRetrieverProgram(dspy.Module):
         self.embedding_model = embedding_model
 
     def forward(
-        self, processed_query: ProcessedQuery, sources: Optional[List[DocumentSource]] = None
-    ) -> List[Document]:
+        self, processed_query: ProcessedQuery, sources: list[DocumentSource] | None = None
+    ) -> list[Document]:
         """
         Execute the document retrieval process.
 
@@ -438,18 +430,12 @@ class DocumentRetrieverProgram(dspy.Module):
         if not documents:
             return []
 
-        # TODO: dead code elimination once confirmed
-        # Reraking should not be required as the retriever is already ranking documents.
         # Step 2: Enrich context with appropriate templates based on query type.
-
-        # Step 2: Enrich context with appropriate templates based on query type.
-        documents = self._enhance_context(processed_query.original, documents)
-
-        return documents
+        return self._enhance_context(processed_query.original, documents)
 
     def _fetch_documents(
-        self, processed_query: ProcessedQuery, sources: List[DocumentSource]
-    ) -> List[Document]:
+        self, processed_query: ProcessedQuery, sources: list[DocumentSource]
+    ) -> list[Document]:
         """
         Fetch documents from vector store using similarity search.
 
@@ -480,28 +466,28 @@ class DocumentRetrieverProgram(dspy.Module):
             if len(search_queries) == 0:
                 search_queries = [processed_query.original]
 
-            retrieved_examples: List[dspy.Example] = []
+            retrieved_examples: list[dspy.Example] = []
             for search_query in search_queries:
                 retrieved_examples.extend(retriever(search_query))
 
             # Convert to Document objects and deduplicate using a set
             documents = set()
             for ex in retrieved_examples:
-                doc = Document(
-                    page_content=ex.content,
-                    metadata=ex.metadata
-                )
+                doc = Document(page_content=ex.content, metadata=ex.metadata)
                 documents.add(doc)
 
-            logger.debug(f"Retrieved {len(documents)} documents with titles: {[doc.metadata['title'] for doc in documents]}")
+            logger.debug(
+                f"Retrieved {len(documents)} documents with titles: {[doc.metadata['title'] for doc in documents]}"
+            )
             return list(documents)
 
         except Exception as e:
             import traceback
+
             logger.error(f"Error fetching documents: {traceback.format_exc()}")
             raise e
 
-    def _enhance_context(self, query: str, context: List[Document]) -> List[Document]:
+    def _enhance_context(self, query: str, context: list[Document]) -> list[Document]:
         """
         Enhance context with appropriate templates based on query type.
 
@@ -515,22 +501,22 @@ class DocumentRetrieverProgram(dspy.Module):
         query_lower = query.lower()
 
         # Add contract template for contract-related queries
-        if any(keyword in query_lower for keyword in ['contract', 'storage', 'external', 'interface']):
-            context.append(Document(
-                page_content=CONTRACT_TEMPLATE,
-                metadata={
-                    "title": "contract_template",
-                    "source": "contract_template"
-                }
-            ))
+        if any(
+            keyword in query_lower for keyword in ["contract", "storage", "external", "interface"]
+        ):
+            context.append(
+                Document(
+                    page_content=CONTRACT_TEMPLATE,
+                    metadata={"title": "contract_template", "source": "contract_template"},
+                )
+            )
 
         # Add test template for test-related queries
-        if any(keyword in query_lower for keyword in ['test', 'testing', 'assert', 'mock']):
-            context.append(Document(
-                page_content=TEST_TEMPLATE,
-                metadata={
-                    "title": "test_template",
-                    "source": "test_template"
-                }
-            ))
+        if any(keyword in query_lower for keyword in ["test", "testing", "assert", "mock"]):
+            context.append(
+                Document(
+                    page_content=TEST_TEMPLATE,
+                    metadata={"title": "test_template", "source": "test_template"},
+                )
+            )
         return context

@@ -10,7 +10,6 @@ def _():
     import json
     import time
     from pathlib import Path
-    from typing import List
 
     import dspy
     import structlog
@@ -21,10 +20,10 @@ def _():
 
     logger = structlog.get_logger(__name__)
 
-
     """Optional: Set up MLflow tracking for experiment monitoring."""
     # Uncomment to enable MLflow tracking
     import mlflow
+
     mlflow.set_tracking_uri("http://127.0.0.1:5000")
     mlflow.set_experiment("DSPy-Generation")
     mlflow.dspy.autolog()
@@ -36,7 +35,7 @@ def _():
 
     return (
         GenerationProgram,
-        List,
+        list,
         MIPROv2,
         Path,
         dspy,
@@ -54,7 +53,7 @@ def _(List, Path, dspy, json, logger):
 
     def load_dataset(dataset_path: str) -> List[dspy.Example]:
         """Load dataset from JSON file."""
-        with open(dataset_path, "r", encoding="utf-8") as f:
+        with open(dataset_path, encoding="utf-8") as f:
             data = json.load(f)
 
         examples = []
@@ -161,10 +160,7 @@ def _(MIPROv2, generation_metric, logger, program, time, trainset, valset):
         # Run optimization
         start_time = time.time()
         optimized_program = optimizer.compile(
-            program,
-            trainset=trainset,
-            valset=valset,
-            requires_permission_to_run=False
+            program, trainset=trainset, valset=valset, requires_permission_to_run=False
         )
         duration = time.time() - start_time
 
@@ -226,7 +222,7 @@ def _(baseline_score, final_score, lm, logger, optimization_duration):
         estimated_cost_usd=cost,
     )
 
-    print(f"\nOptimization Summary:")
+    print("\nOptimization Summary:")
     print(f"Baseline Score: {baseline_score:.3f}")
     print(f"Final Score: {final_score:.3f}")
     print(f"Improvement: {improvement:.3f}")
@@ -281,11 +277,7 @@ def _(optimized_program):
     test_query = "Write a simple Cairo contract that implements a counter"
     test_context = "Use the latest Cairo syntax and best practices"
 
-    response = optimized_program(
-        query=test_query,
-        chat_history="",
-        context=test_context
-    )
+    response = optimized_program(query=test_query, chat_history="", context=test_context)
 
     print(f"Test Query: {test_query}")
     print(f"\nGenerated Answer:\n{response}")

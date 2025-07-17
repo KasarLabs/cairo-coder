@@ -1,7 +1,7 @@
 """Configuration data models for Cairo Coder."""
 
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, Union
+from typing import Any
 
 import dspy
 
@@ -11,6 +11,7 @@ from .types import DocumentSource
 @dataclass
 class VectorStoreConfig:
     """Configuration for vector store connection."""
+
     host: str
     port: int
     database: str
@@ -25,18 +26,20 @@ class VectorStoreConfig:
         """Get PostgreSQL connection string."""
         return f"postgresql://{self.user}:{self.password}@{self.host}:{self.port}/{self.database}"
 
+
 @dataclass
 class RagSearchConfig:
     """Configuration for RAG search pipeline."""
+
     name: str
     vector_store: Any  # VectorStore instance
-    contract_template: Optional[str] = None
-    test_template: Optional[str] = None
+    contract_template: str | None = None
+    test_template: str | None = None
     max_source_count: int = 10
     similarity_threshold: float = 0.4
-    sources: Optional[Union[DocumentSource, List[DocumentSource]]] = None
-    retrieval_program: Optional[dspy.Module] = None
-    generation_program: Optional[dspy.Module] = None
+    sources: DocumentSource | list[DocumentSource] | None = None
+    retrieval_program: dspy.Module | None = None
+    generation_program: dspy.Module | None = None
 
     def __post_init__(self) -> None:
         """Ensure sources is a list if provided."""
@@ -47,12 +50,13 @@ class RagSearchConfig:
 @dataclass
 class AgentConfiguration:
     """Configuration for a specific agent."""
+
     id: str
     name: str
     description: str
-    sources: List[DocumentSource] = field(default_factory=list)
-    contract_template: Optional[str] = None
-    test_template: Optional[str] = None
+    sources: list[DocumentSource] = field(default_factory=list)
+    contract_template: str | None = None
+    test_template: str | None = None
     max_source_count: int = 10
     similarity_threshold: float = 0.4
     retrieval_program_name: str = "default"
@@ -69,7 +73,7 @@ class AgentConfiguration:
                 DocumentSource.CAIRO_BOOK,
                 DocumentSource.STARKNET_DOCS,
                 DocumentSource.CAIRO_BY_EXAMPLE,
-                DocumentSource.CORELIB_DOCS
+                DocumentSource.CORELIB_DOCS,
             ],
             contract_template="""
 You are helping write a Cairo smart contract. Consider:
@@ -100,13 +104,14 @@ You are helping write Cairo tests. Consider:
             sources=[DocumentSource.SCARB_DOCS],
             retrieval_program_name="scarb_retrieval",
             generation_program_name="scarb_generation",
-            similarity_threshold=0.3  # Lower threshold for Scarb-specific queries
+            similarity_threshold=0.3,  # Lower threshold for Scarb-specific queries
         )
 
 
 @dataclass
 class Config:
     """Main application configuration."""
+
     # Database
     vector_store: VectorStoreConfig
 
@@ -117,12 +122,14 @@ class Config:
 
     # TODO: because only set with defaults at post-init, should not be there.
     # Agent configurations
-    agents: Dict[str, AgentConfiguration] = field(default_factory=dict)
+    agents: dict[str, AgentConfiguration] = field(default_factory=dict)
     default_agent_id: str = "cairo-coder"
 
     def __post_init__(self) -> None:
         """Initialize default agents on top of custom ones."""
-        self.agents.update({
-            "cairo-coder": AgentConfiguration.default_cairo_coder(),
-            "scarb-assistant": AgentConfiguration.scarb_assistant()
-        })
+        self.agents.update(
+            {
+                "cairo-coder": AgentConfiguration.default_cairo_coder(),
+                "scarb-assistant": AgentConfiguration.scarb_assistant(),
+            }
+        )
