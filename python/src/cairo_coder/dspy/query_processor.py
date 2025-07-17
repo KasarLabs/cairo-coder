@@ -111,7 +111,7 @@ class QueryProcessorProgram(dspy.Module):
 
         # Build structured query result
         logged_query = query[:50] + "..." if len(query) > 50 else query
-        logger.info(f"Processed query: {logged_query}")
+        logger.debug(f"Processed query: {logged_query}")
         return ProcessedQuery(
             original=query,
             search_queries=search_queries,

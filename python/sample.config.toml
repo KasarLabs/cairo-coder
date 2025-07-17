@@ -3,7 +3,7 @@
 POSTGRES_USER = "cairocoder"
 POSTGRES_PASSWORD = "cairocoder"
 POSTGRES_DB = "cairocoder"
-POSTGRES_HOST = "localhost"
+POSTGRES_HOST = "postgres"
 POSTGRES_PORT = "5432"
 POSTGRES_TABLE_NAME = "documents"
 SIMILARITY_MEASURE = "cosine"

@@ -264,7 +264,6 @@ class CairoCoderServer:
         mcp_mode: bool = False
     ):
         """Handle chat completion request - replicates TypeScript chatCompletionHandler."""
-        logger.info("Handling chat completion request", request=request)
         try:
             # Convert messages to internal format
             messages = []

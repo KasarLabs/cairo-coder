@@ -493,7 +493,7 @@ class DocumentRetrieverProgram(dspy.Module):
                 )
                 documents.add(doc)
 
-            logger.info(f"Retrieved {len(documents)} documents with titles: {[doc.metadata['title'] for doc in documents]}")
+            logger.debug(f"Retrieved {len(documents)} documents with titles: {[doc.metadata['title'] for doc in documents]}")
             return list(documents)
 
         except Exception as e:

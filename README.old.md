@@ -27,7 +27,7 @@
     **a. Database Container Initialization (`.env` file):**
     Create a `.env` file in the root directory with the following PostgreSQL configuration:
 
-    ```
+    ```toml
     POSTGRES_USER="YOUR_POSTGRES_USER"
     POSTGRES_PASSWORD="YOUR_POSTGRES_PASSWORD"
     POSTGRES_DB="YOUR_POSTGRES_DB"

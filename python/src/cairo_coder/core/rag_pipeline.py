@@ -40,15 +40,15 @@ class AgentLoggingCallback(BaseCallback):
         instance: Any,
         inputs: Dict[str, Any],
     ):
-        logger.info("Starting module", call_id=call_id, inputs=inputs)
+        logger.debug("Starting module", call_id=call_id, inputs=inputs)
 
     # 2. Implement on_module_end handler to run a custom logging code.
     def on_module_end(self, call_id, outputs, exception):
         step = "Reasoning" if self._is_reasoning_output(outputs) else "Acting"
-        print(f"== {step} Step ===")
+        logger.debug(f"== {step} Step ===")
         for k, v in outputs.items():
-            print(f"  {k}: {v}")
-        print("\n")
+            logger.debug(f"  {k}: {v}")
+        logger.debug("\n")
 
     def _is_reasoning_output(self, outputs):
         return any(k.startswith("Thought") for k in outputs.keys())
@@ -121,7 +121,7 @@ class RagPipeline(dspy.Module):
             query=query,
             chat_history=chat_history_str
         )
-        logger.info("Processed query", processed_query=processed_query)
+        logger.debug("Processed query", processed_query=processed_query)
         self._current_processed_query = processed_query
 
         # Use provided sources or fall back to processed query sources
@@ -174,7 +174,7 @@ class RagPipeline(dspy.Module):
                 query=query,
                 chat_history=chat_history_str
             )
-            logger.info("Processed query", processed_query=processed_query)
+            logger.debug("Processed query", processed_query=processed_query)
             self._current_processed_query = processed_query
 
             # Use provided sources or fall back to processed query sources
