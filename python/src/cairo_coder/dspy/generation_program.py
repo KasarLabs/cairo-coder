@@ -12,6 +12,7 @@ import dspy
 from dspy import InputField, OutputField, Signature
 
 from cairo_coder.core.types import Document, Message, StreamEvent
+from langsmith import traceable
 import structlog
 
 logger = structlog.get_logger(__name__)
@@ -120,6 +121,7 @@ class GenerationProgram(dspy.Module):
         """
         return self.generation_program.get_lm_usage()
 
+    @traceable(name="GenerationProgram", run_type="llm")
     def forward(self, query: str, context: str, chat_history: Optional[str] = None) -> dspy.Predict:
         """
         Generate Cairo code response based on query and context.

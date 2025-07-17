@@ -8,6 +8,7 @@ relevant documents from the vector store based on processed queries.
 import asyncio
 from typing import List, Optional, Tuple
 from cairo_coder.core.config import VectorStoreConfig
+from langsmith import traceable
 import numpy as np
 
 import openai
@@ -317,6 +318,7 @@ class SourceFilteredPgVectorRM(PgVectorRM):
         super().__init__(**kwargs)
         self.sources = sources or []
 
+    @traceable(name="DocumentRetriever", run_type="retriever")
     def forward(self, query: str, k: int = None):
         """Search with PgVector for k top passages for query using cosine similarity with source filtering
 
