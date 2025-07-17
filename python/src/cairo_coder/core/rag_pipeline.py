@@ -79,7 +79,7 @@ class RagPipeline(dspy.Module):
         chat_history: Optional[List[Message]] = None,
         mcp_mode: bool = False,
         sources: Optional[List[DocumentSource]] = None
-    ) -> str:
+    ) -> dspy.Predict:
         chat_history_str = self._format_chat_history(chat_history or [])
         processed_query = self.query_processor.forward(
             query=query,
@@ -188,6 +188,16 @@ class RagPipeline(dspy.Module):
                 type="error",
                 data=f"Pipeline error: {str(e)}"
             )
+
+    def get_lm_usage(self) -> Dict[str, int]:
+        """
+        Get the total number of tokens used by the LLM.
+        """
+        generation_usage = self.generation_program.get_lm_usage()
+        query_usage = self.query_processor.get_lm_usage()
+        # merge both dictionaries
+        return {**generation_usage, **query_usage}
+
 
     def _format_chat_history(self, chat_history: List[Message]) -> str:
         """

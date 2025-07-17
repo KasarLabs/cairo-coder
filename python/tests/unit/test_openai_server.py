@@ -18,40 +18,7 @@ from cairo_coder.server.app import CairoCoderServer, create_app
 from cairo_coder.core.vector_store import VectorStore
 from cairo_coder.core.types import Message, StreamEvent, DocumentSource
 from cairo_coder.config.manager import ConfigManager
-
-
-@pytest.fixture(autouse=True)
-def openai_mock_agent():
-    """Create a mock agent with OpenAI-specific forward method."""
-    mock_agent = Mock()
-
-    async def mock_forward_streaming(query: str, chat_history: List[Message] = None, mcp_mode: bool = False):
-        """Mock agent forward method that yields StreamEvent objects."""
-        if mcp_mode:
-            # MCP mode returns sources
-            yield StreamEvent(type="sources", data=[
-                {
-                    "pageContent": "Cairo is a programming language",
-                    "metadata": {"source": "cairo-docs", "page": 1}
-                }
-            ])
-        else:
-            # Normal mode returns response
-            yield StreamEvent(type="response", data="Hello! I'm Cairo Coder.")
-            yield StreamEvent(type="response", data=" How can I help you?")
-        yield StreamEvent(type="end", data="")
-
-
-    async def mock_forward(query: str, chat_history: List[Message] = None, mcp_mode: bool = False):
-        """Mock agent forward method that returns a string."""
-        if mcp_mode:
-            return "Cairo is a programming language"
-        else:
-            return "Hello! I'm Cairo Coder. How can I help you?"
-
-    mock_agent.forward_streaming = mock_forward_streaming
-    mock_agent.forward = mock_forward
-    return mock_agent
+import dspy
 
 
 class TestCairoCoderServer:
@@ -127,9 +94,9 @@ class TestCairoCoderServer:
         })
         assert response.status_code == 422  # Pydantic validation error
 
-    def test_chat_completions_non_streaming(self, client, server, openai_mock_agent):
+    def test_chat_completions_non_streaming(self, client, server, mock_agent):
         """Test non-streaming chat completions."""
-        server.agent_factory.create_agent = Mock(return_value=openai_mock_agent)
+        server.agent_factory.create_agent = Mock(return_value=mock_agent)
 
         response = client.post("/v1/chat/completions", json={
             "messages": [{"role": "user", "content": "Hello"}],
@@ -152,9 +119,9 @@ class TestCairoCoderServer:
         assert "usage" in data
         assert data["usage"]["total_tokens"] > 0
 
-    def test_chat_completions_streaming(self, client, server, openai_mock_agent):
+    def test_chat_completions_streaming(self, client, server, mock_agent):
         """Test streaming chat completions."""
-        server.agent_factory.create_agent = Mock(return_value=openai_mock_agent)
+        server.agent_factory.create_agent = Mock(return_value=mock_agent)
 
         response = client.post("/v1/chat/completions", json={
             "messages": [{"role": "user", "content": "Hello"}],
@@ -188,7 +155,7 @@ class TestCairoCoderServer:
         final_chunk = chunks[-1]
         assert final_chunk["choices"][0]["finish_reason"] == "stop"
 
-    def test_agent_chat_completions_valid_agent(self, client, server, openai_mock_agent):
+    def test_agent_chat_completions_valid_agent(self, client, server, mock_agent):
         """Test agent-specific chat completions with valid agent."""
         server.agent_factory.get_agent_info = Mock(return_value={
             "id": "cairo-coder",
@@ -196,7 +163,7 @@ class TestCairoCoderServer:
             "description": "Cairo programming assistant",
             "sources": ["cairo-docs"]
         })
-        server.agent_factory.get_or_create_agent = AsyncMock(return_value=openai_mock_agent)
+        server.agent_factory.get_or_create_agent = AsyncMock(return_value=mock_agent)
 
         response = client.post("/v1/agents/cairo-coder/chat/completions", json={
             "messages": [{"role": "user", "content": "Hello"}],
@@ -223,23 +190,13 @@ class TestCairoCoderServer:
         assert data["detail"]["error"]["type"] == "invalid_request_error"
         assert data["detail"]["error"]["code"] == "agent_not_found"
 
-    def test_mcp_mode_header_variants(self, client, server):
+    def test_mcp_mode_header_variants(self, client, server, mock_agent):
         """Test MCP mode with different header variants."""
-        mock_agent = Mock()
-
-        async def mock_forward_mcp(query: str, chat_history: List[Message] = None, mcp_mode: bool = False):
-            assert mcp_mode == True  # Should be True due to header
-            yield StreamEvent(type="sources", data=[
-                {"pageContent": "Test content", "metadata": {"source": "test"}}
-            ])
-            yield StreamEvent(type="end", data="")
-
-        mock_agent.forward = mock_forward_mcp
-        server.agent_factory.create_agent = Mock(return_value=openai_mock_agent)
+        server.agent_factory.create_agent = Mock(return_value=mock_agent)
 
         # Test with x-mcp-mode header
         response = client.post("/v1/chat/completions",
-            json={"messages": [{"role": "user", "content": "Test"}]},
+            json={"messages": [{"role": "user", "content": "Cairo is a programming language"}]},
             headers={"x-mcp-mode": "true"}
         )
         assert response.status_code == 200
@@ -277,7 +234,7 @@ class TestCairoCoderServer:
 
     def test_message_conversion(self, client, server, mock_agent):
         """Test proper conversion of messages to internal format."""
-        server.agent_factory.create_agent = Mock(return_value=openai_mock_agent)
+        server.agent_factory.create_agent = Mock(return_value=mock_agent)
 
         response = client.post("/v1/chat/completions", json={
             "messages": [
@@ -311,7 +268,7 @@ class TestCairoCoderServer:
             raise Exception("Stream error")
 
         mock_agent.forward = mock_forward_error
-        server.agent_factory.create_agent = Mock(return_value=openai_mock_agent)
+        server.agent_factory.create_agent = Mock(return_value=mock_agent)
 
         response = client.post("/v1/chat/completions", json={
             "messages": [{"role": "user", "content": "Hello"}],
@@ -342,7 +299,7 @@ class TestCairoCoderServer:
 
     def test_request_id_generation(self, client, server, mock_agent):
         """Test that unique request IDs are generated."""
-        server.agent_factory.create_agent = Mock(return_value=openai_mock_agent)
+        server.agent_factory.create_agent = Mock(return_value=mock_agent)
 
         # Make two requests
         response1 = client.post("/v1/chat/completions", json={
@@ -459,17 +416,10 @@ class TestOpenAICompatibility:
 
             return server, TestClient(server.app)
 
-    def test_openai_chat_completion_response_structure(self, mock_setup):
+    def test_openai_chat_completion_response_structure(self, mock_setup, mock_agent):
         """Test that response structure matches OpenAI API."""
         server, client = mock_setup
-
-        mock_agent = Mock()
-        async def mock_forward(query: str, chat_history: List[Message] = None, mcp_mode: bool = False):
-            yield StreamEvent(type="response", data="Test response")
-            yield StreamEvent(type="end", data="")
-
-        mock_agent.forward = mock_forward
-        server.agent_factory.create_agent = Mock(return_value=openai_mock_agent)
+        server.agent_factory.create_agent = Mock(return_value=mock_agent)
 
         response = client.post("/v1/chat/completions", json={
             "messages": [{"role": "user", "content": "Hello"}],
@@ -502,18 +452,10 @@ class TestOpenAICompatibility:
         for field in usage_fields:
             assert field in usage
 
-    def test_openai_streaming_response_structure(self, mock_setup):
+    def test_openai_streaming_response_structure(self, mock_setup, mock_agent):
         """Test that streaming response structure matches OpenAI API."""
         server, client = mock_setup
-
-        mock_agent = Mock()
-        async def mock_forward(query: str, chat_history: List[Message] = None, mcp_mode: bool = False):
-            yield StreamEvent(type="response", data="Hello")
-            yield StreamEvent(type="response", data=" world")
-            yield StreamEvent(type="end", data="")
-
-        mock_agent.forward = mock_forward
-        server.agent_factory.create_agent = Mock(return_value=openai_mock_agent)
+        server.agent_factory.create_agent = Mock(return_value=mock_agent)
 
         response = client.post("/v1/chat/completions", json={
             "messages": [{"role": "user", "content": "Hello"}],
@@ -598,22 +540,6 @@ class TestMCPModeCompatibility:
     def test_mcp_mode_non_streaming_response(self, mock_setup, mock_agent):
         """Test MCP mode returns sources in non-streaming response."""
         server, client = mock_setup
-
-        async def mock_forward_streaming(query: str, chat_history: List[Message] = None, mcp_mode: bool = False):
-            assert mcp_mode == True
-            yield StreamEvent(type="sources", data=[
-                {"pageContent": "Test content", "metadata": {"source": "test"}}
-            ])
-            yield StreamEvent(type="response", data="MCP response")
-            yield StreamEvent(type="end", data="")
-
-        mock_agent.forward_streaming = mock_forward_streaming
-
-        async def mock_forward(query: str, chat_history: List[Message] = None, mcp_mode: bool = False):
-            return "MCP response"
-
-        mock_agent.forward = mock_forward
-
         server.agent_factory.create_agent = Mock(return_value=mock_agent)
 
         response = client.post("/v1/chat/completions",
@@ -627,23 +553,11 @@ class TestMCPModeCompatibility:
         # In MCP mode, sources should be included in response
         # (Implementation depends on how MCP mode handles sources)
         assert "choices" in data
-        assert data["choices"][0]["message"]["content"] == "MCP response"
+        assert data["choices"][0]["message"]["content"] == "Cairo is a programming language"
 
-    def test_mcp_mode_streaming_response(self, mock_setup):
+    def test_mcp_mode_streaming_response(self, mock_setup, mock_agent):
         """Test MCP mode with streaming response."""
         server, client = mock_setup
-
-        mock_agent = Mock()
-        async def mock_forward(query: str, chat_history: List[Message] = None, mcp_mode: bool = False):
-            assert mcp_mode == True
-            yield StreamEvent(type="sources", data=[
-                {"pageContent": "Test content", "metadata": {"source": "test"}}
-            ])
-            yield StreamEvent(type="response", data="MCP ")
-            yield StreamEvent(type="response", data="response")
-            yield StreamEvent(type="end", data="")
-
-        mock_agent.forward = mock_forward
         server.agent_factory.create_agent = Mock(return_value=mock_agent)
 
         response = client.post("/v1/chat/completions",
@@ -675,18 +589,10 @@ class TestMCPModeCompatibility:
 
         assert content_found
 
-    def test_mcp_mode_header_variations(self, mock_setup):
+    def test_mcp_mode_header_variations(self, mock_setup, mock_agent):
         """Test different MCP mode header variations."""
         server, client = mock_setup
-
-        mock_agent = Mock()
-        async def mock_forward(query: str, chat_history: List[Message] = None, mcp_mode: bool = False):
-            assert mcp_mode == True
-            yield StreamEvent(type="response", data="MCP response")
-            yield StreamEvent(type="end", data="")
-
-        mock_agent.forward = mock_forward
-        server.agent_factory.create_agent = Mock(return_value=openai_mock_agent)
+        server.agent_factory.create_agent = Mock(return_value=mock_agent)
 
         # Test x-mcp-mode header
         response = client.post("/v1/chat/completions",
@@ -702,30 +608,17 @@ class TestMCPModeCompatibility:
         )
         assert response.status_code == 200
 
-    def test_mcp_mode_agent_specific_endpoint(self, mock_setup):
+    def test_mcp_mode_agent_specific_endpoint(self, mock_setup, mock_agent):
         """Test MCP mode with agent-specific endpoint."""
         server, client = mock_setup
-
-        mock_agent = Mock()
-        async def mock_forward_streaming(query: str, chat_history: List[Message] = None, mcp_mode: bool = False):
-            assert mcp_mode == True
-            yield StreamEvent(type="response", data="Agent MCP response")
-            yield StreamEvent(type="end", data="")
-
-        mock_agent.forward_streaming = mock_forward_streaming
-
-        async def mock_forward(query: str, chat_history: List[Message] = None, mcp_mode: bool = False):
-            return "Agent MCP response"
-
-        mock_agent.forward = mock_forward
 
         server.agent_factory.get_or_create_agent = AsyncMock(return_value=mock_agent)
 
         response = client.post("/v1/agents/cairo-coder/chat/completions",
-            json={"messages": [{"role": "user", "content": "Test"}]},
+            json={"messages": [{"role": "user", "content": "Cairo is a programming language"}]},
             headers={"x-mcp-mode": "true"}
         )
 
         assert response.status_code == 200
         data = response.json()
-        assert data["choices"][0]["message"]["content"] == "Agent MCP response"
+        assert data["choices"][0]["message"]["content"] == "Cairo is a programming language"

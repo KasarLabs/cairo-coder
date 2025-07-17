@@ -107,12 +107,6 @@ class TestServerIntegration:
 
         # Mock the agent to return a realistic response
         mock_agent = Mock()
-        async def mock_forward(query: str, chat_history=None, mcp_mode=False):
-            yield {
-                "type": "response",
-                "data": f"Here's how to {query.lower()}: You need to define a contract using the #[contract] attribute..."
-            }
-            yield {"type": "end", "data": ""}
 
         # Access the server instance and mock the agent factory
         server = app.state.server if hasattr(app.state, 'server') else None
@@ -131,10 +125,8 @@ class TestServerIntegration:
         # The important thing is that the server structure is correct
         assert response.status_code in [200, 500]  # Allow 500 for mock issues
 
-    def test_multiple_conversation_turns(self, client, app):
+    def test_multiple_conversation_turns(self, client, app, mock_agent):
         """Test handling multiple conversation turns."""
-        # Mock agent for realistic conversation
-        mock_agent = Mock()
         conversation_responses = [
             "Hello! I'm Cairo Coder, ready to help with Cairo programming.",
             "To create a contract, use the #[contract] attribute on a module.",

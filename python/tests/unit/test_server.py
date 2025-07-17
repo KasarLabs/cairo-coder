@@ -137,16 +137,8 @@ class TestCairoCoderServer:
         assert response.status_code == 200
         assert "text/event-stream" in response.headers["content-type"]
 
-    def test_mcp_mode(self, client, server):
+    def test_mcp_mode(self, client, server, mock_agent):
         """Test MCP mode functionality."""
-        mock_agent = Mock()
-
-        async def mock_forward_mcp(*args, **kwargs):
-            assert kwargs.get('mcp_mode') == True
-            yield StreamEvent(type="sources", data=[{"content": "test"}])
-            yield StreamEvent(type="end", data=None)
-
-        mock_agent.forward = mock_forward_mcp
         server.agent_factory.create_agent = Mock(return_value=mock_agent)
 
         response = client.post("/v1/chat/completions",

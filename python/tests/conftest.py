@@ -11,6 +11,7 @@ from unittest.mock import Mock, AsyncMock, patch
 from typing import List, Dict, Any, Optional, AsyncGenerator
 from pathlib import Path
 import json
+import dspy
 
 from cairo_coder.core.types import (
     Document, DocumentSource, Message, ProcessedQuery, StreamEvent
@@ -109,38 +110,55 @@ def mock_agent_factory():
     return factory
 
 
-@pytest.fixture
+
+
+@pytest.fixture(autouse=True)
 def mock_agent():
-    """
-    Create a mock agent (RAG pipeline) with standard forward method.
+    """Create a mock agent with OpenAI-specific forward method."""
+    mock_agent = Mock()
 
-    Returns a mock agent that yields common StreamEvent objects.
-    """
-    agent = Mock(spec=RagPipeline)
+    async def mock_forward_streaming(query: str, chat_history: List[Message] = None, mcp_mode: bool = False):
+        """Mock agent forward_streaming method that yields StreamEvent objects."""
+        if mcp_mode:
+            # MCP mode returns sources
+            yield StreamEvent(type="sources", data=[
+                {
+                    "pageContent": "Cairo is a programming language",
+                    "metadata": {"source": "cairo-docs", "page": 1}
+                }
+            ])
+            yield StreamEvent(type="response", data="Cairo is a programming language")
+        else:
+            # Normal mode returns response
+            yield StreamEvent(type="response", data="Hello! I'm Cairo Coder.")
+            yield StreamEvent(type="response", data=" How can I help you?")
+        yield StreamEvent(type="end", data="")
 
-    async def mock_forward_streaming(query: str, chat_history: Optional[List[Message]] = None,
-                          mcp_mode: bool = False, **kwargs) -> AsyncGenerator[StreamEvent, None]:
-        """Mock forward method that yields standard stream events."""
-        events = [
-            StreamEvent(type="processing", data="Processing query..."),
-            StreamEvent(type="sources", data=[{"title": "Test Doc", "url": "#"}]),
-            StreamEvent(type="response", data="Test response from mock agent"),
-            StreamEvent(type="end", data=None)
-        ]
-        for event in events:
-            yield event
+    def mock_forward(query: str, chat_history: List[Message] = None, mcp_mode: bool = False):
+        """Mock agent forward method that returns a Predict object."""
+        mock_predict = Mock()
+        
+        # Set up the answer attribute based on mode
+        if mcp_mode:
+            mock_predict.answer = "Cairo is a programming language"
+        else:
+            mock_predict.answer = "Hello! I'm Cairo Coder. How can I help you?"
+        
+        # Set up the get_lm_usage method
+        mock_predict.get_lm_usage = Mock(return_value={
+            "gemini/gemini-2.5-flash": {
+                "prompt_tokens": 100,
+                "completion_tokens": 200,
+                "total_tokens": 300
+            }
+        })
+        
+        return mock_predict
 
-    agent.forward_streaming = mock_forward_streaming
-
-    async def mock_forward(query: str, chat_history: Optional[List[Message]] = None,
-                          mcp_mode: bool = False, **kwargs) -> str:
-        """Mock forward method that returns a string."""
-        return "Hello! I'm Cairo Coder."
-
-    agent.forward = mock_forward
-
-    return agent
-
+    # Assign both sync and async forward methods
+    mock_agent.forward = mock_forward
+    mock_agent.forward_streaming = mock_forward_streaming
+    return mock_agent
 
 @pytest.fixture
 def mock_pool():
