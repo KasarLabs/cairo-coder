@@ -25,6 +25,9 @@ from cairo_coder.dspy.query_processor import QueryProcessorProgram
 from cairo_coder.dspy.document_retriever import DocumentRetrieverProgram
 from cairo_coder.dspy.generation_program import GenerationProgram, McpGenerationProgram
 from cairo_coder.utils.logging import get_logger
+from langsmith import traceable
+from langsmith.run_trees import RunTree
+
 
 logger = get_logger(__name__)
 
@@ -49,6 +52,15 @@ class AgentLoggingCallback(BaseCallback):
 
     def _is_reasoning_output(self, outputs):
         return any(k.startswith("Thought") for k in outputs.keys())
+
+class LangsmithTracingCallback(BaseCallback):
+    @traceable()
+    def on_lm_start(self, call_id, instance, inputs):
+        pass
+
+    @traceable()
+    def on_lm_end(self, call_id, outputs, exception):
+        pass
 
 
 @dataclass
@@ -96,6 +108,7 @@ class RagPipeline(dspy.Module):
         self._current_documents: List[Document] = []
 
     # Waits for streaming to finish before returning the response
+    @traceable(name="RagPipeline", run_type="chain")
     def forward(
         self,
         query: str,

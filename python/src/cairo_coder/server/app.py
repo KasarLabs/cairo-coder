@@ -16,7 +16,7 @@ from datetime import datetime
 import traceback
 
 from cairo_coder.core.config import VectorStoreConfig
-from cairo_coder.core.rag_pipeline import AgentLoggingCallback, RagPipeline
+from cairo_coder.core.rag_pipeline import AgentLoggingCallback, LangsmithTracingCallback, RagPipeline
 from fastapi import FastAPI, HTTPException, Request, Header, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse, Response
@@ -160,7 +160,7 @@ class CairoCoderServer:
         # TODO: This is the place where we should select the proper LLM configuration.
         # TODO: For now we just Hard-code DSPY - GEMINI
         dspy.configure(lm=dspy.LM("gemini/gemini-2.5-flash", max_tokens=30000))
-        dspy.configure(callbacks=[AgentLoggingCallback()])
+        dspy.configure(callbacks=[AgentLoggingCallback(), LangsmithTracingCallback()])
         dspy.configure(track_usage=True)
 
     def _setup_routes(self):
@@ -429,10 +429,18 @@ class CairoCoderServer:
         created = int(time.time())
 
         # Process agent and collect response
+        # Create random session id
+        thread_id = str(uuid.uuid4())
+        langsmith_extra = {
+            "metadata": {
+                "thread_id": thread_id
+            }
+        }
         response = agent.forward(
                 query=query,
                 chat_history=history,
-                mcp_mode=mcp_mode
+                mcp_mode=mcp_mode,
+                langsmith_extra=langsmith_extra
             )
 
         answer = response.answer

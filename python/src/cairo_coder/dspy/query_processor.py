@@ -7,6 +7,7 @@ and resource identification.
 """
 
 import os
+from langsmith import traceable
 import structlog
 import re
 from typing import List, Optional
@@ -86,6 +87,7 @@ class QueryProcessorProgram(dspy.Module):
             'should_panic', 'expected', 'setup', 'teardown', 'coverage', 'foundry'
         }
 
+    @traceable(name="QueryProcessorProgram", run_type="llm")
     def forward(self, query: str, chat_history: Optional[str] = None) -> ProcessedQuery:
         """
         Process a user query into a structured format for document retrieval.

@@ -45,6 +45,7 @@ dependencies = [
   "mlflow>=2.20",
   "pytest>=8.4.1",
   "pytest-asyncio>=1.0.0",
+  "langsmith>=0.4.6",
 ]
 
 [project.optional-dependencies]
