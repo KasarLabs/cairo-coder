@@ -15,7 +15,7 @@ import dspy
 from fastapi import FastAPI, Header, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, field_validator
 
 from cairo_coder.config.manager import ConfigManager
 from cairo_coder.core.agent_factory import create_agent_factory
@@ -58,8 +58,9 @@ class ChatCompletionRequest(BaseModel):
     user: str | None = Field(None, description="User identifier")
     stream: bool = Field(False, description="Whether to stream responses")
 
-    @validator("messages")
-    def validate_messages(self, v):
+    @field_validator("messages")
+    @classmethod
+    def validate_messages(cls, v):
         if not v:
             raise ValueError("Messages array cannot be empty")
         if v[-1].role != "user":
