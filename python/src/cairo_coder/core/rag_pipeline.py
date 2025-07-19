@@ -8,7 +8,7 @@ RAG workflow: Query Processing → Document Retrieval → Generation.
 import os
 from collections.abc import AsyncGenerator
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, Optional
 
 import dspy
 from dspy.utils.callback import BaseCallback
@@ -69,8 +69,8 @@ class RagPipelineConfig:
     max_source_count: int = 10
     similarity_threshold: float = 0.4
     sources: list[DocumentSource] | None = None
-    contract_template: str | None = None
-    test_template: str | None = None
+    contract_template: Optional[str] = None
+    test_template: Optional[str] = None
 
 
 class RagPipeline(dspy.Module):
@@ -335,8 +335,8 @@ class RagPipelineFactory:
         max_source_count: int = 10,
         similarity_threshold: float = 0.4,
         sources: list[DocumentSource] | None = None,
-        contract_template: str | None = None,
-        test_template: str | None = None,
+        contract_template: Optional[str] = None,
+        test_template: Optional[str] = None,
     ) -> RagPipeline:
         """
         Create a RAG Pipeline with default or provided components.

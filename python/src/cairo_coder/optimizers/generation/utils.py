@@ -88,13 +88,14 @@ def check_compilation(code: str) -> dict[str, Any]:
             shutil.rmtree(temp_dir, ignore_errors=True)
 
 
-def generation_metric(expected: dspy.Example, predicted: str, trace=None) -> float:
+def generation_metric(expected: dspy.Example, predicted: dspy.Predict, trace=None) -> float:
     """DSPy-compatible metric for generation optimization based on code presence and compilation."""
     try:
         expected_answer = expected.expected.strip()
+        predicted_answer = predicted.answer.strip()
 
         # Extract code from both
-        predicted_code = extract_cairo_code(predicted)
+        predicted_code = extract_cairo_code(predicted_answer)
         extract_cairo_code(expected_answer)
         # Calculate compilation score
 

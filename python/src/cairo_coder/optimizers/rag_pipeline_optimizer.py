@@ -51,7 +51,6 @@ def _():
     logger.info("Configured DSPy with Gemini 2.5 Flash")
 
     return (
-        list,
         MIPROv2,
         Path,
         dspy,
@@ -65,10 +64,10 @@ def _():
 
 
 @app.cell
-def _(List, Path, dspy, json, logger):
+def _(Path, dspy, json, logger):
     # """Load the Starklings dataset - for rag pipeline, just keep the query and expected."""
 
-    def load_dataset(dataset_path: str) -> List[dspy.Example]:
+    def load_dataset(dataset_path: str) -> list[dspy.Example]:
         """Load dataset from JSON file."""
         with open(dataset_path, encoding="utf-8") as f:
             data = json.load(f)
@@ -123,6 +122,7 @@ def _(global_config):
 
 @app.cell
 async def _(generation_metric, logger, rag_pipeline_program, trainset):
+
     """Evaluate baseline performance on first 5 examples."""
 
     async def evaluate_baseline(examples):

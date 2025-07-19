@@ -7,6 +7,7 @@ and resource identification.
 """
 
 import os
+from typing import Optional
 
 import dspy
 import structlog
@@ -33,7 +34,7 @@ class CairoQueryAnalysis(Signature):
     Analyze a Cairo programming query to extract search terms and identify relevant documentation sources.
     """
 
-    chat_history: str | None = InputField(
+    chat_history: Optional[str] = InputField(
         desc="Previous conversation context for better understanding of the query. May be empty.",
         default="",
     )
@@ -106,7 +107,7 @@ class QueryProcessorProgram(dspy.Module):
         }
 
     @traceable(name="QueryProcessorProgram", run_type="llm")
-    def forward(self, query: str, chat_history: str | None = None) -> ProcessedQuery:
+    def forward(self, query: str, chat_history: Optional[str] = None) -> ProcessedQuery:
         """
         Process a user query into a structured format for document retrieval.
 
