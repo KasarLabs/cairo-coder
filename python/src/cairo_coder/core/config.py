@@ -57,7 +57,7 @@ class AgentConfiguration:
     sources: list[DocumentSource] = field(default_factory=list)
     contract_template: str | None = None
     test_template: str | None = None
-    max_source_count: int = 10
+    max_source_count: int = 5
     similarity_threshold: float = 0.4
     retrieval_program_name: str = "default"
     generation_program_name: str = "default"
