@@ -6,6 +6,7 @@ based on user queries and retrieved documentation context.
 """
 
 from collections.abc import AsyncGenerator
+from typing import Optional
 
 import dspy
 import structlog
@@ -36,7 +37,7 @@ class CairoCodeGeneration(Signature):
     However, most `core` library imports are already included (like panic, println, etc.) - dont include them if they're not explicitly mentioned in the context.
     """
 
-    chat_history: str | None = InputField(
+    chat_history: Optional[str] = InputField(
         desc="Previous conversation context for continuity and better understanding", default=""
     )
 
@@ -60,7 +61,7 @@ class ScarbGeneration(Signature):
     This signature is specialized for Scarb build tool related queries.
     """
 
-    chat_history: str | None = InputField(desc="Previous conversation context", default="")
+    chat_history: Optional[str] = InputField(desc="Previous conversation context", default="")
 
     query: str = InputField(desc="User's Scarb-related question or request")
 
@@ -114,7 +115,7 @@ class GenerationProgram(dspy.Module):
         return self.generation_program.get_lm_usage()
 
     @traceable(name="GenerationProgram", run_type="llm")
-    def forward(self, query: str, context: str, chat_history: str | None = None) -> dspy.Predict:
+    def forward(self, query: str, context: str, chat_history: Optional[str] = None) -> dspy.Predict:
         """
         Generate Cairo code response based on query and context.
 
@@ -133,7 +134,7 @@ class GenerationProgram(dspy.Module):
         return self.generation_program(query=query, context=context, chat_history=chat_history)
 
     async def forward_streaming(
-        self, query: str, context: str, chat_history: str | None = None
+        self, query: str, context: str, chat_history: Optional[str] = None
     ) -> AsyncGenerator[str, None]:
         """
         Generate Cairo code response with streaming support using DSPy's native streaming.

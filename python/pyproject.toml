@@ -101,11 +101,14 @@ select = [
   "RET", # flake8-return
 ]
 ignore = [
-  "E501", # line too long (handled by black)
-  "B008", # do not perform function calls in argument defaults
-  "T201", # print statements (we use structlog)
-  "N803", # Argument lowercase
+  "E501",  # line too long (handled by black)
+  "B008",  # do not perform function calls in argument defaults
+  "T201",  # print statements (we use structlog)
+  "N803",  # Argument lowercase
+  "UP045", # Use X | None instead of Optional[X]
 ]
+[tool.ruff.lint.pyupgrade]
+keep-runtime-typing = true
 
 [tool.black]
 line-length = 100
