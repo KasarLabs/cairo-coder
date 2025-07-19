@@ -11,7 +11,7 @@ yarn-error.log
 # IDE/Editor specific
 .vscode/
 .idea/
-*.iml
+*.iG
 
 # Environment variables
 .env
@@ -51,3 +51,9 @@ packages/**/dist
 
 starklings/
 debug/
+
+python/**/__pycache__
+python/mlruns
+python/mlflows
+fixtures/runner_crate/target/
+.snfoundry_cache/

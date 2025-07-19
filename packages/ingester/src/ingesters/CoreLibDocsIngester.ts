@@ -1,14 +1,17 @@
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import {
+  BookChunk,
   DocumentSource,
 } from '@cairo-coder/agents/types/index';
-import { BookConfig, BookPageDto } from '../utils/types';
+import { Document } from '@langchain/core/documents';
+import { BookConfig, BookPageDto, ParsedSection } from '../utils/types';
 import { processDocFiles } from '../utils/fileUtils';
 import { logger } from '@cairo-coder/agents/utils/index';
 import { exec as execCallback } from 'child_process';
 import { promisify } from 'util';
 import { MarkdownIngester } from './MarkdownIngester';
+import { calculateHash } from '../utils/contentUtils';
 
 /**
  * Ingester for the Cairo Book documentation
@@ -109,4 +112,33 @@ export class CoreLibDocsIngester extends MarkdownIngester {
 
     return pages;
   }
+
+  protected createChunkFromPage(page_name: string, page_content: string): Document<BookChunk>[] {
+    // Sanitize code blocks to avoid parsing issues
+    const localChunks = []
+    const sanitizedContent = this.sanitizeCodeBlocks(page_content);
+
+    // Parse the page into sections
+    const sections = this.parsePage(sanitizedContent, false);
+
+    // Create a document for each section
+    sections.forEach((section: ParsedSection, index: number) => {
+      const hash: string = calculateHash(section.content);
+      localChunks.push(new Document<BookChunk>({
+        pageContent: section.content,
+        metadata: {
+            name: page_name,
+            title: section.title,
+            chunkNumber: index,
+            contentHash: hash,
+            uniqueId: `${page_name}-${index}`,
+            sourceLink: ``,
+            source: this.source,
+          },
+        }),
+      );
+    });
+    return localChunks;
+  }
+
 }
