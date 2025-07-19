@@ -387,7 +387,7 @@ class DocumentRetrieverProgram(dspy.Module):
     def __init__(
         self,
         vector_store_config: VectorStoreConfig,
-        max_source_count: int = 10,
+        max_source_count: int = 5,
         similarity_threshold: float = 0.4,
         embedding_model: str = "text-embedding-3-large",
     ):
@@ -461,10 +461,10 @@ class DocumentRetrieverProgram(dspy.Module):
                 sources=sources,
             )
 
-            # TODO improve with proper re-phrased text.
+            # # TODO improve with proper re-phrased text.
             search_queries = processed_query.search_queries
             if len(search_queries) == 0:
-                search_queries = [processed_query.original]
+                search_queries = [processed_query.reasoning]
 
             retrieved_examples: list[dspy.Example] = []
             for search_query in search_queries:

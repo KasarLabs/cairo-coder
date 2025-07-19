@@ -21,17 +21,8 @@ logger = structlog.get_logger(__name__)
 # TODO: Find a way to properly "erase" common mistakes like PrintTrait imports.
 class CairoCodeGeneration(Signature):
     """
-    Generate high-quality Cairo code solutions and explanations for user queries.
-
-    Key capabilities:
-    1. Generate clean, idiomatic Cairo code with proper syntax and structure similar to the examples provided.
-    2. Create complete smart contracts with interface traits and implementations
-    3. Include all necessary imports and dependencies. For 'starknet::storage' imports, always use 'use starknet::storage::*' with a wildcard to import everything.
-    4. Provide accurate Starknet-specific patterns and best practices
-    5. Handle error cases and edge conditions appropriately
-    6. Maintain consistency with Cairo language conventions
-
-    The program should produce production-ready code that compiles successfully and follows Cairo/Starknet best practices.
+    Analyze a Cairo programming query and use the context to generate a high-quality Cairo code solution and explanations.
+    Reason about how to properly solve the query, based on the input code (if any) and the context.
 
     When generating Cairo Code, all `starknet` imports should be included explicitly (e.g. use starknet::storage::*, use starknet::ContractAddress, etc.)
     However, most `core` library imports are already included (like panic, println, etc.) - dont include them if they're not explicitly mentioned in the context.
@@ -94,18 +85,10 @@ class GenerationProgram(dspy.Module):
         if program_type == "scarb":
             self.generation_program = dspy.ChainOfThought(
                 ScarbGeneration,
-                rationale_field=dspy.OutputField(
-                    prefix="Reasoning: Let me analyze the Scarb requirements step by step.",
-                    desc="Step-by-step analysis of the Scarb task and solution approach",
-                ),
             )
         else:
             self.generation_program = dspy.ChainOfThought(
                 CairoCodeGeneration,
-                rationale_field=dspy.OutputField(
-                    prefix="Reasoning: Let me analyze the Cairo requirements step by step.",
-                    desc="Step-by-step analysis of the Cairo programming task and solution approach",
-                ),
             )
 
     def get_lm_usage(self) -> dict[str, int]:

@@ -131,6 +131,7 @@ class QueryProcessorProgram(dspy.Module):
         return ProcessedQuery(
             original=query,
             search_queries=search_queries,
+            reasoning=result.reasoning,
             is_contract_related=self._is_contract_query(query),
             is_test_related=self._is_test_query(query),
             resources=resources,

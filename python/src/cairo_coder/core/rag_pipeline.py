@@ -332,7 +332,7 @@ class RagPipelineFactory:
         document_retriever: DocumentRetrieverProgram | None = None,
         generation_program: GenerationProgram | None = None,
         mcp_generation_program: McpGenerationProgram | None = None,
-        max_source_count: int = 10,
+        max_source_count: int = 5,
         similarity_threshold: float = 0.4,
         sources: list[DocumentSource] | None = None,
         contract_template: Optional[str] = None,
