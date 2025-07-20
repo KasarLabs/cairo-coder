@@ -164,7 +164,7 @@ async def _(generation_metric, logger, rag_pipeline_program, trainset):
     return (baseline_score,)
 
 
-@app.cell
+@app.cell(disabled=True)
 def _(
     MIPROv2,
     generation_metric,

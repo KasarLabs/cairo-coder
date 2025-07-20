@@ -47,6 +47,7 @@ dependencies = [
   "pytest-asyncio>=1.0.0",
   "langsmith>=0.4.6",
   "psycopg2-binary>=2.9.10",
+  "typer>=0.15.0",
 ]
 
 [project.optional-dependencies]
@@ -70,13 +71,14 @@ cairo-coder-api = "cairo_coder.api.server:run"
 generate_starklings_dataset = "cairo_coder.optimizers.generation.generate_starklings_dataset:cli_main"
 optimize_generation = "cairo_coder.optimizers.generation.optimize_generation:main"
 starklings_evaluate = "starklings_evaluate:main"
+cairo-coder-summarize = "scripts.summarizer.cli:app"
 
 [project.urls]
 "Homepage" = "https://github.com/cairo-coder/cairo-coder"
 "Bug Tracker" = "https://github.com/cairo-coder/cairo-coder/issues"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/cairo_coder", "scripts/starklings_evaluation", "scripts"]
+packages = ["src/cairo_coder", "scripts"]
 
 [tool.hatch.metadata]
 allow-direct-references = true

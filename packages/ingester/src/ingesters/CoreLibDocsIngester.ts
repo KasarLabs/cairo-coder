@@ -1,28 +1,35 @@
 import * as fs from 'fs/promises';
 import * as path from 'path';
-import { DocumentSource } from '@cairo-coder/agents/types/index';
-import { BookConfig, BookPageDto } from '../utils/types';
-import { processDocFiles } from '../utils/fileUtils';
-import { logger } from '@cairo-coder/agents/utils/index';
-import { exec as execCallback } from 'child_process';
-import { promisify } from 'util';
+import { BookConfig } from '../utils/types';
 import { MarkdownIngester } from './MarkdownIngester';
+import {
+  BookChunk,
+  DocumentSource,
+  ParsedSection,
+} from '@cairo-coder/agents/types/index';
+import { Document } from '@langchain/core/documents';
+import { VectorStore } from '@cairo-coder/agents/db/postgresVectorStore';
+import { logger } from '@cairo-coder/agents/utils/index';
+import {
+  addSectionWithSizeLimit,
+  calculateHash,
+  createAnchor,
+} from '../utils/contentUtils';
 
 /**
- * Ingester for the Cairo Book documentation
+ * Ingester for the Cairo Core Library documentation
  *
- * This ingester downloads the Cairo Book documentation from GitHub releases,
- * processes the markdown files, and creates chunks for the vector store.
+ * This ingester processes the pre-summarized Cairo Core Library documentation
+ * from a local markdown file and creates chunks for the vector store.
  */
 export class CoreLibDocsIngester extends MarkdownIngester {
   /**
-   * Constructor for the Cairo Book ingester
+   * Constructor for the Cairo Core Library ingester
    */
   constructor() {
-    // Define the configuration for the Cairo Book
-    // TODO update with starkware repo once fixed
+    // Define the configuration for the Cairo Core Library
     const config: BookConfig = {
-      repoOwner: 'enitrat',
+      repoOwner: 'starkware-libs',
       repoName: 'cairo-docs',
       fileExtension: '.md',
       chunkSize: 4096,
@@ -30,6 +37,139 @@ export class CoreLibDocsIngester extends MarkdownIngester {
     };
 
     super(config, DocumentSource.CORELIB_DOCS);
+  }
+
+  /**
+   * Read the pre-summarized core library documentation file
+   */
+  async readCorelibSummaryFile(): Promise<string> {
+    const summaryPath = path.join(
+      __dirname,
+      '..',
+      '..',
+      '..',
+      '..',
+      '..',
+      'python',
+      'scripts',
+      'summarizer',
+      'generated',
+      'corelib_summary.md',
+    );
+
+    logger.info(`Reading core library summary from ${summaryPath}`);
+    const text = await fs.readFile(summaryPath, 'utf-8');
+    return text;
+  }
+
+  /**
+   * Chunk the core library summary file by H1 headers
+   *
+   * This function takes the markdown content and splits it into sections
+   * based on H1 headers (# Header). Each section becomes a separate chunk
+   * with its content hashed for uniqueness.
+   *
+   * @param text - The markdown content to chunk
+   * @returns Promise<Document<BookChunk>[]> - Array of document chunks, one per H1 section
+   */
+  async chunkCorelibSummaryFile(text: string): Promise<Document<BookChunk>[]> {
+    const content = text;
+    const sections: ParsedSection[] = [];
+
+    // Regex to match H1 headers (# Header)
+    const headerRegex = /^(#{1})\s+(.+)$/gm;
+    const matches = Array.from(content.matchAll(headerRegex));
+
+    let lastSectionEndIndex = 0;
+
+    // Process each H1 header found
+    for (let i = 0; i < matches.length; i++) {
+      const match = matches[i];
+      const headerTitle = match[2].trim();
+      const headerStartIndex = match.index!;
+
+      // Determine the end of this section (start of next header or end of content)
+      const nextHeaderIndex =
+        i < matches.length - 1 ? matches[i + 1].index! : content.length;
+
+      // Extract section content from after the header to before the next header
+      const sectionContent = content
+        .slice(headerStartIndex, nextHeaderIndex)
+        .trim();
+
+      logger.debug(`Adding section: ${headerTitle}`);
+
+      addSectionWithSizeLimit(
+        sections,
+        headerTitle,
+        sectionContent,
+        20000,
+        createAnchor(headerTitle),
+      );
+    }
+
+    // If no H1 headers found, treat the entire content as one section
+    if (sections.length === 0) {
+      logger.debug(
+        'No H1 headers found, creating single section from entire content',
+      );
+      addSectionWithSizeLimit(
+        sections,
+        'Core Library Documentation',
+        content,
+        20000,
+        createAnchor('Core Library Documentation'),
+      );
+    }
+
+    const localChunks: Document<BookChunk>[] = [];
+
+    // Create a document for each section
+    sections.forEach((section: ParsedSection, index: number) => {
+      const hash: string = calculateHash(section.content);
+      localChunks.push(
+        new Document<BookChunk>({
+          pageContent: section.content,
+          metadata: {
+            name: section.title,
+            title: section.title,
+            chunkNumber: index,
+            contentHash: hash,
+            uniqueId: `${section.title}-${index}`,
+            sourceLink: ``,
+            source: this.source,
+          },
+        }),
+      );
+    });
+
+    return localChunks;
+  }
+
+  /**
+   * Core Library specific processing based on the pre-summarized markdown file
+   * @param vectorStore
+   */
+  public async process(vectorStore: VectorStore): Promise<void> {
+    try {
+      // 1. Read the pre-summarized documentation
+      const text = await this.readCorelibSummaryFile();
+
+      // 2. Create chunks from the documentation
+      const chunks = await this.chunkCorelibSummaryFile(text);
+
+      logger.info(
+        `Created ${chunks.length} chunks from core library documentation`,
+      );
+
+      // 3. Update the vector store with the chunks
+      await this.updateVectorStore(vectorStore, chunks);
+
+      // 4. Clean up any temporary files (no temp files in this case)
+      await this.cleanupDownloadedFiles();
+    } catch (error) {
+      this.handleError(error);
+    }
   }
 
   /**
@@ -42,69 +182,10 @@ export class CoreLibDocsIngester extends MarkdownIngester {
   }
 
   /**
-   * Download and extract the repository
-   *
-   * @param extractDir - The directory to extract to
+   * Override cleanupDownloadedFiles since we don't download anything
    */
-  protected async downloadAndExtractDocs(): Promise<BookPageDto[]> {
-    const extractDir = this.getExtractDir();
-    const repoUrl = `https://github.com/${this.config.repoOwner}/${this.config.repoName}.git`;
-
-    logger.info(`Cloning repository from ${repoUrl}`);
-
-    // Clone the repository
-    const exec = promisify(execCallback);
-    try {
-      await exec(`git clone ${repoUrl} ${extractDir}`);
-    } catch (error) {
-      logger.error('Error cloning repository:', error);
-      throw new Error('Failed to clone repository');
-    }
-
-    // Navigate to the core directory
-    const coreDir = path.join(extractDir, 'core');
-
-    // Update book.toml configuration
-    const bookTomlPath = path.join(coreDir, 'book.toml');
-
-    try {
-      let bookToml = await fs.readFile(bookTomlPath, 'utf8');
-
-      // Add [output.markdown] if it doesn't exist
-      if (!bookToml.includes('[output.markdown]')) {
-        bookToml += '\n[output.markdown]\n';
-      }
-
-      await fs.writeFile(bookTomlPath, bookToml);
-      logger.info('Updated book.toml configuration');
-    } catch (error) {
-      logger.error('Error updating book.toml:', error);
-      throw new Error('Failed to update book.toml configuration');
-    }
-
-    // Build the mdbook
-    try {
-      logger.info('Building mdbook...');
-      try {
-        await exec('mdbook --version');
-      } catch (error) {
-        logger.error('mdbook is not installed on this system');
-        throw new Error('mdbook is required but not installed');
-      }
-
-      await exec('mdbook build', { cwd: coreDir });
-      logger.info('mdbook built successfully');
-    } catch (error) {
-      logger.error('Error building mdbook:', error);
-      throw new Error('Failed to build mdbook');
-    }
-
-    logger.info('Repository cloned and processed successfully.');
-
-    // Process the markdown files
-    const srcDir = path.join(coreDir, 'book/markdown');
-    const pages = await processDocFiles(this.config, srcDir);
-
-    return pages;
+  protected async cleanupDownloadedFiles(): Promise<void> {
+    // No cleanup needed as we're reading from a local file
+    logger.info('No cleanup needed - using local summary file');
   }
 }
