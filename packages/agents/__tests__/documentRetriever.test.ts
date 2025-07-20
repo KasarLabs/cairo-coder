@@ -16,7 +16,7 @@ jest.mock('../src/utils/index', () => ({
     info: jest.fn(),
     debug: jest.fn(),
     error: jest.fn(),
-  }
+  },
 }));
 
 describe('DocumentRetriever', () => {
@@ -157,9 +157,8 @@ describe('DocumentRetriever', () => {
       ]);
 
       // Import the real computeSimilarity function to control scores
-      const computeSimilarityMock = jest.requireMock(
-        '../src/utils/index',
-      ).computeSimilarity;
+      const computeSimilarityMock =
+        jest.requireMock('../src/utils/index').computeSimilarity;
 
       // Set up different similarity scores for different documents
       computeSimilarityMock

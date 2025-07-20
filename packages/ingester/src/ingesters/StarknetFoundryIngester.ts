@@ -2,10 +2,7 @@ import * as fs from 'fs/promises';
 import * as path from 'path';
 import axios from 'axios';
 import AdmZip from 'adm-zip';
-import {
-  BookChunk,
-  DocumentSource,
-} from '@cairo-coder/agents/types/index';
+import { BookChunk, DocumentSource } from '@cairo-coder/agents/types/index';
 import { BookConfig, BookPageDto, ParsedSection } from '../utils/types';
 import { processDocFiles } from '../utils/fileUtils';
 import { logger } from '@cairo-coder/agents/utils/index';
@@ -132,7 +129,10 @@ export class StarknetFoundryIngester extends MarkdownIngester {
       let bookToml = await fs.readFile(bookTomlPath, 'utf8');
 
       // Remove the entire [output.linkcheck] section if it exists
-      bookToml = bookToml.replace(/\[output\.linkcheck\][\s\S]*?(?=\n\[|\n$|$)/g, '');
+      bookToml = bookToml.replace(
+        /\[output\.linkcheck\][\s\S]*?(?=\n\[|\n$|$)/g,
+        '',
+      );
 
       // Add [output.markdown] if it doesn't exist
       if (!bookToml.includes('[output.markdown]')) {

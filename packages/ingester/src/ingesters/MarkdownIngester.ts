@@ -3,10 +3,7 @@ import * as path from 'path';
 import axios from 'axios';
 import AdmZip from 'adm-zip';
 import { Document } from '@langchain/core/documents';
-import {
-  BookChunk,
-  DocumentSource,
-} from '@cairo-coder/agents/types/index';
+import { BookChunk, DocumentSource } from '@cairo-coder/agents/types/index';
 import { BaseIngester } from '../BaseIngester';
 import { BookConfig, BookPageDto, ParsedSection } from '../utils/types';
 import { processDocFiles } from '../utils/fileUtils';
@@ -112,33 +109,37 @@ export abstract class MarkdownIngester extends BaseIngester {
   /**
    * Create a chunk from a single page
    */
-  protected createChunkFromPage(page_name: string, page_content: string): Document<BookChunk>[] {
-      // Sanitize code blocks to avoid parsing issues
-      const localChunks = []
-      const sanitizedContent = this.sanitizeCodeBlocks(page_content);
+  protected createChunkFromPage(
+    page_name: string,
+    page_content: string,
+  ): Document<BookChunk>[] {
+    // Sanitize code blocks to avoid parsing issues
+    const localChunks = [];
+    const sanitizedContent = this.sanitizeCodeBlocks(page_content);
 
-      // Parse the page into sections
-      const sections = this.parsePage(sanitizedContent, true);
+    // Parse the page into sections
+    const sections = this.parsePage(sanitizedContent, true);
 
-      // Create a document for each section
-      sections.forEach((section: ParsedSection, index: number) => {
-        const hash: string = calculateHash(section.content);
-        localChunks.push(new Document<BookChunk>({
+    // Create a document for each section
+    sections.forEach((section: ParsedSection, index: number) => {
+      const hash: string = calculateHash(section.content);
+      localChunks.push(
+        new Document<BookChunk>({
           pageContent: section.content,
           metadata: {
-              name: page_name,
-              title: section.title,
-              chunkNumber: index,
-              contentHash: hash,
-              uniqueId: `${page_name}-${index}`,
-              sourceLink: ``,
-              source: this.source,
-            },
-          }),
-        );
-      });
-      return localChunks;
-    }
+            name: page_name,
+            title: section.title,
+            chunkNumber: index,
+            contentHash: hash,
+            uniqueId: `${page_name}-${index}`,
+            sourceLink: ``,
+            source: this.source,
+          },
+        }),
+      );
+    });
+    return localChunks;
+  }
 
   /**
    * Clean up downloaded files

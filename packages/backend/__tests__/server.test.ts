@@ -25,7 +25,6 @@ describe('Server', () => {
     getCairoByExampleDbConfig: jest.fn().mockReturnValue({}),
   }));
 
-
   // Mock HTTP handling to avoid actual initialization
   jest.mock('../src/config/http', () => ({
     initializeHTTP: jest.fn(),
