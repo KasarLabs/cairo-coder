@@ -63,6 +63,7 @@ dev = [
   "types-toml>=0.10.0",
   "pre-commit>=3.0.0",
   "testcontainers[postgres]>=4.0.0",
+  "nest-asyncio>=1.6.0",
 ]
 
 [project.scripts]
@@ -70,7 +71,7 @@ cairo-coder = "cairo_coder.server.app:main"
 cairo-coder-api = "cairo_coder.api.server:run"
 generate_starklings_dataset = "cairo_coder.optimizers.generation.generate_starklings_dataset:cli_main"
 optimize_generation = "cairo_coder.optimizers.generation.optimize_generation:main"
-starklings_evaluate = "starklings_evaluate:main"
+starklings_evaluate = "scripts.starklings_evaluate:main"
 cairo-coder-summarize = "scripts.summarizer.cli:app"
 
 [project.urls]

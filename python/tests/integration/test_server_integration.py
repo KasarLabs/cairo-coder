@@ -5,83 +5,73 @@ This module tests the FastAPI server with more realistic scenarios,
 including actual vector store and config manager integration.
 """
 
-from unittest.mock import Mock, patch
+import concurrent.futures
+from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
 from fastapi.testclient import TestClient
 
 from cairo_coder.config.manager import ConfigManager
+from cairo_coder.core.agent_factory import AgentFactory
+from cairo_coder.core.config import VectorStoreConfig
 from cairo_coder.server.app import create_app, get_vector_store_config
 
 
 class TestServerIntegration:
     """Integration tests for the server."""
 
-    @pytest.fixture
-    def mock_config_manager(self):
-        """Create a mock config manager with realistic configuration."""
-        mock_config = Mock(spec=ConfigManager)
-        mock_config.get_config = Mock(
-            return_value={
-                "providers": {
-                    "openai": {"api_key": "test-key", "model": "gpt-4"},
-                    "default_provider": "openai",
+    @pytest.fixture(scope="function")
+    def mock_agent_factory(self, mock_agent):
+        """Patch create_agent_factory and return the mock factory."""
+        with patch("cairo_coder.server.app.create_agent_factory") as mock_factory_creator:
+            factory = Mock(spec=AgentFactory)
+            agents_data = {
+                "default": {
+                    "id": "default",
+                    "name": "Cairo Coder",
+                    "description": "General Cairo programming assistant",
+                    "sources": ["cairo_book", "cairo_docs"],
                 },
-                "vector_db": {
-                    "host": "localhost",
-                    "port": 5432,
-                    "database": "test_db",
-                    "user": "test_user",
-                    "password": "test_pass",
+                "scarb_assistant": {
+                    "id": "scarb_assistant",
+                    "name": "Scarb Assistant",
+                    "description": "Starknet-specific programming help",
+                    "sources": ["scarb_docs"],
                 },
             }
-        )
-        return mock_config
+            factory.get_available_agents.return_value = list(agents_data.keys())
 
-    @pytest.fixture
-    def app(self, mock_vector_store_config, mock_config_manager):
+            def get_agent_info(agent_id, **kwargs):
+                if agent_id in agents_data:
+                    return agents_data[agent_id]
+                raise ValueError(f"Agent {agent_id} not found")
+
+            factory.get_agent_info.side_effect = get_agent_info
+            factory.create_agent.return_value = mock_agent
+            factory.get_or_create_agent = AsyncMock(return_value=mock_agent)
+            mock_factory_creator.return_value = factory
+            yield factory
+
+    @pytest.fixture(scope="function")
+    def app(self, mock_vector_store_config, mock_config_manager, mock_agent_factory):
         """Create a test FastAPI application."""
-        with patch("cairo_coder.server.app.create_agent_factory") as mock_factory_creator:
-            mock_factory = Mock()
-            mock_factory.get_available_agents = Mock(
-                return_value=["cairo-coder", "starknet-assistant", "scarb-helper"]
-            )
+        app = create_app(mock_vector_store_config, mock_config_manager)
+        app.dependency_overrides[get_vector_store_config] = lambda: mock_vector_store_config
+        return app
 
-            def get_agent_info(agent_id):
-                agents = {
-                    "cairo-coder": {
-                        "id": "cairo-coder",
-                        "name": "Cairo Coder",
-                        "description": "General Cairo programming assistant",
-                        "sources": ["cairo-book", "cairo-docs"],
-                    },
-                    "starknet-assistant": {
-                        "id": "starknet-assistant",
-                        "name": "Starknet Assistant",
-                        "description": "Starknet-specific programming help",
-                        "sources": ["starknet-docs"],
-                    },
-                    "scarb-helper": {
-                        "id": "scarb-helper",
-                        "name": "Scarb Helper",
-                        "description": "Scarb build tool assistance",
-                        "sources": ["scarb-docs"],
-                    },
-                }
-                if agent_id not in agents:
-                    raise ValueError(f"Agent {agent_id} not found")
-                return agents[agent_id]
-
-            mock_factory.get_agent_info = Mock(side_effect=get_agent_info)
-            mock_factory_creator.return_value = mock_factory
-
-            app = create_app(mock_vector_store_config, mock_config_manager)
-            app.dependency_overrides[get_vector_store_config] = lambda: mock_vector_store_config
-            return app
-
-    @pytest.fixture
+    @pytest.fixture(scope="function")
     def client(self, app):
         """Create a test client."""
+        from cairo_coder.server.app import get_vector_db
+
+        async def mock_get_vector_db():
+            mock_db = AsyncMock()
+            mock_db.pool = AsyncMock()
+            mock_db._ensure_pool = AsyncMock()
+            mock_db.sources = []
+            return mock_db
+
+        app.dependency_overrides[get_vector_db] = mock_get_vector_db
         return TestClient(app)
 
     def test_health_check_integration(self, client):
@@ -90,40 +80,44 @@ class TestServerIntegration:
         assert response.status_code == 200
         assert response.json() == {"status": "ok"}
 
-    def test_full_agent_workflow(self, client, app):
+    def test_full_agent_workflow(self, client, mock_agent_factory):
         """Test complete agent workflow from listing to chat."""
         # First, list available agents
         response = client.get("/v1/agents")
         assert response.status_code == 200
 
         agents = response.json()
-        assert len(agents) == 3
-        assert any(agent["id"] == "cairo-coder" for agent in agents)
-        assert any(agent["id"] == "starknet-assistant" for agent in agents)
-        assert any(agent["id"] == "scarb-helper" for agent in agents)
+        assert len(agents) == 2
+        assert any(agent["id"] == "default" for agent in agents)
+        assert any(agent["id"] == "scarb_assistant" for agent in agents)
 
-        # Mock the agent to return a realistic response
+        # Mock the agent to return a specific response for this test
+        mock_response = Mock()
+        mock_response.answer = "Smart contract response."
+        mock_response.get_lm_usage.return_value = {
+            "gemini/gemini-2.5-flash": {
+                "prompt_tokens": 10,
+                "completion_tokens": 20,
+                "total_tokens": 30,
+            }
+        }
         mock_agent = Mock()
+        mock_agent.aforward = AsyncMock(return_value=mock_response)
+        mock_agent_factory.create_agent.return_value = mock_agent
 
-        # Access the server instance and mock the agent factory
-        server = app.state.server if hasattr(app.state, "server") else None
-        if server:
-            server.agent_factory.create_agent = Mock(return_value=mock_agent)
-
-        # Test chat completion with cairo-coder agent
+        # Test chat completion with default agent
         response = client.post(
-            "/v1/agents/cairo-coder/chat/completions",
+            "/v1/chat/completions",
             json={
                 "messages": [{"role": "user", "content": "How do I create a smart contract?"}],
                 "stream": False,
             },
         )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["choices"][0]["message"]["content"] == "Smart contract response."
 
-        # Note: This might fail due to mocking complexity in integration test
-        # The important thing is that the server structure is correct
-        assert response.status_code in [200, 500]  # Allow 500 for mock issues
-
-    def test_multiple_conversation_turns(self, client, app, mock_agent):
+    def test_multiple_conversation_turns(self, client, mock_agent_factory, mock_agent):
         """Test handling multiple conversation turns."""
         conversation_responses = [
             "Hello! I'm Cairo Coder, ready to help with Cairo programming.",
@@ -131,48 +125,48 @@ class TestServerIntegration:
             "You can deploy it using Scarb with the deploy command.",
         ]
 
-        async def mock_forward(query: str, chat_history=None, mcp_mode=False):
-            # Simulate different responses based on conversation history
+        async def mock_aforward(query: str, chat_history=None, mcp_mode=False, **kwargs):
             history_length = len(chat_history) if chat_history else 0
-            response_idx = min(history_length, len(conversation_responses) - 1)
+            response_idx = min(history_length // 2, len(conversation_responses) - 1)
 
-            yield {"type": "response", "data": conversation_responses[response_idx]}
-            yield {"type": "end", "data": ""}
+            mock_response = Mock()
+            mock_response.answer = conversation_responses[response_idx]
+            mock_response.get_lm_usage.return_value = {}
+            return mock_response
 
-        mock_agent.forward = mock_forward
+        mock_agent.aforward = mock_aforward
+        mock_agent_factory.create_agent.return_value = mock_agent
 
         # Test conversation flow
         messages = [{"role": "user", "content": "Hello"}]
-
         response = client.post("/v1/chat/completions", json={"messages": messages, "stream": False})
+        assert response.status_code == 200
+        data = response.json()
+        assert data["choices"][0]["message"]["content"] == conversation_responses[0]
 
-        # Check response structure even if mocked
-        assert response.status_code in [200, 500]
+        messages.append({"role": "assistant", "content": data["choices"][0]["message"]["content"]})
+        messages.append({"role": "user", "content": "How do I create a contract?"})
+        response = client.post("/v1/chat/completions", json={"messages": messages, "stream": False})
+        assert response.status_code == 200
+        data = response.json()
+        assert data["choices"][0]["message"]["content"] == conversation_responses[1]
 
-        if response.status_code == 200:
-            data = response.json()
-            assert "choices" in data
-            assert len(data["choices"]) == 1
-            assert "message" in data["choices"][0]
-
-    def test_streaming_integration(self, client, app):
+    def test_streaming_integration(self, client, mock_agent_factory, mock_agent):
         """Test streaming response integration."""
-        # Mock agent for streaming
-        mock_agent = Mock()
 
-        async def mock_forward(query: str, chat_history=None, mcp_mode=False):
+        async def mock_forward_streaming(query: str, chat_history=None, mcp_mode=False, **kwargs):
             chunks = [
                 "To create a Cairo contract, ",
                 "you need to use the #[contract] attribute ",
                 "on a module. This tells the compiler ",
                 "that the module contains contract code.",
             ]
-
             for chunk in chunks:
                 yield {"type": "response", "data": chunk}
             yield {"type": "end", "data": ""}
 
-        mock_agent.forward = mock_forward
+        mock_agent.forward_streaming = mock_forward_streaming
+        mock_agent_factory.create_agent.return_value = mock_agent
 
         response = client.post(
             "/v1/chat/completions",
@@ -181,21 +175,16 @@ class TestServerIntegration:
                 "stream": True,
             },
         )
+        assert response.status_code == 200
+        assert "text/event-stream" in response.headers.get("content-type", "")
 
-        # Check streaming response structure
-        assert response.status_code in [200, 500]
-
-        if response.status_code == 200:
-            assert "text/event-stream" in response.headers.get("content-type", "")
-
-    def test_error_handling_integration(self, client, app):
+    def test_error_handling_integration(self, client, mock_agent_factory):
         """Test error handling in integration context."""
-        # Test with invalid agent
+        mock_agent_factory.get_agent_info.side_effect = ValueError("Agent not found")
         response = client.post(
             "/v1/agents/nonexistent-agent/chat/completions",
             json={"messages": [{"role": "user", "content": "Hello"}]},
         )
-
         assert response.status_code == 404
         data = response.json()
         assert "detail" in data
@@ -204,26 +193,19 @@ class TestServerIntegration:
         # Test with invalid request
         response = client.post(
             "/v1/chat/completions",
-            json={
-                "messages": []  # Empty messages should fail validation
-            },
+            json={"messages": []},  # Empty messages should fail validation
         )
-
         assert response.status_code == 422  # Validation error
 
     def test_cors_integration(self, client):
         """Test CORS headers in integration context."""
         response = client.get("/", headers={"Origin": "https://example.com"})
-
         assert response.status_code == 200
-        # CORS headers should be present (handled by FastAPI CORS middleware)
+        assert "access-control-allow-origin" in response.headers
 
-    def test_mcp_mode_integration(self, client, app):
+    def test_mcp_mode_integration(self, client, mock_agent_factory, mock_agent):
         """Test MCP mode in integration context."""
-        # Mock agent for MCP mode
-        mock_agent = Mock()
-
-        async def mock_forward(query: str, chat_history=None, mcp_mode=False):
+        async def mock_forward_streaming(query: str, chat_history=None, mcp_mode=False, **kwargs):
             if mcp_mode:
                 yield {
                     "type": "sources",
@@ -238,22 +220,20 @@ class TestServerIntegration:
                 yield {"type": "response", "data": "Regular response"}
             yield {"type": "end", "data": ""}
 
-        mock_agent.forward = mock_forward
+        mock_agent.forward_streaming = mock_forward_streaming
+        mock_agent_factory.create_agent.return_value = mock_agent
 
         response = client.post(
             "/v1/chat/completions",
-            json={"messages": [{"role": "user", "content": "Test MCP"}]},
+            json={"messages": [{"role": "user", "content": "Test MCP"}], "stream": True},
             headers={"x-mcp-mode": "true"},
         )
+        assert response.status_code == 200
 
-        # Check MCP mode response
-        assert response.status_code in [200, 500]
-
-    def test_concurrent_requests(self, client, app):
+    def test_concurrent_requests(self, client):
         """Test handling concurrent requests."""
-        import concurrent.futures
 
-        def make_request(client, request_id):
+        def make_request(request_id):
             """Make a single request."""
             response = client.post(
                 "/v1/chat/completions",
@@ -264,29 +244,23 @@ class TestServerIntegration:
             )
             return response.status_code, request_id
 
-        # Make multiple concurrent requests
         with concurrent.futures.ThreadPoolExecutor(max_workers=3) as executor:
-            futures = [executor.submit(make_request, client, i) for i in range(5)]
-
+            futures = [executor.submit(make_request, i) for i in range(5)]
             results = [future.result() for future in concurrent.futures.as_completed(futures)]
 
-        # All requests should complete (might be 200 or 500 due to mocking)
         assert len(results) == 5
         for status_code, _request_id in results:
-            assert status_code in [200, 500]
+            assert status_code == 200
 
-    def test_large_request_handling(self, client, app):
+    def test_large_request_handling(self, client):
         """Test handling of large requests."""
-        # Create a large message
         large_content = "How do I create a contract? " * 1000  # Large query
 
         response = client.post(
             "/v1/chat/completions",
             json={"messages": [{"role": "user", "content": large_content}], "stream": False},
         )
-
-        # Should handle large requests gracefully
-        assert response.status_code in [200, 413, 500]  # 413 = Request Entity Too Large
+        assert response.status_code in [200, 413]
 
 
 class TestServerStartup:
@@ -298,34 +272,28 @@ class TestServerStartup:
 
         with patch("cairo_coder.server.app.create_agent_factory"):
             app = create_app(mock_vector_store_config, mock_config_manager)
-
-            # Check that app is properly configured
             assert app.title == "Cairo Coder"
             assert app.version == "1.0.0"
             assert app.description == "OpenAI-compatible API for Cairo programming assistance"
 
-    def test_server_main_function_configuration(self, mock_vector_store_config):
+    def test_server_main_function_configuration(self):
         """Test the server's main function configuration."""
-        # This would test the if __name__ == "__main__" block
-        # Since we can't easily test uvicorn.run, we'll just verify the configuration
-
-        # Import the module to check the main block exists
         from cairo_coder.server.app import (
             CairoCoderServer,
             TokenTracker,
             create_app,
-            get_vector_store_config,
         )
 
-        # Check that the main functions exist
         assert create_app is not None
-        assert get_vector_store_config is not None
         assert CairoCoderServer is not None
         assert TokenTracker is not None
 
         # Test that we can create an app instance
-        with patch("cairo_coder.server.app.create_agent_factory"):
-            app = create_app(mock_vector_store_config)
+        with patch("cairo_coder.server.app.create_agent_factory"), patch(
+            "cairo_coder.server.app.get_vector_store_config"
+        ) as mock_get_config:
+            mock_get_config.return_value = Mock(spec=VectorStoreConfig)
+            app = create_app(mock_get_config())
 
             # Verify the app is a FastAPI instance
             from fastapi import FastAPI

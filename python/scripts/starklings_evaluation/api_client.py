@@ -66,7 +66,6 @@ class CairoCoderAPIClient:
         url = f"{self.base_url}/v1/chat/completions"
 
         payload = {
-            "model": self.model,
             "messages": [{"role": "user", "content": prompt}],
             "stream": False,
         }

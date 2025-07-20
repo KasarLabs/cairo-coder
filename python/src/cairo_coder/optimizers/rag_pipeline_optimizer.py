@@ -136,11 +136,6 @@ def _(generation_metric, rag_pipeline_program, valset):
 
 
 @app.cell
-def _():
-    return
-
-
-@app.cell(disabled=True)
 def _(
     MIPROv2,
     generation_metric,
@@ -152,6 +147,9 @@ def _(
 ):
     """Run optimization using MIPROv2."""
 
+    import nest_asyncio
+    nest_asyncio.apply()
+
     def run_optimization(trainset, valset):
         """Run the optimization process using MIPROv2."""
         logger.info("Starting optimization process")
@@ -162,6 +160,7 @@ def _(
             auto="light",
             max_bootstrapped_demos=4,
             max_labeled_demos=4,
+            num_threads=10,
         )
 
         # Run optimization
@@ -184,9 +183,10 @@ def _(
     return optimization_duration, optimized_program
 
 
-@app.cell
-def _(generation_metric, logger, optimized_program, valset):
-    """Evaluate optimized program performance on validation set."""
+app._unparsable_cell(
+    r"""
+    import nest_asyncio
+    nest_asyncio.apply()\"\"\"Evaluate optimized program performance on validation set.\"\"\"
     # Evaluate final performance
     final_scores = []
     for i, example in enumerate(valset):
@@ -198,14 +198,16 @@ def _(generation_metric, logger, optimized_program, valset):
             score = generation_metric(example, prediction)
             final_scores.append(score)
         except Exception as e:
-            logger.error("Error in final evaluation", example=i, error=str(e))
+            logger.error(\"Error in final evaluation\", example=i, error=str(e))
             final_scores.append(0.0)
 
     final_score = sum(final_scores) / len(final_scores) if final_scores else 0.0
 
-    print(f"Final score on validation set: {final_score:.3f}")
+    print(f\"Final score on validation set: {final_score:.3f}\")
 
-    return (final_score,)
+    """,
+    name="_"
+)
 
 
 @app.cell

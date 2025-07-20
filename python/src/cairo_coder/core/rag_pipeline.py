@@ -5,6 +5,7 @@ This module implements the RagPipeline class that orchestrates the three-stage
 RAG workflow: Query Processing → Document Retrieval → Generation.
 """
 
+import asyncio
 import os
 from collections.abc import AsyncGenerator
 from dataclasses import dataclass
@@ -43,7 +44,7 @@ class AgentLoggingCallback(BaseCallback):
         logger.debug("\n")
 
     def _is_reasoning_output(self, outputs):
-        return any(k.startswith("Thought") for k in outputs)
+        return any(k.startswith("Thought") for k in outputs if isinstance(k, str))
 
 
 class LangsmithTracingCallback(BaseCallback):
@@ -101,6 +102,26 @@ class RagPipeline(dspy.Module):
         self._current_processed_query: ProcessedQuery | None = None
         self._current_documents: list[Document] = []
 
+    async def _aprocess_query_and_retrieve_docs(
+        self,
+        query: str,
+        chat_history_str: str,
+        sources: list[DocumentSource] | None = None,
+    ) -> tuple[ProcessedQuery, list[Document]]:
+        """Process query and retrieve documents - shared async logic."""
+        processed_query = await self.query_processor.aforward(query=query, chat_history=chat_history_str)
+        logger.debug("Processed query", processed_query=processed_query)
+        self._current_processed_query = processed_query
+
+        # Use provided sources or fall back to processed query sources
+        retrieval_sources = sources or processed_query.resources
+        documents = await self.document_retriever.aforward(
+            processed_query=processed_query, sources=retrieval_sources
+        )
+        self._current_documents = documents
+
+        return processed_query, documents
+
     # Waits for streaming to finish before returning the response
     @traceable(name="RagPipeline", run_type="chain")
     def forward(
@@ -109,25 +130,29 @@ class RagPipeline(dspy.Module):
         chat_history: list[Message] | None = None,
         mcp_mode: bool = False,
         sources: list[DocumentSource] | None = None,
-    ) -> dspy.Predict:
-        chat_history_str = self._format_chat_history(chat_history or [])
-        processed_query = self.query_processor.forward(query=query, chat_history=chat_history_str)
-        logger.debug("Processed query", processed_query=processed_query)
-        self._current_processed_query = processed_query
+    ) -> dspy.Prediction:
+        return asyncio.run(self.aforward(query, chat_history, mcp_mode, sources))
 
-        # Use provided sources or fall back to processed query sources
-        retrieval_sources = sources or processed_query.resources
-        documents = self.document_retriever.forward(
-            processed_query=processed_query, sources=retrieval_sources
+    # Waits for streaming to finish before returning the response
+    @traceable(name="RagPipeline", run_type="chain")
+    async def aforward(
+        self,
+        query: str,
+        chat_history: list[Message] | None = None,
+        mcp_mode: bool = False,
+        sources: list[DocumentSource] | None = None,
+    ) -> dspy.Prediction:
+        chat_history_str = self._format_chat_history(chat_history or [])
+        processed_query, documents = await self._aprocess_query_and_retrieve_docs(
+            query, chat_history_str, sources
         )
-        self._current_documents = documents
 
         if mcp_mode:
             return self.mcp_generation_program.forward(documents)
 
         context = self._prepare_context(documents, processed_query)
 
-        return self.generation_program.forward(
+        return await self.generation_program.aforward(
             query=query, context=context, chat_history=chat_history_str
         )
 
@@ -155,22 +180,13 @@ class RagPipeline(dspy.Module):
             yield StreamEvent(type="processing", data="Processing query...")
 
             chat_history_str = self._format_chat_history(chat_history or [])
-            processed_query = self.query_processor.forward(
-                query=query, chat_history=chat_history_str
-            )
-            logger.debug("Processed query", processed_query=processed_query)
-            self._current_processed_query = processed_query
-
-            # Use provided sources or fall back to processed query sources
-            retrieval_sources = sources or processed_query.resources
 
             # Stage 2: Retrieve documents
             yield StreamEvent(type="processing", data="Retrieving relevant documents...")
 
-            documents = self.document_retriever.forward(
-                processed_query=processed_query, sources=retrieval_sources
+            processed_query, documents = await self._aprocess_query_and_retrieve_docs(
+                query, chat_history_str, sources
             )
-            self._current_documents = documents
 
             # Emit sources event
             yield StreamEvent(type="sources", data=self._format_sources(documents))
@@ -199,6 +215,9 @@ class RagPipeline(dspy.Module):
 
         except Exception as e:
             # Handle pipeline errors
+            import traceback
+            traceback.print_exc()
+            logger.error("Pipeline error", error=e)
             yield StreamEvent(type="error", data=f"Pipeline error: {str(e)}")
 
     def get_lm_usage(self) -> dict[str, int]:
@@ -337,6 +356,7 @@ class RagPipelineFactory:
         sources: list[DocumentSource] | None = None,
         contract_template: Optional[str] = None,
         test_template: Optional[str] = None,
+        vector_db: Any = None,  # SourceFilteredPgVectorRM instance
     ) -> RagPipeline:
         """
         Create a RAG Pipeline with default or provided components.
@@ -353,6 +373,7 @@ class RagPipelineFactory:
             sources: Default document sources
             contract_template: Template for contract-related queries
             test_template: Template for test-related queries
+            vector_db: Optional pre-initialized vector database instance
 
         Returns:
             Configured RagPipeline instance
@@ -371,6 +392,7 @@ class RagPipelineFactory:
         if document_retriever is None:
             document_retriever = DocumentRetrieverProgram(
                 vector_store_config=vector_store_config,
+                vector_db=vector_db,
                 max_source_count=max_source_count,
                 similarity_threshold=similarity_threshold,
             )

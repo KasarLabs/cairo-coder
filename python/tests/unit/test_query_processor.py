@@ -5,7 +5,7 @@ Tests the DSPy-based query processing functionality including search term extrac
 resource identification, and query categorization.
 """
 
-from unittest.mock import Mock, patch
+from unittest.mock import AsyncMock, Mock, patch
 
 import dspy
 import pytest
@@ -23,8 +23,14 @@ class TestQueryProcessorProgram:
         mock = Mock()
         mock.forward.return_value = dspy.Prediction(
             search_queries=["cairo, contract, storage, variable"],
-            resources="cairo_book, starknet_docs",
+            resources=["cairo_book", "starknet_docs"],
+            reasoning="I need to create a Cairo contract",
         )
+        mock.aforward = AsyncMock(return_value=dspy.Prediction(
+            search_queries=["cairo, contract, storage, variable"],
+            resources=["cairo_book", "starknet_docs"],
+            reasoning="I need to create a Cairo contract",
+        ))
 
         with patch("dspy.ChainOfThought") as mock_cot:
             mock_cot.return_value = mock
@@ -99,7 +105,11 @@ class TestQueryProcessorProgram:
     def test_empty_query_handling(self, processor):
         """Test handling of empty or whitespace queries."""
         with patch.object(processor, "retrieval_program") as mock_program:
-            mock_program.return_value = dspy.Prediction(search_terms="", resources="")
+            mock_program.aforward = AsyncMock(return_value=dspy.Prediction(
+                search_queries=[], 
+                resources=[],
+                reasoning="Empty query"
+            ))
 
             result = processor.forward("")
 

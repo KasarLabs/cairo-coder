@@ -90,6 +90,7 @@ class TestAgentFactory:
             mock_create.assert_called_once_with(
                 name="default_agent",
                 vector_store_config=mock_vector_store_config,
+                vector_db=None,
                 sources=sources,
                 max_source_count=5,
                 similarity_threshold=0.6,
@@ -163,6 +164,7 @@ class TestAgentFactory:
                 vector_store_config=agent_factory.vector_store_config,
                 config_manager=agent_factory.config_manager,
                 mcp_mode=False,
+                vector_db=None,
             )
 
             # Verify agent was cached
@@ -302,6 +304,7 @@ class TestAgentFactory:
                 similarity_threshold=0.4,
                 contract_template=None,
                 test_template=None,
+                vector_db=None,
             )
 
     @pytest.mark.asyncio
@@ -338,6 +341,7 @@ class TestAgentFactory:
                 similarity_threshold=0.4,
                 contract_template=None,
                 test_template=None,
+                vector_db=None,
             )
 
 

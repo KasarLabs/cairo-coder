@@ -408,6 +408,8 @@ def _(lm):
 @app.cell
 def _(dspy, metric, retrieval_program, train_set):
     # Let's now use the optimizer - then, we'll run the eval again
+    import nest_asyncio
+    nest_asyncio.apply()
 
     mipro_optimizer = dspy.MIPROv2(
         metric=metric,

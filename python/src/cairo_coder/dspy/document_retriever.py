@@ -5,7 +5,9 @@ This module implements the DocumentRetrieverProgram that fetches and ranks
 relevant documents from the vector store based on processed queries.
 """
 
+import asyncio
 
+import asyncpg
 import dspy
 import openai
 import structlog
@@ -295,6 +297,9 @@ for example: 'use registry::{IRegistryDispatcher, IRegistryDispatcherTrait};' fo
 """
 
 
+
+
+
 class SourceFilteredPgVectorRM(PgVectorRM):
     """
     Extended PgVectorRM that supports filtering by document sources.
@@ -306,13 +311,106 @@ class SourceFilteredPgVectorRM(PgVectorRM):
 
         Args:
             sources: List of DocumentSource to filter by
-            **kwargs: Arguments passed to parent PgVectorRM
+            **kwargs: Arguments passed to parent PgVectorRM (e.g., db_url, pg_table_name, etc.)
         """
         super().__init__(**kwargs)
         self.sources = sources or []
+        self.pool = None  # Lazy-init async pool
+        self.db_url = kwargs.get("db_url")
+
+    async def _ensure_pool(self):
+        """Lazily create asyncpg pool if not initialized."""
+        if self.pool is None:
+            # Assuming self.db_url exists from parent init; adjust if needed
+            self.pool = await asyncpg.create_pool(
+                dsn=self.db_url,  # Or kwargs['db_url'] if passed
+                min_size=1,
+                max_size=10,  # Tune based on load
+                timeout=30,
+            )
+
+    @traceable(name="AsyncDocumentRetriever", run_type="retriever")
+    async def aforward(self, query: str, k: int = None) -> list[dspy.Example]:
+        """Async search with PgVector for k top passages using cosine similarity with source filtering.
+
+        Args:
+            query (str): The query to search for.
+            k (int): The number of top passages to retrieve. Defaults to the value set in the constructor.
+
+        Returns:
+            list[dspy.Example]: List of retrieved passages as DSPy Examples.
+        """
+        await self._ensure_pool()
+
+        # Embed query (assuming _get_embeddings is sync; make async if needed)
+        query_embedding_raw = self._get_embeddings(query)
+
+        if hasattr(query_embedding_raw, "tolist"):
+            # numpy array
+            query_embedding_list = query_embedding_raw.tolist()
+        else:
+            # already a list or other format
+            query_embedding_list = query_embedding_raw if isinstance(query_embedding_raw, list) else list(query_embedding_raw)
+
+        # Convert to PGVector compatible string '[0.1,2.2,...]'
+        query_embedding = '[' + ','.join(str(x) for x in query_embedding_list) + ']'
+
+        retrieved_docs = []
+
+        # Build fields string (plain string for asyncpg)
+        fields = ", ".join(self.fields)
+
+        where_clause = ""
+        params = []
+
+        if self.sources:
+            source_values = [source.value for source in self.sources]
+            where_clause = " WHERE metadata->>'source' = ANY($1::text[])"
+            params.append(source_values)
+
+        # Add similarity if included
+        if self.include_similarity:
+            sim_param_idx = len(params) + 1
+            fields += f", 1 - ({self.embedding_field} <=> ${sim_param_idx}::vector) AS similarity"
+            params.append(query_embedding)
+
+        # Order param
+        order_param_idx = len(params) + 1
+        params.append(query_embedding)
+
+        # Limit param
+        limit_param_idx = len(params) + 1
+        params.append(k if k else self.k)
+
+        # Build SQL query as plain string for asyncpg
+        sql_query = f"SELECT {fields} FROM {self.pg_table_name}{where_clause} ORDER BY {self.embedding_field} <=> ${order_param_idx}::vector LIMIT ${limit_param_idx}"
+
+        async with self.pool.acquire() as conn:
+            rows = await conn.fetch(sql_query, *params)
+
+            for row in rows:
+                # Convert asyncpg Record to dict using column names
+                columns = list(row.keys())
+                data = dict(zip(columns, row.values(), strict=False))
+                data["long_text"] = data[self.content_field]
+
+                # Deserialize JSON metadata if it exists
+                if "metadata" in data and isinstance(data["metadata"], str):
+                    try:
+                        import json
+                        data["metadata"] = json.loads(data["metadata"])
+                    except (json.JSONDecodeError, TypeError):
+                        # Keep original value if JSON parsing fails
+                        pass
+
+                retrieved_docs.append(dspy.Example(**data))
+
+        logger.info(f"Retrieved {len(retrieved_docs)} documents with metadatas: {[doc.metadata for doc in retrieved_docs]}")
+
+        return retrieved_docs
 
     @traceable(name="DocumentRetriever", run_type="retriever")
-    def forward(self, query: str, k: int = None):
+    def forward(self, query: str, k: int = None) -> list[dspy.Example]:
         """Search with PgVector for k top passages for query using cosine similarity with source filtering
 
         Args:
@@ -374,6 +472,8 @@ class SourceFilteredPgVectorRM(PgVectorRM):
         return retrieved_docs
 
 
+
+
 class DocumentRetrieverProgram(dspy.Module):
     """
     DSPy module for retrieving and ranking relevant documents from vector store.
@@ -387,6 +487,7 @@ class DocumentRetrieverProgram(dspy.Module):
     def __init__(
         self,
         vector_store_config: VectorStoreConfig,
+        vector_db: SourceFilteredPgVectorRM | None = None,
         max_source_count: int = 5,
         similarity_threshold: float = 0.4,
         embedding_model: str = "text-embedding-3-large",
@@ -396,21 +497,23 @@ class DocumentRetrieverProgram(dspy.Module):
 
         Args:
             vector_store_config: VectorStoreConfig for document retrieval
+            vector_db: Optional pre-initialized vector database instance
             max_source_count: Maximum number of documents to retrieve
             similarity_threshold: Minimum similarity score for document inclusion
             embedding_model: OpenAI embedding model to use for reranking
         """
         super().__init__()
         self.vector_store_config = vector_store_config
+        self.vector_db = vector_db
         self.max_source_count = max_source_count
         self.similarity_threshold = similarity_threshold
         self.embedding_model = embedding_model
 
-    def forward(
+    async def aforward(
         self, processed_query: ProcessedQuery, sources: list[DocumentSource] | None = None
     ) -> list[Document]:
         """
-        Execute the document retrieval process.
+        Execute the document retrieval process asynchronously.
 
         Args:
             processed_query: ProcessedQuery object with search terms and metadata
@@ -424,7 +527,7 @@ class DocumentRetrieverProgram(dspy.Module):
             sources = processed_query.resources
 
         # Step 1: Fetch documents from vector store
-        documents = self._fetch_documents(processed_query, sources)
+        documents = await self._afetch_documents(processed_query, sources)
 
         # TODO: No source found means no answer can be given!
         if not documents:
@@ -433,11 +536,26 @@ class DocumentRetrieverProgram(dspy.Module):
         # Step 2: Enrich context with appropriate templates based on query type.
         return self._enhance_context(processed_query.original, documents)
 
-    def _fetch_documents(
+    def forward(
+        self, processed_query: ProcessedQuery, sources: list[DocumentSource] | None = None
+    ) -> list[Document]:
+        """Execute the document retrieval process.
+
+        Args:
+            processed_query: ProcessedQuery object with search terms and metadata
+            sources: Optional list of DocumentSource to filter by
+
+        Returns:
+            List of relevant Document objects, ranked by similarity
+        """
+        # TODO: if needed use sync version.
+        return asyncio.run(self.aforward(processed_query, sources))
+
+    async def _afetch_documents(
         self, processed_query: ProcessedQuery, sources: list[DocumentSource]
     ) -> list[Document]:
         """
-        Fetch documents from vector store using similarity search.
+        Fetch documents from vector store using similarity search asynchronously.
 
         Args:
             processed_query: ProcessedQuery with search terms
@@ -447,19 +565,27 @@ class DocumentRetrieverProgram(dspy.Module):
             List of Document objects from vector store
         """
         try:
-            # TODO: dont pass openAI client, pass embedding_func from DSPY.embed
-            openai_client = openai.OpenAI()
-            db_url = self.vector_store_config.dsn
-            pg_table_name = self.vector_store_config.table_name
-            retriever = SourceFilteredPgVectorRM(
-                db_url=db_url,
-                pg_table_name=pg_table_name,
-                openai_client=openai_client,
-                content_field="content",
-                fields=["id", "content", "metadata"],
-                k=self.max_source_count,
-                sources=sources,
-            )
+            # Use injected vector DB instance or create a new one
+            if self.vector_db:
+                retriever = self.vector_db
+                # Update sources if different
+                if sources != retriever.sources:
+                    retriever.sources = sources
+            else:
+                # Create a new instance if not injected
+                # TODO: dont pass openAI client, pass embedding_func from DSPY.embed
+                openai_client = openai.OpenAI()
+                db_url = self.vector_store_config.dsn
+                pg_table_name = self.vector_store_config.table_name
+                retriever = SourceFilteredPgVectorRM(
+                    db_url=db_url,
+                    pg_table_name=pg_table_name,
+                    openai_client=openai_client,
+                    content_field="content",
+                    fields=["id", "content", "metadata"],
+                    k=self.max_source_count,
+                    sources=sources,
+                )
 
             # # TODO improve with proper re-phrased text.
             search_queries = processed_query.search_queries
@@ -468,13 +594,18 @@ class DocumentRetrieverProgram(dspy.Module):
 
             retrieved_examples: list[dspy.Example] = []
             for search_query in search_queries:
-                retrieved_examples.extend(retriever(search_query))
+                # Use async version of retriever
+                examples = await retriever.aforward(search_query)
+                retrieved_examples.extend(examples)
 
             # Convert to Document objects and deduplicate using a set
             documents = set()
             for ex in retrieved_examples:
                 doc = Document(page_content=ex.content, metadata=ex.metadata)
-                documents.add(doc)
+                try:
+                    documents.add(doc)
+                except Exception as e:
+                    logger.error(f"Error adding document: {e}. Type of fields: {[type(field) for field in ex]}")
 
             logger.debug(
                 f"Retrieved {len(documents)} documents with titles: {[doc.metadata['title'] for doc in documents]}"

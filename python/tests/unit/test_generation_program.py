@@ -5,7 +5,7 @@ Tests the DSPy-based code generation functionality including Cairo code generati
 Scarb configuration, and MCP mode document formatting.
 """
 
-from unittest.mock import Mock, patch
+from unittest.mock import AsyncMock, Mock, patch
 
 import dspy
 import pytest
@@ -28,9 +28,14 @@ class TestGenerationProgram:
     def mock_lm(self):
         """Configure DSPy with a mock language model for testing."""
         mock = Mock()
+        # Mock for sync calls
         mock.return_value = dspy.Prediction(
             answer="Here's a Cairo contract example:\n\n```cairo\n#[starknet::contract]\nmod SimpleContract {\n    // Contract implementation\n}\n```\n\nThis contract demonstrates basic Cairo syntax."
         )
+        # Mock for async calls
+        mock.aforward = AsyncMock(return_value=dspy.Prediction(
+            answer="Here's a Cairo contract example:\n\n```cairo\n#[starknet::contract]\nmod SimpleContract {\n    // Contract implementation\n}\n```\n\nThis contract demonstrates basic Cairo syntax."
+        ))
 
         with patch("dspy.ChainOfThought") as mock_cot:
             mock_cot.return_value = mock
@@ -89,8 +94,8 @@ class TestGenerationProgram:
         assert "cairo" in result.answer.lower()
 
         # Verify the generation program was called with correct parameters
-        generation_program.generation_program.assert_called_once()
-        call_args = generation_program.generation_program.call_args[1]
+        generation_program.generation_program.aforward.assert_called_once()
+        call_args = generation_program.generation_program.aforward.call_args[1]
         assert call_args["query"] == query
         assert "cairo" in call_args["context"].lower()
         assert call_args["chat_history"] == ""
@@ -109,15 +114,15 @@ class TestGenerationProgram:
         assert len(result.answer) > 0
 
         # Verify chat history was passed
-        call_args = generation_program.generation_program.call_args[1]
+        call_args = generation_program.generation_program.aforward.call_args[1]
         assert call_args["chat_history"] == chat_history
 
     def test_scarb_generation_program(self, scarb_generation_program):
         """Test Scarb-specific code generation."""
         with patch.object(scarb_generation_program, "generation_program") as mock_program:
-            mock_program.return_value = dspy.Prediction(
+            mock_program.aforward = AsyncMock(return_value=dspy.Prediction(
                 answer='Here\'s your Scarb configuration:\n\n```toml\n[package]\nname = "my-project"\nversion = "0.1.0"\n```'
-            )
+            ))
 
             query = "How do I configure Scarb for my project?"
             context = "Scarb configuration documentation..."
@@ -128,7 +133,7 @@ class TestGenerationProgram:
             assert hasattr(result, "answer")
             assert isinstance(result.answer, str)
             assert "scarb" in result.answer.lower() or "toml" in result.answer.lower()
-            mock_program.assert_called_once()
+            mock_program.aforward.assert_called_once()
 
     def test_format_chat_history(self, generation_program):
         """Test chat history formatting."""

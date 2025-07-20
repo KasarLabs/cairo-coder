@@ -6,6 +6,7 @@ RAG Pipeline agents based on agent IDs and configurations.
 """
 
 from dataclasses import dataclass, field
+from typing import Any
 
 from cairo_coder.config.manager import ConfigManager
 from cairo_coder.core.config import AgentConfiguration, VectorStoreConfig
@@ -21,6 +22,7 @@ class AgentFactoryConfig:
     config_manager: ConfigManager
     default_agent_config: AgentConfiguration | None = None
     agent_configs: dict[str, AgentConfiguration] = field(default_factory=dict)
+    vector_db: Any = None  # SourceFilteredPgVectorRM instance
 
 
 class AgentFactory:
@@ -43,6 +45,7 @@ class AgentFactory:
         self.config_manager = config.config_manager
         self.agent_configs = config.agent_configs
         self.default_agent_config = config.default_agent_config
+        self.vector_db = config.vector_db
 
         # Cache for created agents to avoid recreation
         self._agent_cache: dict[str, RagPipeline] = {}
@@ -56,6 +59,7 @@ class AgentFactory:
         sources: list[DocumentSource] | None = None,
         max_source_count: int = 10,
         similarity_threshold: float = 0.4,
+        vector_db: Any = None,
     ) -> RagPipeline:
         """
         Create a default agent for general Cairo programming assistance.
@@ -68,6 +72,7 @@ class AgentFactory:
             sources: Optional document sources filter
             max_source_count: Maximum documents to retrieve
             similarity_threshold: Minimum similarity for documents
+            vector_db: Optional pre-initialized vector database instance
 
         Returns:
             Configured RagPipeline instance
@@ -83,6 +88,7 @@ class AgentFactory:
             sources=sources,
             max_source_count=max_source_count,
             similarity_threshold=similarity_threshold,
+            vector_db=vector_db,
         )
 
 
@@ -94,6 +100,7 @@ class AgentFactory:
         vector_store_config: VectorStoreConfig,
         config_manager: ConfigManager | None = None,
         mcp_mode: bool = False,
+        vector_db: Any = None,
     ) -> RagPipeline:
         """
         Create an agent based on a specific agent ID configuration.
@@ -105,6 +112,7 @@ class AgentFactory:
             vector_store_config: Vector store for document retrieval
             config_manager: Optional configuration manager
             mcp_mode: Whether to use MCP mode
+            vector_db: Optional pre-initialized vector database instance
 
         Returns:
             Configured RagPipeline instance
@@ -128,6 +136,7 @@ class AgentFactory:
             query=query,
             history=history,
             mcp_mode=mcp_mode,
+            vector_db=vector_db,
         )
 
 
@@ -159,6 +168,7 @@ class AgentFactory:
             vector_store_config=self.vector_store_config,
             config_manager=self.config_manager,
             mcp_mode=mcp_mode,
+            vector_db=self.vector_db,
         )
 
         # Cache the agent
@@ -257,6 +267,7 @@ class AgentFactory:
         query: str,
         history: list[Message],
         mcp_mode: bool = False,
+        vector_db: Any = None,
     ) -> RagPipeline:
         """
         Create a RAG Pipeline from agent configuration.
@@ -267,6 +278,7 @@ class AgentFactory:
             query: User's query
             history: Chat history
             mcp_mode: Whether to use MCP mode
+            vector_db: Optional pre-initialized vector database instance
 
         Returns:
             Configured RagPipeline instance
@@ -286,6 +298,7 @@ class AgentFactory:
                 similarity_threshold=agent_config.similarity_threshold,
                 contract_template=agent_config.contract_template,
                 test_template=agent_config.test_template,
+                vector_db=vector_db,
             )
         else:
             pipeline = RagPipelineFactory.create_pipeline(
@@ -296,6 +309,7 @@ class AgentFactory:
                 similarity_threshold=agent_config.similarity_threshold,
                 contract_template=agent_config.contract_template,
                 test_template=agent_config.test_template,
+                vector_db=vector_db,
             )
 
         return pipeline
@@ -354,6 +368,7 @@ def create_agent_factory(
     vector_store_config: VectorStoreConfig,
     config_manager: ConfigManager | None = None,
     custom_agents: dict[str, AgentConfiguration] | None = None,
+    vector_db: Any = None,
 ) -> AgentFactory:
     """
     Create an AgentFactory with default configurations.
@@ -362,6 +377,7 @@ def create_agent_factory(
         vector_store: Vector store for document retrieval
         config_manager: Optional configuration manager
         custom_agents: Optional custom agent configurations
+        vector_db: Optional pre-initialized vector database instance
 
     Returns:
         Configured AgentFactory instance
@@ -385,6 +401,7 @@ def create_agent_factory(
         config_manager=config_manager,
         default_agent_config=default_configs["default"],
         agent_configs=default_configs,
+        vector_db=vector_db,
     )
 
     return AgentFactory(factory_config)

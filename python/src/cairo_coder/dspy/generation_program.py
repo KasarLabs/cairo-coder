@@ -5,6 +5,7 @@ This module implements the GenerationProgram that generates Cairo code responses
 based on user queries and retrieved documentation context.
 """
 
+import asyncio
 from collections.abc import AsyncGenerator
 from typing import Optional
 
@@ -110,11 +111,18 @@ class GenerationProgram(dspy.Module):
         Returns:
             Generated Cairo code response with explanations
         """
+        return asyncio.run(self.aforward(query, context, chat_history))
+
+    @traceable(name="GenerationProgram", run_type="llm")
+    async def aforward(self, query: str, context: str, chat_history: Optional[str] = None) -> dspy.Predict:
+        """
+        Generate Cairo code response based on query and context - async
+        """
         if chat_history is None:
             chat_history = ""
 
         # Execute the generation program
-        return self.generation_program(query=query, context=context, chat_history=chat_history)
+        return await self.generation_program.aforward(query=query, context=context, chat_history=chat_history)
 
     async def forward_streaming(
         self, query: str, context: str, chat_history: Optional[str] = None
@@ -225,6 +233,7 @@ class McpGenerationProgram(dspy.Module):
             formatted_docs.append(formatted_doc)
 
         return "\n".join(formatted_docs)
+
 
 
 def create_generation_program(program_type: str = "general") -> GenerationProgram:

@@ -15,13 +15,35 @@ from cairo_coder.config.manager import ConfigManager
 from cairo_coder.core.agent_factory import AgentFactory
 from cairo_coder.core.config import AgentConfiguration, Config, VectorStoreConfig
 from cairo_coder.core.types import Document, DocumentSource, Message, ProcessedQuery, StreamEvent
+from cairo_coder.dspy.document_retriever import SourceFilteredPgVectorRM
 
 # =============================================================================
 # Common Mock Fixtures
 # =============================================================================
 
+@pytest.fixture(scope="session")
+def mock_vector_db():
+    """Create a mock vector database for dependency injection."""
+    mock_db = Mock(spec=SourceFilteredPgVectorRM)
 
-@pytest.fixture
+    # Mock the async pool
+    mock_db.pool = AsyncMock()
+    mock_db._ensure_pool = AsyncMock()
+
+    # Mock the forward method
+    mock_db.forward = Mock(return_value=[])
+
+    # Mock the async forward method
+    async def mock_aforward(query, k=None):
+        return []
+    mock_db.aforward = mock_aforward
+
+    # Mock sources attribute
+    mock_db.sources = []
+
+    return mock_db
+
+@pytest.fixture(scope="session")
 def mock_vector_store_config():
     """
     Create a mock vector store configuration.
@@ -32,7 +54,7 @@ def mock_vector_store_config():
     return mock_config
 
 
-@pytest.fixture
+@pytest.fixture(scope="session")
 def mock_config_manager():
     """
     Create a mock configuration manager with standard configuration.
@@ -107,7 +129,7 @@ def mock_agent_factory():
 @pytest.fixture(autouse=True)
 def mock_agent():
     """Create a mock agent with OpenAI-specific forward method."""
-    mock_agent = Mock()
+    mock_agent = AsyncMock()
 
     async def mock_forward_streaming(
         query: str, chat_history: list[Message] = None, mcp_mode: bool = False
@@ -154,8 +176,13 @@ def mock_agent():
 
         return mock_predict
 
+    async def mock_aforward(query: str, chat_history: list[Message] = None, mcp_mode: bool = False):
+        """Mock agent aforward method that returns a Predict object."""
+        return mock_forward(query, chat_history, mcp_mode)
+
     # Assign both sync and async forward methods
     mock_agent.forward = mock_forward
+    mock_agent.aforward = mock_aforward
     mock_agent.forward_streaming = mock_forward_streaming
     return mock_agent
 

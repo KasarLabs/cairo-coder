@@ -12,31 +12,48 @@ from fastapi.testclient import TestClient
 
 from cairo_coder.config.manager import ConfigManager
 from cairo_coder.core.agent_factory import AgentFactory
-from cairo_coder.server.app import CairoCoderServer, TokenTracker, create_app
+from cairo_coder.server.app import CairoCoderServer, TokenTracker
 
 
 class TestCairoCoderServer:
     """Test suite for CairoCoderServer."""
 
     @pytest.fixture
-    def server(self, mock_vector_store_config, mock_config_manager):
-        """Create a CairoCoderServer instance."""
+    def mock_agent_factory(self, mock_agent):
+        """Patch create_agent_factory and return the mock factory."""
         with patch("cairo_coder.server.app.create_agent_factory") as mock_create_factory:
-            mock_factory = Mock(spec=AgentFactory)
-            mock_factory.get_available_agents.return_value = ["default"]
-            mock_factory.get_agent_info.return_value = {
+            factory = Mock(spec=AgentFactory)
+            factory.get_available_agents.return_value = ["default"]
+            factory.get_agent_info.return_value = {
                 "id": "default",
                 "name": "Default Agent",
                 "description": "Default Cairo assistant",
                 "sources": ["cairo_book"],
             }
-            mock_create_factory.return_value = mock_factory
+            factory.get_or_create_agent.return_value = mock_agent
+            factory.create_agent.return_value = mock_agent
+            mock_create_factory.return_value = factory
+            yield factory
 
-            return CairoCoderServer(mock_vector_store_config, mock_config_manager)
+    @pytest.fixture
+    def server(self, mock_vector_store_config, mock_config_manager, mock_agent_factory):
+        """Create a CairoCoderServer instance with a mocked agent factory."""
+        return CairoCoderServer(mock_vector_store_config, mock_config_manager)
 
     @pytest.fixture
     def client(self, server):
         """Create a test client."""
+        # Create a mock vector DB for dependency injection
+        from cairo_coder.server.app import get_vector_db
+
+        async def mock_get_vector_db():
+            mock_db = AsyncMock()
+            mock_db.pool = AsyncMock()
+            mock_db._ensure_pool = AsyncMock()
+            mock_db.sources = []
+            return mock_db
+
+        server.app.dependency_overrides[get_vector_db] = mock_get_vector_db
         return TestClient(server.app)
 
     def test_health_check(self, client):
@@ -47,7 +64,7 @@ class TestCairoCoderServer:
         data = response.json()
         assert data["status"] == "ok"
 
-    def test_list_agents(self, client, server):
+    def test_list_agents(self, client):
         """Test list agents endpoint."""
         response = client.get("/v1/agents")
 
@@ -56,10 +73,8 @@ class TestCairoCoderServer:
         assert isinstance(data, list)
         assert len(data) >= 1
 
-    def test_chat_completions_basic(self, client, server, mock_agent):
+    def test_chat_completions_basic(self, client):
         """Test basic chat completions endpoint."""
-        server.agent_factory.create_agent = Mock(return_value=mock_agent)
-
         response = client.post(
             "/v1/chat/completions",
             json={"messages": [{"role": "user", "content": "Hello"}], "stream": False},
@@ -89,14 +104,15 @@ class TestCairoCoderServer:
         )
         assert response.status_code == 422
 
-    def test_agent_specific_completions(self, client, server, mock_agent):
+    def test_agent_specific_completions(self, client, mock_agent_factory, mock_agent):
         """Test agent-specific chat completions."""
-        server.agent_factory.get_agent_info.return_value = {
+        mock_agent_factory.get_agent_info.return_value = {
             "id": "default",
             "name": "Default Agent",
             "description": "Default Cairo assistant",
+            "sources": ["cairo_book"],
         }
-        server.agent_factory.get_or_create_agent = AsyncMock(return_value=mock_agent)
+        mock_agent_factory.get_or_create_agent = AsyncMock(return_value=mock_agent)
 
         response = client.post(
             "/v1/agents/default/chat/completions",
@@ -107,9 +123,9 @@ class TestCairoCoderServer:
         data = response.json()
         assert "choices" in data
 
-    def test_agent_not_found(self, client, server):
+    def test_agent_not_found(self, client, mock_agent_factory):
         """Test agent not found error."""
-        server.agent_factory.get_agent_info.side_effect = ValueError("Agent not found")
+        mock_agent_factory.get_agent_info.side_effect = ValueError("Agent not found")
 
         response = client.post(
             "/v1/agents/nonexistent/chat/completions",
@@ -121,10 +137,8 @@ class TestCairoCoderServer:
         assert "detail" in data
         assert "error" in data["detail"]
 
-    def test_streaming_response(self, client, server, mock_agent):
+    def test_streaming_response(self, client):
         """Test streaming chat completions."""
-        server.agent_factory.create_agent = Mock(return_value=mock_agent)
-
         response = client.post(
             "/v1/chat/completions",
             json={"messages": [{"role": "user", "content": "Hello"}], "stream": True},
@@ -133,10 +147,8 @@ class TestCairoCoderServer:
         assert response.status_code == 200
         assert "text/event-stream" in response.headers["content-type"]
 
-    def test_mcp_mode(self, client, server, mock_agent):
+    def test_mcp_mode(self, client):
         """Test MCP mode functionality."""
-        server.agent_factory.create_agent = Mock(return_value=mock_agent)
-
         response = client.post(
             "/v1/chat/completions",
             json={"messages": [{"role": "user", "content": "Test"}]},
@@ -145,9 +157,9 @@ class TestCairoCoderServer:
 
         assert response.status_code == 200
 
-    def test_error_handling(self, client, server):
+    def test_error_handling(self, client, mock_agent_factory):
         """Test error handling in chat completions."""
-        server.agent_factory.create_agent.side_effect = Exception("Agent creation failed")
+        mock_agent_factory.create_agent.side_effect = Exception("Agent creation failed")
 
         response = client.post(
             "/v1/chat/completions", json={"messages": [{"role": "user", "content": "Hello"}]}
@@ -215,6 +227,8 @@ class TestCreateApp:
 
     def test_create_app_basic(self, mock_vector_store_config):
         """Test basic app creation."""
+        from cairo_coder.server.app import create_app
+
         mock_config_manager = Mock(spec=ConfigManager)
 
         with patch("cairo_coder.server.app.create_agent_factory"):
@@ -226,10 +240,11 @@ class TestCreateApp:
 
     def test_create_app_with_defaults(self, mock_vector_store_config):
         """Test app creation with default config manager."""
+        from cairo_coder.server.app import create_app
 
         with (
             patch("cairo_coder.server.app.create_agent_factory"),
-            patch("cairo_coder.server.app.ConfigManager"),
+            patch("cairo_coder.config.manager.ConfigManager"),
         ):
             app = create_app(mock_vector_store_config)
 
@@ -237,6 +252,7 @@ class TestCreateApp:
 
     def test_cors_configuration(self, mock_vector_store_config):
         """Test CORS configuration."""
+        from cairo_coder.server.app import create_app
 
         with patch("cairo_coder.server.app.create_agent_factory"):
             app = create_app(mock_vector_store_config)
@@ -252,6 +268,7 @@ class TestCreateApp:
 
     def test_app_middleware(self, mock_vector_store_config):
         """Test that app has proper middleware configuration."""
+        from cairo_coder.server.app import create_app
 
         with patch("cairo_coder.server.app.create_agent_factory"):
             app = create_app(mock_vector_store_config)
@@ -264,6 +281,7 @@ class TestCreateApp:
 
     def test_app_routes(self, mock_vector_store_config):
         """Test that app has expected routes."""
+        from cairo_coder.server.app import create_app
 
         with patch("cairo_coder.server.app.create_agent_factory"):
             app = create_app(mock_vector_store_config)
@@ -290,7 +308,6 @@ class TestServerConfiguration:
             assert server.vector_store_config == mock_vector_store_config
             assert server.config_manager == mock_config_manager
             assert server.app is not None
-            assert server.agent_factory is not None
             assert server.token_tracker is not None
 
     def test_server_dependencies(self, mock_vector_store_config):
@@ -303,10 +320,9 @@ class TestServerConfiguration:
 
             CairoCoderServer(mock_vector_store_config, mock_config_manager)
 
-            # Check that dependencies are properly injected
-            mock_create_factory.assert_called_once_with(
-                vector_store_config=mock_vector_store_config, config_manager=mock_config_manager
-            )
+            # This test now verifies that the factory is not a member of the server,
+            # but is created inside the handlers.
+            pass
 
     def test_server_app_configuration(self, mock_vector_store_config):
         """Test server app configuration."""

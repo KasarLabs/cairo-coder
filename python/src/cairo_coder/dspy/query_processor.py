@@ -6,7 +6,7 @@ into structured format for document retrieval, including search terms extraction
 and resource identification.
 """
 
-import os
+import asyncio
 from typing import Optional
 
 import dspy
@@ -63,11 +63,13 @@ class QueryProcessorProgram(dspy.Module):
     def __init__(self):
         super().__init__()
         self.retrieval_program = dspy.ChainOfThought(CairoQueryAnalysis)
-        # Validate that the file exists
-        compiled_program_path = "optimizers/results/optimized_retrieval_program.json"
-        if not os.path.exists(compiled_program_path):
-            raise FileNotFoundError(f"{compiled_program_path} not found")
-        self.retrieval_program.load(compiled_program_path)
+
+        # TODO: only the main rag pipeline should be loaded - in one shot
+        # # Validate that the file exists
+        # compiled_program_path = "optimizers/results/optimized_retrieval_program.json"
+        # if not os.path.exists(compiled_program_path):
+        #     raise FileNotFoundError(f"{compiled_program_path} not found")
+        # self.retrieval_program.load(compiled_program_path)
 
         # Common keywords for query analysis
         self.contract_keywords = {
@@ -118,8 +120,22 @@ class QueryProcessorProgram(dspy.Module):
         Returns:
             ProcessedQuery with search terms, resource identification, and categorization
         """
+        return asyncio.run(self.aforward(query, chat_history))
+
+    @traceable(name="QueryProcessorProgram", run_type="llm")
+    async def aforward(self, query: str, chat_history: Optional[str] = None) -> ProcessedQuery:
+        """
+        Process a user query into a structured format for document retrieval.
+
+        Args:
+            query: The user's Cairo/Starknet programming question
+            chat_history: Previous conversation context (optional)
+
+        Returns:
+            ProcessedQuery with search terms, resource identification, and categorization
+        """
         # Execute the DSPy retrieval program
-        result = self.retrieval_program.forward(query=query, chat_history=chat_history)
+        result = await self.retrieval_program.aforward(query=query, chat_history=chat_history)
 
         # Parse and validate the results
         search_queries = result.search_queries

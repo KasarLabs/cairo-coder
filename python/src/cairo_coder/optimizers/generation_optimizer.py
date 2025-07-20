@@ -144,6 +144,8 @@ def _(generation_metric, logger, program, trainset):
 @app.cell
 def _(MIPROv2, generation_metric, logger, program, time, trainset, valset):
     """Run optimization using MIPROv2."""
+    import nest_asyncio
+    nest_asyncio.apply()
 
     def run_optimization(trainset, valset):
         """Run the optimization process using MIPROv2."""

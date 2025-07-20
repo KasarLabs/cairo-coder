@@ -5,7 +5,7 @@ Tests the pipeline orchestration functionality including query processing,
 document retrieval, and response generation.
 """
 
-from unittest.mock import Mock, patch
+from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
 
@@ -28,22 +28,24 @@ class TestRagPipeline:
     def mock_query_processor(self):
         """Create a mock query processor."""
         processor = Mock(spec=QueryProcessorProgram)
-        processor.forward.return_value = ProcessedQuery(
+        mock_res = ProcessedQuery(
             original="How do I create a Cairo contract?",
             search_queries=["cairo", "contract", "create"],
+            reasoning="I need to create a Cairo contract",
             is_contract_related=True,
             is_test_related=False,
             resources=[DocumentSource.CAIRO_BOOK, DocumentSource.STARKNET_DOCS],
         )
+        processor.forward.return_value = mock_res
+        processor.aforward.return_value = mock_res
         return processor
 
     @pytest.fixture
     def mock_document_retriever(self):
         """Create a mock document retriever."""
         retriever = Mock(spec=DocumentRetrieverProgram)
-        retriever.forward = Mock(
-            return_value=[
-                Document(
+        mock_return_value = [
+            Document(
                     page_content="Cairo contracts are defined using #[starknet::contract].",
                     metadata={
                         "title": "Cairo Contracts",
@@ -60,7 +62,8 @@ class TestRagPipeline:
                     },
                 ),
             ]
-        )
+        retriever.aforward = AsyncMock(return_value=mock_return_value)
+        retriever.forward = Mock(return_value=mock_return_value)
         return retriever
 
     @pytest.fixture
@@ -84,7 +87,7 @@ class TestRagPipeline:
     def mock_mcp_generation_program(self):
         """Create a mock MCP generation program."""
         program = Mock(spec=McpGenerationProgram)
-        program.forward.return_value = """
+        mock_res = """
 ## 1. Cairo Contracts
 
 **Source:** Cairo Book
@@ -101,6 +104,7 @@ Cairo contracts are defined using #[starknet::contract].
 
 Storage variables use #[storage] attribute.
 """
+        program.forward.return_value = mock_res
         return program
 
     @pytest.fixture
@@ -202,8 +206,8 @@ Storage variables use #[storage] attribute.
         assert events[-1].type == "end"
 
         # Verify chat history was formatted and passed
-        pipeline.query_processor.forward.assert_called_once()
-        call_args = pipeline.query_processor.forward.call_args
+        pipeline.query_processor.aforward.assert_called_once()
+        call_args = pipeline.query_processor.aforward.call_args
         assert "User:" in call_args[1]["chat_history"]
         assert "Assistant:" in call_args[1]["chat_history"]
 
@@ -218,14 +222,15 @@ Storage variables use #[storage] attribute.
             events.append(event)
 
         # Verify custom sources were used
-        pipeline.document_retriever.forward.assert_called_once()
-        call_args = pipeline.document_retriever.forward.call_args[1]
+        pipeline.document_retriever.aforward.assert_called_once()
+        call_args = pipeline.document_retriever.aforward.call_args[1]
         assert call_args["sources"] == sources
 
     @pytest.mark.asyncio
     async def test_pipeline_error_handling(self, pipeline):
         """Test pipeline error handling."""
         # Mock an error in document retrieval
+        pipeline.document_retriever.aforward.side_effect = Exception("Retrieval error")
         pipeline.document_retriever.forward.side_effect = Exception("Retrieval error")
 
         query = "How do I create a contract?"
@@ -299,6 +304,7 @@ Storage variables use #[storage] attribute.
 
         processed_query = ProcessedQuery(
             original="How do I create a Cairo contract?",
+            reasoning="I need to create a Cairo contract",
             search_queries=["cairo", "contract"],
             is_contract_related=True,
             is_test_related=False,
@@ -315,6 +321,7 @@ Storage variables use #[storage] attribute.
         """Test context preparation with empty documents."""
         processed_query = ProcessedQuery(
             original="Test query",
+            reasoning="I need to write tests for a Cairo contract",
             search_queries=["test"],
             is_contract_related=False,
             is_test_related=False,
@@ -335,6 +342,7 @@ Storage variables use #[storage] attribute.
         # Test contract template
         processed_query = ProcessedQuery(
             original="Contract query",
+            reasoning="I need to create a Cairo contract",
             search_queries=["contract"],
             is_contract_related=True,
             is_test_related=False,
@@ -349,6 +357,7 @@ Storage variables use #[storage] attribute.
         processed_query = ProcessedQuery(
             original="Test query",
             search_queries=["test"],
+            reasoning="I need to write tests for a Cairo contract",
             is_contract_related=False,
             is_test_related=True,
             resources=[],
@@ -364,6 +373,7 @@ Storage variables use #[storage] attribute.
         pipeline._current_processed_query = ProcessedQuery(
             original="test",
             search_queries=["test"],
+            reasoning="I need to write tests for a Cairo contract",
             is_contract_related=False,
             is_test_related=False,
             resources=[],
@@ -403,15 +413,16 @@ class TestRagPipelineFactory:
             assert isinstance(pipeline, RagPipeline)
             assert pipeline.config.name == "test_pipeline"
             assert pipeline.config.vector_store_config == mock_vector_store_config
-            assert pipeline.config.max_source_count == 10
+            assert pipeline.config.max_source_count == 5
             assert pipeline.config.similarity_threshold == 0.4
 
             # Verify factory functions were called
             mock_create_qp.assert_called_once()
             mock_create_dr.assert_called_once_with(
                 vector_store_config=mock_vector_store_config,
-                max_source_count=10,
+                max_source_count=5,
                 similarity_threshold=0.4,
+                vector_db=None,
             )
             mock_create_gp.assert_called_once_with("general")
             mock_create_mcp.assert_called_once()

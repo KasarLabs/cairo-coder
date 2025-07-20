@@ -17,9 +17,9 @@ import structlog
 # Add parent directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from starklings_evaluation.evaluator import StarklingsEvaluator
-from starklings_evaluation.models import ConsolidatedReport
-from starklings_evaluation.report_generator import ReportGenerator
+from scripts.starklings_evaluation.evaluator import StarklingsEvaluator
+from scripts.starklings_evaluation.models import ConsolidatedReport
+from scripts.starklings_evaluation.report_generator import ReportGenerator
 
 # Configure structured logging
 structlog.configure(
@@ -66,9 +66,9 @@ logger = structlog.get_logger(__name__)
     default="./starklings-cairo1",
     help="Path to Starklings repository",
 )
-@click.option("--max-concurrent", type=int, default=5, help="Maximum concurrent API calls")
+@click.option("--max-concurrent", type=int, default=10, help="Maximum concurrent API calls")
 @click.option("--timeout", type=int, default=120, help="API timeout in seconds")
-@click.option("--verbose", "-v", is_flag=True, help="Enable verbose logging")
+@click.option("--verbose", "-v", default=True, is_flag=True, help="Enable verbose logging")
 def main(
     runs: int,
     category: str,
