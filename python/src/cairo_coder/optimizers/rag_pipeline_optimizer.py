@@ -1,6 +1,6 @@
 import marimo
 
-__generated_with = "0.14.11"
+__generated_with = "0.14.12"
 app = marimo.App(width="medium")
 
 
@@ -88,7 +88,7 @@ def _(Path, dspy, json, logger):
     dataset_path = "optimizers/datasets/generation_dataset.json"
     if not Path(dataset_path).exists():
         raise FileNotFoundError(
-            "Dataset not found. Please run generate_starklings_dataset.py first."
+            "Dataset not found. Please run uv run generate_starklings_dataset first."
         )
 
     examples = load_dataset(dataset_path)
@@ -121,47 +121,23 @@ def _(global_config):
 
 
 @app.cell
-async def _(generation_metric, logger, rag_pipeline_program, trainset):
+def _(generation_metric, rag_pipeline_program, valset):
+    def _():
+        """Evaluate system, pre-optimization, using DSPy Evaluate framework."""
+        from dspy.evaluate import Evaluate
 
-    """Evaluate baseline performance on first 5 examples."""
+        # You can use this cell to run more comprehensive evaluation
+        evaluator__ = Evaluate(devset=valset, num_threads=5, display_progress=True)
+        return evaluator__(rag_pipeline_program, metric=generation_metric)
 
-    async def evaluate_baseline(examples):
-        """Evaluate baseline performance on first 5 examples."""
-        logger.info("Evaluating baseline performance")
 
-        scores = []
+    _()
+    return
 
-        for i, example in enumerate(examples[:5]):
-            prediction = ""
-            try:
-                prediction = rag_pipeline_program.forward(
-                    query=example.query,
-                    chat_history=example.chat_history,
-                )
-                score = generation_metric(example, prediction)
-                scores.append(score)
-                logger.debug(
-                    "Baseline evaluation",
-                    example=i,
-                    score=score,
-                    query=example.query[:50] + "...",
-                )
-            except Exception as e:
-                import traceback
 
-                print(traceback.format_exc())
-                logger.error("Error in baseline evaluation", example=i, error=str(e))
-                scores.append(0.0)
-
-        avg_score = sum(scores) / len(scores) if scores else 0.0
-        logger.info("Baseline evaluation complete", average_score=avg_score)
-        return avg_score
-
-    # Run baseline evaluation
-    baseline_score = await evaluate_baseline(trainset)
-    print(f"Baseline score: {baseline_score:.3f}")
-
-    return (baseline_score,)
+@app.cell
+def _():
+    return
 
 
 @app.cell(disabled=True)
