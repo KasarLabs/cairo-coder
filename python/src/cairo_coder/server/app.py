@@ -21,7 +21,7 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field, field_validator
 
 from cairo_coder.config.manager import ConfigManager
-from cairo_coder.core.agent_factory import create_agent_factory
+from cairo_coder.core.agent_factory import AgentFactory, create_agent_factory
 from cairo_coder.core.config import VectorStoreConfig
 from cairo_coder.core.rag_pipeline import (
     AgentLoggingCallback,
@@ -38,6 +38,7 @@ logger = get_logger(__name__)
 
 # Global vector DB instance managed by FastAPI lifecycle
 _vector_db: SourceFilteredPgVectorRM | None = None
+_agent_factory: AgentFactory | None = None
 
 
 # OpenAI-compatible Request/Response Models
@@ -187,16 +188,13 @@ class CairoCoderServer:
             return {"status": "ok"}
 
         @self.app.get("/v1/agents")
-        async def list_agents(vector_db: SourceFilteredPgVectorRM = Depends(get_vector_db)):
+        async def list_agents(
+            vector_db: SourceFilteredPgVectorRM = Depends(get_vector_db),
+            agent_factory: AgentFactory = Depends(get_agent_factory),
+        ):
             """List all available agents."""
             try:
                 # Create agent factory with injected vector_db
-                agent_factory = create_agent_factory(
-                    vector_store_config=self.vector_store_config,
-                    config_manager=self.config_manager,
-                    vector_db=vector_db,
-                )
-
                 available_agents = agent_factory.get_available_agents()
                 agents_info = []
 
@@ -236,14 +234,10 @@ class CairoCoderServer:
             mcp: str | None = Header(None),
             x_mcp_mode: str | None = Header(None, alias="x-mcp-mode"),
             vector_db: SourceFilteredPgVectorRM = Depends(get_vector_db),
+            agent_factory: AgentFactory = Depends(get_agent_factory),
         ):
             """Agent-specific chat completions - matches TypeScript backend."""
             # Create agent factory to validate agent exists
-            agent_factory = create_agent_factory(
-                vector_store_config=self.vector_store_config,
-                config_manager=self.config_manager,
-                vector_db=vector_db,
-            )
             try:
                 agent_factory.get_agent_info(agent_id=agent_id)
             except ValueError as e:
@@ -262,7 +256,9 @@ class CairoCoderServer:
             # Determine MCP mode
             mcp_mode = bool(mcp or x_mcp_mode)
 
-            return await self._handle_chat_completion(request, req, agent_id, mcp_mode, vector_db)
+            return await self._handle_chat_completion(
+                request, req, agent_id, mcp_mode, vector_db, agent_factory
+            )
 
         @self.app.post("/v1/chat/completions")
         async def v1_chat_completions(
@@ -271,12 +267,15 @@ class CairoCoderServer:
             mcp: str | None = Header(None),
             x_mcp_mode: str | None = Header(None, alias="x-mcp-mode"),
             vector_db: SourceFilteredPgVectorRM = Depends(get_vector_db),
+            agent_factory: AgentFactory = Depends(get_agent_factory),
         ):
             """Legacy chat completions endpoint - matches TypeScript backend."""
             # Determine MCP mode
             mcp_mode = bool(mcp or x_mcp_mode)
 
-            return await self._handle_chat_completion(request, req, None, mcp_mode, vector_db)
+            return await self._handle_chat_completion(
+                request, req, None, mcp_mode, vector_db, agent_factory
+            )
 
         @self.app.post("/chat/completions")
         async def chat_completions(
@@ -285,12 +284,15 @@ class CairoCoderServer:
             mcp: str | None = Header(None),
             x_mcp_mode: str | None = Header(None, alias="x-mcp-mode"),
             vector_db: SourceFilteredPgVectorRM = Depends(get_vector_db),
+            agent_factory: AgentFactory = Depends(get_agent_factory),
         ):
             """Legacy chat completions endpoint - matches TypeScript backend."""
             # Determine MCP mode
             mcp_mode = bool(mcp or x_mcp_mode)
 
-            return await self._handle_chat_completion(request, req, None, mcp_mode, vector_db)
+            return await self._handle_chat_completion(
+                request, req, None, mcp_mode, vector_db, agent_factory
+            )
 
     async def _handle_chat_completion(
         self,
@@ -299,6 +301,7 @@ class CairoCoderServer:
         agent_id: str | None = None,
         mcp_mode: bool = False,
         vector_db: SourceFilteredPgVectorRM | None = None,
+        agent_factory: AgentFactory | None = None,
     ):
         """Handle chat completion request - replicates TypeScript chatCompletionHandler."""
         try:
@@ -315,16 +318,9 @@ class CairoCoderServer:
             # Get last user message as query
             query = request.messages[-1].content
 
-            # Create agent factory with injected vector_db
-            agent_factory = create_agent_factory(
-                vector_store_config=self.vector_store_config,
-                config_manager=self.config_manager,
-                vector_db=vector_db,
-            )
-
             # Create agent
             if agent_id:
-                agent = await agent_factory.get_or_create_agent(
+                agent = agent_factory.get_or_create_agent(
                     agent_id=agent_id,
                     query=query,
                     history=messages[:-1],  # Exclude last message
@@ -359,7 +355,8 @@ class CairoCoderServer:
                     error=ErrorDetail(
                         message=str(e), type="invalid_request_error", code="invalid_request"
                     )
-                ).dict()) from e
+                ).dict(),
+            ) from e
 
         except Exception as e:
             import traceback
@@ -372,7 +369,8 @@ class CairoCoderServer:
                     error=ErrorDetail(
                         message="Internal server error", type="server_error", code="internal_error"
                     )
-                ).dict()) from e
+                ).dict(),
+            ) from e
 
     async def _stream_chat_completion(
         self, agent, query: str, history: list[Message], mcp_mode: bool
@@ -459,16 +457,20 @@ class CairoCoderServer:
 
         answer = response.answer
 
+        # Somehow this is not always returning something (None). In that case, we're not capable of getting the
+        # tracked usage.
         lm_usage = response.get_lm_usage()
         if not lm_usage:
-            logger.warning("No LM usage found")
-            breakpoint()
-        # Aggregate, for all entries, together the prompt_tokens, completion_tokens, total_tokens fields
-        total_prompt_tokens = sum(entry.get("prompt_tokens", 0) for entry in lm_usage.values())
-        total_completion_tokens = sum(
-            entry.get("completion_tokens", 0) for entry in lm_usage.values()
-        )
-        total_tokens = sum(entry.get("total_tokens", 0) for entry in lm_usage.values())
+            total_prompt_tokens = 0
+            total_completion_tokens = 0
+            total_tokens = 0
+        else:
+            # Aggregate, for all entries, together the prompt_tokens, completion_tokens, total_tokens fields
+            total_prompt_tokens = sum(entry.get("prompt_tokens", 0) for entry in lm_usage.values())
+            total_completion_tokens = sum(
+                entry.get("completion_tokens", 0) for entry in lm_usage.values()
+            )
+            total_tokens = sum(entry.get("total_tokens", 0) for entry in lm_usage.values())
 
         return ChatCompletionResponse(
             id=response_id,
@@ -572,6 +574,12 @@ async def get_vector_db() -> SourceFilteredPgVectorRM:
     return _vector_db
 
 
+async def get_agent_factory() -> AgentFactory:
+    if _agent_factory is None:
+        raise RuntimeError("Agent Factory not initialized.")
+    return _agent_factory
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """
@@ -580,7 +588,7 @@ async def lifespan(app: FastAPI):
     Args:
         app: FastAPI application instance
     """
-    global _vector_db
+    global _vector_db, _agent_factory
 
     logger.info("Starting Cairo Coder server - initializing resources")
 
@@ -600,6 +608,11 @@ async def lifespan(app: FastAPI):
 
     # Ensure connection pool is initialized
     await _vector_db._ensure_pool()
+
+    # Initialize Agent Factory
+    _agent_factory = create_agent_factory(
+        vector_store_config=vector_store_config, vector_db=_vector_db
+    )
 
     logger.info("Vector DB initialized successfully")
 

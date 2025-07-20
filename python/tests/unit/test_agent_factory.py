@@ -109,7 +109,7 @@ class TestAgentFactory:
             mock_pipeline = Mock(spec=RagPipeline)
             mock_create.return_value = mock_pipeline
 
-            agent = await AgentFactory.create_agent_by_id(
+            agent = AgentFactory.create_agent_by_id(
                 query=query,
                 history=history,
                 agent_id=agent_id,
@@ -133,7 +133,7 @@ class TestAgentFactory:
         agent_id = "nonexistent_agent"
 
         with pytest.raises(ValueError, match="Agent configuration not found"):
-            await AgentFactory.create_agent_by_id(
+            AgentFactory.create_agent_by_id(
                 query=query,
                 history=history,
                 agent_id=agent_id,
@@ -142,7 +142,7 @@ class TestAgentFactory:
             )
 
     @pytest.mark.asyncio
-    async def test_get_or_create_agent_cache_miss(self, agent_factory):
+    def test_get_or_create_agent_cache_miss(self, agent_factory):
         """Test get_or_create_agent with cache miss."""
         query = "Test query"
         history = []
@@ -152,7 +152,7 @@ class TestAgentFactory:
             mock_pipeline = Mock(spec=RagPipeline)
             mock_create.return_value = mock_pipeline
 
-            agent = await agent_factory.get_or_create_agent(
+            agent = agent_factory.get_or_create_agent(
                 agent_id=agent_id, query=query, history=history
             )
 
@@ -185,7 +185,7 @@ class TestAgentFactory:
         agent_factory._agent_cache[cache_key] = mock_pipeline
 
         with patch.object(agent_factory, "create_agent_by_id") as mock_create:
-            agent = await agent_factory.get_or_create_agent(
+            agent = agent_factory.get_or_create_agent(
                 agent_id=agent_id, query=query, history=history
             )
 
@@ -288,7 +288,7 @@ class TestAgentFactory:
             mock_pipeline = Mock(spec=RagPipeline)
             mock_create.return_value = mock_pipeline
 
-            pipeline = await AgentFactory._create_pipeline_from_config(
+            pipeline = AgentFactory._create_pipeline_from_config(
                 agent_config=agent_config,
                 vector_store_config=mock_vector_store_config,
                 query="Test query",
@@ -325,7 +325,7 @@ class TestAgentFactory:
             mock_pipeline = Mock(spec=RagPipeline)
             mock_create.return_value = mock_pipeline
 
-            pipeline = await AgentFactory._create_pipeline_from_config(
+            pipeline = AgentFactory._create_pipeline_from_config(
                 agent_config=agent_config,
                 vector_store_config=mock_vector_store_config,
                 query="Test query",

@@ -93,7 +93,7 @@ class AgentFactory:
 
 
     @staticmethod
-    async def create_agent_by_id(
+    def create_agent_by_id(
         query: str,
         history: list[Message],
         agent_id: str,
@@ -130,7 +130,7 @@ class AgentFactory:
             raise ValueError(f"Agent configuration not found for ID: {agent_id}") from e
 
         # Create pipeline based on agent configuration
-        return await AgentFactory._create_pipeline_from_config(
+        return AgentFactory._create_pipeline_from_config(
             agent_config=agent_config,
             vector_store_config=vector_store_config,
             query=query,
@@ -140,7 +140,7 @@ class AgentFactory:
         )
 
 
-    async def get_or_create_agent(
+    def get_or_create_agent(
         self, agent_id: str, query: str, history: list[Message], mcp_mode: bool = False
     ) -> RagPipeline:
         """
@@ -161,7 +161,7 @@ class AgentFactory:
             return self._agent_cache[cache_key]
 
         # Create new agent
-        agent = await self.create_agent_by_id(
+        agent = self.create_agent_by_id(
             query=query,
             history=history,
             agent_id=agent_id,
@@ -261,7 +261,7 @@ class AgentFactory:
         return sources
 
     @staticmethod
-    async def _create_pipeline_from_config(
+    def _create_pipeline_from_config(
         agent_config: AgentConfiguration,
         vector_store_config: VectorStoreConfig,
         query: str,

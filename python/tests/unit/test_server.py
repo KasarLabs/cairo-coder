@@ -5,7 +5,7 @@ Tests the FastAPI application endpoints and server functionality.
 This test file is for the OpenAI-compatible server implementation.
 """
 
-from unittest.mock import AsyncMock, Mock, patch
+from unittest.mock import Mock, patch
 
 import pytest
 from fastapi.testclient import TestClient
@@ -34,27 +34,6 @@ class TestCairoCoderServer:
             factory.create_agent.return_value = mock_agent
             mock_create_factory.return_value = factory
             yield factory
-
-    @pytest.fixture
-    def server(self, mock_vector_store_config, mock_config_manager, mock_agent_factory):
-        """Create a CairoCoderServer instance with a mocked agent factory."""
-        return CairoCoderServer(mock_vector_store_config, mock_config_manager)
-
-    @pytest.fixture
-    def client(self, server):
-        """Create a test client."""
-        # Create a mock vector DB for dependency injection
-        from cairo_coder.server.app import get_vector_db
-
-        async def mock_get_vector_db():
-            mock_db = AsyncMock()
-            mock_db.pool = AsyncMock()
-            mock_db._ensure_pool = AsyncMock()
-            mock_db.sources = []
-            return mock_db
-
-        server.app.dependency_overrides[get_vector_db] = mock_get_vector_db
-        return TestClient(server.app)
 
     def test_health_check(self, client):
         """Test health check endpoint."""
@@ -112,7 +91,7 @@ class TestCairoCoderServer:
             "description": "Default Cairo assistant",
             "sources": ["cairo_book"],
         }
-        mock_agent_factory.get_or_create_agent = AsyncMock(return_value=mock_agent)
+        mock_agent_factory.get_or_create_agent = Mock(return_value=mock_agent)
 
         response = client.post(
             "/v1/agents/default/chat/completions",

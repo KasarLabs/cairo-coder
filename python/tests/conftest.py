@@ -10,16 +10,19 @@ from collections.abc import AsyncGenerator
 from unittest.mock import AsyncMock, Mock
 
 import pytest
+from fastapi.testclient import TestClient
 
 from cairo_coder.config.manager import ConfigManager
 from cairo_coder.core.agent_factory import AgentFactory
 from cairo_coder.core.config import AgentConfiguration, Config, VectorStoreConfig
 from cairo_coder.core.types import Document, DocumentSource, Message, ProcessedQuery, StreamEvent
 from cairo_coder.dspy.document_retriever import SourceFilteredPgVectorRM
+from cairo_coder.server.app import CairoCoderServer, get_agent_factory
 
 # =============================================================================
 # Common Mock Fixtures
 # =============================================================================
+
 
 @pytest.fixture(scope="session")
 def mock_vector_db():
@@ -121,7 +124,7 @@ def mock_agent_factory():
         "similarity_threshold": 0.4,
     }
     factory.create_agent = Mock()
-    factory.get_or_create_agent = AsyncMock()
+    factory.get_or_create_agent = Mock()
     factory.clear_cache = Mock()
     return factory
 
@@ -209,6 +212,30 @@ def mock_pool():
     pool.close = AsyncMock()
     return pool
 
+
+@pytest.fixture
+def server(mock_vector_store_config, mock_config_manager, mock_agent_factory):
+    """Create a CairoCoderServer instance for testing."""
+    return CairoCoderServer(mock_vector_store_config, mock_config_manager)
+
+@pytest.fixture
+def client(server, mock_agent_factory):
+    """Create a test client for the server."""
+    from cairo_coder.server.app import get_vector_db
+
+    async def mock_get_vector_db():
+        mock_db = AsyncMock()
+        mock_db.pool = AsyncMock()
+        mock_db._ensure_pool = AsyncMock()
+        mock_db.sources = []
+        return mock_db
+
+    async def mock_get_agent_factory():
+        return mock_agent_factory
+
+    server.app.dependency_overrides[get_vector_db] = mock_get_vector_db
+    server.app.dependency_overrides[get_agent_factory] = mock_get_agent_factory
+    return TestClient(server.app)
 
 # =============================================================================
 # Sample Data Fixtures

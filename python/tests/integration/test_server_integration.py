@@ -9,7 +9,6 @@ import concurrent.futures
 from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
-from fastapi.testclient import TestClient
 
 from cairo_coder.config.manager import ConfigManager
 from cairo_coder.core.agent_factory import AgentFactory
@@ -48,7 +47,7 @@ class TestServerIntegration:
 
             factory.get_agent_info.side_effect = get_agent_info
             factory.create_agent.return_value = mock_agent
-            factory.get_or_create_agent = AsyncMock(return_value=mock_agent)
+            factory.get_or_create_agent = Mock(return_value=mock_agent)
             mock_factory_creator.return_value = factory
             yield factory
 
@@ -58,21 +57,6 @@ class TestServerIntegration:
         app = create_app(mock_vector_store_config, mock_config_manager)
         app.dependency_overrides[get_vector_store_config] = lambda: mock_vector_store_config
         return app
-
-    @pytest.fixture(scope="function")
-    def client(self, app):
-        """Create a test client."""
-        from cairo_coder.server.app import get_vector_db
-
-        async def mock_get_vector_db():
-            mock_db = AsyncMock()
-            mock_db.pool = AsyncMock()
-            mock_db._ensure_pool = AsyncMock()
-            mock_db.sources = []
-            return mock_db
-
-        app.dependency_overrides[get_vector_db] = mock_get_vector_db
-        return TestClient(app)
 
     def test_health_check_integration(self, client):
         """Test health check endpoint in integration context."""

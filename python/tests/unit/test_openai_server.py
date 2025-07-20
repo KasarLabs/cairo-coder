@@ -7,15 +7,14 @@ functionality, ensuring API compatibility and correct behavior.
 
 import json
 import uuid
-from unittest.mock import AsyncMock, Mock, patch
+from unittest.mock import Mock, patch
 
 import pytest
 from fastapi import FastAPI
-from fastapi.testclient import TestClient
 
 from cairo_coder.core.agent_factory import AgentFactory
 from cairo_coder.core.types import StreamEvent
-from cairo_coder.server.app import CairoCoderServer, create_app
+from cairo_coder.server.app import create_app
 
 
 class TestCairoCoderServer:
@@ -33,30 +32,12 @@ class TestCairoCoderServer:
                 "description": "Cairo programming assistant",
                 "sources": ["cairo-docs"],
             }
+            factory.get_or_create_agent.return_value = mock_agent
             factory.create_agent.return_value = mock_agent
-            factory.get_or_create_agent = AsyncMock(return_value=mock_agent)
+            factory.get_or_create_agent = Mock(return_value=mock_agent)
             mock_factory_creator.return_value = factory
+
             yield factory
-
-    @pytest.fixture
-    def server(self, mock_vector_store_config, mock_config_manager, mock_agent_factory):
-        """Create a CairoCoderServer instance for testing."""
-        return CairoCoderServer(mock_vector_store_config, mock_config_manager)
-
-    @pytest.fixture
-    def client(self, server):
-        """Create a test client for the server."""
-        from cairo_coder.server.app import get_vector_db
-
-        async def mock_get_vector_db():
-            mock_db = AsyncMock()
-            mock_db.pool = AsyncMock()
-            mock_db._ensure_pool = AsyncMock()
-            mock_db.sources = []
-            return mock_db
-
-        server.app.dependency_overrides[get_vector_db] = mock_get_vector_db
-        return TestClient(server.app)
 
     def test_health_check(self, client):
         """Test health check endpoint."""
@@ -166,15 +147,8 @@ class TestCairoCoderServer:
         final_chunk = chunks[-1]
         assert final_chunk["choices"][0]["finish_reason"] == "stop"
 
-    def test_agent_chat_completions_valid_agent(self, client, mock_agent_factory, mock_agent):
+    def test_agent_chat_completions_valid_agent(self, client):
         """Test agent-specific chat completions with valid agent."""
-        mock_agent_factory.get_agent_info.return_value = {
-            "id": "cairo-coder",
-            "name": "Cairo Coder",
-            "description": "Cairo programming assistant",
-            "sources": ["cairo-docs"],
-        }
-        mock_agent_factory.get_or_create_agent.return_value = mock_agent
 
         response = client.post(
             "/v1/agents/cairo-coder/chat/completions",
@@ -420,29 +394,9 @@ class TestOpenAICompatibility:
                 "sources": ["cairo-docs"],
             }
             factory.create_agent.return_value = mock_agent
-            factory.get_or_create_agent = AsyncMock(return_value=mock_agent)
+            factory.get_or_create_agent = Mock(return_value=mock_agent)
             mock_factory_creator.return_value = factory
             yield factory
-
-    @pytest.fixture
-    def server(self, mock_vector_store_config, mock_config_manager, mock_agent_factory):
-        """Create a CairoCoderServer instance for testing."""
-        return CairoCoderServer(mock_vector_store_config, mock_config_manager)
-
-    @pytest.fixture
-    def client(self, server):
-        """Create a test client for the server."""
-        from cairo_coder.server.app import get_vector_db
-
-        async def mock_get_vector_db():
-            mock_db = AsyncMock()
-            mock_db.pool = AsyncMock()
-            mock_db._ensure_pool = AsyncMock()
-            mock_db.sources = []
-            return mock_db
-
-        server.app.dependency_overrides[get_vector_db] = mock_get_vector_db
-        return TestClient(server.app)
 
     def test_openai_chat_completion_response_structure(self, client):
         """Test that response structure matches OpenAI API."""
@@ -551,29 +505,10 @@ class TestMCPModeCompatibility:
                 }
             )
             factory.create_agent.return_value = mock_agent
-            factory.get_or_create_agent = AsyncMock(return_value=mock_agent)
+            factory.get_or_create_agent = Mock(return_value=mock_agent)
             mock_factory_creator.return_value = factory
             yield factory
 
-    @pytest.fixture
-    def server(self, mock_vector_store_config, mock_config_manager, mock_agent_factory):
-        """Create a CairoCoderServer instance for testing."""
-        return CairoCoderServer(mock_vector_store_config, mock_config_manager)
-
-    @pytest.fixture
-    def client(self, server):
-        """Create a test client for the server."""
-        from cairo_coder.server.app import get_vector_db
-
-        async def mock_get_vector_db():
-            mock_db = AsyncMock()
-            mock_db.pool = AsyncMock()
-            mock_db._ensure_pool = AsyncMock()
-            mock_db.sources = []
-            return mock_db
-
-        server.app.dependency_overrides[get_vector_db] = mock_get_vector_db
-        return TestClient(server.app)
 
     def test_mcp_mode_non_streaming_response(self, client):
         """Test MCP mode returns sources in non-streaming response."""
