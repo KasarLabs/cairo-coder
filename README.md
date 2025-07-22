@@ -94,6 +94,14 @@ Using Docker is highly recommended for a streamlined setup. For instructions on 
       LANGSMITH_ENDPOINT="https://api.smith.langchain.com"
       LANGSMITH_API_KEY="lsv2..."
       ```
+    - Add your API keys to `python/.env`:
+      ```yaml
+      OPENAI_API_KEY="sk-..."
+      ANTHROPIC_API_KEY="..."
+      GEMINI_API_KEY="..."
+      ```
+
+      Add the API keys required for the LLMs you want to use.
 
 4.  **Run the Application**
     Start the database and the Python backend service using Docker Compose:
