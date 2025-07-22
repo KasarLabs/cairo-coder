@@ -16,8 +16,9 @@ COPY README.md ./python/
 
 # For psycopg2
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    libpq-dev=15.8-0+deb12u1 \
-    gcc=4:12.2.0-3 \
+    libpq-dev \
+    gcc \
+    python3-dev \
     && rm -rf /var/lib/apt/lists/*
 
 # Install dependencies using UV

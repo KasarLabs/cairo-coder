@@ -98,7 +98,7 @@ Using Docker is highly recommended for a streamlined setup. For instructions on 
 4.  **Run the Application**
     Start the database and the Python backend service using Docker Compose:
     ```bash
-    docker compose up postgres python-backend --build
+    docker compose up postgres backend --build
     ```
     The API will be available at `http://localhost:3001/v1/chat/completions`.
 
