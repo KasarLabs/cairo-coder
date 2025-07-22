@@ -390,6 +390,7 @@ def create_agent_factory(
     # Load default agent configurations
     default_configs = {
         "default": DefaultAgentConfigurations.get_default_agent(),
+        "cairo-coder": DefaultAgentConfigurations.get_default_agent(),
         "scarb-assistant": DefaultAgentConfigurations.get_scarb_agent(),
     }
 

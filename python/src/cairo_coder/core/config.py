@@ -129,5 +129,6 @@ class Config:
         """Initialize default agents on top of custom ones."""
         self.agents = {**self.agents, **{
                 "cairo-coder": AgentConfiguration.default_cairo_coder(),
+                "default": AgentConfiguration.default_cairo_coder(),
                 "scarb-assistant": AgentConfiguration.scarb_assistant(),
             }}

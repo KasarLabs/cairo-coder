@@ -221,7 +221,7 @@ class TestMcpGenerationProgram:
         """Test MCP mode with empty documents."""
         result = mcp_program.forward([])
 
-        assert result == "No relevant documentation found."
+        assert result.answer == "No relevant documentation found."
 
     def test_mcp_documents_with_missing_metadata(self, mcp_program):
         """Test MCP mode with documents missing metadata."""
