@@ -6,6 +6,8 @@ const path = require('path');
 const DEBUG = true;
 const SINGLE_EXERCISE = process.env.SINGLE_EXERCISE || null;
 const SAVE_RESPONSES = true;
+const MAX_FEEDBACK_ATTEMPTS = 3; // Nombre maximum de tentatives de feedback
+const RUN_NUMBER= 1 ;
 
 function log(message) {
   if (DEBUG) {
@@ -116,8 +118,37 @@ async function testServerConnection() {
   }
 }
 
-async function callCairoCoderAPI(exerciseContent, exercise, retries = 3) {
-  const prompt = `You are solving a Cairo programming exercise.
+async function callCairoCoderAPI(exerciseContent, exercise, errorFeedback = null, attemptNumber = 1, retries = 3) {
+  let prompt;
+
+  if (errorFeedback && attemptNumber > 1) {
+    // Prompt avec feedback d'erreur
+    prompt = `You are solving a Cairo programming exercise. Your previous attempt failed with the following error:
+
+ERROR FEEDBACK (Attempt ${attemptNumber}/${MAX_FEEDBACK_ATTEMPTS + 1}):
+Exit Code: ${errorFeedback.exitCode}
+STDOUT: ${errorFeedback.stdout}
+STDERR: ${errorFeedback.stderr}
+
+Please analyze the error and fix the code accordingly.
+
+Exercise: ${exercise.name}
+${exercise.hint ? `Hint: ${exercise.hint}` : ''}
+
+Instructions:
+1. Carefully analyze the compilation error above
+2. Fix the specific issues mentioned in the error output
+3. Remove the "// I AM NOT DONE" comment when complete
+4. Ensure the solution demonstrates the intended concept
+5. The solution must be in the same language as the exercise (Cairo)
+
+Code to fix:
+${exerciseContent}
+
+Please provide only the corrected code, without any additional explanation or markdown formatting.`;
+  } else {
+    // Prompt initial (première tentative)
+    prompt = `You are solving a Cairo programming exercise.
 
 Exercise: ${exercise.name}
 ${exercise.hint ? `Hint: ${exercise.hint}` : ''}
@@ -133,6 +164,7 @@ Code to fix:
 ${exerciseContent}
 
 Please provide only the corrected code, without any additional explanation or markdown formatting.`;
+  }
 
   const requestBody = {
     model: 'cairo-coder',
@@ -142,7 +174,7 @@ Please provide only the corrected code, without any additional explanation or ma
 
   for (let attempt = 1; attempt <= retries; attempt++) {
     try {
-      log(`API call attempt ${attempt}/${retries} for ${exercise.name}`);
+      log(`API call attempt ${attempt}/${retries} for ${exercise.name} (feedback attempt ${attemptNumber})`);
 
       const response = await fetch(
         'http://localhost:3001/v1/chat/completions',
@@ -152,7 +184,7 @@ Please provide only the corrected code, without any additional explanation or ma
             'Content-Type': 'application/json',
           },
           body: JSON.stringify(requestBody),
-          timeout: 120000, // 2 minutes au lieu de 60 secondes
+          timeout: 120000, // 2 minutes
         },
       );
 
@@ -172,7 +204,7 @@ Please provide only the corrected code, without any additional explanation or ma
           '..',
           '..',
           'debug',
-          `${exercise.name}_response.json`,
+          `${exercise.name}_response_attempt${attemptNumber}.json`,
         );
         fs.mkdirSync(path.dirname(responseFile), { recursive: true });
         fs.writeFileSync(responseFile, JSON.stringify(data, null, 2));
@@ -182,14 +214,14 @@ Please provide only the corrected code, without any additional explanation or ma
       if (data.choices && data.choices[0] && data.choices[0].message) {
         const rawContent = data.choices[0].message.content;
         const cleanCode = extractCairoCode(rawContent);
-        log(`✅ API call successful for ${exercise.name}`);
+        log(`✅ API call successful for ${exercise.name} (attempt ${attemptNumber})`);
         return cleanCode;
       } else {
         throw new Error('Invalid response format from API');
       }
     } catch (error) {
       log(
-        `❌ API call failed (attempt ${attempt}/${retries}) for ${exercise.name}: ${error.message}`,
+        `❌ API call failed (attempt ${attempt}/${retries}) for ${exercise.name} (feedback attempt ${attemptNumber}): ${error.message}`,
       );
 
       if (attempt === retries) {
@@ -204,8 +236,8 @@ Please provide only the corrected code, without any additional explanation or ma
   }
 }
 
-async function testExercise(exercise, starklingsPath, runNumber = 1) {
-  log(`\n=== Testing exercise: ${exercise.name} ===`);
+async function testExerciseWithFeedback(exercise, starklingsPath, runNumber = 1) {
+  log(`\n=== Testing exercise with feedback: ${exercise.name} ===`);
 
   const exercisePath = path.join(starklingsPath, exercise.path);
 
@@ -214,6 +246,7 @@ async function testExercise(exercise, starklingsPath, runNumber = 1) {
     return {
       success: false,
       error: { message: 'File not found', type: 'FILE_ERROR' },
+      attempts: 0,
     };
   }
 
@@ -224,80 +257,125 @@ async function testExercise(exercise, starklingsPath, runNumber = 1) {
   const backupPath = exercisePath + '.backup';
   fs.writeFileSync(backupPath, originalContent);
 
+  let lastError = null;
+  let correctedCode = null;
+  let currentContent = originalContent;
+
   try {
-    // Appeler l'API
-    const correctedCode = await callCairoCoderAPI(originalContent, exercise);
+    // Boucle de feedback avec MAX_FEEDBACK_ATTEMPTS + 1 tentatives au total
+    for (let attemptNumber = 1; attemptNumber <= MAX_FEEDBACK_ATTEMPTS + 1; attemptNumber++) {
+      log(`\n--- Attempt ${attemptNumber}/${MAX_FEEDBACK_ATTEMPTS + 1} for ${exercise.name} ---`);
 
-    // Sauvegarder la solution
-    fs.writeFileSync(exercisePath, correctedCode);
-    log(`Updated exercise file with generated code`);
-
-    // Sauvegarder les fichiers de debug SEULEMENT pour le dernier run (run 10)
-    if (SAVE_RESPONSES && runNumber === 5) {
-      const solutionFile = path.join(
-        __dirname,
-        '..',
-        '..',
-        'debug',
-        `${exercise.name}_solution.cairo`,
-      );
-      fs.mkdirSync(path.dirname(solutionFile), { recursive: true });
-      fs.writeFileSync(solutionFile, correctedCode);
-    }
-
-    // Tester la solution
-    try {
-      log(`Running starklings for ${exercise.name}...`);
-      const result = execSync(
-        `cargo run --bin starklings run ${exercise.name}`,
-        {
-          cwd: starklingsPath,
-          stdio: 'pipe',
-          timeout: 300000,
-          encoding: 'utf8',
-        },
-      );
-
-      log(`✅ ${exercise.name} - Success`);
-      log(`Starklings output: ${result.substring(0, 200)}...`);
-      return { success: true };
-    } catch (error) {
-      log(`❌ ${exercise.name} - Execution failed`);
-      log(`Error code: ${error.status}`);
-      log(`stdout: ${error.stdout ? error.stdout.substring(0, 500) : 'none'}`);
-      log(`stderr: ${error.stderr ? error.stderr.substring(0, 500) : 'none'}`);
-
-      // Formater l'erreur pour le rapport
-      const errorDetails = {
-        exitCode: error.status,
-        stdout: error.stdout || '',
-        stderr: error.stderr || '',
-      };
-
-      // Sauvegarder les erreurs SEULEMENT pour le dernier run
-      if (SAVE_RESPONSES && runNumber === 5) {
-        const errorFile = path.join(
-          __dirname,
-          '..',
-          '..',
-          'debug',
-          `${exercise.name}_error.txt`,
+      try {
+        // Appeler l'API avec ou sans feedback selon l'attempt
+        correctedCode = await callCairoCoderAPI(
+          currentContent,
+          exercise,
+          attemptNumber > 1 ? lastError : null,
+          attemptNumber
         );
-        fs.writeFileSync(
-          errorFile,
-          `Exit code: ${error.status}\n\nSTDOUT:\n${error.stdout}\n\nSTDERR:\n${error.stderr}`,
-        );
-        log(`Error details saved to: ${errorFile}`);
+
+        // Sauvegarder la solution de cette tentative
+        fs.writeFileSync(exercisePath, correctedCode);
+        log(`Updated exercise file with generated code (attempt ${attemptNumber})`);
+
+        // Sauvegarder les fichiers de debug pour chaque tentative si c'est le dernier run
+        if (SAVE_RESPONSES && runNumber === RUN_NUMBER) {
+          const solutionFile = path.join(
+            __dirname,
+            '..',
+            '..',
+            'debug',
+            `${exercise.name}_solution_attempt${attemptNumber}.cairo`,
+          );
+          fs.mkdirSync(path.dirname(solutionFile), { recursive: true });
+          fs.writeFileSync(solutionFile, correctedCode);
+        }
+
+        // Tester la solution
+        try {
+          log(`Running starklings for ${exercise.name} (attempt ${attemptNumber})...`);
+          const result = execSync(
+            `cargo run --bin starklings run ${exercise.name}`,
+            {
+              cwd: starklingsPath,
+              stdio: 'pipe',
+              timeout: 300000,
+              encoding: 'utf8',
+            },
+          );
+
+          log(`✅ ${exercise.name} - Success on attempt ${attemptNumber}!`);
+          log(`Starklings output: ${result.substring(0, 200)}...`);
+          
+          return { 
+            success: true, 
+            attempts: attemptNumber,
+            finalAttempt: attemptNumber
+          };
+        } catch (error) {
+          log(`❌ ${exercise.name} - Execution failed on attempt ${attemptNumber}`);
+          log(`Error code: ${error.status}`);
+          log(`stdout: ${error.stdout ? error.stdout.substring(0, 500) : 'none'}`);
+          log(`stderr: ${error.stderr ? error.stderr.substring(0, 500) : 'none'}`);
+
+          // Formater l'erreur pour le feedback
+          lastError = {
+            exitCode: error.status,
+            stdout: error.stdout || '',
+            stderr: error.stderr || '',
+          };
+
+          // Sauvegarder les erreurs pour chaque tentative si c'est le dernier run
+          if (SAVE_RESPONSES && runNumber === RUN_NUMBER) {
+            const errorFile = path.join(
+              __dirname,
+              '..',
+              '..',
+              'debug',
+              `${exercise.name}_error_attempt${attemptNumber}.txt`,
+            );
+            fs.writeFileSync(
+              errorFile,
+              `Attempt: ${attemptNumber}/${MAX_FEEDBACK_ATTEMPTS + 1}\nExit code: ${error.status}\n\nSTDOUT:\n${error.stdout}\n\nSTDERR:\n${error.stderr}`,
+            );
+            log(`Error details saved to: ${errorFile}`);
+          }
+
+          // Si c'est la dernière tentative, retourner l'échec
+          if (attemptNumber === MAX_FEEDBACK_ATTEMPTS + 1) {
+            log(`❌ ${exercise.name} - All ${MAX_FEEDBACK_ATTEMPTS + 1} attempts failed`);
+            return { 
+              success: false, 
+              error: lastError, 
+              attempts: attemptNumber,
+              finalAttempt: attemptNumber
+            };
+          }
+
+          // Préparer la prochaine tentative avec le code corrigé comme base
+          currentContent = correctedCode;
+          
+          // Attendre un peu avant la prochaine tentative
+          await new Promise((resolve) => setTimeout(resolve, 2000));
+        }
+      } catch (apiError) {
+        log(`❌ ${exercise.name} - API call failed on attempt ${attemptNumber}: ${apiError.message}`);
+        
+        // Si c'est la dernière tentative ou si l'API échoue, retourner l'erreur
+        if (attemptNumber === MAX_FEEDBACK_ATTEMPTS + 1) {
+          return {
+            success: false,
+            error: { message: apiError.message, type: 'API_ERROR' },
+            attempts: attemptNumber,
+            finalAttempt: attemptNumber
+          };
+        }
+        
+        // Pour les erreurs API, on garde le même contenu pour la prochaine tentative
+        await new Promise((resolve) => setTimeout(resolve, 3000));
       }
-
-      return { success: false, error: errorDetails };
     }
-  } catch (error) {
-    log(`❌ ${exercise.name} - API call failed: ${error.message}`);
-    return {
-      success: false,
-      error: { message: error.message, type: 'API_ERROR' },
-    };
   } finally {
     // Restaurer l'original
     fs.writeFileSync(exercisePath, originalContent);
@@ -317,6 +395,8 @@ async function processCategoryWorker(
     exercises: [],
     passed: 0,
     total: exercises.length,
+    totalAttempts: 0,
+    feedbackSuccesses: 0, // Succès après feedback (attempt > 1)
   };
 
   log(`\n[${categoryName}] Starting ${exercises.length} exercises...`);
@@ -327,11 +407,13 @@ async function processCategoryWorker(
       await new Promise((resolve) => setTimeout(resolve, 1000)); // 1 seconde
     }
 
-    const result = await testExercise(exercise, starklingsPath, runNumber);
+    const result = await testExerciseWithFeedback(exercise, starklingsPath, runNumber);
 
     const exerciseResult = {
       name: exercise.name,
       success: result.success,
+      attempts: result.attempts || 1,
+      finalAttempt: result.finalAttempt || 1,
     };
 
     if (!result.success && result.error) {
@@ -339,16 +421,28 @@ async function processCategoryWorker(
     }
 
     categoryResults.exercises.push(exerciseResult);
+    categoryResults.totalAttempts += result.attempts || 1;
+    
     if (result.success) {
       categoryResults.passed++;
+      // Compter les succès après feedback
+      if (result.finalAttempt > 1) {
+        categoryResults.feedbackSuccesses++;
+      }
     }
 
-    log(`[${categoryName}] ${exercise.name}: ${result.success ? '✅' : '❌'}`);
+    const statusEmoji = result.success ? '✅' : '❌';
+    const attemptInfo = result.attempts > 1 ? ` (${result.attempts} attempts)` : '';
+    log(`[${categoryName}] ${exercise.name}: ${statusEmoji}${attemptInfo}`);
   }
 
   categoryResults.successRate = (
     (categoryResults.passed / categoryResults.total) *
     100
+  ).toFixed(1);
+  
+  categoryResults.averageAttempts = (
+    categoryResults.totalAttempts / categoryResults.total
   ).toFixed(1);
 
   const reportPath = path.join(
@@ -361,7 +455,7 @@ async function processCategoryWorker(
   fs.writeFileSync(reportPath, JSON.stringify(categoryResults, null, 2));
 
   log(
-    `[${categoryName}] Completed: ${categoryResults.passed}/${categoryResults.total} (${categoryResults.successRate}%)`,
+    `[${categoryName}] Completed: ${categoryResults.passed}/${categoryResults.total} (${categoryResults.successRate}%) - Avg attempts: ${categoryResults.averageAttempts} - Feedback successes: ${categoryResults.feedbackSuccesses}`,
   );
   return categoryResults;
 }
@@ -395,6 +489,16 @@ function generateConsolidatedReport(allResults) {
     successRates.reduce((sum, rate) => sum + rate, 0) / successRates.length
   ).toFixed(1);
 
+  // Statistiques de tentatives
+  const totalAttempts = allResults.reduce((sum, run) => 
+    sum + run.categories.reduce((catSum, cat) => catSum + cat.totalAttempts, 0), 0);
+  const totalExercises = allResults.reduce((sum, run) => sum + run.totalExercises, 0);
+  const averageAttemptsPerExercise = (totalAttempts / totalExercises).toFixed(1);
+
+  // Succès grâce au feedback
+  const totalFeedbackSuccesses = allResults.reduce((sum, run) => 
+    sum + run.categories.reduce((catSum, cat) => catSum + (cat.feedbackSuccesses || 0), 0), 0);
+
   // Taux de réussite par catégorie
   const categoryStats = {};
   allResults.forEach((run) => {
@@ -402,10 +506,18 @@ function generateConsolidatedReport(allResults) {
       if (!categoryStats[category.category]) {
         categoryStats[category.category] = {
           successRates: [],
+          averageAttempts: [],
+          feedbackSuccesses: [],
         };
       }
       categoryStats[category.category].successRates.push(
         parseFloat(category.successRate),
+      );
+      categoryStats[category.category].averageAttempts.push(
+        parseFloat(category.averageAttempts),
+      );
+      categoryStats[category.category].feedbackSuccesses.push(
+        category.feedbackSuccesses || 0,
       );
     });
   });
@@ -414,9 +526,14 @@ function generateConsolidatedReport(allResults) {
   const categoryAverages = {};
   Object.keys(categoryStats).forEach((category) => {
     const rates = categoryStats[category].successRates;
-    categoryAverages[category] =
-      (rates.reduce((sum, rate) => sum + rate, 0) / rates.length).toFixed(1) +
-      '%';
+    const attempts = categoryStats[category].averageAttempts;
+    const feedbacks = categoryStats[category].feedbackSuccesses;
+    
+    categoryAverages[category] = {
+      successRate: (rates.reduce((sum, rate) => sum + rate, 0) / rates.length).toFixed(1) + '%',
+      averageAttempts: (attempts.reduce((sum, att) => sum + att, 0) / attempts.length).toFixed(1),
+      totalFeedbackSuccesses: feedbacks.reduce((sum, fb) => sum + fb, 0),
+    };
   });
 
   // Collecter les erreurs par catégorie et par exercice
@@ -435,9 +552,11 @@ function generateConsolidatedReport(allResults) {
             exerciseErrorsByCategory[category.category][exercise.name] = [];
           }
 
-          // Ajouter l'erreur avec le numéro de run
+          // Ajouter l'erreur avec le numéro de run et les tentatives
           exerciseErrorsByCategory[category.category][exercise.name].push({
             run: run.runNumber,
+            attempts: exercise.attempts || 1,
+            finalAttempt: exercise.finalAttempt || 1,
             type: exercise.error.type || 'COMPILATION_ERROR',
             message: exercise.error.message || 'Compilation failed',
             stdout: exercise.error.stdout
@@ -456,6 +575,10 @@ function generateConsolidatedReport(allResults) {
     summary: {
       totalRuns: allResults.length,
       globalSuccessRate: averageSuccessRate + '%',
+      averageAttemptsPerExercise: averageAttemptsPerExercise,
+      totalFeedbackSuccesses: totalFeedbackSuccesses,
+      feedbackSuccessRate: totalExercises > 0 ? 
+        ((totalFeedbackSuccesses / totalExercises) * 100).toFixed(1) + '%' : '0%',
     },
     categorySuccessRates: categoryAverages,
     exerciseErrorsByCategory: exerciseErrorsByCategory,
@@ -522,7 +645,7 @@ async function runSingleTest(runNumber) {
     0,
   );
   console.log(
-    `\n🧪 [RUN ${runNumber}/5] Starting evaluation of ${totalExercises} exercises across ${Object.keys(categoriesToTest).length} categories...`,
+    `\n🧪 [RUN ${runNumber}/${RUN_NUMBER}] Starting evaluation of ${totalExercises} exercises across ${Object.keys(categoriesToTest).length} categories with feedback system (max ${MAX_FEEDBACK_ATTEMPTS + 1} attempts per exercise)...`,
   );
 
   // Traiter les catégories en parallèle
@@ -540,12 +663,25 @@ async function runSingleTest(runNumber) {
     (sum, result) => sum + result.passed,
     0,
   );
+  const totalAttempts = categoryResults.reduce(
+    (sum, result) => sum + result.totalAttempts,
+    0,
+  );
+  const totalFeedbackSuccesses = categoryResults.reduce(
+    (sum, result) => sum + (result.feedbackSuccesses || 0),
+    0,
+  );
+
   const globalResults = {
     runNumber: runNumber,
     timestamp: new Date().toISOString(),
     totalExercises: totalExercises,
     totalPassed: totalPassed,
+    totalAttempts: totalAttempts,
+    totalFeedbackSuccesses: totalFeedbackSuccesses,
     globalSuccessRate: ((totalPassed / totalExercises) * 100).toFixed(1),
+    averageAttempts: (totalAttempts / totalExercises).toFixed(1),
+    feedbackSuccessRate: ((totalFeedbackSuccesses / totalExercises) * 100).toFixed(1),
     executionTime: (endTime - startTime) / 1000,
     categories: categoryResults,
   };
@@ -558,7 +694,7 @@ async function runSingleTest(runNumber) {
   fs.writeFileSync(globalReportPath, JSON.stringify(globalResults, null, 2));
 
   console.log(
-    `[RUN ${runNumber}] ${totalPassed}/${totalExercises} exercises passed (${globalResults.globalSuccessRate}%)`,
+    `[RUN ${runNumber}] ${totalPassed}/${totalExercises} exercises passed (${globalResults.globalSuccessRate}%) - Avg attempts: ${globalResults.averageAttempts} - Feedback successes: ${totalFeedbackSuccesses} (${globalResults.feedbackSuccessRate}%)`,
   );
 
   return globalResults;
@@ -568,7 +704,7 @@ async function main() {
   const NUM_RUNS = 1;
   const allResults = [];
 
-  console.log(`🚀 Starting ${NUM_RUNS} successive test runs...`);
+  console.log(`🚀 Starting ${NUM_RUNS} successive test runs with feedback system (max ${MAX_FEEDBACK_ATTEMPTS + 1} attempts per exercise)...`);
 
   for (let i = 1; i <= NUM_RUNS; i++) {
     try {
@@ -600,6 +736,15 @@ async function main() {
   console.log(`\n=== Final Summary (${NUM_RUNS} runs) ===`);
   console.log(
     `Average success rate: ${consolidatedReport.summary.globalSuccessRate}`,
+  );
+  console.log(
+    `Average attempts per exercise: ${consolidatedReport.summary.averageAttemptsPerExercise}`,
+  );
+  console.log(
+    `Total feedback successes: ${consolidatedReport.summary.totalFeedbackSuccesses}`,
+  );
+  console.log(
+    `Feedback success rate: ${consolidatedReport.summary.feedbackSuccessRate}`,
   );
 
   // Calculer le meilleur et pire run pour l'affichage

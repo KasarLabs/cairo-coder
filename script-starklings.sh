@@ -35,7 +35,7 @@ fi
 # 8. Lancer le test avec un seul exercice
 echo "🎯 Running single Starklings evaluation..."
 
-# SINGLE_EXERCISE=primitive_types2  node .github/scripts/starklings-evaluate.js
+# SINGLE_EXERCISE=starknet3  node .github/scripts/starklings-evaluate.js
 node .github/scripts/starklings-evaluate.js
 
 # 9. Nettoyer
