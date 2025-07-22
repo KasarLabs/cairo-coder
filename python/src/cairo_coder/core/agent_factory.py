@@ -124,8 +124,10 @@ class AgentFactory:
         if config_manager is None:
             config_manager = ConfigManager()
 
+        config = config_manager.load_config()
+
         try:
-            agent_config = config_manager.get_agent_config(agent_id)
+            agent_config = config_manager.get_agent_config(config, agent_id)
         except KeyError as e:
             raise ValueError(f"Agent configuration not found for ID: {agent_id}") from e
 
@@ -189,7 +191,7 @@ class AgentFactory:
         """
         return list(self.agent_configs.keys())
 
-    def get_agent_info(self, agent_id: str) -> dict[str, any]:
+    def get_agent_info(self, agent_id: str) -> dict[str, Any]:
         """
         Get information about a specific agent.
 
@@ -285,7 +287,7 @@ class AgentFactory:
         """
         # Determine pipeline type based on agent configuration
         pipeline_type = "general"
-        if agent_config.id == "scarb_assistant":
+        if agent_config.id == "scarb-assistant":
             pipeline_type = "scarb"
 
         # Create pipeline with agent-specific configuration
@@ -353,7 +355,7 @@ When writing Cairo tests:
     def get_scarb_agent() -> AgentConfiguration:
         """Get the Scarb-specific agent configuration."""
         return AgentConfiguration(
-            id="scarb_assistant",
+            id="scarb-assistant",
             name="Scarb Assistant",
             description="Specialized assistant for Scarb build tool",
             sources=[DocumentSource.SCARB_DOCS],
@@ -388,7 +390,7 @@ def create_agent_factory(
     # Load default agent configurations
     default_configs = {
         "default": DefaultAgentConfigurations.get_default_agent(),
-        "scarb_assistant": DefaultAgentConfigurations.get_scarb_agent(),
+        "scarb-assistant": DefaultAgentConfigurations.get_scarb_agent(),
     }
 
     # Add custom agents if provided

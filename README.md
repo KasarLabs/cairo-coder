@@ -95,6 +95,7 @@ Using Docker is highly recommended for a streamlined setup. For instructions on 
       LANGSMITH_API_KEY="lsv2..."
       ```
     - Add your API keys to `python/.env`:
+
       ```yaml
       OPENAI_API_KEY="sk-..."
       ANTHROPIC_API_KEY="..."

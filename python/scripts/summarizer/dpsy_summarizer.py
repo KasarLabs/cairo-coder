@@ -5,6 +5,7 @@ import re
 import dotenv
 import dspy
 from dspy import Parallel as DSPyParallel
+from dspy.signatures import make_signature
 
 dotenv.load_dotenv()
 
@@ -45,6 +46,7 @@ class ProduceHeaders(dspy.Signature):
 class WriteSection(dspy.Signature):
     """Craft a Markdown section, given a path down the table of contents, which ends with this section's specific heading.
     Start the content right beneath that heading: use sub-headings of depth at least +1 relative to the ToC path.
+    Ensure the section starts with a markdown heading with syntax "# <heading>" - with the right heading level.
     Your section's content is to be entirely derived from the given list of chunks. That content must be complete but very concise,
     with all necessary knowledge from the chunks reproduced and repetitions or irrelevant details
     omitted. Be straight to the point, minimize the amount of text while maximizing information.
@@ -66,7 +68,7 @@ def produce_headers(toc_path, chunk_summaries):
 
 def classify_chunks(toc_path, chunks, headers):
     parallelizer = DSPyParallel(num_threads=5)
-    classify = dspy.ChainOfThought(f"toc_path: list[str], chunk -> topic: Literal{headers}")
+    classify = dspy.ChainOfThought(make_signature(f"toc_path: list[str], chunk -> topic: Literal{headers}"))
     return parallelizer([(classify, {"toc_path": toc_path, "chunk": chunk}) for chunk in chunks])
 
 def group_sections(topics, chunks, headers):
@@ -117,7 +119,7 @@ def merge_markdown_files(directory: str) -> str:
                 merged_content.append(infile.read())
     return '\n\n'.join(merged_content)
 
-def generate_markdown_toc(markdown_text: str, toc_path: list = None, max_level: int = 3) -> str:
+def generate_markdown_toc(markdown_text: str, toc_path: list | None = None, max_level: int = 3) -> str:
     """Generate a Markdown Table of Contents for headings under toc_path up to max_level."""
     toc_lines = []
     current_path = []

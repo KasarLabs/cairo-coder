@@ -330,7 +330,7 @@ class SourceFilteredPgVectorRM(PgVectorRM):
             )
 
     @traceable(name="AsyncDocumentRetriever", run_type="retriever")
-    async def aforward(self, query: str, k: int = None) -> list[dspy.Example]:
+    async def aforward(self, query: str, k: int | None = None) -> list[dspy.Example]:
         """Async search with PgVector for k top passages using cosine similarity with source filtering.
 
         Args:
@@ -410,7 +410,7 @@ class SourceFilteredPgVectorRM(PgVectorRM):
         return retrieved_docs
 
     @traceable(name="DocumentRetriever", run_type="retriever")
-    def forward(self, query: str, k: int = None) -> list[dspy.Example]:
+    def forward(self, query: str, k: int | None = None) -> list[dspy.Example]:
         """Search with PgVector for k top passages for query using cosine similarity with source filtering
 
         Args:
@@ -587,10 +587,11 @@ class DocumentRetrieverProgram(dspy.Module):
                     sources=sources,
                 )
 
-            # # TODO improve with proper re-phrased text.
+            # # # TODO improve with proper re-phrased text.
             search_queries = processed_query.search_queries
             if len(search_queries) == 0:
                 search_queries = [processed_query.reasoning]
+
 
             retrieved_examples: list[dspy.Example] = []
             for search_query in search_queries:

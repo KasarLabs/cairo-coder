@@ -266,7 +266,7 @@ class TestCreateApp:
             app = create_app(mock_vector_store_config)
 
             # Get all routes
-            routes = [route.path for route in app.routes]
+            routes = [route.path for route in app.routes]  # type: ignore
 
             # Check expected routes exist
             assert "/" in routes

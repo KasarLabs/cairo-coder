@@ -84,6 +84,6 @@ def parse_starklings_info(info_path: str) -> list[StarklingsExercise]:
             for i, ex in enumerate(exercises)
         ]
 
-    except (FileNotFoundError, toml.TOMLDecodeError, KeyError) as e:
+    except (FileNotFoundError, KeyError) as e:
         logger.error("Failed to parse info.toml", info_path=info_path, error=e)
-        return []
+        raise e

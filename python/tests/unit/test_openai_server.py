@@ -13,7 +13,7 @@ import pytest
 from fastapi import FastAPI
 
 from cairo_coder.core.agent_factory import AgentFactory
-from cairo_coder.core.types import StreamEvent
+from cairo_coder.core.types import StreamEvent, StreamEventType
 from cairo_coder.server.app import create_app
 
 
@@ -256,7 +256,7 @@ class TestCairoCoderServer:
         mock_agent = Mock()
 
         async def mock_forward_streaming_error(*args, **kwargs):
-            yield StreamEvent(type="response", data="Starting response...")
+            yield StreamEvent(type=StreamEventType.RESPONSE, data="Starting response...")
             raise Exception("Stream error")
 
         mock_agent.forward_streaming = mock_forward_streaming_error

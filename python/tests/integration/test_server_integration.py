@@ -31,8 +31,8 @@ class TestServerIntegration:
                     "description": "General Cairo programming assistant",
                     "sources": ["cairo_book", "cairo_docs"],
                 },
-                "scarb_assistant": {
-                    "id": "scarb_assistant",
+                "scarb-assistant": {
+                    "id": "scarb-assistant",
                     "name": "Scarb Assistant",
                     "description": "Starknet-specific programming help",
                     "sources": ["scarb_docs"],
@@ -73,7 +73,7 @@ class TestServerIntegration:
         agents = response.json()
         assert len(agents) == 2
         assert any(agent["id"] == "default" for agent in agents)
-        assert any(agent["id"] == "scarb_assistant" for agent in agents)
+        assert any(agent["id"] == "scarb-assistant" for agent in agents)
 
         # Mock the agent to return a specific response for this test
         mock_response = Mock()

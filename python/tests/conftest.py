@@ -15,7 +15,14 @@ from fastapi.testclient import TestClient
 from cairo_coder.config.manager import ConfigManager
 from cairo_coder.core.agent_factory import AgentFactory
 from cairo_coder.core.config import AgentConfiguration, Config, VectorStoreConfig
-from cairo_coder.core.types import Document, DocumentSource, Message, ProcessedQuery, StreamEvent
+from cairo_coder.core.types import (
+    Document,
+    DocumentSource,
+    Message,
+    Role,
+    StreamEvent,
+    StreamEventType,
+)
 from cairo_coder.dspy.document_retriever import SourceFilteredPgVectorRM
 from cairo_coder.server.app import CairoCoderServer, get_agent_factory
 
@@ -111,7 +118,7 @@ def mock_agent_factory():
     factory = Mock(spec=AgentFactory)
     factory.get_available_agents.return_value = [
         "default",
-        "scarb_assistant",
+        "scarb-assistant",
         "starknet_assistant",
         "openzeppelin_assistant",
     ]
@@ -135,13 +142,13 @@ def mock_agent():
     mock_agent = AsyncMock()
 
     async def mock_forward_streaming(
-        query: str, chat_history: list[Message] = None, mcp_mode: bool = False
+        query: str, chat_history: list[Message] | None = None, mcp_mode: bool = False
     ):
         """Mock agent forward_streaming method that yields StreamEvent objects."""
         if mcp_mode:
             # MCP mode returns sources
             yield StreamEvent(
-                type="sources",
+                type=StreamEventType.SOURCES,
                 data=[
                     {
                         "pageContent": "Cairo is a programming language",
@@ -149,14 +156,14 @@ def mock_agent():
                     }
                 ],
             )
-            yield StreamEvent(type="response", data="Cairo is a programming language")
+            yield StreamEvent(type=StreamEventType.RESPONSE, data="Cairo is a programming language")
         else:
             # Normal mode returns response
-            yield StreamEvent(type="response", data="Hello! I'm Cairo Coder.")
-            yield StreamEvent(type="response", data=" How can I help you?")
-        yield StreamEvent(type="end", data="")
+            yield StreamEvent(type=StreamEventType.RESPONSE, data="Hello! I'm Cairo Coder.")
+            yield StreamEvent(type=StreamEventType.RESPONSE, data=" How can I help you?")
+        yield StreamEvent(type=StreamEventType.END, data="")
 
-    def mock_forward(query: str, chat_history: list[Message] = None, mcp_mode: bool = False):
+    def mock_forward(query: str, chat_history: list[Message] | None = None, mcp_mode: bool = False):
         """Mock agent forward method that returns a Predict object."""
         mock_predict = Mock()
 
@@ -179,7 +186,7 @@ def mock_agent():
 
         return mock_predict
 
-    async def mock_aforward(query: str, chat_history: list[Message] = None, mcp_mode: bool = False):
+    async def mock_aforward(query: str, chat_history: list[Message] | None = None, mcp_mode: bool = False):
         """Mock agent aforward method that returns a Predict object."""
         return mock_forward(query, chat_history, mcp_mode)
 
@@ -292,23 +299,6 @@ def sample_documents():
         ),
     ]
 
-
-@pytest.fixture
-def sample_processed_query():
-    """
-    Create a sample processed query for testing.
-
-    Returns a ProcessedQuery object with standard test data.
-    """
-    return ProcessedQuery(
-        original="How do I create a Cairo contract?",
-        search_queries=["cairo contract", "smart contract creation", "cairo programming"],
-        is_contract_related=True,
-        is_test_related=False,
-        resources=[DocumentSource.CAIRO_BOOK, DocumentSource.STARKNET_DOCS],
-    )
-
-
 @pytest.fixture
 def sample_messages():
     """
@@ -317,10 +307,10 @@ def sample_messages():
     Returns a list of Message objects representing a conversation.
     """
     return [
-        Message(role="system", content="You are a helpful Cairo programming assistant."),
-        Message(role="user", content="How do I create a smart contract in Cairo?"),
-        Message(role="assistant", content="To create a smart contract in Cairo, you need to..."),
-        Message(role="user", content="Can you show me an example?"),
+        Message(role=Role.SYSTEM, content="You are a helpful Cairo programming assistant."),
+        Message(role=Role.USER, content="How do I create a smart contract in Cairo?"),
+        Message(role=Role.ASSISTANT, content="To create a smart contract in Cairo, you need to..."),
+        Message(role=Role.USER, content="Can you show me an example?"),
     ]
 
 
@@ -356,8 +346,8 @@ def sample_agent_configs():
             max_source_count=5,
             similarity_threshold=0.5,
         ),
-        "scarb_assistant": AgentConfiguration(
-            id="scarb_assistant",
+        "scarb-assistant": AgentConfiguration(
+            id="scarb-assistant",
             name="Scarb Assistant",
             description="Scarb build tool and package manager assistant",
             sources=[DocumentSource.SCARB_DOCS],
@@ -381,54 +371,6 @@ def sample_agent_configs():
             similarity_threshold=0.5,
         ),
     }
-
-
-@pytest.fixture
-def sample_config():
-    """
-    Create a sample configuration object for testing.
-
-    Returns a Config object with standard test values.
-    """
-    return Config(
-        providers={
-            "openai": {"api_key": "test-openai-key", "model": "gpt-4"},
-            "anthropic": {"api_key": "test-anthropic-key", "model": "claude-3-sonnet"},
-            "google": {"api_key": "test-google-key", "model": "gemini-1.5-pro"},
-            "default_provider": "openai",
-        },
-        vector_db=VectorStoreConfig(
-            host="localhost",
-            port=5432,
-            database="cairo_coder_test",
-            user="test_user",
-            password="test_password",
-        ),
-        agents={
-            "default": {
-                "sources": ["cairo_book", "starknet_docs"],
-                "max_source_count": 10,
-                "similarity_threshold": 0.4,
-            }
-        },
-        logging={"level": "INFO", "format": "%(asctime)s - %(name)s - %(levelname)s - %(message)s"},
-    )
-
-
-@pytest.fixture
-def sample_embeddings():
-    """
-    Create sample embeddings for testing.
-
-    Returns a list of float vectors representing document embeddings.
-    """
-    return [
-        [0.1, 0.2, 0.3, 0.4, 0.5],  # Cairo document embedding
-        [0.2, 0.3, 0.4, 0.5, 0.6],  # Starknet document embedding
-        [0.3, 0.4, 0.5, 0.6, 0.7],  # Scarb document embedding
-        [0.4, 0.5, 0.6, 0.7, 0.8],  # OpenZeppelin document embedding
-    ]
-
 
 # =============================================================================
 # Test Configuration Fixtures
@@ -532,54 +474,6 @@ def create_test_document(
     return Document(page_content=content, metadata=base_metadata)
 
 
-def create_test_message(role: str, content: str) -> Message:
-    """
-    Create a test message with the specified role and content.
-
-    Args:
-        role: Message role (system, user, assistant)
-        content: Message content
-
-    Returns:
-        Message object
-    """
-    return Message(role=role, content=content)
-
-
-def create_test_processed_query(
-    original: str,
-    search_queries: list[str] = None,
-    is_contract_related: bool = False,
-    is_test_related: bool = False,
-    resources: list[DocumentSource] = None,
-) -> ProcessedQuery:
-    """
-    Create a test processed query with specified parameters.
-
-    Args:
-        original: Original query string
-        transformed: List of transformed search terms
-        is_contract_related: Whether query is contract-related
-        is_test_related: Whether query is test-related
-        resources: List of document sources
-
-    Returns:
-        ProcessedQuery object
-    """
-    if search_queries is None:
-        search_queries = [original.lower()]
-    if resources is None:
-        resources = [DocumentSource.CAIRO_BOOK]
-
-    return ProcessedQuery(
-        original=original,
-        search_queries=search_queries,
-        is_contract_related=is_contract_related,
-        is_test_related=is_test_related,
-        resources=resources,
-    )
-
-
 async def create_test_stream_events(
     response_text: str = "Test response",
 ) -> AsyncGenerator[StreamEvent, None]:
@@ -593,10 +487,10 @@ async def create_test_stream_events(
         StreamEvent objects
     """
     events = [
-        StreamEvent(type="processing", data="Processing query..."),
-        StreamEvent(type="sources", data=[{"title": "Test Doc", "url": "#"}]),
-        StreamEvent(type="response", data=response_text),
-        StreamEvent(type="end", data=None),
+        StreamEvent(type=StreamEventType.PROCESSING, data="Processing query..."),
+        StreamEvent(type=StreamEventType.SOURCES, data=[{"title": "Test Doc", "url": "#"}]),
+        StreamEvent(type=StreamEventType.RESPONSE, data=response_text),
+        StreamEvent(type=StreamEventType.END, data=None),
     ]
 
     for event in events:

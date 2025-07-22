@@ -15,7 +15,7 @@ from cairo_coder.core.rag_pipeline import (
     RagPipelineFactory,
     create_rag_pipeline,
 )
-from cairo_coder.core.types import Document, DocumentSource, Message, ProcessedQuery
+from cairo_coder.core.types import Document, DocumentSource, Message, ProcessedQuery, Role
 from cairo_coder.dspy.document_retriever import DocumentRetrieverProgram
 from cairo_coder.dspy.generation_program import GenerationProgram, McpGenerationProgram
 from cairo_coder.dspy.query_processor import QueryProcessorProgram
@@ -193,8 +193,8 @@ Storage variables use #[storage] attribute.
         """Test pipeline execution with chat history."""
         query = "How do I add storage to that contract?"
         chat_history = [
-            Message(role="user", content="How do I create a contract?"),
-            Message(role="assistant", content="Here's how to create a contract..."),
+            Message(role=Role.USER, content="How do I create a contract?"),
+            Message(role=Role.ASSISTANT, content="Here's how to create a contract..."),
         ]
 
         events = []
@@ -247,9 +247,9 @@ Storage variables use #[storage] attribute.
     def test_format_chat_history(self, pipeline):
         """Test chat history formatting."""
         messages = [
-            Message(role="user", content="How do I create a contract?"),
-            Message(role="assistant", content="Here's how..."),
-            Message(role="user", content="How do I add storage?"),
+            Message(role=Role.USER, content="How do I create a contract?"),
+            Message(role=Role.ASSISTANT, content="Here's how..."),
+            Message(role=Role.USER, content="How do I add storage?"),
         ]
 
         formatted = pipeline._format_chat_history(messages)

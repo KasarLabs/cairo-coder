@@ -17,7 +17,7 @@ from cairo_coder.core.agent_factory import (
 )
 from cairo_coder.core.config import AgentConfiguration
 from cairo_coder.core.rag_pipeline import RagPipeline
-from cairo_coder.core.types import DocumentSource, Message
+from cairo_coder.core.types import DocumentSource, Message, Role
 
 
 class TestAgentFactory:
@@ -41,7 +41,7 @@ class TestAgentFactory:
     def test_create_agent_default(self, mock_vector_store_config):
         """Test creating a default agent."""
         query = "How do I create a Cairo contract?"
-        history = [Message(role="user", content="Hello")]
+        history = [Message(role=Role.USER, content="Hello")]
 
         with patch(
             "cairo_coder.core.agent_factory.RagPipelineFactory.create_pipeline"
@@ -100,7 +100,7 @@ class TestAgentFactory:
     async def test_create_agent_by_id(self, mock_vector_store_config, mock_config_manager):
         """Test creating agent by ID."""
         query = "How do I create a contract?"
-        history = [Message(role="user", content="Hello")]
+        history = [Message(role=Role.USER, content="Hello")]
         agent_id = "test_agent"
 
         with patch(
@@ -117,8 +117,10 @@ class TestAgentFactory:
                 config_manager=mock_config_manager,
             )
 
+            config = mock_config_manager.load_config()
+
             assert agent == mock_pipeline
-            mock_config_manager.get_agent_config.assert_called_once_with(agent_id)
+            mock_config_manager.get_agent_config.assert_called_once_with(config, agent_id)
             mock_create.assert_called_once()
 
     @pytest.mark.asyncio
@@ -311,7 +313,7 @@ class TestAgentFactory:
     async def test_create_pipeline_from_config_scarb(self, mock_vector_store_config):
         """Test creating pipeline from Scarb agent configuration."""
         agent_config = AgentConfiguration(
-            id="scarb_assistant",
+            id="scarb-assistant",
             name="Scarb Assistant",
             description="Scarb-specific agent",
             sources=[DocumentSource.SCARB_DOCS],
@@ -366,7 +368,7 @@ class TestDefaultAgentConfigurations:
         """Test getting Scarb agent configuration."""
         config = DefaultAgentConfigurations.get_scarb_agent()
 
-        assert config.id == "scarb_assistant"
+        assert config.id == "scarb-assistant"
         assert config.name == "Scarb Assistant"
         assert "Scarb build tool" in config.description
         assert config.sources == [DocumentSource.SCARB_DOCS]
@@ -427,7 +429,7 @@ class TestCreateAgentFactory:
             # Check default agents are configured
             available_agents = factory.get_available_agents()
             assert "default" in available_agents
-            assert "scarb_assistant" in available_agents
+            assert "scarb-assistant" in available_agents
 
     def test_create_agent_factory_with_custom_config(self, mock_vector_store_config):
         """Test creating agent factory with custom configuration."""

@@ -28,7 +28,7 @@ from cairo_coder.core.rag_pipeline import (
     LangsmithTracingCallback,
     RagPipeline,
 )
-from cairo_coder.core.types import Message
+from cairo_coder.core.types import Message, Role
 from cairo_coder.dspy.document_retriever import SourceFilteredPgVectorRM
 from cairo_coder.utils.logging import get_logger, setup_logging
 
@@ -45,7 +45,7 @@ _agent_factory: AgentFactory | None = None
 class ChatMessage(BaseModel):
     """OpenAI-compatible chat message."""
 
-    role: str = Field(..., description="Message role: system, user, or assistant")
+    role: Role = Field(..., description="Message role: system, user, or assistant")
     content: str = Field(..., description="Message content")
     name: str | None = Field(None, description="Optional name for the message")
 
@@ -257,7 +257,7 @@ class CairoCoderServer:
             mcp_mode = bool(mcp or x_mcp_mode)
 
             return await self._handle_chat_completion(
-                request, req, agent_id, mcp_mode, vector_db, agent_factory
+                request, req, agent_factory, agent_id, mcp_mode, vector_db
             )
 
         @self.app.post("/v1/chat/completions")
@@ -274,7 +274,7 @@ class CairoCoderServer:
             mcp_mode = bool(mcp or x_mcp_mode)
 
             return await self._handle_chat_completion(
-                request, req, None, mcp_mode, vector_db, agent_factory
+                request, req, agent_factory, None, mcp_mode, vector_db
             )
 
         @self.app.post("/chat/completions")
@@ -291,29 +291,24 @@ class CairoCoderServer:
             mcp_mode = bool(mcp or x_mcp_mode)
 
             return await self._handle_chat_completion(
-                request, req, None, mcp_mode, vector_db, agent_factory
+                request, req, agent_factory, None, mcp_mode, vector_db
             )
 
     async def _handle_chat_completion(
         self,
         request: ChatCompletionRequest,
         req: Request,
+        agent_factory: AgentFactory,
         agent_id: str | None = None,
         mcp_mode: bool = False,
         vector_db: SourceFilteredPgVectorRM | None = None,
-        agent_factory: AgentFactory | None = None,
     ):
         """Handle chat completion request - replicates TypeScript chatCompletionHandler."""
         try:
             # Convert messages to internal format
             messages = []
             for msg in request.messages:
-                if msg.role == "user":
-                    messages.append(Message(role="user", content=msg.content))
-                elif msg.role == "assistant":
-                    messages.append(Message(role="assistant", content=msg.content))
-                elif msg.role == "system":
-                    messages.append(Message(role="system", content=msg.content))
+                messages.append(Message(role=msg.role, content=msg.content))
 
             # Get last user message as query
             query = request.messages[-1].content
@@ -478,7 +473,7 @@ class CairoCoderServer:
             choices=[
                 ChatCompletionChoice(
                     index=0,
-                    message=ChatMessage(role="assistant", content=answer),
+                    message=ChatMessage(role=Role.ASSISTANT, content=answer),
                     finish_reason="stop",
                 )
             ],

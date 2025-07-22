@@ -98,6 +98,7 @@ class StreamEventType(str, Enum):
     """Types of stream events."""
 
     SOURCES = "sources"
+    PROCESSING = "processing"
     RESPONSE = "response"
     END = "end"
     ERROR = "error"

@@ -127,9 +127,7 @@ class Config:
 
     def __post_init__(self) -> None:
         """Initialize default agents on top of custom ones."""
-        self.agents.update(
-            {
+        self.agents = {**self.agents, **{
                 "cairo-coder": AgentConfiguration.default_cairo_coder(),
                 "scarb-assistant": AgentConfiguration.scarb_assistant(),
-            }
-        )
+            }}

@@ -23,6 +23,7 @@ app = typer.Typer(help="Cairo Coder Documentation Summarizer CLI")
 class TargetRepo(str, Enum):
     """Predefined target repositories"""
     CORELIB_DOCS = "https://github.com/starkware-libs/cairo-docs"
+    CAIRO_BOOK = "https://github.com/cairo-book/cairo-book"
     # Add more repositories as needed
 
 

@@ -13,10 +13,10 @@ import structlog
 logger = structlog.get_logger(__name__)
 
 
-def extract_cairo_code(answer: str) -> str | None:
+def extract_cairo_code(answer: str) -> str :
     """Extract Cairo code from a string, handling code blocks and plain code."""
     if not answer:
-        return None
+        return ""
 
     # Try to extract code blocks first
     code_blocks = re.findall(r"```(?:cairo|rust)?\n([\s\S]*?)```", answer)
@@ -28,7 +28,7 @@ def extract_cairo_code(answer: str) -> str | None:
     if any(keyword in answer for keyword in ["mod ", "fn ", "#[", "use ", "struct ", "enum "]):
         return answer
 
-    return None
+    return ""
 
 
 def check_compilation(code: str) -> dict[str, Any]:
@@ -88,7 +88,7 @@ def check_compilation(code: str) -> dict[str, Any]:
             shutil.rmtree(temp_dir, ignore_errors=True)
 
 
-def generation_metric(expected: dspy.Example, predicted: dspy.Predict, trace=None) -> float:
+def generation_metric(expected: dspy.Example, predicted: dspy.Prediction, trace=None) -> float:
     """DSPy-compatible metric for generation optimization based on code presence and compilation."""
     try:
         expected_answer = expected.expected.strip()

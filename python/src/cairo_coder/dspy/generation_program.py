@@ -144,19 +144,19 @@ class GenerationProgram(dspy.Module):
         # Create a streamified version of the generation program
         stream_generation = dspy.streamify(
             self.generation_program,
-            stream_listeners=[dspy.streaming.StreamListener(signature_field_name="answer")],
+            stream_listeners=[dspy.streaming.StreamListener(signature_field_name="answer")],  # type: ignore
         )
 
         try:
             # Execute the streaming generation
-            output_stream = stream_generation(
-                query=query, context=context, chat_history=chat_history
+            output_stream = stream_generation( # type: ignore
+                query=query, context=context, chat_history=chat_history # type: ignore
             )
 
             # Process the stream and yield tokens
             is_cached = True
             async for chunk in output_stream:
-                if isinstance(chunk, dspy.streaming.StreamResponse):
+                if isinstance(chunk, dspy.streaming.StreamResponse): # type: ignore
                     # No streaming if cached
                     is_cached = False
                     # Yield the actual token content
@@ -201,7 +201,7 @@ class McpGenerationProgram(dspy.Module):
     def __init__(self):
         super().__init__()
 
-    def forward(self, documents: list[Document]) -> str:
+    def forward(self, documents: list[Document]) -> dspy.Prediction:
         """
         Format documents for MCP mode response.
 
@@ -212,7 +212,7 @@ class McpGenerationProgram(dspy.Module):
             Formatted documentation string
         """
         if not documents:
-            return "No relevant documentation found."
+            return dspy.Prediction(answer="No relevant documentation found.")
 
         formatted_docs = []
         for i, doc in enumerate(documents, 1):
@@ -232,7 +232,7 @@ class McpGenerationProgram(dspy.Module):
 """
             formatted_docs.append(formatted_doc)
 
-        return "\n".join(formatted_docs)
+        return dspy.Prediction(answer='\n'.join(formatted_docs))
 
 
 

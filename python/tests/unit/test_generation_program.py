@@ -10,7 +10,7 @@ from unittest.mock import AsyncMock, Mock, patch
 import dspy
 import pytest
 
-from cairo_coder.core.types import Document, Message
+from cairo_coder.core.types import Document, Message, Role
 from cairo_coder.dspy.generation_program import (
     CairoCodeGeneration,
     GenerationProgram,
@@ -138,12 +138,12 @@ class TestGenerationProgram:
     def test_format_chat_history(self, generation_program):
         """Test chat history formatting."""
         messages = [
-            Message(role="user", content="How do I create a contract?"),
-            Message(role="assistant", content="Here's how to create a contract..."),
-            Message(role="user", content="How do I add storage?"),
-            Message(role="assistant", content="Storage is added with #[storage]..."),
-            Message(role="user", content="Can I add events?"),
-            Message(role="assistant", content="Yes, events are defined with..."),
+            Message(role=Role.USER, content="How do I create a contract?"),
+            Message(role=Role.ASSISTANT, content="Here's how to create a contract..."),
+            Message(role=Role.USER, content="How do I add storage?"),
+            Message(role=Role.ASSISTANT, content="Storage is added with #[storage]..."),
+            Message(role=Role.USER, content="Can I add events?"),
+            Message(role=Role.ASSISTANT, content="Yes, events are defined with..."),
         ]
 
         formatted = generation_program._format_chat_history(messages)
@@ -200,22 +200,22 @@ class TestMcpGenerationProgram:
 
     def test_mcp_document_formatting(self, mcp_program, sample_documents):
         """Test MCP mode document formatting."""
-        result = mcp_program.forward(sample_documents)
+        answer = mcp_program.forward(sample_documents).answer
 
-        assert isinstance(result, str)
-        assert len(result) > 0
+        assert isinstance(answer, str)
+        assert len(answer) > 0
 
         # Verify document structure
-        assert "## 1. Cairo Contracts" in result
-        assert "## 2. Storage Variables" in result
-        assert "**Source:** Cairo Book" in result
-        assert "**Source:** Starknet Documentation" in result
-        assert "**URL:** https://book.cairo-lang.org/contracts" in result
-        assert "**URL:** https://docs.starknet.io/storage" in result
+        assert "## 1. Cairo Contracts" in answer
+        assert "## 2. Storage Variables" in answer
+        assert "**Source:** Cairo Book" in answer
+        assert "**Source:** Starknet Documentation" in answer
+        assert "**URL:** https://book.cairo-lang.org/contracts" in answer
+        assert "**URL:** https://docs.starknet.io/storage" in answer
 
         # Verify content is included
-        assert "starknet::contract" in result
-        assert "#[storage]" in result
+        assert "starknet::contract" in answer
+        assert "#[storage]" in answer
 
     def test_mcp_empty_documents(self, mcp_program):
         """Test MCP mode with empty documents."""
@@ -227,13 +227,13 @@ class TestMcpGenerationProgram:
         """Test MCP mode with documents missing metadata."""
         documents = [Document(page_content="Some Cairo content", metadata={})]  # Missing metadata
 
-        result = mcp_program.forward(documents)
+        answer = mcp_program.forward(documents).answer
 
-        assert isinstance(result, str)
-        assert "Some Cairo content" in result
-        assert "Document 1" in result  # Default title
-        assert "Unknown Source" in result  # Default source
-        assert "**URL:** #" in result  # Default URL
+        assert isinstance(answer, str)
+        assert "Some Cairo content" in answer
+        assert "Document 1" in answer  # Default title
+        assert "Unknown Source" in answer  # Default source
+        assert "**URL:** #" in answer  # Default URL
 
 
 class TestCairoCodeGeneration:

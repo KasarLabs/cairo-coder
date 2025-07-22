@@ -16,7 +16,14 @@ from dspy.utils.callback import BaseCallback
 from langsmith import traceable
 
 from cairo_coder.core.config import VectorStoreConfig
-from cairo_coder.core.types import Document, DocumentSource, Message, ProcessedQuery, StreamEvent
+from cairo_coder.core.types import (
+    Document,
+    DocumentSource,
+    Message,
+    ProcessedQuery,
+    StreamEvent,
+    StreamEventType,
+)
 from cairo_coder.dspy.document_retriever import DocumentRetrieverProgram
 from cairo_coder.dspy.generation_program import GenerationProgram, McpGenerationProgram
 from cairo_coder.dspy.query_processor import QueryProcessorProgram
@@ -177,29 +184,29 @@ class RagPipeline(dspy.Module):
         """
         try:
             # Stage 1: Process query
-            yield StreamEvent(type="processing", data="Processing query...")
+            yield StreamEvent(type=StreamEventType.PROCESSING, data="Processing query...")
 
             chat_history_str = self._format_chat_history(chat_history or [])
 
             # Stage 2: Retrieve documents
-            yield StreamEvent(type="processing", data="Retrieving relevant documents...")
+            yield StreamEvent(type=StreamEventType.PROCESSING, data="Retrieving relevant documents...")
 
             processed_query, documents = await self._aprocess_query_and_retrieve_docs(
                 query, chat_history_str, sources
             )
 
             # Emit sources event
-            yield StreamEvent(type="sources", data=self._format_sources(documents))
+            yield StreamEvent(type=StreamEventType.SOURCES, data=self._format_sources(documents))
 
             if mcp_mode:
                 # MCP mode: Return raw documents
-                yield StreamEvent(type="processing", data="Formatting documentation...")
+                yield StreamEvent(type=StreamEventType.PROCESSING, data="Formatting documentation...")
 
                 raw_response = self.mcp_generation_program.forward(documents)
-                yield StreamEvent(type="response", data=raw_response)
+                yield StreamEvent(type=StreamEventType.RESPONSE, data=raw_response)
             else:
                 # Normal mode: Generate response
-                yield StreamEvent(type="processing", data="Generating response...")
+                yield StreamEvent(type=StreamEventType.PROCESSING, data="Generating response...")
 
                 # Prepare context for generation
                 context = self._prepare_context(documents, processed_query)
@@ -208,17 +215,17 @@ class RagPipeline(dspy.Module):
                 async for chunk in self.generation_program.forward_streaming(
                     query=query, context=context, chat_history=chat_history_str
                 ):
-                    yield StreamEvent(type="response", data=chunk)
+                    yield StreamEvent(type=StreamEventType.RESPONSE, data=chunk)
 
             # Pipeline completed
-            yield StreamEvent(type="end", data=None)
+            yield StreamEvent(type=StreamEventType.END, data=None)
 
         except Exception as e:
             # Handle pipeline errors
             import traceback
             traceback.print_exc()
             logger.error("Pipeline error", error=e)
-            yield StreamEvent(type="error", data=f"Pipeline error: {str(e)}")
+            yield StreamEvent(StreamEventType.ERROR, data=f"Pipeline error: {str(e)}")
 
     def get_lm_usage(self) -> dict[str, int]:
         """

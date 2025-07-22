@@ -46,7 +46,7 @@ class CairoCoderAPIClient:
         prompt: str,
         max_retries: int = 3,
         retry_delay: float = 1.0,
-    ) -> dict[str, Any]:
+    ) -> dict[str, Any] | None:
         """Generate a solution for the given prompt.
 
         Args:
