@@ -44,9 +44,7 @@ def mock_vector_db():
     mock_db.forward = Mock(return_value=[])
 
     # Mock the async forward method
-    async def mock_aforward(query, k=None):
-        return []
-    mock_db.aforward = mock_aforward
+    mock_db.aforward = AsyncMock(return_value=[])
 
     # Mock sources attribute
     mock_db.sources = []
@@ -249,7 +247,7 @@ def client(server, mock_agent_factory):
 # =============================================================================
 
 
-@pytest.fixture
+@pytest.fixture(scope='session')
 def sample_documents():
     """
     Create a collection of sample documents for testing.

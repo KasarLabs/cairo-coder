@@ -6,7 +6,6 @@ into structured format for document retrieval, including search terms extraction
 and resource identification.
 """
 
-import asyncio
 from typing import Optional
 
 import dspy
@@ -44,8 +43,9 @@ class CairoQueryAnalysis(Signature):
     )
 
     search_queries: list[str] = OutputField(
-        desc="List of specific search queries to make to a vector store to find relevant documentation. Each query should be a sentence describing an action to take to fulfill the user's request"
+        desc="A list of __3__ specific semantic search queries to make to a vector store to find relevant documentation."
     )
+
     resources: list[str] = OutputField(
         desc="List of documentation sources. Available sources: "
         + ", ".join([f"{key}: {value}" for key, value in RESOURCE_DESCRIPTIONS.items()])
@@ -120,7 +120,22 @@ class QueryProcessorProgram(dspy.Module):
         Returns:
             ProcessedQuery with search terms, resource identification, and categorization
         """
-        return asyncio.run(self.aforward(query, chat_history))
+        # Execute the DSPy retrieval program
+        result = self.retrieval_program.forward(query=query, chat_history=chat_history)
+
+        # Parse and validate the results
+        search_queries = result.search_queries
+        resources = self._validate_resources(result.resources)
+
+        # Build structured query result
+        return ProcessedQuery(
+            original=query,
+            search_queries=search_queries,
+            reasoning=result.reasoning,
+            is_contract_related=self._is_contract_query(query),
+            is_test_related=self._is_test_query(query),
+            resources=resources,
+        )
 
     @traceable(name="QueryProcessorProgram", run_type="llm")
     async def aforward(self, query: str, chat_history: Optional[str] = None) -> ProcessedQuery:
@@ -142,8 +157,6 @@ class QueryProcessorProgram(dspy.Module):
         resources = self._validate_resources(result.resources)
 
         # Build structured query result
-        logged_query = query[:50] + "..." if len(query) > 50 else query
-        logger.debug(f"Processed query: {logged_query}")
         return ProcessedQuery(
             original=query,
             search_queries=search_queries,

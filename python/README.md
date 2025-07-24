@@ -49,7 +49,6 @@ cp .env.example .env
 docker compose up postgres
 ```
 
-
 2(optional). Fill the database by running `turbo run generate-embeddings` in the parent directory `cairo-coder/`
 
 3. Start the FastAPI server
@@ -79,7 +78,6 @@ docker compose run ingester
 docker compose up backend
 ```
 
-
 4. Send a request to the server
 
 ```bash
@@ -95,7 +93,6 @@ docker compose up backend
     ]
   }'
 ```
-
 
 ## Development
 

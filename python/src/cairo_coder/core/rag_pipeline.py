@@ -5,7 +5,6 @@ This module implements the RagPipeline class that orchestrates the three-stage
 RAG workflow: Query Processing → Document Retrieval → Generation.
 """
 
-import asyncio
 import os
 from collections.abc import AsyncGenerator
 from dataclasses import dataclass
@@ -109,6 +108,25 @@ class RagPipeline(dspy.Module):
         self._current_processed_query: ProcessedQuery | None = None
         self._current_documents: list[Document] = []
 
+    def _process_query_and_retrieve_docs(
+        self,
+        query: str,
+        chat_history_str: str,
+        sources: list[DocumentSource] | None = None,
+    ) -> tuple[ProcessedQuery, list[Document]]:
+        processed_query =  self.query_processor.forward(query=query, chat_history=chat_history_str)
+        self._current_processed_query = processed_query
+
+        # Use provided sources or fall back to processed query sources
+        retrieval_sources = sources or processed_query.resources
+        documents = self.document_retriever.forward(
+            processed_query=processed_query, sources=retrieval_sources
+        )
+        self._current_documents = documents
+
+        return processed_query, documents
+
+
     async def _aprocess_query_and_retrieve_docs(
         self,
         query: str,
@@ -117,7 +135,6 @@ class RagPipeline(dspy.Module):
     ) -> tuple[ProcessedQuery, list[Document]]:
         """Process query and retrieve documents - shared async logic."""
         processed_query = await self.query_processor.aforward(query=query, chat_history=chat_history_str)
-        logger.debug("Processed query", processed_query=processed_query)
         self._current_processed_query = processed_query
 
         # Use provided sources or fall back to processed query sources
@@ -138,7 +155,20 @@ class RagPipeline(dspy.Module):
         mcp_mode: bool = False,
         sources: list[DocumentSource] | None = None,
     ) -> dspy.Prediction:
-        return asyncio.run(self.aforward(query, chat_history, mcp_mode, sources))
+        chat_history_str = self._format_chat_history(chat_history or [])
+        processed_query, documents = self._process_query_and_retrieve_docs(
+            query, chat_history_str, sources
+        )
+        logger.info(f"Processed query: {processed_query.original} and retrieved {len(documents)} doc titles: {[doc.metadata.get('title') for doc in documents]}")
+
+        if mcp_mode:
+            return self.mcp_generation_program.forward(documents)
+
+        context = self._prepare_context(documents, processed_query)
+
+        return self.generation_program.forward(
+            query=query, context=context, chat_history=chat_history_str
+        )
 
     # Waits for streaming to finish before returning the response
     @traceable(name="RagPipeline", run_type="chain")
@@ -153,6 +183,7 @@ class RagPipeline(dspy.Module):
         processed_query, documents = await self._aprocess_query_and_retrieve_docs(
             query, chat_history_str, sources
         )
+        logger.info(f"Processed query: {processed_query.original} and retrieved {len(documents)} doc titles: {[doc.metadata.get('title') for doc in documents]}")
 
         if mcp_mode:
             return self.mcp_generation_program.forward(documents)

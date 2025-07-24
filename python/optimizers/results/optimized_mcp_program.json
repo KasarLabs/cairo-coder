@@ -72,6 +72,9 @@
     },
     "lm": null
   },
+  "document_retriever.vector_db": {
+    "k": 5
+  },
   "metadata": {
     "dependency_versions": {
       "python": "3.12",

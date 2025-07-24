@@ -5,11 +5,9 @@ This module implements the DocumentRetrieverProgram that fetches and ranks
 relevant documents from the vector store based on processed queries.
 """
 
-import asyncio
 
 import asyncpg
 import dspy
-import openai
 import structlog
 from dspy.retrieve.pgvector_rm import PgVectorRM
 from langsmith import traceable
@@ -305,7 +303,7 @@ class SourceFilteredPgVectorRM(PgVectorRM):
     Extended PgVectorRM that supports filtering by document sources.
     """
 
-    def __init__(self, sources: list[DocumentSource] | None = None, **kwargs):
+    def __init__(self, **kwargs):
         """
         Initialize with optional source filtering.
 
@@ -313,8 +311,8 @@ class SourceFilteredPgVectorRM(PgVectorRM):
             sources: List of DocumentSource to filter by
             **kwargs: Arguments passed to parent PgVectorRM (e.g., db_url, pg_table_name, etc.)
         """
+        logger.info("Initializing instance of SourceFilteredPgVectorRM with sources")
         super().__init__(**kwargs)
-        self.sources = sources or []
         self.pool = None  # Lazy-init async pool
         self.db_url = kwargs.get("db_url")
 
@@ -330,7 +328,7 @@ class SourceFilteredPgVectorRM(PgVectorRM):
             )
 
     @traceable(name="AsyncDocumentRetriever", run_type="retriever")
-    async def aforward(self, query: str, k: int | None = None) -> list[dspy.Example]:
+    async def aforward(self, query: str, k: int | None = None, sources: list[DocumentSource] | None = None) -> list[dspy.Example]:
         """Async search with PgVector for k top passages using cosine similarity with source filtering.
 
         Args:
@@ -360,13 +358,26 @@ class SourceFilteredPgVectorRM(PgVectorRM):
         # Build fields string (plain string for asyncpg)
         fields = ", ".join(self.fields)
 
-        where_clause = ""
+        where_conditions = []
         params = []
 
-        if self.sources:
-            source_values = [source.value for source in self.sources]
-            where_clause = " WHERE metadata->>'source' = ANY($1::text[])"
+        # Add source filtering
+        if sources:
+            source_values = [source.value for source in sources]
+            where_conditions.append(f"metadata->>'source' = ANY(${len(params) + 1}::text[])")
             params.append(source_values)
+
+        # Add similarity threshold condition
+        # Note: PostgreSQL cosine distance is 1 - cosine_similarity, so we use < for threshold
+        similarity_threshold = getattr(self, 'similarity_threshold', 0.35)  # Default threshold
+        where_conditions.append(f"({self.embedding_field} <=> ${len(params) + 1}::vector) < ${len(params) + 2}")
+        params.append(query_embedding)  # Embedding for similarity calculation
+        params.append(1 - similarity_threshold)  # Convert similarity to distance
+
+        # Build complete WHERE clause
+        where_clause = ""
+        if where_conditions:
+            where_clause = " WHERE " + " AND ".join(where_conditions)
 
         # Add similarity if included
         if self.include_similarity:
@@ -405,12 +416,10 @@ class SourceFilteredPgVectorRM(PgVectorRM):
 
                 retrieved_docs.append(dspy.Example(**data))
 
-        logger.info(f"Retrieved {len(retrieved_docs)} documents with metadatas: {[doc.metadata for doc in retrieved_docs]}")
-
         return retrieved_docs
 
     @traceable(name="DocumentRetriever", run_type="retriever")
-    def forward(self, query: str, k: int | None = None) -> list[dspy.Example]:
+    def forward(self, query: str, k: int | None = None, sources: list[DocumentSource] | None = None) -> list[dspy.Example]:
         """Search with PgVector for k top passages for query using cosine similarity with source filtering
 
         Args:
@@ -426,18 +435,31 @@ class SourceFilteredPgVectorRM(PgVectorRM):
 
         fields = sql.SQL(",").join([sql.Identifier(f) for f in self.fields])
 
-        # Build WHERE clause for source filtering
-        where_clause = sql.SQL("")
+        # Build WHERE clause for source filtering and similarity threshold
+        where_conditions = []
         args = []
 
-        # First arg - WHERE clause
         # Add source filtering
-        if self.sources:
-            source_values = [source.value for source in self.sources]
-            where_clause = sql.SQL(" WHERE metadata->>'source' = ANY(%s::text[])")
+        if sources:
+            source_values = [source.value for source in sources]
+            where_conditions.append(sql.SQL("metadata->>'source' = ANY(%s::text[])"))
             args.append(source_values)
 
-        # Always add query embedding first (for ORDER BY)
+        # Add similarity threshold condition
+        # Note: PostgreSQL cosine distance is 1 - cosine_similarity, so we use < for threshold
+        similarity_threshold = getattr(self, 'similarity_threshold', 0.35)  # Default threshold
+        where_conditions.append(sql.SQL("({embedding_field} <=> %s::vector) < %s").format(
+            embedding_field=sql.Identifier(self.embedding_field)
+        ))
+        args.append(query_embedding)  # Embedding for similarity calculation
+        args.append(1 - similarity_threshold)  # Convert similarity to distance
+
+        # Build complete WHERE clause
+        where_clause = sql.SQL("")
+        if where_conditions:
+            where_clause = sql.SQL(" WHERE ") + sql.SQL(" AND ").join(where_conditions)
+
+        # Always add query embedding for ORDER BY
         args.append(query_embedding)
 
         # Add similarity embedding if needed (for SELECT)
@@ -503,8 +525,26 @@ class DocumentRetrieverProgram(dspy.Module):
             embedding_model: OpenAI embedding model to use for reranking
         """
         super().__init__()
+        # TODO: These should not be literal constants like this.
+        # TODO: if the vector_db is setup upon startup, then this should not be done here.
+        self.embedder = dspy.Embedder("openai/text-embedding-3-large", dimensions=1536, batch_size=512)
+
         self.vector_store_config = vector_store_config
-        self.vector_db = vector_db
+        if vector_db is None:
+                db_url = self.vector_store_config.dsn
+                pg_table_name = self.vector_store_config.table_name
+                self.vector_db = SourceFilteredPgVectorRM(
+                    db_url=db_url,
+                    pg_table_name=pg_table_name,
+                    embedding_func=self.embedder,
+                    content_field="content",
+                    fields=["id", "content", "metadata"],
+                    k=max_source_count,
+                    embedding_model='text-embedding-3-large',
+                    include_similarity=True,
+                )
+        else:
+            self.vector_db = vector_db
         self.max_source_count = max_source_count
         self.similarity_threshold = similarity_threshold
         self.embedding_model = embedding_model
@@ -548,8 +588,43 @@ class DocumentRetrieverProgram(dspy.Module):
         Returns:
             List of relevant Document objects, ranked by similarity
         """
-        # TODO: if needed use sync version.
-        return asyncio.run(self.aforward(processed_query, sources))
+        try:
+            search_queries = processed_query.search_queries
+            if len(search_queries) == 0:
+                search_queries = [processed_query.reasoning]
+
+
+            db_url = self.vector_store_config.dsn
+            pg_table_name = self.vector_store_config.table_name
+            sync_retriever = SourceFilteredPgVectorRM(
+                db_url=db_url,
+                pg_table_name=pg_table_name,
+                embedding_func=self.embedder,
+                content_field="content",
+                fields=["id", "content", "metadata"],
+                k=self.max_source_count,
+            )
+
+            retrieved_examples: list[dspy.Example] = []
+            for search_query in search_queries:
+                examples = sync_retriever.forward(query=search_query, sources=sources, k=self.max_source_count)
+                retrieved_examples.extend(examples)
+
+            # Convert to Document objects and deduplicate using a set
+            documents = set()
+            for ex in retrieved_examples:
+                doc = Document(page_content=ex.content, metadata=ex.metadata)
+                try:
+                    documents.add(doc)
+                except Exception as e:
+                    logger.error(f"Error adding document: {e}. Type of fields: {[type(field) for field in ex]}")
+
+            return list(documents)
+        except Exception as e:
+            import traceback
+
+            logger.error(f"Error fetching documents: {traceback.format_exc()}")
+            raise e
 
     async def _afetch_documents(
         self, processed_query: ProcessedQuery, sources: list[DocumentSource]
@@ -565,38 +640,17 @@ class DocumentRetrieverProgram(dspy.Module):
             List of Document objects from vector store
         """
         try:
-            # Use injected vector DB instance or create a new one
-            if self.vector_db:
-                retriever = self.vector_db
-                # Update sources if different
-                if sources != retriever.sources:
-                    retriever.sources = sources
-            else:
-                # Create a new instance if not injected
-                # TODO: dont pass openAI client, pass embedding_func from DSPY.embed
-                openai_client = openai.OpenAI()
-                db_url = self.vector_store_config.dsn
-                pg_table_name = self.vector_store_config.table_name
-                retriever = SourceFilteredPgVectorRM(
-                    db_url=db_url,
-                    pg_table_name=pg_table_name,
-                    openai_client=openai_client,
-                    content_field="content",
-                    fields=["id", "content", "metadata"],
-                    k=self.max_source_count,
-                    sources=sources,
-                )
 
-            # # # TODO improve with proper re-phrased text.
             search_queries = processed_query.search_queries
             if len(search_queries) == 0:
+            # TODO: revert
                 search_queries = [processed_query.reasoning]
 
 
             retrieved_examples: list[dspy.Example] = []
             for search_query in search_queries:
                 # Use async version of retriever
-                examples = await retriever.aforward(search_query)
+                examples = await self.vector_db.aforward(query=search_query, sources=sources)
                 retrieved_examples.extend(examples)
 
             # Convert to Document objects and deduplicate using a set
@@ -608,9 +662,6 @@ class DocumentRetrieverProgram(dspy.Module):
                 except Exception as e:
                     logger.error(f"Error adding document: {e}. Type of fields: {[type(field) for field in ex]}")
 
-            logger.debug(
-                f"Retrieved {len(documents)} documents with titles: {[doc.metadata['title'] for doc in documents]}"
-            )
             return list(documents)
 
         except Exception as e:

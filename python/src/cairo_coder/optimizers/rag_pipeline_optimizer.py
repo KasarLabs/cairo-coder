@@ -127,7 +127,7 @@ def _(generation_metric, rag_pipeline_program, valset):
         from dspy.evaluate import Evaluate
 
         # You can use this cell to run more comprehensive evaluation
-        evaluator__ = Evaluate(devset=valset, num_threads=5, display_progress=True)
+        evaluator__ = Evaluate(devset=valset, num_threads=12, display_progress=True)
         return evaluator__(rag_pipeline_program, metric=generation_metric)
 
 
@@ -147,8 +147,6 @@ def _(
 ):
     """Run optimization using MIPROv2."""
 
-    import nest_asyncio
-    nest_asyncio.apply()
 
     def run_optimization(trainset, valset):
         """Run the optimization process using MIPROv2."""
@@ -183,10 +181,8 @@ def _(
     return optimization_duration, optimized_program
 
 
-app._unparsable_cell(
-    r"""
-    import nest_asyncio
-    nest_asyncio.apply()\"\"\"Evaluate optimized program performance on validation set.\"\"\"
+@app.cell
+def _(generation_metric, logger, optimized_program, valset):
     # Evaluate final performance
     final_scores = []
     for i, example in enumerate(valset):
@@ -198,16 +194,14 @@ app._unparsable_cell(
             score = generation_metric(example, prediction)
             final_scores.append(score)
         except Exception as e:
-            logger.error(\"Error in final evaluation\", example=i, error=str(e))
+            logger.error("Error in final evaluation", example=i, error=str(e))
             final_scores.append(0.0)
 
     final_score = sum(final_scores) / len(final_scores) if final_scores else 0.0
 
-    print(f\"Final score on validation set: {final_score:.3f}\")
+    print(f"Final score on validation set: {final_score:.3f}")
 
-    """,
-    name="_"
-)
+    return (final_score,)
 
 
 @app.cell

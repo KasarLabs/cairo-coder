@@ -12,15 +12,13 @@ def _():
     from pathlib import Path
 
     import dspy
-    import nest_asyncio
     import psycopg2
     import structlog
     from dspy import MIPROv2
     from psycopg2 import OperationalError
 
     from cairo_coder.config.manager import ConfigManager
-    from cairo_coder.optimizers.generation.utils import generation_metric
-    nest_asyncio.apply()
+
 
 
     logger = structlog.get_logger(__name__)
@@ -53,17 +51,7 @@ def _():
     dspy.settings.configure(lm=lm)
     logger.info("Configured DSPy with Gemini 2.5 Flash")
 
-    return (
-        MIPROv2,
-        Path,
-        dspy,
-        generation_metric,
-        global_config,
-        json,
-        lm,
-        logger,
-        time,
-    )
+    return ConfigManager, MIPROv2, Path, dspy, json, lm, logger, time
 
 
 @app.cell
@@ -79,9 +67,7 @@ def _(Path, dspy, json, logger):
         for ex in data["examples"]:
             example = dspy.Example(
                 query=ex["query"],
-                chat_history=ex["chat_history"],
-                mcp_mode=True
-            ).with_inputs("query", "chat_history", "mcp_mode")
+            ).with_inputs("query")
             examples.append(example)
 
         logger.info("Loaded dataset", count=len(examples))
@@ -112,15 +98,35 @@ def _(Path, dspy, json, logger):
 
 
 @app.cell
-def _(global_config):
+def _(ConfigManager, dspy):
     """Initialize the generation program."""
     # Initialize program
-    from cairo_coder.core.rag_pipeline import create_rag_pipeline
+    from cairo_coder.core.types import DocumentSource, Message
+    from cairo_coder.dspy.document_retriever import DocumentRetrieverProgram
+    from cairo_coder.dspy.query_processor import QueryProcessorProgram
 
-    rag_pipeline_program = create_rag_pipeline(
-        name="cairo-coder", vector_store_config=global_config.vector_store
-    )
-    return (rag_pipeline_program,)
+    class QueryAndRetrieval(dspy.Module):
+        def __init__(self):
+            config = ConfigManager.load_config()
+
+            self.processor = QueryProcessorProgram()
+            self.processor.load("optimizers/results/optimized_mcp_program.json")
+            self.document_retriever = DocumentRetrieverProgram(vector_store_config=config.vector_store)
+
+        def forward(
+            self,
+            query: str,
+            chat_history: list[Message] | None = None,
+            sources: list[DocumentSource] | None = None,
+        ) -> dspy.Prediction:
+
+            processed_query = self.processor.forward(query=query, chat_history=chat_history)
+            document_list = self.document_retriever.forward(processed_query=processed_query)
+
+            return dspy.Prediction(answer=document_list)
+
+    query_retrieval_program = QueryAndRetrieval()
+    return (query_retrieval_program,)
 
 
 @app.cell
@@ -135,50 +141,55 @@ def _(dspy):
 
         query: str = dspy.InputField()
         system_resources: list[str] = dspy.InputField(desc="A list of concatenated resources")
-        resources_notes: list[float] = dspy.OutputField(desc="A note between 0 and 1.0 on how useful the resource is to directly answer the query. 0 being completely unrelated, 1.0 being very relevant, 0.5 being 'not directly relatd but still informative'.")
-        reasoning: list[str] = dspy.OutputField(desc="For each resource, a short sentence, on why a selected resource will be useful. If it's not selected, reason about why it's not going to be useful. Start by Resource <resource_title>...")
+        reasoning: str = dspy.OutputField(desc="A short sentence, on why a selected resource will be useful. If it's not selected, reason about why it's not going to be useful. Start by Resource <resource_title>...")
+        resource_note: float = dspy.OutputField(desc="A note between 0 and 1.0 on how useful the resource is to directly answer the query. 0 being completely unrelated, 1.0 being very relevant, 0.5 being 'not directly relatd but still informative'.")
 
     class RetrievalF1(dspy.Module):
-        def __init__(self, threshold=0.66, decompositional=False):
+        def __init__(self, threshold=0.33, decompositional=False):
             self.threshold = threshold
-
-            self.module = dspy.ChainOfThought(RetrievalRecallPrecision)
+            self.rater = dspy.Predict(RetrievalRecallPrecision)
 
         def forward(self, example, pred, trace=None):
-            scores = self.module(
-                query=example.query,
-                system_resources=pred.answer,
-            )
-            score = sum(scores.resources_notes) / len(scores.resources_notes)
-            for (note, reason) in zip(scores.resources_notes, scores.reasoning, strict=False):
-                print(f"Note: {note}, reason: {reason}")
+            parallel = dspy.Parallel(num_threads=10)
+            batches = []
+            for resource in pred.answer:
+                batches.append((self.rater, dspy.Example(query=example.query, system_resources=resource).with_inputs("query", "system_resources"))),
+
+            result = parallel(batches)
+
+            resources_notes = [pred.resource_note for pred in result]
+            [pred.reasoning for pred in result]
+
+            score = sum(resources_notes) / len(resources_notes) if len(resources_notes) != 0 else 0
+            # for (note, reason) in zip(resources_notes, reasonings, strict=False):
+                # print(f"Note: {note}, reason: {reason}")
             return score if trace is None else score >= self.threshold
 
     return (RetrievalF1,)
 
 
 @app.cell
-def _(RetrievalF1, rag_pipeline_program, valset):
+def _(RetrievalF1, query_retrieval_program, valset):
     def _():
         """Evaluate system, pre-optimization, using DSPy Evaluate framework."""
         from dspy.evaluate import Evaluate
         metric = RetrievalF1()
 
         # You can use this cell to run more comprehensive evaluation
-        evaluator__ = Evaluate(devset=valset, num_threads=5, display_progress=True)
-        return evaluator__(rag_pipeline_program, metric=metric)
+        evaluator__ = Evaluate(devset=valset, num_threads=12, display_progress=True)
+        return evaluator__(query_retrieval_program, metric=metric)
 
 
-    _()
-    return
+    baseline_score = _()
+    return (baseline_score,)
 
 
-@app.cell(disabled=True)
+@app.cell
 def _(
     MIPROv2,
     RetrievalF1,
     logger,
-    rag_pipeline_program,
+    query_retrieval_program,
     time,
     trainset,
     valset,
@@ -196,15 +207,14 @@ def _(
         optimizer = MIPROv2(
             metric=metric,
             auto="light",
-            max_bootstrapped_demos=2,
-            max_labeled_demos=0,
-            num_threads=20,
+            num_threads=12,
+
         )
 
         # Run optimization
         start_time = time.time()
         optimized_program = optimizer.compile(
-            rag_pipeline_program, trainset=trainset, valset=valset, requires_permission_to_run=False
+            query_retrieval_program, trainset=trainset, valset=valset, requires_permission_to_run=False
         )
         duration = time.time() - start_time
 
@@ -222,26 +232,18 @@ def _(
 
 
 @app.cell
-def _(generation_metric, logger, optimized_program, valset):
-    """Evaluate optimized program performance on validation set."""
-    # Evaluate final performance
-    final_scores = []
-    for i, example in enumerate(valset):
-        try:
-            prediction = optimized_program.forward(
-                query=example.query,
-                chat_history=example.chat_history,
-            )
-            score = generation_metric(example, prediction)
-            final_scores.append(score)
-        except Exception as e:
-            logger.error("Error in final evaluation", example=i, error=str(e))
-            final_scores.append(0.0)
+def _(RetrievalF1, optimized_program, valset):
+    def _():
+        """Evaluate system, post-optimization, using DSPy Evaluate framework."""
+        from dspy.evaluate import Evaluate
+        metric = RetrievalF1()
 
-    final_score = sum(final_scores) / len(final_scores) if final_scores else 0.0
+        # You can use this cell to run more comprehensive evaluation
+        evaluator__ = Evaluate(devset=valset, num_threads=12, display_progress=True)
+        return evaluator__(optimized_program, metric=metric)
 
-    print(f"Final score on validation set: {final_score:.3f}")
 
+    final_score = _()
     return (final_score,)
 
 
@@ -272,43 +274,27 @@ def _(baseline_score, final_score, lm, logger, optimization_duration):
     print(f"Duration: {optimization_duration:.2f}s")
     print(f"Estimated Cost: ${cost:.2f}")
 
-    results = {
-        "baseline_score": baseline_score,
-        "final_score": final_score,
-        "improvement": improvement,
-        "duration": optimization_duration,
-        "estimated_cost_usd": cost,
-    }
-
-    return (results,)
-
-
-@app.cell
-def _(Path, json, optimized_program, results):
-    """Save optimized program and results."""
-    # Ensure results directory exists
-    Path("optimizers/results").mkdir(parents=True, exist_ok=True)
-
-    # Save optimized program
-    optimized_program.save("optimizers/results/optimized_rag_program.json")
-
-    # Save results
-    with open("optimizers/results/optimization_results.json", "w", encoding="utf-8") as f:
-        json.dump(results, f, indent=2, ensure_ascii=False)
-
-    print("\nOptimization complete. Results saved to optimizers/results/")
 
     return
 
 
 @app.cell
-def _(generation_metric, optimized_program, valset):
-    """Evaluate system using DSPy Evaluate framework."""
-    from dspy.evaluate import Evaluate
+def _(Path, optimized_program):
+    """Save optimized program and results."""
+    # Ensure results directory exists
+    Path("optimizers/results").mkdir(parents=True, exist_ok=True)
 
-    # You can use this cell to run more comprehensive evaluation
-    evaluator = Evaluate(devset=valset, num_threads=3, display_progress=True)
-    evaluator(optimized_program, metric=generation_metric)
+    # Save optimized program
+    optimized_program.save("optimizers/results/optimized_mcp_program.json")
+
+    print(optimized_program)
+
+
+    # # Save results
+    # with open("optimizers/results/optimization_mcp_results.json", "w", encoding="utf-8") as f:
+    #     json.dump(results, f, indent=2, ensure_ascii=False)
+
+    print("\nOptimization complete. Results saved to optimizers/results/")
 
     return
 

@@ -14,7 +14,6 @@ from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 
 import dspy
-import openai
 from fastapi import Depends, FastAPI, Header, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
@@ -33,7 +32,7 @@ from cairo_coder.dspy.document_retriever import SourceFilteredPgVectorRM
 from cairo_coder.utils.logging import get_logger, setup_logging
 
 # Configure structured logging
-setup_logging(os.environ.get("LOG_LEVEL", "INFO"), os.environ.get("LOG_FORMAT", "json"))
+setup_logging(os.environ.get("LOG_LEVEL", "INFO"), os.environ.get("LOG_FORMAT", "console"))
 logger = get_logger(__name__)
 
 # Global vector DB instance managed by FastAPI lifecycle
@@ -589,16 +588,18 @@ async def lifespan(app: FastAPI):
 
     # Initialize vector DB
     vector_store_config = get_vector_store_config()
-    openai_client = openai.OpenAI()
+    # TODO: These should not be literal constants like this.
+    embedder = dspy.Embedder("openai/text-embedding-3-large", dimensions=1536, batch_size=512)
 
     _vector_db = SourceFilteredPgVectorRM(
         db_url=vector_store_config.dsn,
         pg_table_name=vector_store_config.table_name,
-        openai_client=openai_client,
+        embedding_func=embedder,
         content_field="content",
         fields=["id", "content", "metadata"],
         k=5,  # Default k, will be overridden by retriever
-        sources=None,  # Will be set dynamically
+        embedding_model='text-embedding-3-large',
+        include_similarity=True,
     )
 
     # Ensure connection pool is initialized
@@ -618,6 +619,7 @@ async def lifespan(app: FastAPI):
 
     if _vector_db and _vector_db.pool:
         await _vector_db.pool.close()
+        _vector_db.pool = None
         logger.info("Vector DB connection pool closed")
 
     _vector_db = None
