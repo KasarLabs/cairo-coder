@@ -121,8 +121,12 @@ class GenerationProgram(dspy.Module):
                 return self.generation_program.forward(query=query, context=context, chat_history=chat_history)
             except AdapterParseError as e:
                 if attempt < max_retries - 1:
-                    continue
-                raise e
+                        continue
+                code = self._try_extract_code_from_response(e.lm_response)
+                if code:
+                    return dspy.Prediction(answer=code)
+                else:
+                    raise e
         return None
 
     @traceable(name="GenerationProgram", run_type="llm")
@@ -139,8 +143,12 @@ class GenerationProgram(dspy.Module):
             try:
                 return await self.generation_program.aforward(query=query, context=context, chat_history=chat_history)
             except AdapterParseError as e:
-                    if attempt < max_retries - 1:
+                if attempt < max_retries - 1:
                         continue
+                code = self._try_extract_code_from_response(e.lm_response)
+                if code:
+                    return dspy.Prediction(answer=code)
+                else:
                     raise e
         return None
 
@@ -208,6 +216,15 @@ class GenerationProgram(dspy.Module):
             formatted_history.append(f"{role}: {message.content}")
 
         return "\n".join(formatted_history)
+
+    def _try_extract_code_from_response(self, response: str) -> str | None:
+        """
+        Try to extract Cairo code from the response.
+        """
+        if "```cairo" in response:
+            return response.split("```cairo")[1].split("```")[0]
+
+        return None
 
 
 class McpGenerationProgram(dspy.Module):

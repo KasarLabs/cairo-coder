@@ -183,7 +183,7 @@ class RagPipeline(dspy.Module):
         processed_query, documents = await self._aprocess_query_and_retrieve_docs(
             query, chat_history_str, sources
         )
-        logger.info(f"Processed query: {processed_query.original} and retrieved {len(documents)} doc titles: {[doc.metadata.get('title') for doc in documents]}")
+        logger.info(f"Processed query: {processed_query.original[:100]}... and retrieved {len(documents)} doc titles: {[doc.metadata.get('title') for doc in documents]}")
 
         if mcp_mode:
             return self.mcp_generation_program.forward(documents)

@@ -70,6 +70,7 @@ class CairoCoderAPIClient:
             "stream": False,
         }
 
+        query_time = time.time()
         for attempt in range(max_retries):
             try:
                 start_time = time.time()
@@ -95,6 +96,7 @@ class CairoCoderAPIClient:
             except aiohttp.ClientError as e:
                 logger.warning(
                     "API call failed",
+                    time_elapsed=time.time() - query_time,
                     attempt=attempt + 1,
                     error=str(e),
                     will_retry=attempt < max_retries - 1,

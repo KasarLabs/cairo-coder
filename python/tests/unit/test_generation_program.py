@@ -374,10 +374,10 @@ class TestForwardRetries:
         # Mock the generation_program to raise AdapterParseError
         side_effect = [
             AdapterParseError(
-                "Parse error 1", CairoCodeGeneration, None, "test response", {}
+                "Parse error 1", CairoCodeGeneration, "", "test response", {}
             ),
             AdapterParseError(
-                "Parse error 2", CairoCodeGeneration, None, "test response", {}
+                "Parse error 2", CairoCodeGeneration, "", "test response", {}
             ),
             dspy.Prediction(answer="Success"),
         ]
@@ -399,16 +399,16 @@ class TestForwardRetries:
         # Mock the generation_program to always raise AdapterParseError
         side_effect = [
             AdapterParseError(
-                "Parse error", CairoCodeGeneration, None, "test response", {}
+                "Parse error", CairoCodeGeneration, "", "test response", {}
             ),
             AdapterParseError(
-                "Parse error", CairoCodeGeneration, None, "test response", {}
+                "Parse error", CairoCodeGeneration, "", "test response", {}
             ),
             AdapterParseError(
-                "Parse error", CairoCodeGeneration, None, "test response", {}
+                "Parse error", CairoCodeGeneration, "", "test response", {}
             ),
             AdapterParseError(
-                "Parse error", CairoCodeGeneration, None, "test response", {}
+                "Parse error", CairoCodeGeneration, "", "test response", {}
             ),
         ]
         getattr(generation_program.generation_program, call_method).side_effect = side_effect
@@ -437,3 +437,25 @@ class TestForwardRetries:
 
         # Verify forward was called only once
         assert getattr(generation_program.generation_program, call_method).call_count == 1
+
+
+    @pytest.mark.parametrize("call_method", ["forward", "aforward"])
+    @pytest.mark.asyncio
+    async def test_should_extract_code_before_raising(self, generation_program, call_method):
+        """Test that code is extracted before raising AdapterParseError."""
+        # Mock the generation_program to raise AdapterParseError
+        side_effect = [
+            AdapterParseError(
+                "Parse error", CairoCodeGeneration, "", "test response", {}
+            ),
+            AdapterParseError(
+                "Parse error", CairoCodeGeneration, "", "test response", {}
+            ),
+            AdapterParseError(
+                "Parse error", CairoCodeGeneration, "```cairo\nfn main() {}\n```", "test response", {}
+            ),
+        ]
+        getattr(generation_program.generation_program, "aforward").side_effect = side_effect
+
+        response = await call_program(generation_program, "aforward", "test query", "test context")
+        assert response.answer == "\nfn main() {}\n"

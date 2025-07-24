@@ -67,8 +67,8 @@ class StarklingsEvaluator:
         # Group by category
         self.exercises_by_category = {}
         for exercise in self.exercises:
-            # Extract category from path (e.g., "intro/intro1.cairo" -> "intro")
-            category = exercise.path.split("/")[0] if "/" in exercise.path else "default"
+            # Extract category from path (e.g., "exercises/intro/intro1.cairo" -> "intro")
+            category = exercise.path.split("exercises/")[1].split("/")[0] if "exercises/" in exercise.path else "default"
             if category not in self.exercises_by_category:
                 self.exercises_by_category[category] = []
             self.exercises_by_category[category].append(exercise)
@@ -80,7 +80,7 @@ class StarklingsEvaluator:
         )
         return True
 
-    def _create_prompt(self, exercise: StarklingsExercise, exercise_content: str) -> str:
+    def _create_prompt(self, exercise: StarklingsExercise, exercise_content: str, extra_msg: str | None = None) -> str:
         """Create prompt for the API.
 
         Args:
@@ -91,9 +91,11 @@ class StarklingsEvaluator:
             Formatted prompt
         """
         prompt = (
-            f"Solve the following Cairo exercise named '{exercise.name}':\n\n"
+            f"Solve the following Cairo exercise named '{exercise.name}'. You have to make the code compile and pass the tests, if any.:\n\n"
             f"```cairo\n{exercise_content}\n```\n\n"
         )
+        if extra_msg:
+            prompt += f"Currently, the code is not compiling. The error is: {extra_msg}"
 
         if exercise.hint:
             prompt += f"Hint: {exercise.hint}\n\n"
@@ -192,7 +194,8 @@ class StarklingsEvaluator:
             )
 
         # Create prompt
-        prompt = self._create_prompt(exercise, exercise_content)
+        pre_compilation_result = utils.check_compilation(exercise_content, save_failed_code=False)
+        prompt = self._create_prompt(exercise, exercise_content, pre_compilation_result.get("error"))
 
         # Call API
         try:
@@ -213,7 +216,7 @@ class StarklingsEvaluator:
 
             # Test compilation
             start_compile = time.time()
-            compilation_result = utils.check_compilation(generated_code)
+            compilation_result = utils.check_compilation(generated_code, save_failed_code=True)
             compilation_time = time.time() - start_compile
 
             success = compilation_result.get("success", False)

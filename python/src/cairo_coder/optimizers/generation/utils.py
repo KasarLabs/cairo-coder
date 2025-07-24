@@ -31,7 +31,7 @@ def extract_cairo_code(answer: str) -> str :
     return ""
 
 
-def check_compilation(code: str) -> dict[str, Any]:
+def check_compilation(code: str, save_failed_code: bool = False) -> dict[str, Any]:
     """Check if Cairo code compiles using Scarb."""
     temp_dir = None
     try:
@@ -61,20 +61,22 @@ def check_compilation(code: str) -> dict[str, Any]:
             return {"success": True}
         error_msg = result.stderr or result.stdout or "Compilation failed"
 
-        # Save failed code for debugging
-        error_logs_dir = Path("error_logs")
-        error_logs_dir.mkdir(exist_ok=True)
+        if save_failed_code:
+            # Save failed code for debugging
+            error_logs_dir = Path("error_logs")
+            error_logs_dir.mkdir(exist_ok=True)
 
-        next_index = len(list(error_logs_dir.glob("run_*.cairo")))
-        failed_file = error_logs_dir / f"run_{next_index}.cairo"
+            next_index = len(list(error_logs_dir.glob("run_*.cairo")))
+            failed_file = error_logs_dir / f"run_{next_index}.cairo"
 
-        # Append error message as comment to the code
-        error_lines = error_msg.split("\n")
-        commented_error = "\n".join(f"// {line}" for line in error_lines)
-        code_with_error = f"{commented_error}\n\n{code}"
-        failed_file.write_text(code_with_error, encoding="utf-8")
+            # Append error message as comment to the code
+            error_lines = error_msg.split("\n")
+            commented_error = "\n".join(f"// {line}" for line in error_lines)
+            code_with_error = f"{commented_error}\n\n{code}"
+            failed_file.write_text(code_with_error, encoding="utf-8")
 
-        logger.debug("Saved failed compilation code", file=str(failed_file))
+            logger.debug("Saved failed compilation code", file=str(failed_file))
+
         return {"success": False, "error": error_msg}
 
     except subprocess.TimeoutExpired:
@@ -99,7 +101,7 @@ def generation_metric(expected: dspy.Example, predicted: dspy.Prediction, trace=
         extract_cairo_code(expected_answer)
         # Calculate compilation score
 
-        compile_result = check_compilation(predicted_code)
+        compile_result = check_compilation(predicted_code, save_failed_code=True)
         score = 1.0 if compile_result["success"] else 0.0
 
         logger.debug("Generation metric calculated", score=score)
