@@ -11,6 +11,7 @@ from typing import Optional
 import dspy
 import structlog
 from dspy import InputField, OutputField, Signature
+from dspy.adapters.chat_adapter import AdapterParseError
 from langsmith import traceable
 
 from cairo_coder.core.types import Document, Message
@@ -114,7 +115,15 @@ class GenerationProgram(dspy.Module):
             chat_history = ""
 
         # Execute the generation program
-        return self.generation_program.forward(query=query, context=context, chat_history=chat_history)
+        max_retries = 3
+        for attempt in range(max_retries):
+            try:
+                return self.generation_program.forward(query=query, context=context, chat_history=chat_history)
+            except AdapterParseError as e:
+                if attempt < max_retries - 1:
+                    continue
+                raise e
+        return None
 
     @traceable(name="GenerationProgram", run_type="llm")
     async def aforward(self, query: str, context: str, chat_history: Optional[str] = None) -> dspy.Predict:
@@ -124,8 +133,16 @@ class GenerationProgram(dspy.Module):
         if chat_history is None:
             chat_history = ""
 
-        # Execute the generation program
-        return await self.generation_program.aforward(query=query, context=context, chat_history=chat_history)
+        # Execute the generation program with retries for AdapterParseError
+        max_retries = 3
+        for attempt in range(max_retries):
+            try:
+                return await self.generation_program.aforward(query=query, context=context, chat_history=chat_history)
+            except AdapterParseError as e:
+                    if attempt < max_retries - 1:
+                        continue
+                    raise e
+        return None
 
     async def forward_streaming(
         self, query: str, context: str, chat_history: Optional[str] = None
