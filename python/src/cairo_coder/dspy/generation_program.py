@@ -99,7 +99,7 @@ class GenerationProgram(dspy.Module):
         return self.generation_program.get_lm_usage()
 
     @traceable(name="GenerationProgram", run_type="llm")
-    def forward(self, query: str, context: str, chat_history: Optional[str] = None) -> dspy.Predict:
+    def forward(self, query: str, context: str, chat_history: Optional[str] = None) -> dspy.Prediction | None :
         """
         Generate Cairo code response based on query and context.
 
@@ -130,7 +130,7 @@ class GenerationProgram(dspy.Module):
         return None
 
     @traceable(name="GenerationProgram", run_type="llm")
-    async def aforward(self, query: str, context: str, chat_history: Optional[str] = None) -> dspy.Predict:
+    async def aforward(self, query: str, context: str, chat_history: Optional[str] = None) -> dspy.Prediction | None :
         """
         Generate Cairo code response based on query and context - async
         """

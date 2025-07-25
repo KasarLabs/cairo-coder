@@ -31,6 +31,7 @@ RESOURCE_DESCRIPTIONS = {
 class CairoQueryAnalysis(Signature):
     """
     Analyze a Cairo programming query to extract search terms and identify relevant documentation sources.
+    Your output must not contain any code; only an analysis of the query and the search queries to make.
     """
 
     chat_history: Optional[str] = InputField(
