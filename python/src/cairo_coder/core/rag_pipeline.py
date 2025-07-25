@@ -139,7 +139,8 @@ class RagPipeline(dspy.Module):
         # Apply LLM judge if enabled
         if self.retrieval_judge is not None:
             try:
-                documents = self.retrieval_judge.forward(query=query, documents=documents)
+                with dspy.context(lm=dspy.LM("gemini/gemini-2.5-flash-lite", max_tokens=10000)):
+                    documents = self.retrieval_judge.forward(query=query, documents=documents)
             except Exception as e:
                 logger.warning(
                     "Retrieval judge failed (sync), using all documents",
@@ -172,7 +173,8 @@ class RagPipeline(dspy.Module):
         # Apply LLM judge if enabled
         if self.retrieval_judge is not None:
             try:
-                documents = await self.retrieval_judge.aforward(query=query, documents=documents)
+                with dspy.context(lm=dspy.LM("gemini/gemini-2.5-flash-lite", max_tokens=10000)):
+                    documents = await self.retrieval_judge.aforward(query=query, documents=documents)
             except Exception as e:
                 logger.warning(
                     "Retrieval judge failed (async), using all documents",

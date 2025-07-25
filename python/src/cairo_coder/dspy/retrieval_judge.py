@@ -196,6 +196,7 @@ class RetrievalJudge(dspy.Module):
             total_docs=len(documents),
             kept_docs=len(keep_docs),
             dropped_docs=dropped,
+            kept_docs_titles=[d.metadata.get("title") for d in keep_docs],
             query=query[:120],
         )
 
@@ -228,6 +229,7 @@ class RetrievalJudge(dspy.Module):
             total_docs=len(documents),
             kept_docs=len(keep_docs),
             dropped_docs=dropped,
+            kept_docs_titles=[d.metadata.get("title") for d in keep_docs],
             query=query[:120],
         )
 
