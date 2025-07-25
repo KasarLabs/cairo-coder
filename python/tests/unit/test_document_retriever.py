@@ -11,18 +11,11 @@ import pytest
 
 from cairo_coder.core.config import VectorStoreConfig
 from cairo_coder.core.types import Document, DocumentSource, ProcessedQuery
-from cairo_coder.dspy.document_retriever import DocumentRetrieverProgram
-
-
-@pytest.fixture(scope='function')
-def mock_pgvector_rm(mock_dspy_examples: list[dspy.Example]):
-    """Patch the vector database for the document retriever."""
-    with patch("cairo_coder.dspy.document_retriever.SourceFilteredPgVectorRM") as mock_pgvector_rm:
-        mock_instance = Mock()
-        mock_instance.aforward = AsyncMock(return_value=mock_dspy_examples)
-        mock_instance.forward = Mock(return_value=mock_dspy_examples)
-        mock_pgvector_rm.return_value = mock_instance
-        yield mock_pgvector_rm
+from cairo_coder.dspy.document_retriever import (
+    CONTRACT_TEMPLATE_TITLE,
+    TEST_TEMPLATE_TITLE,
+    DocumentRetrieverProgram,
+)
 
 
 @pytest.fixture(scope='session')
@@ -73,18 +66,6 @@ class TestDocumentRetrieverProgram:
             max_source_count=5,
             similarity_threshold=0.4,
         )
-
-    @pytest.fixture(scope='session')
-    def mock_dspy_examples(self, sample_documents: list[Document]) -> list[dspy.Example]:
-        """Create mock DSPy Example objects from sample documents."""
-        examples = []
-        for doc in sample_documents:
-            example = Mock(spec=dspy.Example)
-            example.content = doc.page_content
-            example.metadata = doc.metadata
-            examples.append(example)
-        return examples
-
     @pytest.mark.asyncio
     async def test_basic_document_retrieval(
         self,
@@ -334,7 +315,7 @@ class TestDocumentRetrieverProgram:
                     # Verify contract template was added to context
                     contract_template_found = False
                     for doc in result:
-                        if doc.metadata.get("source") == "contract_template":
+                        if doc.metadata.get("source") == CONTRACT_TEMPLATE_TITLE:
                             contract_template_found = True
                             # Verify it contains the contract template content
                             assert "The content inside the <contract> tag" in doc.page_content
@@ -385,7 +366,7 @@ class TestDocumentRetrieverProgram:
                     # Verify test template was added to context
                     test_template_found = False
                     for doc in result:
-                        if doc.metadata.get("source") == "test_template":
+                        if doc.metadata.get("source") == TEST_TEMPLATE_TITLE:
                             test_template_found = True
                             # Verify it contains the test template content
                             assert (
@@ -445,9 +426,9 @@ class TestDocumentRetrieverProgram:
                     test_template_found = False
 
                     for doc in result:
-                        if doc.metadata.get("source") == "contract_template":
+                        if doc.metadata.get("source") == CONTRACT_TEMPLATE_TITLE:
                             contract_template_found = True
-                        elif doc.metadata.get("source") == "test_template":
+                        elif doc.metadata.get("source") == TEST_TEMPLATE_TITLE:
                             test_template_found = True
 
                     assert contract_template_found, (

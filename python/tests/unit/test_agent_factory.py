@@ -94,6 +94,8 @@ class TestAgentFactory:
                 sources=sources,
                 max_source_count=5,
                 similarity_threshold=0.6,
+                enable_llm_judge=True,
+                llm_judge_threshold=0.4,
             )
 
     @pytest.mark.asyncio
@@ -143,7 +145,6 @@ class TestAgentFactory:
                 config_manager=mock_config_manager,
             )
 
-    @pytest.mark.asyncio
     def test_get_or_create_agent_cache_miss(self, agent_factory):
         """Test get_or_create_agent with cache miss."""
         query = "Test query"
@@ -167,6 +168,8 @@ class TestAgentFactory:
                 config_manager=agent_factory.config_manager,
                 mcp_mode=False,
                 vector_db=None,
+                enable_llm_judge=True,
+                llm_judge_threshold=0.4,
             )
 
             # Verify agent was cached
@@ -307,6 +310,8 @@ class TestAgentFactory:
                 contract_template=None,
                 test_template=None,
                 vector_db=None,
+                enable_llm_judge=True,
+                llm_judge_threshold=0.4,
             )
 
     @pytest.mark.asyncio
@@ -344,6 +349,8 @@ class TestAgentFactory:
                 contract_template=None,
                 test_template=None,
                 vector_db=None,
+                enable_llm_judge=True,
+                llm_judge_threshold=0.4,
             )
 
 

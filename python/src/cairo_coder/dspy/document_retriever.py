@@ -19,6 +19,7 @@ from cairo_coder.core.types import Document, DocumentSource, ProcessedQuery
 logger = structlog.get_logger()
 
 # Templates for different types of requests
+CONTRACT_TEMPLATE_TITLE = "Contract Template"
 CONTRACT_TEMPLATE = """
 contract>
 use starknet::ContractAddress;
@@ -137,6 +138,7 @@ Never include links to external sources in code that you produce.
 Never add comments with urls to sources in the code that you produce.
 """
 
+TEST_TEMPLATE_TITLE = "Contract Testing Template"
 TEST_TEMPLATE = """
 contract_test>
 // Import the contract module itself
@@ -690,7 +692,7 @@ class DocumentRetrieverProgram(dspy.Module):
             context.append(
                 Document(
                     page_content=CONTRACT_TEMPLATE,
-                    metadata={"title": "contract_template", "source": "contract_template"},
+                    metadata={"title": CONTRACT_TEMPLATE_TITLE, "source": CONTRACT_TEMPLATE_TITLE},
                 )
             )
 
@@ -699,7 +701,7 @@ class DocumentRetrieverProgram(dspy.Module):
             context.append(
                 Document(
                     page_content=TEST_TEMPLATE,
-                    metadata={"title": "test_template", "source": "test_template"},
+                    metadata={"title": TEST_TEMPLATE_TITLE, "source": TEST_TEMPLATE_TITLE},
                 )
             )
         return context
