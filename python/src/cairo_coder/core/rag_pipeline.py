@@ -26,9 +26,12 @@ from cairo_coder.core.types import (
 from cairo_coder.dspy.document_retriever import DocumentRetrieverProgram
 from cairo_coder.dspy.generation_program import GenerationProgram, McpGenerationProgram
 from cairo_coder.dspy.query_processor import QueryProcessorProgram
+from cairo_coder.dspy.retrieval_judge import RetrievalJudge
 from cairo_coder.utils.logging import get_logger
 
 logger = get_logger(__name__)
+
+SOURCE_PREVIEW_MAX_LEN = 200
 
 
 # 1. Define a custom callback class that extends BaseCallback class
@@ -38,28 +41,28 @@ class AgentLoggingCallback(BaseCallback):
         call_id: str,
         instance: Any,
         inputs: dict[str, Any],
-    ):
+    ) -> None:
         logger.debug("Starting module", call_id=call_id, inputs=inputs)
 
     # 2. Implement on_module_end handler to run a custom logging code.
-    def on_module_end(self, call_id, outputs, exception):
+    def on_module_end(self, call_id: str, outputs: dict[str, Any], exception: Exception | None) -> None:
         step = "Reasoning" if self._is_reasoning_output(outputs) else "Acting"
         logger.debug(f"== {step} Step ===")
         for k, v in outputs.items():
             logger.debug(f"  {k}: {v}")
         logger.debug("\n")
 
-    def _is_reasoning_output(self, outputs):
+    def _is_reasoning_output(self, outputs: dict[str, Any]) -> bool:
         return any(k.startswith("Thought") for k in outputs if isinstance(k, str))
 
 
 class LangsmithTracingCallback(BaseCallback):
     @traceable()
-    def on_lm_start(self, call_id, instance, inputs):
+    def on_lm_start(self, call_id: str, instance: Any, inputs: dict[str, Any]) -> None:
         pass
 
     @traceable()
-    def on_lm_end(self, call_id, outputs, exception):
+    def on_lm_end(self, call_id: str, outputs: dict[str, Any], exception: Exception | None) -> None:
         pass
 
 
@@ -78,6 +81,9 @@ class RagPipelineConfig:
     sources: list[DocumentSource] | None = None
     contract_template: Optional[str] = None
     test_template: Optional[str] = None
+    enable_llm_judge: bool = True
+    llm_judge_threshold: float = 0.4
+    retrieval_judge: RetrievalJudge | None = None
 
 
 class RagPipeline(dspy.Module):
@@ -104,6 +110,13 @@ class RagPipeline(dspy.Module):
         self.generation_program = config.generation_program
         self.mcp_generation_program = config.mcp_generation_program
 
+        # Initialize retrieval judge if enabled
+        self.retrieval_judge: RetrievalJudge | None = None
+        if config.enable_llm_judge:
+            self.retrieval_judge = config.retrieval_judge or RetrievalJudge(
+                threshold=config.llm_judge_threshold
+            )
+
         # Pipeline state
         self._current_processed_query: ProcessedQuery | None = None
         self._current_documents: list[Document] = []
@@ -122,6 +135,19 @@ class RagPipeline(dspy.Module):
         documents = self.document_retriever.forward(
             processed_query=processed_query, sources=retrieval_sources
         )
+
+        # Apply LLM judge if enabled
+        if self.retrieval_judge is not None:
+            try:
+                documents = self.retrieval_judge.forward(query=query, documents=documents)
+            except Exception as e:
+                logger.warning(
+                    "Retrieval judge failed (sync), using all documents",
+                    error=str(e),
+                    exc_info=True,
+                )
+                # documents already contains all retrieved docs, no action needed
+
         self._current_documents = documents
 
         return processed_query, documents
@@ -142,6 +168,19 @@ class RagPipeline(dspy.Module):
         documents = await self.document_retriever.aforward(
             processed_query=processed_query, sources=retrieval_sources
         )
+
+        # Apply LLM judge if enabled
+        if self.retrieval_judge is not None:
+            try:
+                documents = await self.retrieval_judge.aforward(query=query, documents=documents)
+            except Exception as e:
+                logger.warning(
+                    "Retrieval judge failed (async), using all documents",
+                    error=str(e),
+                    exc_info=True,
+                )
+                # documents already contains all retrieved docs, no action needed
+
         self._current_documents = documents
 
         return processed_query, documents
@@ -258,12 +297,17 @@ class RagPipeline(dspy.Module):
             logger.error("Pipeline error", error=e)
             yield StreamEvent(StreamEventType.ERROR, data=f"Pipeline error: {str(e)}")
 
-    def get_lm_usage(self) -> dict[str, int]:
+    def get_lm_usage(self) -> dict[str, dict[str, int]]:
         """
         Get the total number of tokens used by the LLM.
         """
         generation_usage = self.generation_program.get_lm_usage()
         query_usage = self.query_processor.get_lm_usage()
+
+        # Get retrieval judge usage if available
+        judge_usage = {}
+        if self.retrieval_judge:
+            judge_usage = self.retrieval_judge.get_lm_usage()
 
         # Additive merge strategy
         merged_usage = {}
@@ -278,6 +322,7 @@ class RagPipeline(dspy.Module):
 
         merge_usage_dict(merged_usage, generation_usage)
         merge_usage_dict(merged_usage, query_usage)
+        merge_usage_dict(merged_usage, judge_usage)
 
         return merged_usage
 
@@ -317,8 +362,8 @@ class RagPipeline(dspy.Module):
                 "title": doc.metadata.get("title", "Untitled"),
                 "url": doc.metadata.get("url", "#"),
                 "source_display": doc.metadata.get("source_display", "Unknown Source"),
-                "content_preview": doc.page_content[:200]
-                + ("..." if len(doc.page_content) > 200 else ""),
+                "content_preview": doc.page_content[:SOURCE_PREVIEW_MAX_LEN]
+                + ("..." if len(doc.page_content) > SOURCE_PREVIEW_MAX_LEN else ""),
             }
             sources.append(source_info)
 
@@ -388,6 +433,8 @@ class RagPipeline(dspy.Module):
                 "max_source_count": self.config.max_source_count,
                 "similarity_threshold": self.config.similarity_threshold,
                 "sources": self.config.sources,
+                "enable_llm_judge": self.config.enable_llm_judge,
+                "llm_judge_threshold": self.config.llm_judge_threshold,
             },
         }
 
@@ -409,6 +456,9 @@ class RagPipelineFactory:
         contract_template: Optional[str] = None,
         test_template: Optional[str] = None,
         vector_db: Any = None,  # SourceFilteredPgVectorRM instance
+        enable_llm_judge: bool = True,
+        llm_judge_threshold: float = 0.4,
+        retrieval_judge: RetrievalJudge | None = None,
     ) -> RagPipeline:
         """
         Create a RAG Pipeline with default or provided components.
@@ -426,6 +476,9 @@ class RagPipelineFactory:
             contract_template: Template for contract-related queries
             test_template: Template for test-related queries
             vector_db: Optional pre-initialized vector database instance
+            enable_llm_judge: Whether to enable LLM-based retrieval judge
+            llm_judge_threshold: Minimum score for documents to pass judge
+            retrieval_judge: Optional pre-initialized retrieval judge
 
         Returns:
             Configured RagPipeline instance
@@ -468,6 +521,9 @@ class RagPipelineFactory:
             sources=sources,
             contract_template=contract_template,
             test_template=test_template,
+            enable_llm_judge=enable_llm_judge,
+            llm_judge_threshold=llm_judge_threshold,
+            retrieval_judge=retrieval_judge,
         )
 
         rag_program = RagPipeline(config)
@@ -481,7 +537,7 @@ class RagPipelineFactory:
 
     @staticmethod
     def create_scarb_pipeline(
-        name: str, vector_store_config: VectorStoreConfig, **kwargs
+        name: str, vector_store_config: VectorStoreConfig, **kwargs: Any
     ) -> RagPipeline:
         """
         Create a Scarb-specialized RAG Pipeline.
@@ -511,7 +567,7 @@ class RagPipelineFactory:
         )
 
 
-def create_rag_pipeline(name: str, vector_store_config: VectorStoreConfig, **kwargs) -> RagPipeline:
+def create_rag_pipeline(name: str, vector_store_config: VectorStoreConfig, **kwargs: Any) -> RagPipeline:
     """
     Convenience function to create a RAG Pipeline.
 

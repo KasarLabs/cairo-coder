@@ -15,6 +15,7 @@ from .generation_program import (
     create_mcp_generation_program,
 )
 from .query_processor import QueryProcessorProgram, create_query_processor
+from .retrieval_judge import RetrievalJudge
 
 __all__ = [
     "QueryProcessorProgram",
@@ -24,4 +25,5 @@ __all__ = [
     "McpGenerationProgram",
     "create_generation_program",
     "create_mcp_generation_program",
+    "RetrievalJudge",
 ]
