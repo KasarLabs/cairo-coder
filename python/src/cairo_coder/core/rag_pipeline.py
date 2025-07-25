@@ -233,8 +233,8 @@ class RagPipeline(dspy.Module):
                 # MCP mode: Return raw documents
                 yield StreamEvent(type=StreamEventType.PROCESSING, data="Formatting documentation...")
 
-                raw_response = self.mcp_generation_program.forward(documents)
-                yield StreamEvent(type=StreamEventType.RESPONSE, data=raw_response)
+                mcp_prediction = self.mcp_generation_program.forward(documents)
+                yield StreamEvent(type=StreamEventType.RESPONSE, data=mcp_prediction.answer)
             else:
                 # Normal mode: Generate response
                 yield StreamEvent(type=StreamEventType.PROCESSING, data="Generating response...")

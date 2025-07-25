@@ -374,10 +374,10 @@ class TestForwardRetries:
         # Mock the generation_program to raise AdapterParseError
         side_effect = [
             AdapterParseError(
-                "Parse error 1", CairoCodeGeneration, "", "test response", {}
+                "Parse error 1", CairoCodeGeneration(), "", "test response", None
             ),
             AdapterParseError(
-                "Parse error 2", CairoCodeGeneration, "", "test response", {}
+                "Parse error 2", CairoCodeGeneration(), "", "test response", None
             ),
             dspy.Prediction(answer="Success"),
         ]
@@ -399,16 +399,16 @@ class TestForwardRetries:
         # Mock the generation_program to always raise AdapterParseError
         side_effect = [
             AdapterParseError(
-                "Parse error", CairoCodeGeneration, "", "test response", {}
+                "Parse error", CairoCodeGeneration(), "", "test response", None
             ),
             AdapterParseError(
-                "Parse error", CairoCodeGeneration, "", "test response", {}
+                "Parse error", CairoCodeGeneration(), "", "test response", None
             ),
             AdapterParseError(
-                "Parse error", CairoCodeGeneration, "", "test response", {}
+                "Parse error", CairoCodeGeneration(), "", "test response", None
             ),
             AdapterParseError(
-                "Parse error", CairoCodeGeneration, "", "test response", {}
+                "Parse error", CairoCodeGeneration(), "", "test response", None
             ),
         ]
         getattr(generation_program.generation_program, call_method).side_effect = side_effect
@@ -446,16 +446,16 @@ class TestForwardRetries:
         # Mock the generation_program to raise AdapterParseError
         side_effect = [
             AdapterParseError(
-                "Parse error", CairoCodeGeneration, "", "test response", {}
+                "Parse error", CairoCodeGeneration(), "", "test response", None
             ),
             AdapterParseError(
-                "Parse error", CairoCodeGeneration, "", "test response", {}
+                "Parse error", CairoCodeGeneration(), "", "test response", None
             ),
             AdapterParseError(
-                "Parse error", CairoCodeGeneration, "```cairo\nfn main() {}\n```", "test response", {}
+                "Parse error", CairoCodeGeneration(), "```cairo\nfn main() {}\n```", "test response", None
             ),
         ]
-        getattr(generation_program.generation_program, "aforward").side_effect = side_effect
+        generation_program.generation_program.aforward.side_effect = side_effect
 
         response = await call_program(generation_program, "aforward", "test query", "test context")
         assert response.answer == "\nfn main() {}\n"

@@ -153,4 +153,4 @@ exclude_lines = [
 ]
 
 [dependency-groups]
-dev = ["ty>=0.0.1a15"]
+dev = ["nest-asyncio>=1.6.0", "ty>=0.0.1a15"]

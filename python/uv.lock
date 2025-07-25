@@ -370,6 +370,7 @@ dev = [
 
 [package.dev-dependencies]
 dev = [
+    { name = "nest-asyncio" },
     { name = "ty" },
 ]
 
@@ -419,7 +420,10 @@ requires-dist = [
 provides-extras = ["dev"]
 
 [package.metadata.requires-dev]
-dev = [{ name = "ty", specifier = ">=0.0.1a15" }]
+dev = [
+    { name = "nest-asyncio", specifier = ">=1.6.0" },
+    { name = "ty", specifier = ">=0.0.1a15" },
+]
 
 [[package]]
 name = "certifi"

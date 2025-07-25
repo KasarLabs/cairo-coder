@@ -125,8 +125,7 @@ class GenerationProgram(dspy.Module):
                 code = self._try_extract_code_from_response(e.lm_response)
                 if code:
                     return dspy.Prediction(answer=code)
-                else:
-                    raise e
+                raise e
         return None
 
     @traceable(name="GenerationProgram", run_type="llm")
@@ -148,8 +147,7 @@ class GenerationProgram(dspy.Module):
                 code = self._try_extract_code_from_response(e.lm_response)
                 if code:
                     return dspy.Prediction(answer=code)
-                else:
-                    raise e
+                raise e
         return None
 
     async def forward_streaming(

@@ -94,32 +94,33 @@ Using Docker is highly recommended for a streamlined setup. For instructions on 
       LANGSMITH_ENDPOINT="https://api.smith.langchain.com"
       LANGSMITH_API_KEY="lsv2..."
       ```
-    - Add your API keys to `python/.env`:
 
-      ```yaml
-      OPENAI_API_KEY="sk-..."
-      ANTHROPIC_API_KEY="..."
-      GEMINI_API_KEY="..."
-      ```
+4.  **Add your API keys to `python/.env`: (mandatory)**
 
-      Add the API keys required for the LLMs you want to use.
+    ```yaml
+    OPENAI_API_KEY="sk-..."
+    ANTHROPIC_API_KEY="..."
+    GEMINI_API_KEY="..."
+    ```
 
-4.  **Run the Application**
-    Start the database and the Python backend service using Docker Compose:
+    Add the API keys required for the LLMs you want to use.
+
+5.  **Run the ingesters (mandatory)**
+
+    The ingesters are responsible for populating the vector database with the documentation sources. They need to be ran a first time, in isolation, so that the database is created.
+
+    ```bash
+    docker compose up postgres ingester --build
+    ```
+
+Once the ingester completes, the database will be populated with embeddings from all supported documentation sources, making them available for the RAG pipeline. Stop the database when you no longer need it.
+
+6.  **Run the Application**
+    Once the ingesters are done, start the database and the Python backend service using Docker Compose:
     ```bash
     docker compose up postgres backend --build
     ```
-    The API will be available at `http://localhost:3001/v1/chat/completions`.
-
-## Running the Ingester
-
-The ingester processes documentation sources and populates the vector database. It runs as a separate service.
-
-```bash
-docker compose up ingester
-```
-
-Once the ingester completes, the database will be populated with embeddings from all supported documentation sources, making them available for the RAG pipeline.
+    The completions API will be available at `http://localhost:3001/v1/chat/completions`.
 
 ## API Usage
 
@@ -137,7 +138,7 @@ curl -X POST http://localhost:3001/v1/chat/completions \
     "messages": [
       {
         "role": "user",
-        "content": "How do I implement storage in Cairo?"
+        "content": "How do I implement a counter contract in Cairo?"
       }
     ]
   }'
@@ -156,13 +157,13 @@ The project is organized as a monorepo with multiple packages:
 - **python/**: The core RAG agent and API server implementation using DSPy and FastAPI.
 - **packages/ingester/**: (TypeScript) Data ingestion tools for Cairo documentation sources.
 - **packages/typescript-config/**: Shared TypeScript configuration.
-- **(Legacy)** `packages/agents` & `packages/backend`: The original TypeScript implementation.
+- **(Legacy)** `packages/agents` & `packages/backend`: The original Langchain-based TypeScript implementation.
 
 ### RAG Pipeline (Python/DSPy)
 
 The RAG pipeline is implemented in the `python/src/cairo_coder/core/` directory and consists of several key DSPy modules:
 
-1.  **QueryProcessorProgram**: Analyzes user queries to extract search terms and identify relevant documentation sources.
+1.  **QueryProcessorProgram**: Analyzes user queries to extract semantic search queries and identify relevant documentation sources.
 2.  **DocumentRetrieverProgram**: Retrieves relevant Cairo documentation from the vector database.
 3.  **GenerationProgram**: Generates Cairo code and explanations based on the retrieved context.
 4.  **RagPipeline**: Orchestrates the entire RAG process, chaining the modules together.
@@ -179,6 +180,7 @@ For local development of the Python service, navigate to `python/` and run the f
       curl -LsSf https://astral.sh/uv/install.sh | sh
     ```
 2.  **Run Server**:
+    > Note: make sure the database is running, and the ingesters have been run.
     ```bash
       uv run cairo-coder --dev
     ```

@@ -410,6 +410,8 @@ class CairoCoderServer:
                     break
 
         except Exception as e:
+            import traceback
+            traceback.print_exc()
             logger.error("Error in streaming", error=str(e))
             error_chunk = {
                 "id": response_id,

@@ -109,13 +109,12 @@ class StreamEvent:
     """Streaming event for real-time updates."""
 
     type: StreamEventType
-    data: Any
+    data: str | list[dict] | None
     timestamp: datetime = field(default_factory=datetime.now)
 
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for JSON serialization."""
         return {"type": self.type.value, "data": self.data, "timestamp": self.timestamp.isoformat()}
-
 
 @dataclass
 class ErrorResponse:
