@@ -94,8 +94,6 @@ class TestAgentFactory:
                 sources=sources,
                 max_source_count=5,
                 similarity_threshold=0.6,
-                enable_llm_judge=True,
-                llm_judge_threshold=0.4,
             )
 
     def test_create_agent_by_id(self, mock_vector_store_config, mock_config_manager):
@@ -166,8 +164,6 @@ class TestAgentFactory:
                 config_manager=agent_factory.config_manager,
                 mcp_mode=False,
                 vector_db=None,
-                enable_llm_judge=True,
-                llm_judge_threshold=0.4,
             )
 
             # Verify agent was cached
@@ -292,8 +288,6 @@ class TestAgentFactory:
                 contract_template=None,
                 test_template=None,
                 vector_db=None,
-                enable_llm_judge=True,
-                llm_judge_threshold=0.4,
             )
 
     def test_create_pipeline_from_config_scarb(self, mock_vector_store_config):
@@ -330,8 +324,6 @@ class TestAgentFactory:
                 contract_template=None,
                 test_template=None,
                 vector_db=None,
-                enable_llm_judge=True,
-                llm_judge_threshold=0.4,
             )
 
 

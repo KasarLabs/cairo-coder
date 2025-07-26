@@ -45,6 +45,8 @@ class RetrievalRecallPrecision(dspy.Signature):
         desc="A note between 0 and 1.0 on how useful the resource is to directly answer the query. 0 being completely unrelated, 1.0 being very relevant, 0.5 being 'not directly related but still informative and can be useful for context'."
     )
 
+DEFAULT_THRESHOLD = 0.4
+DEFAULT_PARALLEL_THREADS = 5
 
 class RetrievalJudge(dspy.Module):
     """
@@ -55,7 +57,7 @@ class RetrievalJudge(dspy.Module):
     the threshold are filtered out.
     """
 
-    def __init__(self, threshold: float = 0.4, parallel_threads: int = 5):
+    def __init__(self):
         """
         Initialize the RetrievalJudge.
 
@@ -64,11 +66,9 @@ class RetrievalJudge(dspy.Module):
             parallel_threads: Number of threads for parallel document processing
         """
         super().__init__()
-        if parallel_threads <= 0:
-            raise ValueError("parallel_threads must be > 0")
-        self.threshold = threshold
-        self.parallel_threads = parallel_threads
         self.rater = dspy.Predict(RetrievalRecallPrecision)
+        self.parallel_threads = DEFAULT_PARALLEL_THREADS
+        self.threshold = DEFAULT_THRESHOLD
 
     # =========================
     # Public API

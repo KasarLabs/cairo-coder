@@ -1,6 +1,5 @@
 """Fixtures for RAG Pipeline tests."""
 
-from typing import Any
 from unittest.mock import AsyncMock, Mock, patch
 
 import dspy
@@ -200,27 +199,21 @@ def mock_mcp_program() -> Mock:
 
 
 def pipeline_config_factory(
-    enable_llm_judge: bool = True,
-    llm_judge_threshold: float = 0.4,
-    retrieval_judge: RetrievalJudge | None = None,
     query_processor: QueryProcessorProgram | None = None,
     document_retriever: DocumentRetrieverProgram | None = None,
     generation_program: GenerationProgram | None = None,
     mcp_generation_program: McpGenerationProgram | None = None,
-    **overrides: Any
+    contract_template: str | None = None,
+    test_template: str | None = None,
 ) -> RagPipelineConfig:
     """
     Factory to create RagPipelineConfig with sensible defaults.
 
     Args:
-        enable_llm_judge: Whether to enable the retrieval judge
-        llm_judge_threshold: Minimum score threshold for documents
-        retrieval_judge: Optional pre-configured judge instance
         query_processor: Optional query processor instance
         document_retriever: Optional document retriever instance
         generation_program: Optional generation program instance
         mcp_generation_program: Optional MCP generation program instance
-        **overrides: Additional config overrides
 
     Returns:
         Configured RagPipelineConfig instance
@@ -245,24 +238,18 @@ def pipeline_config_factory(
         table_name="test_table",
     )
 
-    config_args = {
-        "name": "test-pipeline",
-        "vector_store_config": vector_store_config,
-        "query_processor": query_processor,
-        "document_retriever": document_retriever,
-        "generation_program": generation_program,
-        "mcp_generation_program": mcp_generation_program,
-        "enable_llm_judge": enable_llm_judge,
-        "llm_judge_threshold": llm_judge_threshold,
-        "retrieval_judge": retrieval_judge,
-        "max_source_count": 10,
-        "similarity_threshold": 0.4,
-    }
-
-    # Apply overrides
-    config_args.update(overrides)
-
-    return RagPipelineConfig(**config_args)
+    return RagPipelineConfig(
+        name="test-pipeline",
+        vector_store_config=vector_store_config,
+        query_processor=query_processor,
+        document_retriever=document_retriever,
+        generation_program=generation_program,
+        mcp_generation_program=mcp_generation_program,
+        max_source_count=10,
+        similarity_threshold=0.4,
+        contract_template=contract_template,
+        test_template=test_template,
+    )
 
 
 def pipeline_factory(

@@ -685,7 +685,6 @@ def retrieval_judge():
 def pipeline_config(query_processor, document_retriever, generation_program, mcp_generation_program):
     """RagPipelineConfig with LLM judge disabled by default (override in tests as needed)."""
     return _pipeline_config_factory(
-        enable_llm_judge=False,
         query_processor=query_processor,
         document_retriever=document_retriever,
         generation_program=generation_program,

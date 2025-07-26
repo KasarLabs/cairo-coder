@@ -5,14 +5,17 @@ Tests the pipeline orchestration functionality including query processing,
 document retrieval, response generation, and retrieval judge feature.
 """
 
-from unittest.mock import Mock, patch
+from unittest.mock import AsyncMock, Mock, patch
 
+from cairo_coder.dspy.document_retriever import DocumentRetrieverProgram
+from cairo_coder.dspy.generation_program import McpGenerationProgram
 from cairo_coder.dspy.query_processor import QueryProcessorProgram
 import dspy
 import pytest
 
 from cairo_coder.core.rag_pipeline import (
     RagPipeline,
+    RagPipelineConfig,
     RagPipelineFactory,
     create_rag_pipeline,
 )
@@ -171,7 +174,6 @@ Storage variables use #[storage] attribute.
     async def test_async_pipeline_execution(self, query_processor, document_retriever, generation_program):
         """Test async pipeline execution."""
         config = _pipeline_config_factory(
-            enable_llm_judge=False,
             query_processor=query_processor,
             document_retriever=document_retriever,
             generation_program=generation_program,
@@ -207,7 +209,6 @@ Storage variables use #[storage] attribute.
     def test_mcp_mode_execution(self, pipeline_config, mcp_generation_program):
         """Test MCP mode pipeline execution."""
         config = _pipeline_config_factory(
-            enable_llm_judge=False,
             mcp_generation_program=mcp_generation_program,
         )
         pipeline = _pipeline_factory(config)
@@ -251,7 +252,6 @@ Storage variables use #[storage] attribute.
         empty_retriever = _mock_document_retriever([])
 
         config = _pipeline_config_factory(
-            enable_llm_judge=False,
             query_processor=query_processor,
             document_retriever=empty_retriever,
             generation_program=generation_program,
@@ -272,7 +272,6 @@ Storage variables use #[storage] attribute.
         failing_retriever.aforward.side_effect = Exception("Retrieval error")
 
         config = _pipeline_config_factory(
-            enable_llm_judge=False,
             query_processor=query_processor,
             document_retriever=failing_retriever,
             generation_program=generation_program,
@@ -292,7 +291,10 @@ Storage variables use #[storage] attribute.
 class TestRagPipelineWithJudge:
     """Tests for RAG Pipeline with Retrieval Judge feature."""
 
-    def test_judge_enabled_filters_documents(self, patch_dspy_parallel, query_processor, generation_program):
+    @patch("dspy.LM")
+    @patch("dspy.context")
+    @patch("cairo_coder.core.rag_pipeline.RetrievalJudge")
+    def test_judge_enabled_filters_documents(self, mock_judge_class, mock_dspy_context, mock_dspy_lm, patch_dspy_parallel, query_processor, generation_program):
         """Test that judge filters out low-scoring documents."""
         # Create documents with varying relevance
         docs = _make_documents([
@@ -307,10 +309,9 @@ class TestRagPipelineWithJudge:
             "Python Guide": 0.2,  # Below threshold
             "Cairo Storage": 0.7,
         })
+        mock_judge_class.return_value = judge
 
         config = _pipeline_config_factory(
-            enable_llm_judge=True,
-            retrieval_judge=judge,
             query_processor=query_processor,
             document_retriever=_mock_document_retriever(docs),
             generation_program=generation_program,
@@ -329,36 +330,45 @@ class TestRagPipelineWithJudge:
         assert "Cairo storage content" in context
         assert "Python content" not in context
 
-    def test_judge_disabled_passes_all_documents(self, documents, generation_program):
-        """Test that disabling judge passes all documents."""
-        config = _pipeline_config_factory(
-            enable_llm_judge=False,
-            document_retriever=_mock_document_retriever(documents),
-            generation_program=generation_program,
-        )
-        pipeline = _pipeline_factory(config)
+    @patch("dspy.LM")
+    @patch("dspy.context")
+    def test_judge_disabled_passes_all_documents(self, mock_dspy_context, mock_dspy_lm, documents, generation_program):
+        """Test that when judge fails, all documents are passed through."""
+        # Mock the judge to fail
+        with patch("cairo_coder.core.rag_pipeline.RetrievalJudge") as mock_judge_class:
+            judge = Mock()
+            judge.forward.side_effect = Exception("Judge failed")
+            judge.aforward.side_effect = Exception("Judge failed")
+            mock_judge_class.return_value = judge
 
-        pipeline.forward("test query")
+            config = _pipeline_config_factory(
+                document_retriever=_mock_document_retriever(documents),
+                generation_program=generation_program,
+            )
+            pipeline = _pipeline_factory(config)
 
-        # Verify judge was not created
-        assert pipeline.retrieval_judge is None
+            pipeline.forward("test query")
 
-        # All documents should be in context
-        call_args = generation_program.forward.call_args
-        context = call_args[1]["context"]
-        for doc in documents:
-            assert doc.page_content in context
+            # Verify judge exists
+            assert pipeline.retrieval_judge is not None
+
+            # All documents should be in context (because judge failed)
+            call_args = generation_program.forward.call_args
+            context = call_args[1]["context"]
+            for doc in documents:
+                assert doc.page_content in context
 
     @pytest.mark.parametrize("threshold", [0.0, 0.4, 0.6, 0.9])
-    def test_judge_threshold_parameterization(self, threshold, patch_dspy_parallel, documents):
+    @patch("dspy.LM")
+    @patch("dspy.context")
+    @patch("cairo_coder.core.rag_pipeline.RetrievalJudge")
+    def test_judge_threshold_parameterization(self, mock_judge_class, mock_dspy_context, mock_dspy_lm, threshold, patch_dspy_parallel, documents):
         """Test different judge thresholds."""
         # Judge with scores: 0.9, 0.3, 0.1, 0.8
         judge = _mock_retrieval_judge(threshold=threshold)
+        mock_judge_class.return_value = judge
 
         config = _pipeline_config_factory(
-            enable_llm_judge=True,
-            llm_judge_threshold=threshold,
-            retrieval_judge=judge,
             document_retriever=_mock_document_retriever(documents),
         )
         pipeline = _pipeline_factory(config)
@@ -380,16 +390,18 @@ class TestRagPipelineWithJudge:
         for doc in filtered_docs:
             assert doc.metadata.get("llm_judge_score", 0) >= threshold
 
-    def test_judge_failure_fallback(self, documents, generation_program):
+    @patch("dspy.LM")
+    @patch("dspy.context")
+    @patch("cairo_coder.core.rag_pipeline.RetrievalJudge")
+    def test_judge_failure_fallback(self, mock_judge_class, mock_dspy_context, mock_dspy_lm, documents, generation_program):
         """Test fallback when judge fails."""
         # Create failing judge
         judge = Mock(spec=RetrievalJudge)
         judge.forward.side_effect = Exception("Judge failed")
         judge.aforward.side_effect = Exception("Judge failed")
+        mock_judge_class.return_value = judge
 
         config = _pipeline_config_factory(
-            enable_llm_judge=True,
-            retrieval_judge=judge,
             document_retriever=_mock_document_retriever(documents),
             generation_program=generation_program,
         )
@@ -404,7 +416,10 @@ class TestRagPipelineWithJudge:
         for doc in documents:
             assert doc.page_content in context
 
-    def test_judge_parse_error_handling(self, patch_dspy_parallel, generation_program):
+    @patch("dspy.LM")
+    @patch("dspy.context")
+    @patch("cairo_coder.core.rag_pipeline.RetrievalJudge")
+    def test_judge_parse_error_handling(self, mock_judge_class, mock_dspy_context, mock_dspy_lm, patch_dspy_parallel, generation_program):
         """Test handling of parse errors in judge scores."""
         docs = _make_documents([
             ("Doc1", "Content1", "source1"),
@@ -428,10 +443,9 @@ class TestRagPipelineWithJudge:
 
         judge.forward = Mock(side_effect=filter_with_parse_error)
         judge.threshold = 0.5
+        mock_judge_class.return_value = judge
 
         config = _pipeline_config_factory(
-            enable_llm_judge=True,
-            retrieval_judge=judge,
             document_retriever=_mock_document_retriever(docs),
             generation_program=generation_program,
         )
@@ -446,13 +460,15 @@ class TestRagPipelineWithJudge:
         assert "Content2" in context
 
     @pytest.mark.asyncio
-    async def test_async_judge_execution(self, patch_dspy_parallel, documents):
+    @patch("dspy.LM")
+    @patch("dspy.context")
+    @patch("cairo_coder.core.rag_pipeline.RetrievalJudge")
+    async def test_async_judge_execution(self, mock_judge_class, mock_dspy_context, mock_dspy_lm, patch_dspy_parallel, documents):
         """Test async execution with judge."""
         judge = _mock_retrieval_judge()
+        mock_judge_class.return_value = judge
 
         config = _pipeline_config_factory(
-            enable_llm_judge=True,
-            retrieval_judge=judge,
             document_retriever=_mock_document_retriever(documents),
         )
         pipeline = _pipeline_factory(config)
@@ -464,13 +480,15 @@ class TestRagPipelineWithJudge:
         assert result.answer == "Here's how to write Cairo contracts..."
 
     @pytest.mark.asyncio
-    async def test_streaming_with_judge(self, patch_dspy_parallel, documents):
+    @patch("dspy.LM")
+    @patch("dspy.context")
+    @patch("cairo_coder.core.rag_pipeline.RetrievalJudge")
+    async def test_streaming_with_judge(self, mock_judge_class, mock_dspy_context, mock_dspy_lm, patch_dspy_parallel, documents):
         """Test streaming execution with judge."""
         judge = _mock_retrieval_judge()
+        mock_judge_class.return_value = judge
 
         config = _pipeline_config_factory(
-            enable_llm_judge=True,
-            retrieval_judge=judge,
             document_retriever=_mock_document_retriever(documents),
         )
         pipeline = _pipeline_factory(config)
@@ -487,14 +505,16 @@ class TestRagPipelineWithJudge:
         # Should only have 2 docs (Cairo-related ones based on default mock scores)
         assert len(sources_event.data) == 2
 
-    def test_judge_metadata_enrichment(self, patch_dspy_parallel, generation_program):
+    @patch("dspy.LM")
+    @patch("dspy.context")
+    @patch("cairo_coder.core.rag_pipeline.RetrievalJudge")
+    def test_judge_metadata_enrichment(self, mock_judge_class, mock_dspy_context, mock_dspy_lm, patch_dspy_parallel, generation_program):
         """Test that judge adds metadata to documents."""
         docs = _make_documents([("Test Doc", "Test content", "test_source")])
         judge = _mock_retrieval_judge({"Test Doc": 0.75})
+        mock_judge_class.return_value = judge
 
         config = _pipeline_config_factory(
-            enable_llm_judge=True,
-            retrieval_judge=judge,
             document_retriever=_mock_document_retriever(docs),
             generation_program=generation_program,
         )
@@ -512,19 +532,21 @@ class TestRagPipelineWithJudge:
         # The document should be in the context (score 0.75 is above threshold)
         assert "Test content" in context
 
-    def test_get_lm_usage(self):
+    @patch("cairo_coder.core.rag_pipeline.RetrievalJudge")
+    def test_get_lm_usage(self, mock_retrieval_judge_class):
         # Mock generation program to return usage, mock retrieval judge to return usage, mock query processor to return usage
         generation_program = Mock()
-        retrieval_judge = Mock()
         query_processor = Mock()
-        generation_program.get_lm_usage.return_value = {"model/name": {"prompt_tokens": 100, "completion_tokens": 50}}
-        retrieval_judge.get_lm_usage.return_value = {"model/name": {"prompt_tokens": 200, "completion_tokens": 150}}
-        query_processor.get_lm_usage.return_value = {"model/name": {"prompt_tokens": 300, "completion_tokens": 250}}
+        retrieval_judge = Mock()
+        retrieval_judge.get_lm_usage = Mock(return_value={"model/name": {"prompt_tokens": 200, "completion_tokens": 150}})
+        generation_program.get_lm_usage = Mock(return_value={"model/name": {"prompt_tokens": 100, "completion_tokens": 50}})
+        query_processor.get_lm_usage = Mock(return_value={"model/name": {"prompt_tokens": 300, "completion_tokens": 250}})
+
+        # Configure the class mock to return our instance mock
+        mock_retrieval_judge_class.return_value = retrieval_judge
 
         docs = _make_documents([("Test Doc", "Test content", "test_source")])
         config = _pipeline_config_factory(
-            enable_llm_judge=True,
-            retrieval_judge=retrieval_judge,
             query_processor=query_processor,
             document_retriever=_mock_document_retriever(docs),
             generation_program=generation_program,
@@ -554,14 +576,9 @@ class TestRagPipelineFactory:
             pipeline = RagPipelineFactory.create_pipeline(
                 name="test",
                 vector_store_config=mock_vector_store_config,
-                enable_llm_judge=True,
-                llm_judge_threshold=0.7,
             )
 
-            assert pipeline.config.enable_llm_judge is True
-            assert pipeline.config.llm_judge_threshold == 0.7
             assert isinstance(pipeline.retrieval_judge, RetrievalJudge)
-            assert pipeline.retrieval_judge.threshold == 0.7
 
     def test_create_pipeline_judge_disabled(self, mock_vector_store_config, mock_pgvector_rm):
         """Test factory with judge disabled."""
@@ -579,11 +596,9 @@ class TestRagPipelineFactory:
             pipeline = RagPipelineFactory.create_pipeline(
                 name="test",
                 vector_store_config=mock_vector_store_config,
-                enable_llm_judge=False,
             )
 
-            assert pipeline.config.enable_llm_judge is False
-            assert pipeline.retrieval_judge is None
+            assert pipeline.retrieval_judge is not None
 
     def test_optimizer_file_missing_error(self, mock_vector_store_config, mock_pgvector_rm):
         """Test error when optimizer file is missing."""
@@ -670,7 +685,7 @@ class TestPipelineHelperMethods:
 
     def test_get_current_state(self, documents):
         """Test pipeline state retrieval."""
-        config = _pipeline_config_factory(enable_llm_judge=False)
+        config = _pipeline_config_factory()
         pipeline = _pipeline_factory(config)
 
         # Set internal state
@@ -683,8 +698,6 @@ class TestPipelineHelperMethods:
         assert state["documents_count"] == 4
         assert len(state["documents"]) == 4
         assert state["config"]["name"] == "test-pipeline"
-        assert not state["config"]["enable_llm_judge"]
-        assert state["config"]["llm_judge_threshold"] == 0.4
 
     # Define reusable usage constants to keep tests DRY
     _QUERY_USAGE_MINI = {
@@ -873,9 +886,8 @@ class TestConvenienceFunctions:
             create_rag_pipeline(
                 name="test",
                 vector_store_config=mock_vector_store_config,
-                enable_llm_judge=True,
             )
 
             mock_create.assert_called_once_with(
-                "test", mock_vector_store_config, enable_llm_judge=True
+                "test", mock_vector_store_config
             )
