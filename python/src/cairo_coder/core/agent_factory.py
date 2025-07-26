@@ -5,7 +5,6 @@ This module implements the AgentFactory class that creates and configures
 RAG Pipeline agents based on agent IDs and configurations.
 """
 
-import os
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -16,30 +15,6 @@ from cairo_coder.core.types import DocumentSource, Message
 from cairo_coder.utils.logging import get_logger
 
 logger = get_logger(__name__)
-
-def _judge_config_from_env() -> tuple[bool, float]:
-    """Get judge configuration from environment variables.
-
-    Returns:
-        Tuple of (enabled, threshold)
-    """
-    # Late import to avoid circular dep at module level
-
-    enabled_str = os.getenv("RAG_LLM_JUDGE_ENABLED", "true").strip().lower()
-    enabled = enabled_str in {"1", "true", "yes", "on"}
-
-    raw_threshold = os.getenv("RAG_LLM_JUDGE_THRESHOLD", "0.4").strip()
-    try:
-        threshold = float(raw_threshold)
-        threshold = max(0.0, min(1.0, threshold))  # Clamp to [0, 1]
-    except ValueError:
-        logger.warning(
-            "Invalid RAG_LLM_JUDGE_THRESHOLD value; defaulting to 0.4",
-            raw_value=raw_threshold,
-        )
-        threshold = 0.4
-
-    return enabled, threshold
 
 
 @dataclass
@@ -109,9 +84,6 @@ class AgentFactory:
         if sources is None:
             sources = AgentFactory._infer_sources_from_query(query)
 
-        # Get LLM judge configuration from environment variables
-        enable_llm_judge, llm_judge_threshold = _judge_config_from_env()
-
         # Create pipeline with appropriate configuration
         return RagPipelineFactory.create_pipeline(
             name="default_agent",
@@ -120,8 +92,6 @@ class AgentFactory:
             max_source_count=max_source_count,
             similarity_threshold=similarity_threshold,
             vector_db=vector_db,
-            enable_llm_judge=enable_llm_judge,
-            llm_judge_threshold=llm_judge_threshold,
         )
 
     @staticmethod
@@ -133,8 +103,6 @@ class AgentFactory:
         config_manager: ConfigManager | None = None,
         mcp_mode: bool = False,
         vector_db: Any = None,
-        enable_llm_judge: bool | None = None,
-        llm_judge_threshold: float | None = None,
     ) -> RagPipeline:
         """
         Create an agent based on a specific agent ID configuration.
@@ -147,8 +115,6 @@ class AgentFactory:
             config_manager: Optional configuration manager
             mcp_mode: Whether to use MCP mode
             vector_db: Optional pre-initialized vector database instance
-            enable_llm_judge: Optional override for judge setting
-            llm_judge_threshold: Optional override for judge threshold
 
         Returns:
             Configured RagPipeline instance
@@ -167,10 +133,6 @@ class AgentFactory:
         except KeyError as e:
             raise ValueError(f"Agent configuration not found for ID: {agent_id}") from e
 
-        # Use provided judge config or get from env
-        if enable_llm_judge is None or llm_judge_threshold is None:
-            enable_llm_judge, llm_judge_threshold = _judge_config_from_env()
-
         # Create pipeline based on agent configuration
         return AgentFactory._create_pipeline_from_config(
             agent_config=agent_config,
@@ -179,8 +141,6 @@ class AgentFactory:
             history=history,
             mcp_mode=mcp_mode,
             vector_db=vector_db,
-            enable_llm_judge=enable_llm_judge,
-            llm_judge_threshold=llm_judge_threshold,
         )
 
 
@@ -204,9 +164,6 @@ class AgentFactory:
         if cache_key in self._agent_cache:
             return self._agent_cache[cache_key]
 
-        # Get judge config once to avoid re-reading env vars
-        enable_llm_judge, llm_judge_threshold = _judge_config_from_env()
-
         # Create new agent
         agent = self.create_agent_by_id(
             query=query,
@@ -216,8 +173,6 @@ class AgentFactory:
             config_manager=self.config_manager,
             mcp_mode=mcp_mode,
             vector_db=self.vector_db,
-            enable_llm_judge=enable_llm_judge,
-            llm_judge_threshold=llm_judge_threshold,
         )
 
         # Cache the agent
@@ -315,8 +270,6 @@ class AgentFactory:
         vector_store_config: VectorStoreConfig,
         query: str,
         history: list[Message],
-        enable_llm_judge: bool = True,
-        llm_judge_threshold: float = 0.4,
         mcp_mode: bool = False,
         vector_db: Any = None,
     ) -> RagPipeline:
@@ -328,8 +281,6 @@ class AgentFactory:
             vector_store_config: Vector store for document retrieval
             query: User's query
             history: Chat history
-            enable_llm_judge: Whether to enable the retrieval judge
-            llm_judge_threshold: Threshold for the retrieval judge
             mcp_mode: Whether to use MCP mode
             vector_db: Optional pre-initialized vector database instance
 
@@ -352,8 +303,6 @@ class AgentFactory:
                 contract_template=agent_config.contract_template,
                 test_template=agent_config.test_template,
                 vector_db=vector_db,
-                enable_llm_judge=enable_llm_judge,
-                llm_judge_threshold=llm_judge_threshold,
             )
         else:
             pipeline = RagPipelineFactory.create_pipeline(
@@ -365,8 +314,6 @@ class AgentFactory:
                 contract_template=agent_config.contract_template,
                 test_template=agent_config.test_template,
                 vector_db=vector_db,
-                enable_llm_judge=enable_llm_judge,
-                llm_judge_threshold=llm_judge_threshold,
             )
 
         return pipeline

@@ -81,9 +81,6 @@ class RagPipelineConfig:
     sources: list[DocumentSource] | None = None
     contract_template: Optional[str] = None
     test_template: Optional[str] = None
-    enable_llm_judge: bool = True
-    llm_judge_threshold: float = 0.4
-    retrieval_judge: RetrievalJudge | None = None
 
 
 class RagPipeline(dspy.Module):
@@ -109,13 +106,7 @@ class RagPipeline(dspy.Module):
         self.document_retriever = config.document_retriever
         self.generation_program = config.generation_program
         self.mcp_generation_program = config.mcp_generation_program
-
-        # Initialize retrieval judge if enabled
-        self.retrieval_judge: RetrievalJudge | None = None
-        if config.enable_llm_judge:
-            self.retrieval_judge = config.retrieval_judge or RetrievalJudge(
-                threshold=config.llm_judge_threshold
-            )
+        self.retrieval_judge = RetrievalJudge()
 
         # Pipeline state
         self._current_processed_query: ProcessedQuery | None = None
@@ -137,17 +128,16 @@ class RagPipeline(dspy.Module):
         )
 
         # Apply LLM judge if enabled
-        if self.retrieval_judge is not None:
-            try:
-                with dspy.context(lm=dspy.LM("gemini/gemini-2.5-flash-lite", max_tokens=10000)):
-                    documents = self.retrieval_judge.forward(query=query, documents=documents)
-            except Exception as e:
-                logger.warning(
-                    "Retrieval judge failed (sync), using all documents",
-                    error=str(e),
-                    exc_info=True,
-                )
-                # documents already contains all retrieved docs, no action needed
+        try:
+            with dspy.context(lm=dspy.LM("gemini/gemini-2.5-flash-lite", max_tokens=10000)):
+                documents = self.retrieval_judge.forward(query=query, documents=documents)
+        except Exception as e:
+            logger.warning(
+                "Retrieval judge failed (sync), using all documents",
+                error=str(e),
+                exc_info=True,
+            )
+            # documents already contains all retrieved docs, no action needed
 
         self._current_documents = documents
 
@@ -170,18 +160,16 @@ class RagPipeline(dspy.Module):
             processed_query=processed_query, sources=retrieval_sources
         )
 
-        # Apply LLM judge if enabled
-        if self.retrieval_judge is not None:
-            try:
-                with dspy.context(lm=dspy.LM("gemini/gemini-2.5-flash-lite", max_tokens=10000)):
-                    documents = await self.retrieval_judge.aforward(query=query, documents=documents)
-            except Exception as e:
-                logger.warning(
-                    "Retrieval judge failed (async), using all documents",
-                    error=str(e),
-                    exc_info=True,
-                )
-                # documents already contains all retrieved docs, no action needed
+        try:
+            with dspy.context(lm=dspy.LM("gemini/gemini-2.5-flash-lite", max_tokens=10000)):
+                documents = await self.retrieval_judge.aforward(query=query, documents=documents)
+        except Exception as e:
+            logger.warning(
+                "Retrieval judge failed (async), using all documents",
+                error=str(e),
+                exc_info=True,
+            )
+            # documents already contains all retrieved docs, no action needed
 
         self._current_documents = documents
 
@@ -305,11 +293,7 @@ class RagPipeline(dspy.Module):
         """
         generation_usage = self.generation_program.get_lm_usage()
         query_usage = self.query_processor.get_lm_usage()
-
-        # Get retrieval judge usage if available
-        judge_usage = {}
-        if self.retrieval_judge:
-            judge_usage = self.retrieval_judge.get_lm_usage()
+        judge_usage = self.retrieval_judge.get_lm_usage()
 
         # Additive merge strategy
         merged_usage = {}
@@ -435,8 +419,6 @@ class RagPipeline(dspy.Module):
                 "max_source_count": self.config.max_source_count,
                 "similarity_threshold": self.config.similarity_threshold,
                 "sources": self.config.sources,
-                "enable_llm_judge": self.config.enable_llm_judge,
-                "llm_judge_threshold": self.config.llm_judge_threshold,
             },
         }
 
@@ -458,9 +440,6 @@ class RagPipelineFactory:
         contract_template: Optional[str] = None,
         test_template: Optional[str] = None,
         vector_db: Any = None,  # SourceFilteredPgVectorRM instance
-        enable_llm_judge: bool = True,
-        llm_judge_threshold: float = 0.4,
-        retrieval_judge: RetrievalJudge | None = None,
     ) -> RagPipeline:
         """
         Create a RAG Pipeline with default or provided components.
@@ -478,9 +457,6 @@ class RagPipelineFactory:
             contract_template: Template for contract-related queries
             test_template: Template for test-related queries
             vector_db: Optional pre-initialized vector database instance
-            enable_llm_judge: Whether to enable LLM-based retrieval judge
-            llm_judge_threshold: Minimum score for documents to pass judge
-            retrieval_judge: Optional pre-initialized retrieval judge
 
         Returns:
             Configured RagPipeline instance
@@ -523,9 +499,6 @@ class RagPipelineFactory:
             sources=sources,
             contract_template=contract_template,
             test_template=test_template,
-            enable_llm_judge=enable_llm_judge,
-            llm_judge_threshold=llm_judge_threshold,
-            retrieval_judge=retrieval_judge,
         )
 
         rag_program = RagPipeline(config)
