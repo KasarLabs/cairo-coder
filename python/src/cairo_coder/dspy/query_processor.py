@@ -167,6 +167,12 @@ class QueryProcessorProgram(dspy.Module):
             resources=resources,
         )
 
+    def get_lm_usage(self) -> dict[str, int]:
+        """
+        Get the total number of tokens used by the LLM.
+        """
+        return self.retrieval_program.get_lm_usage()
+
     def _validate_resources(self, resources: list[str]) -> list[DocumentSource]:
         """
         Validate and convert resource strings to DocumentSource enum values.
