@@ -143,7 +143,6 @@ class TestAgentFactory:
                 config_manager=mock_config_manager,
             )
 
-    @pytest.mark.asyncio
     def test_get_or_create_agent_cache_miss(self, agent_factory):
         """Test get_or_create_agent with cache miss."""
         query = "Test query"

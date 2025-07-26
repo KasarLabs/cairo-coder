@@ -19,8 +19,9 @@ from cairo_coder.core.types import Document, DocumentSource, ProcessedQuery
 logger = structlog.get_logger()
 
 # Templates for different types of requests
+CONTRACT_TEMPLATE_TITLE = "Contract Template"
 CONTRACT_TEMPLATE = """
-contract>
+<contract>
 use starknet::ContractAddress;
 
 // Define the contract interface
@@ -61,15 +62,20 @@ pub mod Registry {
 
     #[derive(Drop, starknet::Event)]
     pub struct DataRegistered {
-        user: ContractAddress,
-        data: felt252,
+        pub user: ContractAddress,
+        pub data: felt252,
     }
 
     #[derive(Drop, starknet::Event)]
     pub struct DataUpdated {
-        user: ContractAddress,
-        index: u64,
-        new_data: felt252,
+        pub user: ContractAddress,
+        pub index: u64,
+        pub new_data: felt252,
+    }
+
+    #[constructor]
+    fn constructor(ref self: ContractState, initial_data: usize) {
+        self.foo.write(initial_data);
     }
 
     // Implement the contract interface
@@ -137,8 +143,9 @@ Never include links to external sources in code that you produce.
 Never add comments with urls to sources in the code that you produce.
 """
 
+TEST_TEMPLATE_TITLE = "Contract Testing Template"
 TEST_TEMPLATE = """
-contract_test>
+<contract_test>
 // Import the contract module itself
 use registry::Registry;
 // Make the required inner structs available in scope
@@ -167,7 +174,7 @@ fn deploy_contract() -> IRegistryDispatcher {
     // 4. Create a dispatcher to interact with the contract
     let contract = declare("Registry");
     let mut constructor_args = array![];
-    Serde::serialize(@1_u8, ref constructor_args);
+    Serde::serialize(@0_u8, ref constructor_args);
     let (contract_address, _err) = contract
         .unwrap()
         .contract_class()
@@ -194,11 +201,11 @@ fn test_register_data() {
 
     // Verify the data was stored correctly
     let stored_data = dispatcher.get_data(0);
-    assert(stored_data == 42, 'Wrong stored data');
+    assert_eq!(stored_data, 42);
 
     // Verify user-specific data
     let user_data = dispatcher.get_user_data(caller);
-    assert(user_data == 42, 'Wrong user data');
+    assert_eq!(user_data, 42);
 
     // Verify event emission:
     // 1. Create the expected event
@@ -231,11 +238,11 @@ fn test_update_data() {
 
     // Verify the update
     let updated_data = dispatcher.get_data(0);
-    assert(updated_data == 100, 'Wrong updated data');
+    assert_eq!(updated_data, 100);
 
     // Verify user data was updated
     let user_data = dispatcher.get_user_data(caller);
-    assert(user_data == 100, 'Wrong updated user data');
+    assert_eq!(user_data, 100);
 
     // Verify update event
     let expected_updated_event = Registry::Event::DataUpdated(
@@ -264,16 +271,16 @@ fn test_get_all_data() {
     let all_data = dispatcher.get_all_data();
 
     // Verify array contents
-    assert(*all_data.at(0) == 10, 'Wrong data at index 0');
-    assert(*all_data.at(1) == 20, 'Wrong data at index 1');
-    assert(*all_data.at(2) == 30, 'Wrong data at index 2');
-    assert(all_data.len() == 3, 'Wrong array length');
+    assert_eq!(*all_data.at(0), 10);
+    assert_eq!(*all_data.at(1), 20);
+    assert_eq!(*all_data.at(2), 30);
+    assert_eq!(all_data.len(), 3);
 
     stop_cheat_caller_address(dispatcher.contract_address);
 }
 
 #[test]
-#[should_panic(expected: "Index out of bounds")]
+#[should_panic(expected : "Index out of bounds")]
 fn test_get_data_out_of_bounds() {
     let dispatcher = deploy_contract();
 
@@ -690,7 +697,7 @@ class DocumentRetrieverProgram(dspy.Module):
             context.append(
                 Document(
                     page_content=CONTRACT_TEMPLATE,
-                    metadata={"title": "contract_template", "source": "contract_template"},
+                    metadata={"title": CONTRACT_TEMPLATE_TITLE, "source": CONTRACT_TEMPLATE_TITLE},
                 )
             )
 
@@ -699,7 +706,7 @@ class DocumentRetrieverProgram(dspy.Module):
             context.append(
                 Document(
                     page_content=TEST_TEMPLATE,
-                    metadata={"title": "test_template", "source": "test_template"},
+                    metadata={"title": TEST_TEMPLATE_TITLE, "source": TEST_TEMPLATE_TITLE},
                 )
             )
         return context

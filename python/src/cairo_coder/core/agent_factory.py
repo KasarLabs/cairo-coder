@@ -12,6 +12,9 @@ from cairo_coder.config.manager import ConfigManager
 from cairo_coder.core.config import AgentConfiguration, VectorStoreConfig
 from cairo_coder.core.rag_pipeline import RagPipeline, RagPipelineFactory
 from cairo_coder.core.types import DocumentSource, Message
+from cairo_coder.utils.logging import get_logger
+
+logger = get_logger(__name__)
 
 
 @dataclass
@@ -90,7 +93,6 @@ class AgentFactory:
             similarity_threshold=similarity_threshold,
             vector_db=vector_db,
         )
-
 
     @staticmethod
     def create_agent_by_id(
@@ -178,7 +180,7 @@ class AgentFactory:
 
         return agent
 
-    def clear_cache(self):
+    def clear_cache(self) -> None:
         """Clear the agent cache."""
         self._agent_cache.clear()
 
@@ -276,7 +278,7 @@ class AgentFactory:
 
         Args:
             agent_config: Agent configuration
-            vector_store: Vector store for document retrieval
+            vector_store_config: Vector store for document retrieval
             query: User's query
             history: Chat history
             mcp_mode: Whether to use MCP mode
