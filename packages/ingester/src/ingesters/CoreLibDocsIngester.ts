@@ -2,19 +2,15 @@ import * as fs from 'fs/promises';
 import * as path from 'path';
 import { BookConfig } from '../utils/types';
 import { MarkdownIngester } from './MarkdownIngester';
-import {
-  BookChunk,
-  DocumentSource,
-  ParsedSection,
-} from '@cairo-coder/agents/types/index';
+import { BookChunk, DocumentSource } from '@cairo-coder/agents/types/index';
 import { Document } from '@langchain/core/documents';
 import { VectorStore } from '@cairo-coder/agents/db/postgresVectorStore';
 import { logger } from '@cairo-coder/agents/utils/index';
+import { calculateHash } from '../utils/contentUtils';
 import {
-  addSectionWithSizeLimit,
-  calculateHash,
-  createAnchor,
-} from '../utils/contentUtils';
+  RecursiveMarkdownSplitter,
+  SplitOptions,
+} from '../utils/RecursiveMarkdownSplitter';
 
 /**
  * Ingester for the Cairo Core Library documentation
@@ -63,84 +59,54 @@ export class CoreLibDocsIngester extends MarkdownIngester {
   }
 
   /**
-   * Chunk the core library summary file by H1 headers
+   * Chunk the core library summary file using RecursiveMarkdownSplitter
    *
-   * This function takes the markdown content and splits it into sections
-   * based on H1 headers (# Header). Each section becomes a separate chunk
-   * with its content hashed for uniqueness.
+   * This function takes the markdown content and splits it using a recursive
+   * strategy that respects headers, code blocks, and maintains overlap between chunks.
    *
    * @param text - The markdown content to chunk
-   * @returns Promise<Document<BookChunk>[]> - Array of document chunks, one per H1 section
+   * @returns Promise<Document<BookChunk>[]> - Array of document chunks
    */
   async chunkCorelibSummaryFile(text: string): Promise<Document<BookChunk>[]> {
-    const content = text;
-    const sections: ParsedSection[] = [];
+    logger.info(
+      'Using RecursiveMarkdownSplitter to chunk Core Library documentation',
+    );
 
-    // Regex to match H1 headers (# Header)
-    const headerRegex = /^(#{1})\s+(.+)$/gm;
-    const matches = Array.from(content.matchAll(headerRegex));
+    // Configure the splitter with appropriate settings
+    const splitOptions: SplitOptions = {
+      maxChars: 2048,
+      minChars: 500,
+      overlap: 256,
+      headerLevels: [1, 2], // Split on H1 and H2 headers
+      preserveCodeBlocks: true,
+      idPrefix: 'corelib',
+      trim: true,
+    };
 
-    let lastSectionEndIndex = 0;
+    // Create the splitter and split the content
+    const splitter = new RecursiveMarkdownSplitter(splitOptions);
+    const chunks = splitter.splitMarkdownToChunks(text);
 
-    // Process each H1 header found
-    for (let i = 0; i < matches.length; i++) {
-      const match = matches[i];
-      const headerTitle = match[2].trim();
-      const headerStartIndex = match.index!;
+    logger.info(
+      `Created ${chunks.length} chunks using RecursiveMarkdownSplitter`,
+    );
 
-      // Determine the end of this section (start of next header or end of content)
-      const nextHeaderIndex =
-        i < matches.length - 1 ? matches[i + 1].index! : content.length;
+    // Convert chunks to Document<BookChunk> format
+    const localChunks: Document<BookChunk>[] = chunks.map((chunk) => {
+      const contentHash = calculateHash(chunk.content);
 
-      // Extract section content from after the header to before the next header
-      const sectionContent = content
-        .slice(headerStartIndex, nextHeaderIndex)
-        .trim();
-
-      logger.debug(`Adding section: ${headerTitle}`);
-
-      addSectionWithSizeLimit(
-        sections,
-        headerTitle,
-        sectionContent,
-        20000,
-        createAnchor(headerTitle),
-      );
-    }
-
-    // If no H1 headers found, treat the entire content as one section
-    if (sections.length === 0) {
-      logger.debug(
-        'No H1 headers found, creating single section from entire content',
-      );
-      addSectionWithSizeLimit(
-        sections,
-        'Core Library Documentation',
-        content,
-        20000,
-        createAnchor('Core Library Documentation'),
-      );
-    }
-
-    const localChunks: Document<BookChunk>[] = [];
-
-    // Create a document for each section
-    sections.forEach((section: ParsedSection, index: number) => {
-      const hash: string = calculateHash(section.content);
-      localChunks.push(
-        new Document<BookChunk>({
-          pageContent: section.content,
-          metadata: {
-            name: section.title,
-            title: section.title,
-            chunkNumber: index,
-            contentHash: hash,
-            uniqueId: `${section.title}-${index}`,
-            sourceLink: ``,
-            source: this.source,
-          },
-        }),
-      );
+      return new Document<BookChunk>({
+        pageContent: chunk.content,
+        metadata: {
+          name: chunk.meta.title,
+          title: chunk.meta.title,
+          chunkNumber: chunk.meta.chunkNumber, // Already 0-based
+          contentHash: contentHash,
+          uniqueId: chunk.meta.uniqueId,
+          sourceLink: '',
+          source: this.source,
+        },
+      });
     });
 
     return localChunks;

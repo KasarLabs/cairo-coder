@@ -158,11 +158,12 @@ def _(dspy):
             result = parallel(batches)
 
             resources_notes = [pred.resource_note for pred in result]
-            [pred.reasoning for pred in result]
+            reasonings = [pred.reasoning for pred in result]
 
             score = sum(resources_notes) / len(resources_notes) if len(resources_notes) != 0 else 0
-            # for (note, reason) in zip(resources_notes, reasonings, strict=False):
-                # print(f"Note: {note}, reason: {reason}")
+            print(example.query)
+            for (note, reason) in zip(resources_notes, reasonings, strict=False):
+                print(f"Note: {note}, reason: {reason}")
             return score if trace is None else score >= self.threshold
 
     return (RetrievalF1,)
