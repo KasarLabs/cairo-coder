@@ -1,0 +1,85 @@
+{
+  "retrieval_program.predict": {
+    "traces": [],
+    "train": [],
+    "demos": [
+      {
+        "augmented": true,
+        "query": "Complete the following Cairo code:\n\n```cairo\n\/\/ I AM NOT DONE\n\nfn main() {\n    let x: felt252;\n    println!(\"x is {}\", x);\n}\n```\n\nHint: Oops! In this exercise, we have a variable binding that we've created on\nline 7, and we're trying to use it on line 8, but we haven't given it a\nvalue. We can't print out something that isn't there; try giving x a value!\nThis is an error that can cause bugs that's very easy to make in any\nprogramming language -- thankfully the Cairo compiler has caught this for us!",
+        "chat_history": null,
+        "reasoning": "The user wants to complete a Cairo code snippet. The provided code declares a variable `x` of type `felt252` but does not initialize it before attempting to print its value. The hint explicitly states that `x` needs to be given a value. To fix this, `x` must be assigned a `felt252` literal value before being used in the `println!` macro. This is a fundamental concept of variable declaration and initialization in Cairo.",
+        "search_queries": [
+          "Declaring a new variable with the `let` keyword",
+          "Defining a variable with the boolean type",
+          "Assigning a boolean value to a variable"
+        ],
+        "resources": ["cairo_book", "cairo_by_example", "corelib_docs"]
+      },
+      {
+        "augmented": true,
+        "query": "Complete the following Cairo code:\n\n```cairo\n\/\/ Destructure the `cat` tuple to call print on each member.\n\n\/\/ I AM NOT DONE\n\nfn main() {\n    let cat = ('Furry McFurson', 3);\n    let \/\/ your pattern here = cat;\n    println!(\"name is {}\", name);\n    println!(\"age is {}\", age);\n}\n```\n\nHint: You'll need to make a pattern to bind `name` and `age` to the appropriate parts\nof the tuple.\nIf you're familiar with Rust, you should know that Cairo has a similar syntax to \ndestructure tuples into multiple variables.\nhttps:\/\/book.cairo-lang.org\/ch02-02-data-types.html?highlight=destructu#the-tuple-type\nYou can do it!!\n",
+        "chat_history": null,
+        "reasoning": "The user is asking to complete a Cairo code snippet that requires destructuring a tuple. The hint explicitly mentions \"destructure tuples into multiple variables\" and refers to the Cairo Book's section on data types and tuples. The task is to find the correct syntax for tuple destructuring to bind the elements to `name` and `age` variables.",
+        "search_queries": [
+          "Declaring a new variable with the `let` keyword",
+          "Defining a variable with the boolean type",
+          "Printing values to console with the `println!` macro"
+        ],
+        "resources": ["cairo_book", "cairo_by_example"]
+      },
+      {
+        "augmented": true,
+        "query": "Complete the following Cairo code:\n\n```cairo\n\/\/ I AM NOT DONE\n\nuse core::fmt::{Display, Formatter, Error};\n\n#[derive(Copy, Drop)]\nenum Message { \/\/ TODO: define the different variants used below\n}\n\n\nfn main() { \/\/ don't change any of the lines inside main\n    let mut messages: Array<Message> = ArrayTrait::new();\n\n    \/\/don't change any of the next 4 lines\n    messages.append(Message::Quit);\n    messages.append(Message::Echo('hello world'));\n    messages.append(Message::Move((10, 30)));\n    messages.append(Message::ChangeColor((0, 255, 255)));\n\n    print_messages_recursive(messages, 0)\n}\n\n\/\/ Utility function to print messages. Don't modify these.\n\ntrait MessageTrait<T> {\n    fn call(self: T);\n}\n\nimpl MessageImpl of MessageTrait<Message> {\n    fn call(self: Message) {\n        println!(\"{}\", self);\n    }\n}\n\nfn print_messages_recursive(messages: Array<Message>, index: u32) {\n    if index >= messages.len() {\n        return ();\n    }\n    let message = *messages.at(index);\n    message.call();\n    print_messages_recursive(messages, index + 1)\n}\n\n\nimpl MessageDisplay of Display<Message> {\n    fn fmt(self: @Message, ref f: Formatter) -> Result<(), Error> {\n        println!(\"___MESSAGE BEGINS___\");\n        let str: ByteArray = match self {\n            Message::Quit => format!(\"Quit\"),\n            Message::Echo(msg) => format!(\"{}\", msg),\n            Message::Move((a, b)) => { format!(\"{} {}\", a, b) },\n            Message::ChangeColor((red, green, blue)) => { format!(\"{} {} {}\", red, green, blue) },\n        };\n        f.buffer.append(@str);\n        println!(\"___MESSAGE ENDS___\");\n        Result::Ok(())\n    }\n}\n```\n\nHint: You can create enumerations that have different variants with different types\nsuch as no data, structs, a single felt string, tuples, ...etc\nhttps:\/\/book.cairo-lang.org\/ch06-01-enums.html\n",
+        "chat_history": null,
+        "reasoning": "The user wants to complete a Cairo enum definition. I need to identify the types of data associated with each variant of the `Message` enum based on its usage in the `main` function and the `Display` trait implementation.\n\n1.  **`Message::Quit`**: Used without any arguments, so it's a unit variant (no associated data).\n2.  **`Message::Echo('hello world')`**: Takes a single argument, which is a string literal. In Cairo, short string literals are often represented as `felt252`. The `Display` implementation `format!(\"{}\", msg)` supports `felt252`.\n3.  **`Message::Move((10, 30))`**: Takes a tuple of two numbers. Given the values `10` and `30`, `u32` or `felt252` are appropriate. `(u32, u32)` is a good specific choice.\n4.  **`Message::ChangeColor((0, 255, 255))`**: Takes a tuple of three numbers. Given the values `0`, `255`, `255`, `u8` is a suitable type for color components (0-255 range). `(u8, u8, u8)` is appropriate.\n\nThe hint explicitly points to the Cairo Book's enums chapter, which will be the primary resource.",
+        "search_queries": [
+          "Using the Option enum to handle possible values",
+          "Implementing conditional logic with if-else statements",
+          "Safely unwrapping an Option value with `unwrap()`",
+          "Handling invalid time values with `Option::None`",
+          "Defining a basic function with `fn` keyword"
+        ],
+        "resources": ["cairo_book", "corelib_docs"]
+      },
+      {
+        "query": "Complete the following Cairo code:\n\n```cairo\n\/\/ Address all the TODOs to make the tests pass!\n\n\/\/ I AM NOT DONE\n\n#[starknet::interface]\ntrait IContractA<TContractState> {\n    fn set_value(ref self: TContractState, value: u128) -> bool;\n    fn get_value(self: @TContractState) -> u128;\n}\n\n\n#[starknet::contract]\nmod ContractA {\n    use starknet::ContractAddress;\n    use super::IContractBDispatcher;\n    use super::IContractBDispatcherTrait;\n\n    #[storage]\n    struct Storage {\n        contract_b: ContractAddress,\n        value: u128,\n    }\n\n    #[constructor]\n    fn constructor(ref self: ContractState, contract_b: ContractAddress) {\n        self.contract_b.write(contract_b)\n    }\n\n    #[abi(embed_v0)]\n    impl ContractAImpl of super::IContractA<ContractState> {\n        fn set_value(ref self: ContractState, value: u128) -> bool {\n            \/\/ TODO: check if contract_b is enabled.\n            \/\/ If it is, set the value and return true. Otherwise, return false.\n        }\n\n        fn get_value(self: @ContractState) -> u128 {\n            self.value.read()\n        }\n    }\n}\n\n#[starknet::interface]\ntrait IContractB<TContractState> {\n    fn enable(ref self: TContractState);\n    fn disable(ref self: TContractState);\n    fn is_enabled(self: @TContractState) -> bool;\n}\n\n#[starknet::contract]\nmod ContractB {\n    #[storage]\n    struct Storage {\n        enabled: bool\n    }\n\n    #[constructor]\n    fn constructor(ref self: ContractState) {}\n\n    #[abi(embed_v0)]\n    impl ContractBImpl of super::IContractB<ContractState> {\n        fn enable(ref self: ContractState) {\n            self.enabled.write(true);\n        }\n\n        fn disable(ref self: ContractState) {\n            self.enabled.write(false);\n        }\n\n        fn is_enabled(self: @ContractState) -> bool {\n            self.enabled.read()\n        }\n    }\n}\n\n#[cfg(test)]\nmod test {\n    use snforge_std::{declare, ContractClassTrait, DeclareResultTrait};\n    use starknet::ContractAddress;\n    use super::{IContractBDispatcher, IContractADispatcher, IContractADispatcherTrait, IContractBDispatcherTrait};\n\n\n    fn deploy_contract_b() -> IContractBDispatcher {\n        let contract = declare(\"ContractB\").unwrap().contract_class();\n        let (contract_address, _) = contract.deploy(@array![]).unwrap();\n        IContractBDispatcher { contract_address }\n    }\n\n    fn deploy_contract_a(contract_b_address: ContractAddress) -> IContractADispatcher {\n        let contract = declare(\"ContractA\").unwrap().contract_class();\n        let constructor_calldata = array![contract_b_address.into()];\n        let (contract_address, _) = contract.deploy(@constructor_calldata).unwrap();\n        IContractADispatcher { contract_address }\n    }\n\n    #[test]\n    fn test_interoperability() {\n        \/\/ Deploy ContractB\n        let contract_b = deploy_contract_b();\n\n        \/\/ Deploy ContractA\n        let contract_a = deploy_contract_a(contract_b.contract_address);\n\n        \/\/TODO interact with contract_b to make the test pass.\n\n        \/\/ Tests\n        assert(contract_a.set_value(300) == true, 'Could not set value');\n        assert(contract_a.get_value() == 300, 'Value was not set');\n        assert(contract_b.is_enabled() == true, 'Contract b is not enabled');\n    }\n}\n```\n\nHint: \nYou can call other contracts from inside a contract. To do this, you will need to create a Dispatcher object\nof the type of the called contract. Dispatchers have associated methods available under the `DispatcherTrait`, corresponding to the external functions of the contract that you want to call.\n"
+      }
+    ],
+    "signature": {
+      "instructions": "Analyze the provided Cairo code snippet and hint. First, articulate a step-by-step reasoning process to understand the problem and identify the necessary concepts for completion. Then, based on this reasoning, generate a list of highly relevant search queries and specify the most appropriate official Cairo documentation resources (e.g., Cairo Book, Openzeppelin Docs) that would aid in solving the problem.",
+      "fields": [
+        {
+          "prefix": "Chat History:",
+          "description": "Previous conversation context for better understanding of the query. May be empty."
+        },
+        {
+          "prefix": "Query:",
+          "description": "User's Cairo\/Starknet programming question or request that needs to be processed"
+        },
+        {
+          "prefix": "Reasoning: Let's think step by step in order to",
+          "description": "${reasoning}"
+        },
+        {
+          "prefix": "Search Queries:",
+          "description": "A list of __3__ specific semantic search queries to make to a vector store to find relevant documentation."
+        },
+        {
+          "prefix": "Resources:",
+          "description": "List of documentation sources. Available sources: cairo_book: The Cairo Programming Language Book. Essential for core language syntax, semantics, types (felt252, structs, enums, Vec), traits, generics, control flow, memory management, writing tests, organizing a project, standard library usage, starknet interactions. Crucial for smart contract structure, storage, events, ABI, syscalls, contract deployment, interaction, L1<>L2 messaging, Starknet-specific attributes., starknet_docs: The Starknet Documentation. For Starknet protocol, architecture, APIs, syscalls, network interaction, deployment, ecosystem tools (Starkli, indexers), general Starknet knowledge. This should not be included for Coding and Programming questions, but rather, only for questions about Starknet itself., starknet_foundry: The Starknet Foundry Documentation. For using the Foundry toolchain: writing, compiling, testing (unit tests, integration tests), and debugging Starknet contracts., cairo_by_example: Cairo by Example Documentation. Provides practical Cairo code snippets for specific language features or common patterns. Useful for how-to syntax questions. This should not be included for Smart Contract questions, but for all other Cairo programming questions., openzeppelin_docs: OpenZeppelin Cairo Contracts Documentation. For using the OZ library: standard implementations (ERC20, ERC721), access control, security patterns, contract upgradeability. Crucial for building standard-compliant contracts., corelib_docs: Cairo Core Library Documentation. For using the Cairo core library: basic types, stdlib functions, stdlib structs, macros, and other core concepts. Essential for Cairo programming questions., scarb_docs: Scarb Documentation. For using the Scarb package manager: building, compiling, generating compilation artifacts, managing dependencies, configuration of Scarb.toml."
+        }
+      ]
+    },
+    "lm": null
+  },
+  "document_retriever.vector_db": {
+    "k": 5
+  },
+  "metadata": {
+    "dependency_versions": {
+      "python": "3.12",
+      "dspy": "2.6.27",
+      "cloudpickle": "3.1"
+    }
+  }
+}

@@ -46,8 +46,13 @@ packages/**/dist
 
 .trunk
 !.trunk/trunk.yaml
-!.trunk/configs
 !.trunk/.gitignore
 
 starklings/
 debug/
+
+fixtures/runner_crate/target
+
+.snfoundry_cache
+
+python/starklings_results/
