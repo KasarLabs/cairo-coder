@@ -703,3 +703,40 @@ class DocumentRetrieverProgram(dspy.Module):
                 )
             )
         return context
+
+    def get_lm_usage(self) -> dict[str, int]:
+        """
+        Get the total number of tokens used by the LLM.
+        Note: Document retrieval doesn't use LLM tokens directly, but embedding tokens might be tracked.
+        """
+        # Document retrieval doesn't use LLM tokens, but we return empty dict for consistency
+        return {}
+
+
+def create_document_retriever(
+    vector_store_config: VectorStoreConfig,
+    vector_db: SourceFilteredPgVectorRM | None = None,
+    max_source_count: int = 5,
+    similarity_threshold: float = 0.4,
+    embedding_model: str = "text-embedding-3-large",
+) -> DocumentRetrieverProgram:
+    """
+    Factory function to create a DocumentRetrieverProgram instance.
+
+    Args:
+        vector_store_config: VectorStoreConfig for document retrieval
+        vector_db: Optional pre-initialized vector database instance
+        max_source_count: Maximum number of documents to retrieve
+        similarity_threshold: Minimum similarity score for document inclusion
+        embedding_model: OpenAI embedding model to use for reranking
+
+    Returns:
+        Configured DocumentRetrieverProgram instance
+    """
+    return DocumentRetrieverProgram(
+        vector_store_config=vector_store_config,
+        vector_db=vector_db,
+        max_source_count=max_source_count,
+        similarity_threshold=similarity_threshold,
+        embedding_model=embedding_model,
+    )

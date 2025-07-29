@@ -269,6 +269,13 @@ class McpGenerationProgram(dspy.Module):
 
         return dspy.Prediction(answer='\n'.join(formatted_docs))
 
+    def get_lm_usage(self) -> dict[str, int]:
+        """
+        Get the total number of tokens used by the LLM.
+        Note: MCP mode doesn't use LLM generation, so no tokens are consumed.
+        """
+        # MCP mode doesn't use LLM generation, return empty dict
+        return {}
 
 
 def create_generation_program(program_type: str = "general") -> GenerationProgram:

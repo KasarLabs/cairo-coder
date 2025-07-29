@@ -84,7 +84,24 @@ Using Docker is highly recommended for a streamlined setup. For instructions on 
     SIMILARITY_MEASURE="cosine"
     ```
 
-3.  **Configure LangSmith (Optional but Recommended)**
+3.  **Configure Agents Package (`packages/agents/config.toml`)**
+    The ingester requires a configuration file in the `packages/agents` directory. Create `packages/agents/config.toml` with the following content:
+
+    ```toml
+    [API_KEYS]
+    OPENAI = "your-openai-api-key-here"
+
+    [VECTOR_DB]
+    POSTGRES_USER = "cairocoder"
+    POSTGRES_HOST = "postgres"
+    POSTGRES_DB = "cairocoder"
+    POSTGRES_PASSWORD = "cairocoder"
+    POSTGRES_PORT = "5432"
+    ```
+
+    Replace `"your-openai-api-key-here"` with your actual OpenAI API key. The database credentials should match those configured in your `.env` file.
+
+4.  **Configure LangSmith (Optional but Recommended)**
     To monitor and debug LLM calls, configure LangSmith.
 
     - Create an account at [LangSmith](https://smith.langchain.com/) and create a project.
@@ -95,7 +112,7 @@ Using Docker is highly recommended for a streamlined setup. For instructions on 
       LANGSMITH_API_KEY="lsv2..."
       ```
 
-4.  **Add your API keys to `python/.env`: (mandatory)**
+5.  **Add your API keys to `python/.env`: (mandatory)**
 
     ```yaml
     OPENAI_API_KEY="sk-..."
@@ -105,7 +122,7 @@ Using Docker is highly recommended for a streamlined setup. For instructions on 
 
     Add the API keys required for the LLMs you want to use.
 
-5.  **Run the ingesters (mandatory)**
+6.  **Run the ingesters (mandatory)**
 
     The ingesters are responsible for populating the vector database with the documentation sources. They need to be ran a first time, in isolation, so that the database is created.
 
@@ -115,7 +132,7 @@ Using Docker is highly recommended for a streamlined setup. For instructions on 
 
 Once the ingester completes, the database will be populated with embeddings from all supported documentation sources, making them available for the RAG pipeline. Stop the database when you no longer need it.
 
-6.  **Run the Application**
+7.  **Run the Application**
     Once the ingesters are done, start the database and the Python backend service using Docker Compose:
     ```bash
     docker compose up postgres backend --build

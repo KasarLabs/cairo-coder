@@ -456,7 +456,10 @@ class CairoCoderServer:
         # Somehow this is not always returning something (None). In that case, we're not capable of getting the
         # tracked usage.
         lm_usage = response.get_lm_usage()
+        logger.info(f"LM usage from response: {lm_usage}")
+        
         if not lm_usage:
+            logger.warning("No LM usage data available, setting defaults to 0")
             total_prompt_tokens = 0
             total_completion_tokens = 0
             total_tokens = 0
@@ -467,6 +470,7 @@ class CairoCoderServer:
                 entry.get("completion_tokens", 0) for entry in lm_usage.values()
             )
             total_tokens = sum(entry.get("total_tokens", 0) for entry in lm_usage.values())
+            logger.info(f"Token usage - prompt: {total_prompt_tokens}, completion: {total_completion_tokens}, total: {total_tokens}")
 
         return ChatCompletionResponse(
             id=response_id,
