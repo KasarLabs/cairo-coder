@@ -6,27 +6,33 @@ import pytest
 
 from cairo_coder.config.manager import ConfigManager
 
+@pytest.fixture(scope="function", autouse=True)
+def clear_env_vars(monkeypatch: pytest.MonkeyPatch):
+    """Clear all environment variables before each test."""
+    import os
+
+    for var in [
+        "POSTGRES_HOST",
+        "POSTGRES_PORT",
+        "POSTGRES_DB",
+        "POSTGRES_USER",
+        "POSTGRES_PASSWORD",
+        "OPENAI_API_KEY",
+        "ANTHROPIC_API_KEY",
+        "GEMINI_API_KEY",
+    ]:
+        os.environ.pop(var, None)
+        monkeypatch.delenv(var, raising=False)
+
+    yield
 
 class TestConfigIntegration:
     """Test configuration integration with real files and environment."""
 
     def test_load_full_configuration(
-        self, sample_config_file: Path, monkeypatch: pytest.MonkeyPatch
+        self, sample_config_file: Path, clear_env_vars
     ) -> None:
         """Test loading a complete configuration file."""
-        # Clear any existing environment variables
-        for var in [
-            "POSTGRES_HOST",
-            "POSTGRES_PORT",
-            "POSTGRES_DB",
-            "POSTGRES_USER",
-            "POSTGRES_PASSWORD",
-            "OPENAI_API_KEY",
-            "ANTHROPIC_API_KEY",
-            "GEMINI_API_KEY",
-        ]:
-            monkeypatch.delenv(var, raising=False)
-
         config = ConfigManager.load_config(sample_config_file)
 
         # Verify database settings

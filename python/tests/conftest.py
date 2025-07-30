@@ -451,7 +451,7 @@ def sample_agent_configs():
 # =============================================================================
 
 
-@pytest.fixture
+@pytest.fixture(scope="session")
 def sample_config_file() -> Generator[Path, None, None]:
     """Create a temporary config file for testing."""
     config_data = {
