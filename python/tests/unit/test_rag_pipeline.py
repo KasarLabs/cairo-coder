@@ -8,6 +8,7 @@ document retrieval, and response generation.
 from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
+import dspy
 
 from cairo_coder.core.rag_pipeline import (
     RagPipeline,
@@ -123,7 +124,7 @@ Cairo contracts are defined using #[starknet::contract].
 
 Storage variables use #[storage] attribute.
 """
-        program.forward.return_value = mock_res
+        program.forward.return_value = dspy.Prediction(answer=mock_res)
         return program
 
     @pytest.fixture
