@@ -7,8 +7,8 @@ document retrieval, and response generation.
 
 from unittest.mock import AsyncMock, Mock, patch
 
-import pytest
 import dspy
+import pytest
 
 from cairo_coder.core.rag_pipeline import (
     RagPipeline,
@@ -21,6 +21,18 @@ from cairo_coder.dspy.document_retriever import DocumentRetrieverProgram
 from cairo_coder.dspy.generation_program import GenerationProgram, McpGenerationProgram
 from cairo_coder.dspy.query_processor import QueryProcessorProgram
 
+
+# Helper function to merge usage dictionaries
+def merge_usage_dict(sources: list[dict]) -> dict:
+    """Merge usage dictionaries."""
+    merged_usage = {}
+    for source in sources:
+        for model_name, metrics in source.items():
+            if model_name not in merged_usage:
+                merged_usage[model_name] = {}
+            for metric_name, value in metrics.items():
+                merged_usage[model_name][metric_name] = merged_usage[model_name].get(metric_name, 0) + value
+    return merged_usage
 
 @pytest.fixture(scope='function')
 def mock_pgvector_rm():
@@ -57,7 +69,8 @@ class TestRagPipeline:
             resources=[DocumentSource.CAIRO_BOOK, DocumentSource.STARKNET_DOCS],
         )
         processor.forward.return_value = mock_res
-        processor.aforward.return_value = mock_res
+        processor.aforward = AsyncMock(return_value=mock_res)
+        processor.get_lm_usage.return_value = {}
         return processor
 
     @pytest.fixture
@@ -84,6 +97,7 @@ class TestRagPipeline:
             ]
         retriever.aforward = AsyncMock(return_value=mock_return_value)
         retriever.forward = Mock(return_value=mock_return_value)
+        retriever.get_lm_usage.return_value = {}
         return retriever
 
     @pytest.fixture
@@ -101,6 +115,7 @@ class TestRagPipeline:
                 yield chunk
 
         program.forward_streaming = mock_streaming
+        program.get_lm_usage.return_value = {}
         return program
 
     @pytest.fixture
@@ -125,6 +140,7 @@ Cairo contracts are defined using #[starknet::contract].
 Storage variables use #[storage] attribute.
 """
         program.forward.return_value = dspy.Prediction(answer=mock_res)
+        program.get_lm_usage.return_value = {}
         return program
 
     @pytest.fixture
@@ -408,6 +424,92 @@ Storage variables use #[storage] attribute.
         assert state["config"]["name"] == "test_pipeline"
         assert state["config"]["max_source_count"] == 10
         assert state["config"]["similarity_threshold"] == 0.4
+
+    # Define reusable usage constants to keep tests DRY
+    _QUERY_USAGE_MINI = {
+        "gpt-4o-mini": {"prompt_tokens": 200, "completion_tokens": 100, "total_tokens": 300}
+    }
+    _GEN_USAGE_MINI = {
+        "gpt-4o-mini": {"prompt_tokens": 1000, "completion_tokens": 500, "total_tokens": 1500}
+    }
+    _GEN_USAGE_FULL = {
+        "gpt-4o": {"prompt_tokens": 1000, "completion_tokens": 500, "total_tokens": 1500}
+    }
+
+
+    @pytest.mark.parametrize(
+        "query_usage, generation_usage, expected_usage",
+        [
+            pytest.param(
+                _QUERY_USAGE_MINI,
+                _GEN_USAGE_MINI,
+                merge_usage_dict([_QUERY_USAGE_MINI, _GEN_USAGE_MINI]),
+                id="same_model_aggregation",
+            ),
+            pytest.param(
+                _QUERY_USAGE_MINI,
+                _GEN_USAGE_FULL,
+                merge_usage_dict([_QUERY_USAGE_MINI, _GEN_USAGE_FULL]),
+                id="different_model_aggregation",
+            ),
+            pytest.param({}, {}, {}, id="empty_usage"),
+            pytest.param(
+                _QUERY_USAGE_MINI, {}, _QUERY_USAGE_MINI, id="partial_empty_usage"
+            ),
+        ],
+    )
+    def test_get_lm_usage_aggregation(
+        self, pipeline, query_usage, generation_usage, expected_usage
+    ):
+        """Tests that get_lm_usage correctly aggregates token usage from its components."""
+        # The RAG pipeline implementation merges dictionaries with query_usage taking precedence
+        pipeline.query_processor.get_lm_usage.return_value = query_usage
+        pipeline.generation_program.get_lm_usage.return_value = generation_usage
+
+        result = pipeline.get_lm_usage()
+
+        pipeline.query_processor.get_lm_usage.assert_called_once()
+        pipeline.generation_program.get_lm_usage.assert_called_once()
+
+        assert result == expected_usage
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        "mcp_mode, expected_usage",
+        [
+            pytest.param(True, _QUERY_USAGE_MINI, id="mcp_mode"),
+            pytest.param(
+                False, merge_usage_dict([_QUERY_USAGE_MINI, _GEN_USAGE_FULL]), id="normal_mode"
+            ),
+        ],
+    )
+    async def test_get_lm_usage_after_streaming(
+        self, pipeline, mcp_mode, expected_usage
+    ):
+        """Tests that get_lm_usage works correctly after a streaming execution."""
+        # To test token aggregation, we mock the return values of sub-components'
+        # get_lm_usage methods. The test logic simulates which components would
+        # be "active" in each mode by setting others to return empty usage.
+        pipeline.query_processor.get_lm_usage.return_value = self._QUERY_USAGE_MINI
+        if mcp_mode:
+            pipeline.generation_program.get_lm_usage.return_value = {}
+            # MCP program doesn't use an LM, so its usage is empty
+            pipeline.mcp_generation_program.get_lm_usage.return_value = {}
+        else:
+            pipeline.generation_program.get_lm_usage.return_value = self._GEN_USAGE_FULL
+            pipeline.mcp_generation_program.get_lm_usage.return_value = {}
+
+        # Execute the pipeline to ensure the full flow is invoked.
+        async for _ in pipeline.forward_streaming(
+            query="How do I create a Cairo contract?", mcp_mode=mcp_mode
+        ):
+            pass
+
+        result = pipeline.get_lm_usage()
+
+        assert result == expected_usage
+        pipeline.query_processor.get_lm_usage.assert_called()
+        pipeline.generation_program.get_lm_usage.assert_called()
 
 
 class TestRagPipelineFactory:

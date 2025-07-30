@@ -264,8 +264,22 @@ class RagPipeline(dspy.Module):
         """
         generation_usage = self.generation_program.get_lm_usage()
         query_usage = self.query_processor.get_lm_usage()
-        # merge both dictionaries
-        return {**generation_usage, **query_usage}
+
+        # Additive merge strategy
+        merged_usage = {}
+
+        # Helper function to merge usage dictionaries
+        def merge_usage_dict(target: dict, source: dict) -> None:
+            for model_name, metrics in source.items():
+                if model_name not in target:
+                    target[model_name] = {}
+                for metric_name, value in metrics.items():
+                    target[model_name][metric_name] = target[model_name].get(metric_name, 0) + value
+
+        merge_usage_dict(merged_usage, generation_usage)
+        merge_usage_dict(merged_usage, query_usage)
+
+        return merged_usage
 
     def _format_chat_history(self, chat_history: list[Message]) -> str:
         """
