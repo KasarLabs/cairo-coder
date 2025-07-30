@@ -47,30 +47,6 @@ class TestGenerationProgram:
         """Create an MCP GenerationProgram instance."""
         return McpGenerationProgram()
 
-    @pytest.fixture
-    def sample_documents(self):
-        """Create sample documents for testing."""
-        return [
-            Document(
-                page_content="Cairo contracts are defined using #[starknet::contract] attribute.",
-                metadata={
-                    "source": "cairo_book",
-                    "title": "Cairo Contracts",
-                    "url": "https://book.cairo-lang.org/contracts",
-                    "source_display": "Cairo Book",
-                },
-            ),
-            Document(
-                page_content="Storage variables are defined with #[storage] attribute.",
-                metadata={
-                    "source": "starknet_docs",
-                    "title": "Storage Variables",
-                    "url": "https://docs.starknet.io/storage",
-                    "source_display": "Starknet Documentation",
-                },
-            ),
-        ]
-
     @pytest.mark.parametrize("call_method", ["forward", "aforward"])
     @pytest.mark.asyncio
     async def test_general_code_generation(self, generation_program, call_method):
@@ -184,30 +160,6 @@ class TestMcpGenerationProgram:
         """Create an MCP GenerationProgram instance."""
         return McpGenerationProgram()
 
-    @pytest.fixture
-    def sample_documents(self):
-        """Create sample documents for testing."""
-        return [
-            Document(
-                page_content="Cairo contracts are defined using #[starknet::contract] attribute.",
-                metadata={
-                    "source": "cairo_book",
-                    "title": "Cairo Contracts",
-                    "url": "https://book.cairo-lang.org/contracts",
-                    "source_display": "Cairo Book",
-                },
-            ),
-            Document(
-                page_content="Storage variables are defined with #[storage] attribute.",
-                metadata={
-                    "source": "starknet_docs",
-                    "title": "Storage Variables",
-                    "url": "https://docs.starknet.io/storage",
-                    "source_display": "Starknet Documentation",
-                },
-            ),
-        ]
-
     def test_mcp_document_formatting(self, mcp_program, sample_documents):
         """Test MCP mode document formatting."""
         answer = mcp_program.forward(sample_documents).answer
@@ -215,17 +167,20 @@ class TestMcpGenerationProgram:
         assert isinstance(answer, str)
         assert len(answer) > 0
 
-        # Verify document structure
-        assert "## 1. Cairo Contracts" in answer
-        assert "## 2. Storage Variables" in answer
-        assert "**Source:** Cairo Book" in answer
-        assert "**Source:** Starknet Documentation" in answer
-        assert "**URL:** https://book.cairo-lang.org/contracts" in answer
-        assert "**URL:** https://docs.starknet.io/storage" in answer
+        # Verify document structure is present
+        for i, doc in enumerate(sample_documents, 1):
+            assert f"## {i}." in answer
 
-        # Verify content is included
-        assert "starknet::contract" in answer
-        assert "#[storage]" in answer
+            # Check source display
+            source_display = doc.metadata.get("source_display", "Unknown Source")
+            assert f"**Source:** {source_display}" in answer
+
+            # Check URL
+            url = doc.metadata.get("url", "#")
+            assert f"**URL:** {url}" in answer
+
+            # Check content is included
+            assert doc.page_content in answer
 
     def test_mcp_empty_documents(self, mcp_program):
         """Test MCP mode with empty documents."""

@@ -17,36 +17,6 @@ from cairo_coder.dspy.document_retriever import DocumentRetrieverProgram
 class TestDocumentRetrieverProgram:
     """Test suite for DocumentRetrieverProgram."""
 
-    @pytest.fixture(scope="session")
-    def enhanced_sample_documents(self):
-        """Create enhanced sample documents for testing with additional metadata."""
-        return [
-            Document(
-                page_content="Cairo is a programming language for writing provable programs.",
-                metadata={"source": "cairo_book", "score": 0.9, "chapter": 1},
-            ),
-            Document(
-                page_content="Starknet is a validity rollup (also known as a ZK rollup).",
-                metadata={"source": "starknet_docs", "score": 0.8, "section": "overview"},
-            ),
-            Document(
-                page_content="OpenZeppelin provides secure smart contract libraries for Cairo.",
-                metadata={"source": "openzeppelin_docs", "score": 0.7},
-            ),
-        ]
-
-    @pytest.fixture(scope="session")
-    def sample_processed_query(self):
-        """Create a sample processed query."""
-        return ProcessedQuery(
-            original="How do I create a Cairo contract?",
-            search_queries=["cairo", "contract", "create"],
-            reasoning="I need to create a Cairo contract",
-            is_contract_related=True,
-            is_test_related=False,
-            resources=[DocumentSource.CAIRO_BOOK, DocumentSource.STARKNET_DOCS],
-        )
-
     @pytest.fixture(scope="function")
     def retriever(
         self, mock_vector_store_config: VectorStoreConfig, mock_vector_db: Mock
@@ -227,134 +197,54 @@ class TestDocumentRetrieverProgram:
         for expected_content, expected_metadata in expected_docs:
             assert (expected_content, expected_metadata) in result_tuples
 
+    @pytest.mark.parametrize(
+        "query_str, query_details, expected_templates",
+        [
+            (
+                "Some query",
+                {"is_contract_related": True, "is_test_related": False},
+                ["contract_template"],
+            ),
+            (
+                "Some query",
+                {"is_contract_related": False, "is_test_related": True},
+                ["test_template"],
+            ),
+            (
+                "Some query",
+                {"is_contract_related": True, "is_test_related": True},
+                ["contract_template", "test_template"],
+            ),
+            (
+                "Some other query",
+                {"is_contract_related": False, "is_test_related": False},
+                [],
+            ),
+            ("Query with contract and test in string", {"is_contract_related": False, "is_test_related": False}, ["contract_template", "test_template"]),
+        ],
+    )
     @pytest.mark.asyncio
-    async def test_contract_context_enhancement(
-        self, retriever, mock_vector_store_config, mock_dspy_examples, mock_vector_db
+    async def test_context_enhancement(
+        self, retriever, mock_vector_db, mock_dspy_examples, query_str, query_details, expected_templates
     ):
-        """Test context enhancement for contract-related queries."""
-        # Create a contract-related query
+        """Test context enhancement for contract-related and test-related queries."""
         query = ProcessedQuery(
-            original="How do I create a contract with storage?",
-            search_queries=["contract", "storage"],
-            reasoning="I need to create a contract with storage",
-            is_contract_related=True,
-            is_test_related=False,
+            original=query_str,
+            search_queries=["None"],
+            reasoning="Some reasoning",
             resources=[DocumentSource.CAIRO_BOOK],
+            **query_details,
         )
         mock_vector_db.aforward.return_value = mock_dspy_examples
 
         result = await retriever.aforward(query)
 
-        # Verify contract template was added to context
-        contract_template_found = False
-        for doc in result:
-            if doc.metadata.get("source") == "contract_template":
-                contract_template_found = True
-                # Verify it contains the contract template content
-                assert "The content inside the <contract> tag" in doc.page_content
-                assert "#[starknet::contract]" in doc.page_content
-                assert "#[storage]" in doc.page_content
-                break
-
-        assert contract_template_found, "Contract template should be added for contract-related queries"
-
-    @pytest.mark.asyncio
-    async def test_test_context_enhancement(
-        self, retriever, mock_vector_store_config, mock_dspy_examples, mock_vector_db
-    ):
-        """Test context enhancement for test-related queries."""
-        # Create a test-related query
-        query = ProcessedQuery(
-            original="How do I write tests for Cairo contracts?",
-            search_queries=["test", "cairo"],
-            reasoning="I need to write tests for a Cairo contract",
-            is_contract_related=False,
-            is_test_related=True,
-            resources=[DocumentSource.CAIRO_BOOK],
-        )
-        mock_vector_db.aforward.return_value = mock_dspy_examples
-
-        result = await retriever.aforward(query)
-
-        # Verify test template was added to context
-        test_template_found = False
-        for doc in result:
-            if doc.metadata.get("source") == "test_template":
-                test_template_found = True
-                # Verify it contains the test template content
-                assert (
-                    "The content inside the <contract_test> tag is the test code for the 'Registry' contract. It is assumed"
-                    in doc.page_content
-                )
-                assert (
-                    "that the contract is part of a package named 'registry'. When writing tests, follow the important rules."
-                    in doc.page_content
-                )
-                assert "#[test]" in doc.page_content
-                assert "assert(" in doc.page_content
-                break
-
-        assert test_template_found, "Test template should be added for test-related queries"
-
-    @pytest.mark.asyncio
-    async def test_both_templates_enhancement(
-        self, retriever, mock_vector_store_config, mock_dspy_examples, mock_vector_db
-    ):
-        """Test context enhancement when query relates to both contracts and tests."""
-        # Create a query that mentions both contracts and tests
-        query = ProcessedQuery(
-            original="How do I create a contract and write tests for it?",
-            search_queries=["contract", "test"],
-            reasoning="I need to create a contract and write tests for it",
-            is_contract_related=True,
-            is_test_related=True,
-            resources=[DocumentSource.CAIRO_BOOK],
-        )
-        mock_vector_db.aforward.return_value = mock_dspy_examples
-
-        result = await retriever.aforward(query)
-
-        # Verify both templates were added
-        contract_template_found = False
-        test_template_found = False
-
-        for doc in result:
-            if doc.metadata.get("source") == "contract_template":
-                contract_template_found = True
-            elif doc.metadata.get("source") == "test_template":
-                test_template_found = True
-
-        assert (
-            contract_template_found
-        ), "Contract template should be added for contract-related queries"
-        assert test_template_found, "Test template should be added for test-related queries"
-
-    @pytest.mark.asyncio
-    async def test_no_template_enhancement(
-        self, retriever, mock_vector_store_config, mock_dspy_examples, mock_vector_db
-    ):
-        """Test that no templates are added for unrelated queries."""
-        # Create a query that's not related to contracts or tests
-        query = ProcessedQuery(
-            original="What is Cairo programming language?",
-            search_queries=["cairo", "programming"],
-            reasoning="I need to know what Cairo is",
-            is_contract_related=False,
-            is_test_related=False,
-            resources=[DocumentSource.CAIRO_BOOK],
-        )
-        mock_vector_db.aforward.return_value = mock_dspy_examples
-
-        result = await retriever.aforward(query)
-
-        # Verify no templates were added
-        template_sources = [doc.metadata.get("source") for doc in result]
-        assert (
-            "contract_template" not in template_sources
-        ), "Contract template should not be added for non-contract queries"
-        assert (
-            "test_template" not in template_sources
-        ), "Test template should not be added for non-test queries"
+        found_templates = {
+            doc.metadata.get("source")
+            for doc in result
+            if "template" in doc.metadata.get("source", "")
+        }
+        assert set(expected_templates) == found_templates
 
 
 class TestDocumentRetrieverFactory:

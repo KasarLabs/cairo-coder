@@ -24,6 +24,7 @@ from cairo_coder.core.types import (
     Document,
     DocumentSource,
     Message,
+    ProcessedQuery,
     Role,
     StreamEvent,
     StreamEventType,
@@ -298,6 +299,19 @@ def mock_embedder():
 
 
 @pytest.fixture(scope="session")
+def sample_processed_query():
+    """Create a sample processed query."""
+    return ProcessedQuery(
+        original="How do I create a Cairo contract?",
+        search_queries=["cairo", "contract", "create"],
+        reasoning="I need to create a Cairo contract",
+        is_contract_related=True,
+        is_test_related=False,
+        resources=[DocumentSource.CAIRO_BOOK, DocumentSource.STARKNET_DOCS],
+    )
+
+
+@pytest.fixture(scope="session")
 def sample_documents():
     """
     Create a collection of sample documents for testing.
@@ -449,25 +463,6 @@ def sample_config_file() -> Generator[Path, None, None]:
             "POSTGRES_PASSWORD": "test_password",
             "POSTGRES_TABLE_NAME": "test_documents",
             "SIMILARITY_MEASURE": "cosine",
-        },
-        "providers": {
-            "default": "openai",
-            "embedding_model": "text-embedding-3-large",
-            "openai": {"api_key": "test-openai-key", "model": "gpt-4"},
-            "anthropic": {"api_key": "test-anthropic-key", "model": "claude-3-sonnet"},
-        },
-        "logging": {"level": "DEBUG", "format": "json"},
-        "monitoring": {"enable_metrics": True, "metrics_port": 9191},
-        "agents": {
-            "test-agent": {
-                "name": "Test Agent",
-                "description": "Integration test agent",
-                "sources": ["cairo_book", "starknet_docs"],
-                "max_source_count": 5,
-                "similarity_threshold": 0.5,
-                "contract_template": "Test contract template",
-                "test_template": "Test template",
-            }
         },
     }
 
