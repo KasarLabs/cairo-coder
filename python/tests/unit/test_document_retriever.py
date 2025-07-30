@@ -202,24 +202,24 @@ class TestDocumentRetrieverProgram:
             (
                 "Some query",
                 {"is_contract_related": True, "is_test_related": False},
-                ["contract_template"],
+                ["Contract Template"],
             ),
             (
                 "Some query",
                 {"is_contract_related": False, "is_test_related": True},
-                ["test_template"],
+                ["Contract Testing Template"],
             ),
             (
                 "Some query",
                 {"is_contract_related": True, "is_test_related": True},
-                ["contract_template", "test_template"],
+                ["Contract Template", "Contract Testing Template"],
             ),
             (
                 "Some other query",
                 {"is_contract_related": False, "is_test_related": False},
                 [],
             ),
-            ("Query with contract and test in string", {"is_contract_related": False, "is_test_related": False}, ["contract_template", "test_template"]),
+            ("Query with contract and test in string", {"is_contract_related": False, "is_test_related": False}, ["Contract Template", "Contract Testing Template"]),
         ],
     )
     @pytest.mark.asyncio
@@ -241,7 +241,7 @@ class TestDocumentRetrieverProgram:
         found_templates = {
             doc.metadata.get("source")
             for doc in result
-            if "template" in doc.metadata.get("source", "")
+            if "Template" in doc.metadata.get("source", "")
         }
         assert set(expected_templates) == found_templates
 

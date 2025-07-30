@@ -40,6 +40,30 @@ from tests.fixtures.rag_pipeline import (
     pipeline_factory as _pipeline_factory,
 )
 
+@pytest.fixture
+def pipeline_config(
+    mock_vector_store_config,
+    mock_query_processor,
+    mock_document_retriever,
+    mock_generation_program,
+    mock_mcp_generation_program,
+):
+    """Create a pipeline configuration."""
+    return RagPipelineConfig(
+        name="test_pipeline",
+        vector_store_config=mock_vector_store_config,
+        query_processor=mock_query_processor,
+        document_retriever=mock_document_retriever,
+        generation_program=mock_generation_program,
+        mcp_generation_program=mock_mcp_generation_program,
+        max_source_count=10,
+        similarity_threshold=0.4,
+    )
+
+@pytest.fixture
+def pipeline(pipeline_config):
+    """Create a RagPipeline instance."""
+    return RagPipeline(pipeline_config)
 
 # Helper function to merge usage dictionaries
 def merge_usage_dict(sources: list[dict]) -> dict:
@@ -52,10 +76,6 @@ def merge_usage_dict(sources: list[dict]) -> dict:
             for metric_name, value in metrics.items():
                 merged_usage[model_name][metric_name] = merged_usage[model_name].get(metric_name, 0) + value
     return merged_usage
-
-
-class TestRagPipeline:
-    """Test suite for RagPipeline."""
 
     @pytest.fixture
     def mock_query_processor(self):
@@ -101,24 +121,8 @@ class TestRagPipeline:
         retriever.get_lm_usage.return_value = {}
         return retriever
 
-        # Verify components were called
-        query_processor.forward.assert_called_once()
-        document_retriever.forward.assert_called_once()
-        generation_program.forward.assert_called_once()
-
-        async def mock_streaming(*args, **kwargs):
-            chunks = [
-                "Here's how to create a Cairo contract:\n\n",
-                "```cairo\n#[starknet::contract]\n",
-                "mod SimpleContract {\n    // Implementation\n}\n```",
-            ]
-            for chunk in chunks:
-                yield chunk
-
-        program.forward_streaming = mock_streaming
-        program.get_lm_usage.return_value = {}
-        return program
-
+class TestRagPipeline:
+    """Test suite for RagPipeline."""
     @pytest.fixture
     def mock_mcp_generation_program(self):
         """Create a mock MCP generation program."""
@@ -144,31 +148,7 @@ Storage variables use #[storage] attribute.
         program.get_lm_usage.return_value = {}
         return program
 
-    @pytest.fixture
-    def pipeline_config(
-        self,
-        mock_vector_store_config,
-        mock_query_processor,
-        mock_document_retriever,
-        mock_generation_program,
-        mock_mcp_generation_program,
-    ):
-        """Create a pipeline configuration."""
-        return RagPipelineConfig(
-            name="test_pipeline",
-            vector_store_config=mock_vector_store_config,
-            query_processor=mock_query_processor,
-            document_retriever=mock_document_retriever,
-            generation_program=mock_generation_program,
-            mcp_generation_program=mock_mcp_generation_program,
-            max_source_count=10,
-            similarity_threshold=0.4,
-        )
 
-    @pytest.fixture
-    def pipeline(self, pipeline_config):
-        """Create a RagPipeline instance."""
-        return RagPipeline(pipeline_config)
 
     @pytest.mark.asyncio
     async def test_async_pipeline_execution(self, query_processor, document_retriever, generation_program):
