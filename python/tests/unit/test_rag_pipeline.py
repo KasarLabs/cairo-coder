@@ -7,8 +7,9 @@ document retrieval, and response generation.
 
 from unittest.mock import AsyncMock, Mock, patch
 
-import pytest
 import dspy
+import pytest
+
 from cairo_coder.core.rag_pipeline import (
     RagPipeline,
     RagPipelineConfig,
@@ -19,6 +20,7 @@ from cairo_coder.core.types import Document, DocumentSource, Message, ProcessedQ
 from cairo_coder.dspy.document_retriever import DocumentRetrieverProgram
 from cairo_coder.dspy.generation_program import GenerationProgram, McpGenerationProgram
 from cairo_coder.dspy.query_processor import QueryProcessorProgram
+
 
 # Helper function to merge usage dictionaries
 def merge_usage_dict(sources: list[dict]) -> dict:
