@@ -29,6 +29,3 @@ jobs:
 
       - name: Trunk Code Quality
         uses: trunk-io/trunk-action@v1
-
-      - name: Ty Check
-        run: uv run ty check

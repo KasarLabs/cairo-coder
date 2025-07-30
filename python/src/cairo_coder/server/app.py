@@ -626,10 +626,10 @@ async def lifespan(app: FastAPI):
 
     _vector_db = None
 
-
-# Create FastAPI app instance
-app = create_app(get_vector_store_config())
-
+def create_app_factory():
+    """Factory function for creating the app, used by uvicorn in reload mode."""
+    ConfigManager.load_config()
+    return create_app(get_vector_store_config())
 
 def main():
     import argparse
@@ -646,14 +646,15 @@ def main():
     # TODO: Find a proper pattern for it?
     # TODO: multi-model management?
     uvicorn.run(
-        "cairo_coder.server.app:app",
+        "cairo_coder.server.app:create_app_factory",
         host="0.0.0.0",
         port=3001,
         reload=args.dev,
         log_level="info",
         workers=args.workers,
+        factory=True,
     )
 
-
 if __name__ == "__main__":
+    # Create FastAPI app instance
     main()
