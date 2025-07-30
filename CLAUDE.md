@@ -2,6 +2,8 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+For information on how to work in the Python part of this project, see `python/CLAUDE.md`.
+
 ## Project Overview
 
 Cairo Coder is an open-source Cairo language code generation service using Retrieval-Augmented Generation (RAG) to transform natural language requests into functional Cairo smart contracts and programs. It was adapted from the Starknet Agent project.
