@@ -17,12 +17,12 @@ from cairo_coder.dspy.query_processor import CairoQueryAnalysis, QueryProcessorP
 class TestQueryProcessorProgram:
     """Test suite for QueryProcessorProgram."""
 
-    @pytest.fixture
-    def processor(self):
+    @pytest.fixture(scope="function")
+    def processor(self, mock_lm):
         """Create a QueryProcessorProgram instance with mocked LM."""
         return QueryProcessorProgram()
 
-    def test_contract_query_processing(self, processor, mock_lm):
+    def test_contract_query_processing(self, mock_lm, processor):
         """Test processing of contract-related queries."""
         prediction = dspy.Prediction(
             search_queries=["cairo, contract, storage, variable"],

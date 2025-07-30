@@ -6,6 +6,7 @@ import pytest
 
 from cairo_coder.config.manager import ConfigManager
 
+
 @pytest.fixture(scope="function", autouse=True)
 def clear_env_vars(monkeypatch: pytest.MonkeyPatch):
     """Clear all environment variables before each test."""

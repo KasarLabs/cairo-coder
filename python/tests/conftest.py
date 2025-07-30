@@ -116,7 +116,7 @@ def mock_config_manager():
     return manager
 
 
-@pytest.fixture
+@pytest.fixture(scope="function")
 def mock_lm():
     """
     Create a mock language model for DSPy programs.
