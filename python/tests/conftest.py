@@ -6,10 +6,15 @@ to reduce code duplication and ensure consistency.
 """
 
 import asyncio
-from collections.abc import AsyncGenerator
-from unittest.mock import AsyncMock, Mock
+import os
+import tempfile
+from collections.abc import AsyncGenerator, Generator
+from pathlib import Path
+from unittest.mock import AsyncMock, Mock, patch
 
+import dspy
 import pytest
+import toml
 from fastapi.testclient import TestClient
 
 from cairo_coder.config.manager import ConfigManager
@@ -30,9 +35,26 @@ from cairo_coder.server.app import CairoCoderServer, get_agent_factory
 # Common Mock Fixtures
 # =============================================================================
 
-
 @pytest.fixture(scope="session")
-def mock_vector_db():
+def mock_returned_documents():
+    """Create a mock vector database instance for dependency injection."""
+    return [
+        dspy.Example(
+            content="Cairo is a programming language for writing provable programs.",
+            metadata={"source": "cairo_book", "score": 0.9, "chapter": 1},
+        ),
+        dspy.Example(
+            content="Starknet is a validity rollup (also known as a ZK rollup).",
+            metadata={"source": "starknet_docs", "score": 0.8, "section": "overview"},
+        ),
+        dspy.Example(
+            content="OpenZeppelin provides secure smart contract libraries for Cairo.",
+            metadata={"source": "openzeppelin_docs", "score": 0.7},
+        ),
+    ]
+
+@pytest.fixture(scope="function")
+def mock_vector_db(mock_returned_documents):
     """Create a mock vector database for dependency injection."""
     mock_db = Mock(spec=SourceFilteredPgVectorRM)
 
@@ -41,15 +63,16 @@ def mock_vector_db():
     mock_db._ensure_pool = AsyncMock()
 
     # Mock the forward method
-    mock_db.forward = Mock(return_value=[])
+    mock_db.forward = Mock(return_value=mock_returned_documents)
 
     # Mock the async forward method
-    mock_db.aforward = AsyncMock(return_value=[])
+    mock_db.aforward = AsyncMock(return_value=mock_returned_documents)
 
     # Mock sources attribute
     mock_db.sources = []
 
     return mock_db
+
 
 @pytest.fixture(scope="session")
 def mock_vector_store_config():
@@ -98,43 +121,60 @@ def mock_lm():
     Create a mock language model for DSPy programs.
 
     This fixture provides a mock LM that can be used with DSPy programs
-    for testing without making actual API calls.
+    for testing without making actual API calls. It patches `dspy.ChainOfThought`
+    and returns a configurable mock.
     """
-    mock_lm = Mock()
-    mock_lm.generate = Mock(return_value=["Generated response"])
-    mock_lm.__call__ = Mock(return_value=["Generated response"])
-    return mock_lm
+    with patch("dspy.ChainOfThought") as mock_cot:
+        mock_program = Mock()
+        # Mock for sync calls
+        mock_program.forward.return_value = dspy.Prediction(
+            answer="Here's a Cairo contract example:\n\n```cairo\n#[starknet::contract]\nmod SimpleContract {\n    // Contract implementation\n}\n```\n\nThis contract demonstrates basic Cairo syntax."
+        )
+        mock_program.return_value = dspy.Prediction(
+            answer="Here's a Cairo contract example:\n\n```cairo\n#[starknet::contract]\nmod SimpleContract {\n    // Contract implementation\n}\n```\n\nThis contract demonstrates basic Cairo syntax."
+        )
+        # Mock for async calls - use AsyncMock for coroutine
+        mock_program.aforward = AsyncMock(
+            return_value=dspy.Prediction(
+                answer="Here's a Cairo contract example:\n\n```cairo\n#[starknet::contract]\nmod SimpleContract {\n    // Contract implementation\n}\n```\n\nThis contract demonstrates basic Cairo syntax."
+            )
+        )
+        mock_cot.return_value = mock_program
+        yield mock_program
 
 
 @pytest.fixture
-def mock_agent_factory():
+def mock_agent_factory(mock_agent: Mock, sample_agent_configs: dict[str, AgentConfiguration]):
     """
     Create a mock agent factory with standard agent configurations.
 
     Returns a mock AgentFactory with common agent configurations.
     """
     factory = Mock(spec=AgentFactory)
-    factory.get_available_agents.return_value = [
-        "default",
-        "scarb-assistant",
-        "starknet_assistant",
-        "openzeppelin_assistant",
-    ]
-    factory.get_agent_info.return_value = {
-        "id": "default",
-        "name": "Cairo Coder",
-        "description": "General Cairo programming assistant",
-        "sources": ["cairo_book", "cairo_docs"],
-        "max_source_count": 10,
-        "similarity_threshold": 0.4,
-    }
-    factory.create_agent = Mock()
-    factory.get_or_create_agent = Mock()
+    factory.get_available_agents.return_value = list(sample_agent_configs.keys())
+
+    def get_agent_info(agent_id, **kwargs):
+        if agent_id in sample_agent_configs:
+            agent_config = sample_agent_configs[agent_id]
+            return {
+                "id": agent_config.id,
+                "name": agent_config.name,
+                "description": agent_config.description,
+                "sources": [s.value for s in agent_config.sources],
+                "max_source_count": agent_config.max_source_count,
+                "similarity_threshold": agent_config.similarity_threshold,
+            }
+        raise ValueError(f"Agent '{agent_id}' not found")
+
+    factory.get_agent_info.side_effect = get_agent_info
+
+    factory.create_agent.return_value = mock_agent
+    factory.get_or_create_agent.return_value = mock_agent
     factory.clear_cache = Mock()
     return factory
 
 
-@pytest.fixture(autouse=True)
+@pytest.fixture
 def mock_agent():
     """Create a mock agent with OpenAI-specific forward method."""
     mock_agent = AsyncMock()
@@ -223,6 +263,7 @@ def server(mock_vector_store_config, mock_config_manager, mock_agent_factory):
     """Create a CairoCoderServer instance for testing."""
     return CairoCoderServer(mock_vector_store_config, mock_config_manager)
 
+
 @pytest.fixture
 def client(server, mock_agent_factory):
     """Create a test client for the server."""
@@ -242,12 +283,21 @@ def client(server, mock_agent_factory):
     server.app.dependency_overrides[get_agent_factory] = mock_get_agent_factory
     return TestClient(server.app)
 
+
+@pytest.fixture(scope="session")
+def mock_embedder():
+    """Mock the embedder."""
+    with patch("cairo_coder.dspy.document_retriever.dspy.Embedder") as mock_embedder:
+        mock_embedder.return_value = Mock()
+        yield mock_embedder
+
+
 # =============================================================================
 # Sample Data Fixtures
 # =============================================================================
 
 
-@pytest.fixture(scope='session')
+@pytest.fixture(scope="session")
 def sample_documents():
     """
     Create a collection of sample documents for testing.
@@ -297,6 +347,7 @@ def sample_documents():
         ),
     ]
 
+
 @pytest.fixture
 def sample_messages():
     """
@@ -307,7 +358,9 @@ def sample_messages():
     return [
         Message(role=Role.SYSTEM, content="You are a helpful Cairo programming assistant."),
         Message(role=Role.USER, content="How do I create a smart contract in Cairo?"),
-        Message(role=Role.ASSISTANT, content="To create a smart contract in Cairo, you need to..."),
+        Message(
+            role=Role.ASSISTANT, content="To create a smart contract in Cairo, you need to..."
+        ),
         Message(role=Role.USER, content="Can you show me an example?"),
     ]
 
@@ -320,6 +373,14 @@ def sample_agent_configs():
     Returns a dictionary of AgentConfiguration objects.
     """
     return {
+        "cairo-coder": AgentConfiguration(
+            id="cairo-coder",
+            name="Cairo Coder",
+            description="Cairo programming assistant",
+            sources=[DocumentSource.CAIRO_BOOK, DocumentSource.STARKNET_DOCS],
+            max_source_count=10,
+            similarity_threshold=0.4,
+        ),
         "default": AgentConfiguration(
             id="default",
             name="Cairo Coder",
@@ -370,50 +431,54 @@ def sample_agent_configs():
         ),
     }
 
+
 # =============================================================================
 # Test Configuration Fixtures
 # =============================================================================
 
 
 @pytest.fixture
-def temp_config_file(tmp_path):
-    """
-    Create a temporary configuration file for testing.
+def sample_config_file() -> Generator[Path, None, None]:
+    """Create a temporary config file for testing."""
+    config_data = {
+        "VECTOR_DB": {
+            "POSTGRES_HOST": "test-db.example.com",
+            "POSTGRES_PORT": 5433,
+            "POSTGRES_DB": "test_cairo",
+            "POSTGRES_USER": "test_user",
+            "POSTGRES_PASSWORD": "test_password",
+            "POSTGRES_TABLE_NAME": "test_documents",
+            "SIMILARITY_MEASURE": "cosine",
+        },
+        "providers": {
+            "default": "openai",
+            "embedding_model": "text-embedding-3-large",
+            "openai": {"api_key": "test-openai-key", "model": "gpt-4"},
+            "anthropic": {"api_key": "test-anthropic-key", "model": "claude-3-sonnet"},
+        },
+        "logging": {"level": "DEBUG", "format": "json"},
+        "monitoring": {"enable_metrics": True, "metrics_port": 9191},
+        "agents": {
+            "test-agent": {
+                "name": "Test Agent",
+                "description": "Integration test agent",
+                "sources": ["cairo_book", "starknet_docs"],
+                "max_source_count": 5,
+                "similarity_threshold": 0.5,
+                "contract_template": "Test contract template",
+                "test_template": "Test template",
+            }
+        },
+    }
 
-    Returns the path to a temporary TOML configuration file.
-    """
-    config_content = """
-[providers.openai]
-api_key = "test-openai-key"
-model = "gpt-4"
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".toml", delete=False) as f:
+        toml.dump(config_data, f)
+        temp_path = Path(f.name)
 
-[providers.anthropic]
-api_key = "test-anthropic-key"
-model = "claude-3-sonnet"
+    yield temp_path
 
-[providers]
-default_provider = "openai"
-
-[vector_db]
-host = "localhost"
-port = 5432
-database = "cairo_coder_test"
-user = "test_user"
-password = "test_password"
-
-[agents.default]
-sources = ["cairo_book", "starknet_docs"]
-max_source_count = 10
-similarity_threshold = 0.4
-
-[logging]
-level = "INFO"
-format = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-"""
-
-    config_file = tmp_path / "test_config.toml"
-    config_file.write_text(config_content)
-    return config_file
+    # Cleanup
+    os.unlink(temp_path)
 
 
 @pytest.fixture

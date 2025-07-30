@@ -1,61 +1,14 @@
 """Integration tests for configuration management."""
 
-import os
-import tempfile
-from collections.abc import Generator
 from pathlib import Path
 
 import pytest
-import toml
 
 from cairo_coder.config.manager import ConfigManager
 
 
 class TestConfigIntegration:
     """Test configuration integration with real files and environment."""
-
-    @pytest.fixture
-    def sample_config_file(self) -> Generator[Path, None, None]:
-        """Create a temporary config file for testing."""
-        config_data = {
-            "VECTOR_DB": {
-                "POSTGRES_HOST": "test-db.example.com",
-                "POSTGRES_PORT": 5433,
-                "POSTGRES_DB": "test_cairo",
-                "POSTGRES_USER": "test_user",
-                "POSTGRES_PASSWORD": "test_password",
-                "POSTGRES_TABLE_NAME": "test_documents",
-                "SIMILARITY_MEASURE": "cosine",
-            },
-            "providers": {
-                "default": "openai",
-                "embedding_model": "text-embedding-3-large",
-                "openai": {"api_key": "test-openai-key", "model": "gpt-4"},
-                "anthropic": {"api_key": "test-anthropic-key", "model": "claude-3-sonnet"},
-            },
-            "logging": {"level": "DEBUG", "format": "json"},
-            "monitoring": {"enable_metrics": True, "metrics_port": 9191},
-            "agents": {
-                "test-agent": {
-                    "name": "Test Agent",
-                    "description": "Integration test agent",
-                    "sources": ["cairo_book", "starknet_docs"],
-                    "max_source_count": 5,
-                    "similarity_threshold": 0.5,
-                    "contract_template": "Test contract template",
-                    "test_template": "Test template",
-                }
-            },
-        }
-
-        with tempfile.NamedTemporaryFile(mode="w", suffix=".toml", delete=False) as f:
-            toml.dump(config_data, f)
-            temp_path = Path(f.name)
-
-        yield temp_path
-
-        # Cleanup
-        os.unlink(temp_path)
 
     def test_load_full_configuration(
         self, sample_config_file: Path, monkeypatch: pytest.MonkeyPatch

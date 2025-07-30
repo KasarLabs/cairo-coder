@@ -11,6 +11,7 @@ from unittest.mock import Mock, patch
 
 import pytest
 from fastapi import FastAPI
+from fastapi.testclient import TestClient
 
 from cairo_coder.core.agent_factory import AgentFactory
 from cairo_coder.core.types import StreamEvent, StreamEventType
@@ -337,45 +338,43 @@ class TestCreateApp:
 
         assert isinstance(app, FastAPI)
 
+    def test_cors_configuration(self, mock_vector_store_config):
+        """Test CORS configuration."""
+        with patch("cairo_coder.server.app.create_agent_factory"):
+            app = create_app(mock_vector_store_config)
+            client = TestClient(app)
 
-class TestTokenTracker:
-    """Test suite for TokenTracker class."""
+            # Test CORS headers
+            response = client.options(
+                "/v1/chat/completions",
+                headers={"Origin": "https://example.com", "Access-Control-Request-Method": "POST"},
+            )
 
-    def test_track_tokens_new_session(self):
-        """Test tracking tokens for a new session."""
-        from cairo_coder.server.app import TokenTracker
+            assert response.status_code in [200, 204]
 
-        tracker = TokenTracker()
-        tracker.track_tokens("session1", 10, 20)
+    def test_app_middleware(self, mock_vector_store_config):
+        """Test that app has proper middleware configuration."""
+        with patch("cairo_coder.server.app.create_agent_factory"):
+            app = create_app(mock_vector_store_config)
 
-        usage = tracker.get_session_usage("session1")
-        assert usage["prompt_tokens"] == 10
-        assert usage["completion_tokens"] == 20
-        assert usage["total_tokens"] == 30
+            # Check that middleware is properly configured
+            # FastAPI apps have middleware, but middleware_stack might be None until build
+            assert hasattr(app, "middleware_stack")
+            # Check that CORS middleware was added by verifying the middleware property exists
+            assert hasattr(app, "middleware")
 
-    def test_track_tokens_existing_session(self):
-        """Test tracking tokens for an existing session."""
-        from cairo_coder.server.app import TokenTracker
+    def test_app_routes(self, mock_vector_store_config):
+        """Test that app has expected routes."""
+        with patch("cairo_coder.server.app.create_agent_factory"):
+            app = create_app(mock_vector_store_config)
 
-        tracker = TokenTracker()
-        tracker.track_tokens("session1", 10, 20)
-        tracker.track_tokens("session1", 5, 15)
+            # Get all routes
+            routes = [route.path for route in app.routes]  # type: ignore
 
-        usage = tracker.get_session_usage("session1")
-        assert usage["prompt_tokens"] == 15
-        assert usage["completion_tokens"] == 35
-        assert usage["total_tokens"] == 50
-
-    def test_get_session_usage_nonexistent(self):
-        """Test getting usage for non-existent session."""
-        from cairo_coder.server.app import TokenTracker
-
-        tracker = TokenTracker()
-        usage = tracker.get_session_usage("nonexistent")
-
-        assert usage["prompt_tokens"] == 0
-        assert usage["completion_tokens"] == 0
-        assert usage["total_tokens"] == 0
+            # Check expected routes exist
+            assert "/" in routes
+            assert "/v1/agents" in routes
+            assert "/v1/chat/completions" in routes
 
 
 class TestOpenAICompatibility:

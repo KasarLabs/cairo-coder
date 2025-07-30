@@ -45,14 +45,6 @@ def mock_pgvector_rm():
         yield mock_pgvector_rm
 
 
-@pytest.fixture(scope='session')
-def mock_embedder():
-    """Mock the embedder."""
-    with patch("cairo_coder.dspy.document_retriever.dspy.Embedder") as mock_embedder:
-        mock_embedder.return_value = Mock()
-        yield mock_embedder
-
-
 class TestRagPipeline:
     """Test suite for RagPipeline."""
 

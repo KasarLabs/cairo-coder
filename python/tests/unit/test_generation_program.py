@@ -5,7 +5,7 @@ Tests the DSPy-based code generation functionality including Cairo code generati
 Scarb configuration, and MCP mode document formatting.
 """
 
-from unittest.mock import AsyncMock, Mock, patch
+from unittest.mock import AsyncMock, patch
 
 import dspy
 import pytest
@@ -20,27 +20,6 @@ from cairo_coder.dspy.generation_program import (
     create_generation_program,
     create_mcp_generation_program,
 )
-
-
-@pytest.fixture(scope="function")
-def mock_lm():
-    """Configure DSPy with a mock language model for testing."""
-    mock = Mock()
-    # Mock for sync calls
-    mock.forward.return_value = dspy.Prediction(
-        answer="Here's a Cairo contract example:\n\n```cairo\n#[starknet::contract]\nmod SimpleContract {\n    // Contract implementation\n}\n```\n\nThis contract demonstrates basic Cairo syntax."
-    )
-    mock.return_value = dspy.Prediction(
-        answer="Here's a Cairo contract example:\n\n```cairo\n#[starknet::contract]\nmod SimpleContract {\n    // Contract implementation\n}\n```\n\nThis contract demonstrates basic Cairo syntax."
-    )
-    # Mock for async calls - use AsyncMock for coroutine
-    mock.aforward = AsyncMock(return_value=dspy.Prediction(
-        answer="Here's a Cairo contract example:\n\n```cairo\n#[starknet::contract]\nmod SimpleContract {\n    // Contract implementation\n}\n```\n\nThis contract demonstrates basic Cairo syntax."
-    ))
-
-    with patch("dspy.ChainOfThought") as mock_cot:
-        mock_cot.return_value = mock
-        yield mock
 
 
 async def call_program(program, method, *args, **kwargs):

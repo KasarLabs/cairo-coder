@@ -166,9 +166,6 @@ class CairoCoderServer:
             allow_headers=["*"],
         )
 
-        # Token tracking for usage statistics
-        self.token_tracker = TokenTracker()
-
         # Setup routes
         self._setup_routes()
 
@@ -487,32 +484,6 @@ class CairoCoderServer:
                 completion_tokens=total_completion_tokens,
                 total_tokens=total_tokens,
             ),
-        )
-
-
-class TokenTracker:
-    """Simple token tracker for usage statistics."""
-
-    def __init__(self):
-        self.sessions = {}
-
-    def track_tokens(self, session_id: str, prompt_tokens: int, completion_tokens: int):
-        """Track token usage for a session."""
-        if session_id not in self.sessions:
-            self.sessions[session_id] = {
-                "prompt_tokens": 0,
-                "completion_tokens": 0,
-                "total_tokens": 0,
-            }
-
-        self.sessions[session_id]["prompt_tokens"] += prompt_tokens
-        self.sessions[session_id]["completion_tokens"] += completion_tokens
-        self.sessions[session_id]["total_tokens"] += prompt_tokens + completion_tokens
-
-    def get_session_usage(self, session_id: str) -> dict[str, int]:
-        """Get session token usage."""
-        return self.sessions.get(
-            session_id, {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}
         )
 
 
