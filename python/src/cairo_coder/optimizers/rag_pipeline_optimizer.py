@@ -21,21 +21,27 @@ def _():
     from cairo_coder.optimizers.generation.utils import generation_metric
 
     logger = structlog.get_logger(__name__)
-    global_config = ConfigManager.load_config()
-    postgres_config = global_config.vector_store
     try:
-        # Attempt to connect to PostgreSQL
-        conn = psycopg2.connect(
-            host=postgres_config.host,
-            port=postgres_config.port,
-            database=postgres_config.database,
-            user=postgres_config.user,
-            password=postgres_config.password,
-        )
-        conn.close()
-        logger.info("PostgreSQL connection successful")
-    except OperationalError as e:
-        raise Exception(f"PostgreSQL is not running or not accessible: {e}") from e
+        global_config = ConfigManager.load_config()
+        postgres_config = global_config.vector_store
+        try:
+            # Attempt to connect to PostgreSQL
+            conn = psycopg2.connect(
+                host=postgres_config.host,
+                port=postgres_config.port,
+                database=postgres_config.database,
+                user=postgres_config.user,
+                password=postgres_config.password,
+            )
+            conn.close()
+            logger.info("PostgreSQL connection successful")
+        except OperationalError as e:
+            raise Exception(f"PostgreSQL is not running or not accessible: {e}") from e
+    except FileNotFoundError:
+        # Running in test environment without config.toml
+        logger.warning("Config file not found, skipping database connection in test mode")
+        global_config = None
+        postgres_config = None
 
     """Optional: Set up MLflow tracking for experiment monitoring."""
     # Uncomment to enable MLflow tracking
