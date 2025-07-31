@@ -182,8 +182,9 @@ The RAG pipeline is implemented in the `python/src/cairo_coder/core/` directory 
 
 1.  **QueryProcessorProgram**: Analyzes user queries to extract semantic search queries and identify relevant documentation sources.
 2.  **DocumentRetrieverProgram**: Retrieves relevant Cairo documentation from the vector database.
-3.  **GenerationProgram**: Generates Cairo code and explanations based on the retrieved context.
-4.  **RagPipeline**: Orchestrates the entire RAG process, chaining the modules together.
+3.  **RetrievalJudge**: LLM-based judge that scores retrieved documents for relevance, filtering out low-quality results.
+4.  **GenerationProgram**: Generates Cairo code and explanations based on the retrieved context.
+5.  **RagPipeline**: Orchestrates the entire RAG process, chaining the modules together.
 
 ## Development
 

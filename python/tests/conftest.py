@@ -29,7 +29,10 @@ from cairo_coder.core.types import (
     StreamEvent,
     StreamEventType,
 )
-from cairo_coder.dspy.document_retriever import SourceFilteredPgVectorRM
+from cairo_coder.dspy.document_retriever import DocumentRetrieverProgram, SourceFilteredPgVectorRM
+from cairo_coder.dspy.generation_program import GenerationProgram, McpGenerationProgram
+from cairo_coder.dspy.query_processor import QueryProcessorProgram
+from cairo_coder.dspy.retrieval_judge import RetrievalJudge
 from cairo_coder.server.app import CairoCoderServer, get_agent_factory
 
 # =============================================================================
@@ -601,6 +604,149 @@ def event_loop():
     loop = asyncio.new_event_loop()
     yield loop
     loop.close()
+
+
+# =============================================================================
+# RAG Pipeline Fixtures
+# =============================================================================
+
+
+@pytest.fixture
+def mock_query_processor(sample_processed_query):
+    """Create a mock QueryProcessorProgram."""
+    processor = Mock(spec=QueryProcessorProgram)
+    processor.forward = Mock(return_value=sample_processed_query)
+    processor.aforward = AsyncMock(return_value=sample_processed_query)
+    processor.get_lm_usage = Mock(return_value={})
+    return processor
+
+
+@pytest.fixture
+def mock_document_retriever(sample_documents):
+    """Create a mock DocumentRetrieverProgram."""
+    retriever = Mock(spec=DocumentRetrieverProgram)
+    retriever.forward = Mock(return_value=sample_documents)
+    retriever.aforward = AsyncMock(return_value=sample_documents)
+    retriever.get_lm_usage = Mock(return_value={})
+    return retriever
+
+
+@pytest.fixture
+def mock_generation_program():
+    """Create a mock GenerationProgram."""
+    program = Mock(spec=GenerationProgram)
+    answer = "Here's how to write Cairo contracts..."
+    program.forward = Mock(return_value=dspy.Prediction(answer=answer))
+    program.aforward = AsyncMock(return_value=dspy.Prediction(answer=answer))
+    program.get_lm_usage = Mock(return_value={})
+    
+    async def mock_streaming(*args, **kwargs):
+        yield "Here's how to write "
+        yield "Cairo contracts..."
+    
+    program.forward_streaming = Mock(return_value=mock_streaming())
+    return program
+
+
+@pytest.fixture
+def mock_mcp_generation_program():
+    """Create a mock McpGenerationProgram."""
+    program = Mock(spec=McpGenerationProgram)
+    mcp_answer = """
+## 1. Cairo Contracts
+
+**Source:** Cairo Book
+**URL:** https://book.cairo-lang.org/contracts
+
+Cairo contracts are defined using #[starknet::contract].
+
+---
+
+## 2. Storage Variables
+
+**Source:** Starknet Documentation
+**URL:** https://docs.starknet.io/storage
+
+Storage variables use #[storage] attribute.
+"""
+    program.forward = Mock(return_value=dspy.Prediction(answer=mcp_answer))
+    program.get_lm_usage = Mock(return_value={})
+    return program
+
+
+@pytest.fixture
+def mock_retrieval_judge():
+    """Create a mock RetrievalJudge with default scoring behavior."""
+    judge = Mock(spec=RetrievalJudge)
+    
+    # Default score map for common test documents
+    default_score_map = {
+        "Introduction to Cairo": 0.9,
+        "Cairo Smart Contracts": 0.9,
+        "Cairo Storage": 0.8,
+        "What is Starknet": 0.3,
+        "Starknet Overview": 0.3,
+        "Scarb Overview": 0.2,
+        "OpenZeppelin Cairo": 0.2,
+        "Python Guide": 0.2,
+        "Python Basics": 0.1,
+    }
+    
+    def filter_docs(query: str, documents: list[Document]) -> list[Document]:
+        """Filter documents based on scores."""
+        filtered = []
+        for doc in documents:
+            title = doc.metadata.get("title", "")
+            score = default_score_map.get(title, 0.5)
+            
+            # Add judge metadata
+            doc.metadata["llm_judge_score"] = score
+            doc.metadata["llm_judge_reason"] = f"Document '{title}' scored {score} for relevance"
+            
+            # Filter based on threshold (default 0.4)
+            if score >= judge.threshold:
+                filtered.append(doc)
+        
+        return filtered
+    
+    async def async_filter_docs(query: str, documents: list[Document]) -> list[Document]:
+        """Async version of filter_docs."""
+        return filter_docs(query, documents)
+    
+    judge.forward = Mock(side_effect=filter_docs)
+    judge.aforward = AsyncMock(side_effect=async_filter_docs)
+    judge.threshold = 0.4
+    judge.get_lm_usage = Mock(return_value={})
+    
+    return judge
+
+
+@pytest.fixture
+def mock_pgvector_rm(mock_vector_db):
+    """Create a mock PgVectorRM for RAG pipeline tests."""
+    return mock_vector_db
+
+
+@pytest.fixture
+def patch_dspy_parallel():
+    """Patch dspy.Parallel to return the input directly (for judge tests)."""
+    with patch("dspy.Parallel") as mock_parallel:
+        # Make Parallel pass through the input directly
+        def passthrough(func, *args, **kwargs):
+            # If called with documents, just apply the function to each
+            if args and hasattr(args[0], '__iter__'):
+                return [func(item) for item in args[0]]
+            return func(*args, **kwargs)
+        
+        mock_parallel.side_effect = passthrough
+        yield mock_parallel
+
+
+@pytest.fixture
+def dspy_env_patched():
+    """Patch dspy.LM and dspy.context for testing."""
+    with patch("dspy.LM"), patch("dspy.context"):
+        yield
 
 
 # =============================================================================

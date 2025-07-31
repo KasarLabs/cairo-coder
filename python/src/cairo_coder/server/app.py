@@ -206,11 +206,13 @@ class CairoCoderServer:
                             )
                         )
                     except Exception as e:
-                        logger.warning("Failed to get agent info", agent_id=agent_id, error=str(e))
+                        logger.warning(
+                            "Failed to get agent info", agent_id=agent_id, error=str(e), exc_info=True
+                        )
 
                 return agents_info
             except Exception as e:
-                logger.error("Failed to list agents", error=str(e))
+                logger.error("Failed to list agents", error=str(e), exc_info=True)
                 raise HTTPException(
                     status_code=500,
                     detail=ErrorResponse(
@@ -350,10 +352,7 @@ class CairoCoderServer:
             ) from e
 
         except Exception as e:
-            import traceback
-
-            traceback.print_exc()
-            logger.error("Error in chat completion", error=str(e))
+            logger.error("Error in chat completion", error=str(e), exc_info=True)
             raise HTTPException(
                 status_code=500,
                 detail=ErrorResponse(
@@ -407,9 +406,7 @@ class CairoCoderServer:
                     break
 
         except Exception as e:
-            import traceback
-            traceback.print_exc()
-            logger.error("Error in streaming", error=str(e))
+            logger.error("Error during agent streaming", error=str(e), exc_info=True)
             error_chunk = {
                 "id": response_id,
                 "object": "chat.completion.chunk",
@@ -468,6 +465,14 @@ class CairoCoderServer:
             )
             total_tokens = sum(entry.get("total_tokens", 0) for entry in lm_usage.values())
             logger.info(f"Token usage - prompt: {total_prompt_tokens}, completion: {total_completion_tokens}, total: {total_tokens}")
+
+        logger.info(
+            "Chat completion generated",
+            prompt_tokens=total_prompt_tokens,
+            completion_tokens=total_completion_tokens,
+            total_tokens=total_tokens,
+            response_id=response_id,
+        )
 
         return ChatCompletionResponse(
             id=response_id,
@@ -587,7 +592,7 @@ async def lifespan(app: FastAPI):
         vector_store_config=vector_store_config, vector_db=_vector_db
     )
 
-    logger.info("Vector DB initialized successfully")
+    logger.info("Vector DB and Agent Factory initialized successfully")
 
     yield  # Server is running
 
@@ -600,6 +605,7 @@ async def lifespan(app: FastAPI):
         logger.info("Vector DB connection pool closed")
 
     _vector_db = None
+    _agent_factory = None
 
 def create_app_factory():
     """Factory function for creating the app, used by uvicorn in reload mode."""
