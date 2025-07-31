@@ -36,6 +36,7 @@ def pipeline_config(
         document_retriever=mock_document_retriever,
         generation_program=mock_generation_program,
         mcp_generation_program=mock_mcp_generation_program,
+        sources=list(DocumentSource),
         max_source_count=10,
         similarity_threshold=0.4,
     )
@@ -47,9 +48,9 @@ def pipeline(pipeline_config):
     with patch("cairo_coder.core.rag_pipeline.RetrievalJudge") as mock_judge_class:
         mock_judge = Mock()
         mock_judge.get_lm_usage.return_value = {}
-        mock_judge_class.return_value = mock_judge
         mock_judge.forward.return_value = dspy.Prediction()
         mock_judge.aforward = AsyncMock(return_value=dspy.Prediction())
+        mock_judge_class.return_value = mock_judge
         return RagPipeline(pipeline_config)
 
 
@@ -458,6 +459,7 @@ class TestRagPipelineFactory:
             pipeline = RagPipelineFactory.create_pipeline(
                 name="test",
                 vector_store_config=mock_vector_store_config,
+                sources=list(DocumentSource),
             )
 
             assert isinstance(pipeline.retrieval_judge, RetrievalJudge)
@@ -485,6 +487,7 @@ class TestRagPipelineFactory:
             pipeline = RagPipelineFactory.create_pipeline(
                 name="test",
                 vector_store_config=mock_vector_store_config,
+                sources=list(DocumentSource),
             )
 
             assert pipeline.retrieval_judge is not None
@@ -512,6 +515,7 @@ class TestRagPipelineFactory:
                 RagPipelineFactory.create_pipeline(
                     name="test",
                     vector_store_config=mock_vector_store_config,
+                    sources=list(DocumentSource),
                 )
 
 
@@ -556,42 +560,6 @@ class TestPipelineHelperMethods:
         assert sources[0]["title"] == "Test Doc"
         assert len(sources[0]["content_preview"]) == 203  # 200 + "..."
         assert sources[0]["content_preview"].endswith("...")
-
-    def test_prepare_context_with_templates(self, pipeline_config):
-        """Test context preparation with templates."""
-        # Create pipeline with templates
-        pipeline_config.contract_template = "Contract guidelines"
-        pipeline_config.test_template = "Test guidelines"
-        pipeline = RagPipeline(pipeline_config)
-
-        docs = create_custom_documents([("Doc", "Content", "source")])
-
-        # Contract-related query
-        from cairo_coder.core.types import ProcessedQuery
-        query = ProcessedQuery(
-            original="test",
-            search_queries=["test"],
-            reasoning="test",
-            is_contract_related=True,
-            is_test_related=False,
-            resources=[]
-        )
-        context = pipeline._prepare_context(docs, query)
-        assert "Contract Development Guidelines:" in context
-        assert "Contract guidelines" in context
-
-        # Test-related query
-        query = ProcessedQuery(
-            original="test",
-            search_queries=["test"],
-            reasoning="test",
-            is_contract_related=False,
-            is_test_related=True,
-            resources=[]
-        )
-        context = pipeline._prepare_context(docs, query)
-        assert "Testing Guidelines:" in context
-        assert "Test guidelines" in context
 
     def test_get_current_state(self, sample_documents, sample_processed_query, pipeline):
         """Test pipeline state retrieval."""
@@ -731,7 +699,8 @@ class TestConvenienceFunctions:
             mock_create_mcp.return_value = Mock()
 
             pipeline = RagPipelineFactory.create_pipeline(
-                name="test_pipeline", vector_store_config=mock_vector_store_config
+                name="test_pipeline", vector_store_config=mock_vector_store_config,
+                sources=list(DocumentSource)
             )
 
             assert isinstance(pipeline, RagPipeline)
@@ -768,8 +737,6 @@ class TestConvenienceFunctions:
             max_source_count=20,
             similarity_threshold=0.6,
             sources=[DocumentSource.CAIRO_BOOK],
-            contract_template="Custom contract template",
-            test_template="Custom test template",
         )
 
         assert isinstance(pipeline, RagPipeline)
@@ -781,8 +748,6 @@ class TestConvenienceFunctions:
         assert pipeline.config.max_source_count == 20
         assert pipeline.config.similarity_threshold == 0.6
         assert pipeline.config.sources == [DocumentSource.CAIRO_BOOK]
-        assert pipeline.config.contract_template == "Custom contract template"
-        assert pipeline.config.test_template == "Custom test template"
 
     def test_create_scarb_pipeline(self, mock_vector_store_config):
         """Test creating Scarb-specific pipeline."""

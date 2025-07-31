@@ -14,9 +14,8 @@ import dspy
 import pytest
 from fastapi.testclient import TestClient
 
-from cairo_coder.config.manager import ConfigManager
 from cairo_coder.core.agent_factory import AgentFactory
-from cairo_coder.core.config import AgentConfiguration, Config, VectorStoreConfig
+from cairo_coder.core.config import AgentConfiguration, VectorStoreConfig
 from cairo_coder.core.types import (
     Document,
     DocumentSource,
@@ -85,37 +84,6 @@ def mock_vector_store_config():
     mock_config.table_name = "test_table"
     return mock_config
 
-
-@pytest.fixture(scope="session")
-def mock_config_manager():
-    """
-    Create a mock configuration manager with standard configuration.
-
-    Returns a mock ConfigManager with commonly used configuration values.
-    """
-    manager = Mock(spec=ConfigManager)
-    manager.load_config.return_value = Config(
-        vector_store=VectorStoreConfig(
-            host="localhost",
-            port=5432,
-            database="test_db",
-            user="test_user",
-            password="test_pass",
-            table_name="test_table",
-        )
-    )
-    manager.get_agent_config.return_value = AgentConfiguration(
-        id="test_agent",
-        name="Test Agent",
-        description="Test agent for testing",
-        sources=[DocumentSource.CAIRO_BOOK],
-        max_source_count=5,
-        similarity_threshold=0.5,
-    )
-    manager.dsn = "postgresql://test_user:test_pass@localhost:5432/test_db"
-    return manager
-
-
 @pytest.fixture(scope="function")
 def mock_lm():
     """
@@ -169,7 +137,6 @@ def mock_agent_factory(mock_agent: Mock, sample_agent_configs: dict[str, AgentCo
 
     factory.get_agent_info.side_effect = get_agent_info
 
-    factory.create_agent.return_value = mock_agent
     factory.get_or_create_agent.return_value = mock_agent
     factory.clear_cache = Mock()
     return factory
@@ -260,9 +227,9 @@ def mock_pool():
 
 
 @pytest.fixture
-def server(mock_vector_store_config, mock_config_manager, mock_agent_factory):
+def server(mock_vector_store_config):
     """Create a CairoCoderServer instance for testing."""
-    return CairoCoderServer(mock_vector_store_config, mock_config_manager)
+    return CairoCoderServer(mock_vector_store_config)
 
 
 @pytest.fixture
@@ -653,11 +620,11 @@ def mock_generation_program():
     program.forward = Mock(return_value=dspy.Prediction(answer=answer))
     program.aforward = AsyncMock(return_value=dspy.Prediction(answer=answer))
     program.get_lm_usage = Mock(return_value={})
-    
+
     async def mock_streaming(*args, **kwargs):
         yield "Here's how to write "
         yield "Cairo contracts..."
-    
+
     program.forward_streaming = Mock(return_value=mock_streaming())
     return program
 
@@ -692,7 +659,7 @@ Storage variables use #[storage] attribute.
 def mock_retrieval_judge():
     """Create a mock RetrievalJudge with default scoring behavior."""
     judge = Mock(spec=RetrievalJudge)
-    
+
     # Default score map for common test documents
     default_score_map = {
         "Introduction to Cairo": 0.9,
@@ -705,33 +672,33 @@ def mock_retrieval_judge():
         "Python Guide": 0.2,
         "Python Basics": 0.1,
     }
-    
+
     def filter_docs(query: str, documents: list[Document]) -> list[Document]:
         """Filter documents based on scores."""
         filtered = []
         for doc in documents:
             title = doc.metadata.get("title", "")
             score = default_score_map.get(title, 0.5)
-            
+
             # Add judge metadata
             doc.metadata["llm_judge_score"] = score
             doc.metadata["llm_judge_reason"] = f"Document '{title}' scored {score} for relevance"
-            
+
             # Filter based on threshold (default 0.4)
             if score >= judge.threshold:
                 filtered.append(doc)
-        
+
         return filtered
-    
+
     async def async_filter_docs(query: str, documents: list[Document]) -> list[Document]:
         """Async version of filter_docs."""
         return filter_docs(query, documents)
-    
+
     judge.forward = Mock(side_effect=filter_docs)
     judge.aforward = AsyncMock(side_effect=async_filter_docs)
     judge.threshold = 0.4
     judge.get_lm_usage = Mock(return_value={})
-    
+
     return judge
 
 
@@ -751,7 +718,7 @@ def patch_dspy_parallel():
             if args and hasattr(args[0], '__iter__'):
                 return [func(item) for item in args[0]]
             return func(*args, **kwargs)
-        
+
         mock_parallel.side_effect = passthrough
         yield mock_parallel
 

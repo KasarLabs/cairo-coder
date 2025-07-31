@@ -11,10 +11,10 @@ import asyncio
 from collections.abc import Sequence
 from typing import Any
 
-import dspy
 import structlog
 from langsmith import traceable
 
+import dspy
 from cairo_coder.core.types import Document
 from cairo_coder.dspy.document_retriever import CONTRACT_TEMPLATE_TITLE, TEST_TEMPLATE_TITLE
 

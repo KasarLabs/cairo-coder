@@ -188,7 +188,7 @@ class TestCairoCoderServer:
 
     def test_error_handling_agent_creation_failure(self, client, mock_agent_factory):
         """Test error handling when agent creation fails."""
-        mock_agent_factory.create_agent.side_effect = Exception("Agent creation failed")
+        mock_agent_factory.get_or_create_agent.side_effect = Exception("Agent creation failed")
 
         response = client.post(
             "/v1/chat/completions", json={"messages": [{"role": "user", "content": "Hello"}]}
@@ -201,8 +201,6 @@ class TestCairoCoderServer:
 
     def test_message_conversion(self, client, mock_agent_factory, mock_agent):
         """Test proper conversion of messages to internal format."""
-        mock_agent_factory.create_agent.return_value = mock_agent
-
         response = client.post(
             "/v1/chat/completions",
             json={
@@ -218,8 +216,8 @@ class TestCairoCoderServer:
         assert response.status_code == 200
 
         # Verify agent was called with proper message conversion
-        mock_agent_factory.create_agent.assert_called_once()
-        call_args, call_kwargs = mock_agent_factory.create_agent.call_args
+        mock_agent_factory.get_or_create_agent.assert_called_once()
+        call_args, call_kwargs = mock_agent_factory.get_or_create_agent.call_args
 
         # Check that history excludes the last message
         history = call_kwargs.get("history", [])
@@ -228,6 +226,9 @@ class TestCairoCoderServer:
         # Check query is the last user message
         query = call_kwargs.get("query")
         assert query == "How are you?"
+
+        # Check the agent id passed is the default cairo-coder one
+        assert call_kwargs.get("agent_id") == "cairo-coder"
 
     def test_streaming_error_handling(self, client, mock_agent_factory):
         """Test error handling during streaming."""
@@ -238,8 +239,7 @@ class TestCairoCoderServer:
             raise Exception("Stream error")
 
         mock_agent.forward_streaming = mock_forward_streaming_error
-        mock_agent_factory.create_agent.return_value = mock_agent
-
+        mock_agent_factory.get_or_create_agent.return_value = mock_agent
         response = client.post(
             "/v1/chat/completions",
             json={"messages": [{"role": "user", "content": "Hello"}], "stream": True},
@@ -295,10 +295,10 @@ class TestCairoCoderServer:
 class TestCreateApp:
     """Test suite for create_app function."""
 
-    def test_create_app_returns_fastapi_instance(self, mock_vector_store_config, mock_config_manager):
+    def test_create_app_returns_fastapi_instance(self, mock_vector_store_config):
         """Test that create_app returns a FastAPI instance."""
         with patch("cairo_coder.server.app.create_agent_factory"):
-            app = create_app(mock_vector_store_config, mock_config_manager)
+            app = create_app(mock_vector_store_config)
 
         assert isinstance(app, FastAPI)
         assert app.title == "Cairo Coder"
