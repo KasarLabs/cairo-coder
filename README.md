@@ -41,7 +41,7 @@ Cairo Coder is an intelligent code generation service that makes writing Cairo s
 
 ## Installation
 
-Using Docker is highly recommended for a streamlined setup. For instructions on running the legacy TypeScript backend, see [`README_LEGACY.md`](./README_LEGACY.md).
+Using Docker is highly recommended for a streamlined setup.
 
 1.  **Clone the Repository**
 
@@ -50,94 +50,39 @@ Using Docker is highly recommended for a streamlined setup. For instructions on 
     cd cairo-coder
     ```
 
-2.  **Configure PostgreSQL Database**
+2.  **Configure the Application**
 
-    Cairo Coder uses PostgreSQL with pgvector. You must configure both the Docker container initialization and the application connection settings.
-
-    **a. Database Container Initialization (`.env` file):**
-    Create a `.env` file in the root directory with the following content. This is used by Docker to initialize the database on its first run.
-
-    ```toml
-    POSTGRES_USER="cairocoder"
-    POSTGRES_PASSWORD="YOUR_SECURE_PASSWORD"
-    POSTGRES_DB="cairocoder"
-    ```
-
-    **b. Application Connection Settings (`python/config.toml`):**
-    Copy the sample configuration file and update it with your database credentials and API keys.
+    Copy the environment template and fill in your credentials:
 
     ```bash
-    cp python/sample.config.toml python/config.toml
+    cp .env.example .env
     ```
 
-    Now, edit `python/config.toml` with configuration for the vector database.
+    Edit the `.env` file with your credentials:
 
-    ```toml
-    # python/config.toml
-    [VECTOR_DB]
-    POSTGRES_USER="cairocoder"
-    POSTGRES_PASSWORD="cairocoder"
-    POSTGRES_DB="cairocoder"
-    POSTGRES_HOST="postgres"
-    POSTGRES_PORT="5432"
-    POSTGRES_TABLE_NAME="documents"
-    SIMILARITY_MEASURE="cosine"
-    ```
+    - Database credentials (defaults provided for local development)
+    - LLM API keys (at least one required: OpenAI, Anthropic, or Gemini)
+    - Optional: LangSmith credentials for monitoring
 
-3.  **Configure Agents Package (`packages/agents/config.toml`)**
-    The ingester requires a configuration file in the `packages/agents` directory. Create `packages/agents/config.toml` with the following content:
+3.  **Run the Ingester (First Time Setup)**
 
-    ```toml
-    [API_KEYS]
-    OPENAI = "your-openai-api-key-here"
-
-    [VECTOR_DB]
-    POSTGRES_USER = "cairocoder"
-    POSTGRES_HOST = "postgres"
-    POSTGRES_DB = "cairocoder"
-    POSTGRES_PASSWORD = "cairocoder"
-    POSTGRES_PORT = "5432"
-    ```
-
-    Replace `"your-openai-api-key-here"` with your actual OpenAI API key. The database credentials should match those configured in your `.env` file.
-
-4.  **Configure LangSmith (Optional but Recommended)**
-    To monitor and debug LLM calls, configure LangSmith.
-
-    - Create an account at [LangSmith](https://smith.langchain.com/) and create a project.
-    - Add your LangSmith credentials to `python/.env`:
-      ```yaml
-      LANGSMITH_TRACING=true
-      LANGSMITH_ENDPOINT="https://api.smith.langchain.com"
-      LANGSMITH_API_KEY="lsv2..."
-      ```
-
-5.  **Add your API keys to `python/.env`: (mandatory)**
-
-    ```yaml
-    OPENAI_API_KEY="sk-..."
-    ANTHROPIC_API_KEY="..."
-    GEMINI_API_KEY="..."
-    ```
-
-    Add the API keys required for the LLMs you want to use.
-
-6.  **Run the ingesters (mandatory)**
-
-    The ingesters are responsible for populating the vector database with the documentation sources. They need to be ran a first time, in isolation, so that the database is created.
+    The ingester populates the vector database with documentation:
 
     ```bash
     docker compose up postgres ingester --build
     ```
 
-Once the ingester completes, the database will be populated with embeddings from all supported documentation sources, making them available for the RAG pipeline. Stop the database when you no longer need it.
+    Wait for the ingester to complete before proceeding.
 
-7.  **Run the Application**
-    Once the ingesters are done, start the database and the Python backend service using Docker Compose:
+4.  **Run the Application**
+
+    Start the Cairo Coder service:
+
     ```bash
     docker compose up postgres backend --build
     ```
-    The completions API will be available at `http://localhost:3001/v1/chat/completions`.
+
+    The API will be available at `http://localhost:3001/v1/chat/completions`.
 
 ## API Usage
 

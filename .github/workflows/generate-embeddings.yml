@@ -64,48 +64,37 @@ jobs:
         run: |
           cargo install mdbook-i18n-helpers --locked --version 0.3.4
 
-      - name: Create config file
-        run: |
-          mkdir -p packages/agents
-          cat > packages/agents/config.toml << 'EOL'
-          [API_KEYS]
-          OPENAI = "${{ secrets.OPENAI }}"
-          ANTHROPIC = "${{ secrets.ANTHROPIC }}"
-          GEMINI = "${{ secrets.GEMINI }}"
-
-          [VECTOR_DB]
-          POSTGRES_USER = "${{ secrets.POSTGRES_USER }}"
-          POSTGRES_HOST = "postgres"
-          POSTGRES_ROOT_DB = "${{ secrets.POSTGRES_ROOT_DB }}"
-          POSTGRES_PASSWORD = "${{ secrets.POSTGRES_PASSWORD }}"
-          POSTGRES_PORT = "${{ secrets.POSTGRES_PORT }}"
-
-          [GENERAL]
-          PORT = 3001
-          SIMILARITY_MEASURE = "cosine"
-
-          [HOSTED_MODE]
-          DEFAULT_CHAT_PROVIDER = "gemini"
-          DEFAULT_CHAT_MODEL = "Gemini Flash 2.5"
-          DEFAULT_FAST_CHAT_PROVIDER = "gemini"
-          DEFAULT_FAST_CHAT_MODEL = "Gemini Flash 2.5"
-          DEFAULT_EMBEDDING_PROVIDER = "openai"
-          DEFAULT_EMBEDDING_MODEL = "Text embedding 3 large"
-
-          [VERSIONS]
-          STARKNET_FOUNDRY = "0.37.0"
-          SCARB = "2.9.2"
-          EOL
-
       - name: Create env file
         run: |
-          mkdir -p packages/agents
-          cat > packages/agents/.env << 'EOL'
-          POSTGRES_USER = "${{ secrets.POSTGRES_USER }}"
-          POSTGRES_HOST = "localhost"
-          POSTGRES_ROOT_DB = "${{ secrets.POSTGRES_ROOT_DB }}"
-          POSTGRES_PASSWORD = "${{ secrets.POSTGRES_PASSWORD }}"
-          POSTGRES_PORT = "${{ secrets.POSTGRES_PORT }}"
+          cat > .env << 'EOL'
+          # Database Configuration
+          POSTGRES_USER="${{ secrets.POSTGRES_USER }}"
+          POSTGRES_PASSWORD="${{ secrets.POSTGRES_PASSWORD }}"
+          POSTGRES_DB="${{ secrets.POSTGRES_DB }}"
+          POSTGRES_HOST="postgres"
+          POSTGRES_PORT="${{ secrets.POSTGRES_PORT }}"
+          POSTGRES_TABLE_NAME="documents"
+
+          # General Configuration
+          PORT="3001"
+          SIMILARITY_MEASURE="cosine"
+
+          # Provider Configuration
+          DEFAULT_CHAT_PROVIDER="gemini"
+          DEFAULT_CHAT_MODEL="Gemini Flash 2.5"
+          DEFAULT_FAST_CHAT_PROVIDER="gemini"
+          DEFAULT_FAST_CHAT_MODEL="Gemini Flash 2.5"
+          DEFAULT_EMBEDDING_PROVIDER="openai"
+          DEFAULT_EMBEDDING_MODEL="Text embedding 3 large"
+
+          # API Keys
+          OPENAI_API_KEY="${{ secrets.OPENAI }}"
+          ANTHROPIC_API_KEY="${{ secrets.ANTHROPIC }}"
+          GEMINI_API_KEY="${{ secrets.GEMINI }}"
+
+          # Version Configuration
+          STARKNET_FOUNDRY_VERSION="0.47.0"
+          SCARB_VERSION="2.11.4"
           EOL
 
       - name: Generate embeddings

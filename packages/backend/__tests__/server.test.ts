@@ -4,32 +4,49 @@ import express from 'express';
 import { Server } from 'http';
 import supertest from 'supertest';
 
+// Mock the LLM config initialization
+jest.mock('../src/config/llm', () => ({
+  initializeLLMConfig: jest.fn().mockResolvedValue({
+    defaultLLM: {},
+    fastLLM: {},
+    embeddings: {},
+  }),
+}));
+
+// Mock config to avoid the getStarknetFoundryVersion issue
+jest.mock('@cairo-coder/agents/config/settings', () => ({
+  getPort: jest.fn().mockReturnValue(3001),
+  getStarknetFoundryVersion: jest.fn().mockReturnValue('0.1.0'),
+  getScarbVersion: jest.fn().mockReturnValue('0.1.0'),
+  getSimilarityMeasure: jest.fn().mockReturnValue('cosine'),
+  getVectorDbConfig: jest.fn().mockReturnValue({
+    POSTGRES_USER: 'test',
+    POSTGRES_PASSWORD: 'test',
+    POSTGRES_DB: 'test',
+    POSTGRES_HOST: 'localhost',
+    POSTGRES_PORT: '5432',
+  }),
+  getOpenaiApiKey: jest.fn().mockReturnValue('test-key'),
+  getAnthropicApiKey: jest.fn().mockReturnValue(''),
+  getGeminiApiKey: jest.fn().mockReturnValue('test-key'),
+  getGroqApiKey: jest.fn().mockReturnValue(''),
+  getDeepseekApiKey: jest.fn().mockReturnValue(''),
+  getHostedModeConfig: jest.fn().mockReturnValue({
+    DEFAULT_CHAT_PROVIDER: 'gemini',
+    DEFAULT_CHAT_MODEL: 'Gemini Flash 2.5',
+    DEFAULT_FAST_CHAT_PROVIDER: 'gemini',
+    DEFAULT_FAST_CHAT_MODEL: 'Gemini Flash 2.5',
+    DEFAULT_EMBEDDING_PROVIDER: 'openai',
+    DEFAULT_EMBEDDING_MODEL: 'Text embedding 3 large',
+  }),
+}));
+
+// Mock HTTP handling to avoid actual initialization
+jest.mock('../src/config/http', () => ({
+  initializeHTTP: jest.fn(),
+}));
+
 describe('Server', () => {
-  jest.mock('../src/config/llm', () => ({
-    initializeLLMConfig: jest.fn().mockResolvedValue({
-      defaultLLM: {},
-      fastLLM: {},
-      embeddings: {},
-    }),
-  }));
-
-  // Mock config to avoid the getStarknetFoundryVersion issue
-  jest.mock('@cairo-coder/agents/config/settings', () => ({
-    getPort: jest.fn().mockReturnValue(3001),
-    getStarknetFoundryVersion: jest.fn().mockReturnValue('0.1.0'),
-    getScarbVersion: jest.fn().mockReturnValue('0.1.0'),
-    getCairoDbConfig: jest.fn().mockReturnValue({}),
-    getStarknetDbConfig: jest.fn().mockReturnValue({}),
-    getStarknetEcosystemDbConfig: jest.fn().mockReturnValue({}),
-    getStarknetFoundryDbConfig: jest.fn().mockReturnValue({}),
-    getCairoByExampleDbConfig: jest.fn().mockReturnValue({}),
-  }));
-
-  // Mock HTTP handling to avoid actual initialization
-  jest.mock('../src/config/http', () => ({
-    initializeHTTP: jest.fn(),
-  }));
-
   let container: Container;
   let server: Server;
 

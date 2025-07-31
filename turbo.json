@@ -1,5 +1,6 @@
 {
   "$schema": "https://turborepo.org/schema.json",
+  "globalDependencies": [".env"],
   "tasks": {
     "topo": {
       "dependsOn": ["^topo"]
@@ -13,7 +14,30 @@
     },
     "dev": {
       "cache": false,
-      "persistent": true
+      "persistent": true,
+      "env": [
+        "POSTGRES_HOST",
+        "POSTGRES_PORT",
+        "POSTGRES_USER",
+        "POSTGRES_PASSWORD",
+        "POSTGRES_DB",
+        "POSTGRES_TABLE_NAME",
+        "OPENAI_API_KEY",
+        "ANTHROPIC_API_KEY",
+        "GEMINI_API_KEY",
+        "DEEPSEEK_API_KEY",
+        "GROQ_API_KEY",
+        "DEFAULT_CHAT_PROVIDER",
+        "DEFAULT_CHAT_MODEL",
+        "DEFAULT_EMBEDDING_PROVIDER",
+        "DEFAULT_EMBEDDING_MODEL",
+        "LANGSMITH_API_KEY",
+        "LANGSMITH_TRACING",
+        "LANGSMITH_ENDPOINT",
+        "HOST",
+        "PORT",
+        "DEBUG"
+      ]
     },
     "lint": {},
     "test": {
@@ -24,20 +48,73 @@
       "dependsOn": ["build"],
       "cache": false,
       "persistent": true,
-      "inputs": ["dist/**", "build/**", "out/**", ".next/**"]
+      "inputs": ["dist/**", "build/**", "out/**", ".next/**", ".env"],
+      "env": [
+        "POSTGRES_HOST",
+        "POSTGRES_PORT",
+        "POSTGRES_USER",
+        "POSTGRES_PASSWORD",
+        "POSTGRES_DB",
+        "POSTGRES_TABLE_NAME",
+        "OPENAI_API_KEY",
+        "ANTHROPIC_API_KEY",
+        "GEMINI_API_KEY",
+        "DEEPSEEK_API_KEY",
+        "GROQ_API_KEY",
+        "DEFAULT_CHAT_PROVIDER",
+        "DEFAULT_CHAT_MODEL",
+        "DEFAULT_EMBEDDING_PROVIDER",
+        "DEFAULT_EMBEDDING_MODEL",
+        "LANGSMITH_API_KEY",
+        "LANGSMITH_TRACING",
+        "LANGSMITH_ENDPOINT",
+        "HOST",
+        "PORT",
+        "DEBUG"
+      ]
     },
     "generate-embeddings": {
       "dependsOn": ["build"],
       "cache": false,
       "interactive": true,
-      "persistent": true
+      "persistent": true,
+      "env": [
+        "POSTGRES_HOST",
+        "POSTGRES_PORT",
+        "POSTGRES_USER",
+        "POSTGRES_PASSWORD",
+        "POSTGRES_DB",
+        "POSTGRES_TABLE_NAME",
+        "OPENAI_API_KEY",
+        "ANTHROPIC_API_KEY",
+        "GEMINI_API_KEY",
+        "DEFAULT_CHAT_PROVIDER",
+        "DEFAULT_CHAT_MODEL",
+        "DEFAULT_EMBEDDING_PROVIDER",
+        "DEFAULT_EMBEDDING_MODEL"
+      ]
     },
     "generate-embeddings:yes": {
       "dependsOn": ["build"],
-      "inputs": ["dist/**", "build/**", "out/**", ".next/**"],
+      "inputs": ["dist/**", "build/**", "out/**", ".next/**", ".env"  ],
       "cache": false,
       "interactive": false,
-      "persistent": true
+      "persistent": true,
+      "env": [
+        "POSTGRES_HOST",
+        "POSTGRES_PORT",
+        "POSTGRES_USER",
+        "POSTGRES_PASSWORD",
+        "POSTGRES_DB",
+        "POSTGRES_TABLE_NAME",
+        "OPENAI_API_KEY",
+        "ANTHROPIC_API_KEY",
+        "GEMINI_API_KEY",
+        "DEFAULT_CHAT_PROVIDER",
+        "DEFAULT_CHAT_MODEL",
+        "DEFAULT_EMBEDDING_PROVIDER",
+        "DEFAULT_EMBEDDING_MODEL"
+      ]
     }
   },
   "ui": "tui"
