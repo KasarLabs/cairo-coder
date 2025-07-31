@@ -10,11 +10,11 @@ import { VectorStore } from '@cairo-coder/agents/db/postgresVectorStore';
 import { logger } from '@cairo-coder/agents/utils/index';
 import * as fs from 'fs/promises';
 import * as path from 'path';
+import { calculateHash } from '../utils/contentUtils';
 import {
-  addSectionWithSizeLimit,
-  calculateHash,
-  createAnchor,
-} from '../utils/contentUtils';
+  RecursiveMarkdownSplitter,
+  SplitOptions,
+} from '../utils/RecursiveMarkdownSplitter';
 
 /**
  * Ingester for the Cairo Book documentation
@@ -63,109 +63,50 @@ export class CairoBookIngester extends MarkdownIngester {
   }
 
   /**
-   * Chunk the core library summary file by H1 headers
+   * Chunk the core library summary file using RecursiveMarkdownSplitter
    *
-   * This function takes the markdown content and splits it into sections
-   * based on H1 headers (# Header). Each section becomes a separate chunk
-   * with its content hashed for uniqueness.
+   * This function takes the markdown content and splits it using a recursive
+   * strategy that respects headers, code blocks, and maintains overlap between chunks.
    *
    * @param text - The markdown content to chunk
-   * @returns Promise<Document<BookChunk>[]> - Array of document chunks, one per H1 section
+   * @returns Promise<Document<BookChunk>[]> - Array of document chunks
    */
   async chunkSummaryFile(text: string): Promise<Document<BookChunk>[]> {
-    const content = text;
-    const sections: ParsedSection[] = [];
+    // Configure the splitter with appropriate settings
+    const splitOptions: SplitOptions = {
+      maxChars: 2048,
+      minChars: 500,
+      overlap: 256,
+      headerLevels: [1, 2], // Split on H1 and H2 headers
+      preserveCodeBlocks: true,
+      idPrefix: 'cairo-book',
+      trim: true,
+    };
 
-    // We can't use a simple global regex, as it will incorrectly match commented
-    // lines inside code blocks. Instead, we'll parse line-by-line to find
-    // "real" headers, while keeping track of whether we're inside a code block.
+    // Create the splitter and split the content
+    const splitter = new RecursiveMarkdownSplitter(splitOptions);
+    const chunks = splitter.splitMarkdownToChunks(text);
 
-    const realHeaders: { title: string; startIndex: number }[] = [];
-    const lines = content.split('\n');
-    let inCodeBlock = false;
-    let charIndex = 0;
+    logger.info(
+      `Created ${chunks.length} chunks using RecursiveMarkdownSplitter`,
+    );
 
-    for (const line of lines) {
-      // Toggle the state if we encounter a code block fence
-      if (line.trim().startsWith('```')) {
-        inCodeBlock = !inCodeBlock;
-      }
+    // Convert chunks to Document<BookChunk> format
+    const localChunks: Document<BookChunk>[] = chunks.map((chunk) => {
+      const contentHash = calculateHash(chunk.content);
 
-      // A real H1 header is a line that starts with '# ' and is NOT in a code block.
-      // We use a specific regex to ensure it's a proper H1.
-      const h1Match = line.match(/^#{1,2}\s+(.+)$/);
-      if (!inCodeBlock && h1Match) {
-        realHeaders.push({
-          title: h1Match[1].trim(),
-          startIndex: charIndex,
-        });
-      }
-
-      // Move the character index forward, accounting for the newline character
-      charIndex += line.length + 1;
-    }
-
-    // If no H1 headers were found, treat the entire content as one section.
-    if (realHeaders.length === 0) {
-      logger.debug(
-        'No H1 headers found, creating single section from entire content',
-      );
-      addSectionWithSizeLimit(
-        sections,
-        'Core Library Documentation',
-        content.trim(),
-        20000,
-        createAnchor('Core Library Documentation'),
-      );
-    } else {
-      // Process each valid H1 header found
-      for (let i = 0; i < realHeaders.length; i++) {
-        const header = realHeaders[i];
-        const headerTitle = header.title;
-        const headerStartIndex = header.startIndex;
-
-        // Determine the end of this section (start of next header or end of content)
-        const nextHeaderIndex =
-          i < realHeaders.length - 1
-            ? realHeaders[i + 1].startIndex
-            : content.length;
-
-        // Extract section content from the start of the header line to before the next header
-        const sectionContent = content
-          .slice(headerStartIndex, nextHeaderIndex)
-          .trim();
-
-        logger.debug(`Adding section: ${headerTitle}`);
-
-        addSectionWithSizeLimit(
-          sections,
-          headerTitle,
-          sectionContent,
-          20000,
-          createAnchor(headerTitle),
-        );
-      }
-    }
-
-    const localChunks: Document<BookChunk>[] = [];
-
-    // Create a document for each section
-    sections.forEach((section: ParsedSection, index: number) => {
-      const hash: string = calculateHash(section.content);
-      localChunks.push(
-        new Document<BookChunk>({
-          pageContent: section.content,
-          metadata: {
-            name: section.title,
-            title: section.title,
-            chunkNumber: index,
-            contentHash: hash,
-            uniqueId: `${section.title}-${index}`,
-            sourceLink: ``,
-            source: this.source, // Using placeholder for 'this.source'
-          },
-        }),
-      );
+      return new Document<BookChunk>({
+        pageContent: chunk.content,
+        metadata: {
+          name: chunk.meta.title,
+          title: chunk.meta.title,
+          chunkNumber: chunk.meta.chunkNumber, // Already 0-based
+          contentHash: contentHash,
+          uniqueId: chunk.meta.uniqueId,
+          sourceLink: '',
+          source: this.source,
+        },
+      });
     });
 
     return localChunks;
