@@ -113,11 +113,16 @@ def _(ConfigManager, dspy):
 
     class QueryAndRetrieval(dspy.Module):
         def __init__(self):
-            config = ConfigManager.load_config()
+            try:
+                config = ConfigManager.load_config()
+            except FileNotFoundError:
+                # Running in test environment without config.toml
+                config = None
 
             self.processor = QueryProcessorProgram()
-            self.processor.load("optimizers/results/optimized_mcp_program.json")
-            self.document_retriever = DocumentRetrieverProgram(vector_store_config=config.vector_store)
+            if Path("optimizers/results/optimized_mcp_program.json").exists():
+                self.processor.load("optimizers/results/optimized_mcp_program.json")
+            self.document_retriever = DocumentRetrieverProgram(vector_store_config=config.vector_store if config else None)
 
         def forward(
             self,
