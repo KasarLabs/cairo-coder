@@ -25,13 +25,13 @@ class TestCairoCoderServer:
         assert response.status_code == 200
         assert response.json() == {"status": "ok"}
 
-    def test_list_agents(self, client, sample_agent_configs):
+    def test_list_agents(self, client):
         """Test listing available agents."""
         response = client.get("/v1/agents")
         assert response.status_code == 200
 
         data = response.json()
-        assert len(data) == len(sample_agent_configs)
+        assert len(data) == 2  # cairo-coder, scarb-assistant
         agent_ids = {agent["id"] for agent in data}
         assert "cairo-coder" in agent_ids
 

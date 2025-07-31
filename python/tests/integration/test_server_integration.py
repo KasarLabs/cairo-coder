@@ -29,16 +29,15 @@ class TestServerIntegration:
         assert response.status_code == 200
         assert response.json() == {"status": "ok"}
 
-    def test_list_agents(self, client: TestClient, sample_agent_configs: dict):
+    def test_list_agents(self, client: TestClient):
         """Test listing available agents."""
         response = client.get("/v1/agents")
         assert response.status_code == 200
 
         data = response.json()
-        assert len(data) == len(sample_agent_configs)
+        assert len(data) == 2  # cairo-coder, scarb-assistant
         agent_ids = {agent["id"] for agent in data}
         assert "cairo-coder" in agent_ids
-        assert "default" in agent_ids
         assert "scarb-assistant" in agent_ids
 
     def test_list_agents_error_handling(self, client: TestClient, mock_agent_factory: Mock):
@@ -60,7 +59,7 @@ class TestServerIntegration:
         assert response.status_code == 200
 
         agents = response.json()
-        assert any(agent["id"] == "default" for agent in agents)
+        assert any(agent["id"] == "cairo-coder" for agent in agents)
         assert any(agent["id"] == "scarb-assistant" for agent in agents)
 
         # Mock the agent to return a specific response for this test

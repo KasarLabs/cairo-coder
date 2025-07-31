@@ -129,7 +129,8 @@ warn_return_any = true
 strict_optional = true
 
 [tool.pytest.ini_options]
-testpaths = ["tests"]
+# Test that the API used in notebooks working properly
+testpaths = ["tests", "src/cairo_coder/optimizers/*.py"]
 pythonpath = ["src"]
 asyncio_mode = "auto"
 filterwarnings = [

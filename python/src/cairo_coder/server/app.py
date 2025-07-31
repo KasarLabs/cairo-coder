@@ -580,10 +580,8 @@ async def lifespan(app: FastAPI):
     # Ensure connection pool is initialized
     await _vector_db._ensure_pool()
 
-    # Initialize Agent Factory with full config to avoid repeated file I/O
-    _agent_factory = create_agent_factory(
-        vector_store_config=vector_store_config, vector_db=_vector_db, full_config=config
-    )
+    # Initialize Agent Factory with vector DB and config
+    _agent_factory = create_agent_factory(vector_db=_vector_db, vector_store_config=vector_store_config)
 
     logger.info("Vector DB and Agent Factory initialized successfully")
 

@@ -1,11 +1,10 @@
 """Tests for configuration management."""
 
 
+from cairo_coder.core.config import Config
 import pytest
 
 from cairo_coder.config.manager import ConfigManager
-from cairo_coder.core.config import AgentConfiguration
-from cairo_coder.core.types import DocumentSource
 
 
 class TestConfigManager:
@@ -21,7 +20,7 @@ class TestConfigManager:
         """Test loading configuration with default values."""
         # Set required password
         monkeypatch.setenv("POSTGRES_PASSWORD", "test-password")
-        
+
         config = ConfigManager.load_config()
 
         # Check defaults
@@ -89,7 +88,7 @@ class TestConfigManager:
         """Test configuration validation."""
         # Valid config
         monkeypatch.setenv("POSTGRES_PASSWORD", "test-pass")
-        config = ConfigManager.load_config()
+        config: Config = ConfigManager.load_config()
         ConfigManager.validate_config(config)
 
         # No database password
@@ -97,19 +96,6 @@ class TestConfigManager:
         with pytest.raises(ValueError, match="Database password is required"):
             ConfigManager.validate_config(config)
 
-        # Agent without sources
-        config.vector_store.password = "test-pass"
-        config.agents["test"] = AgentConfiguration(
-            id="test", name="Test", description="Test agent", sources=[]
-        )
-        with pytest.raises(ValueError, match="has no sources configured"):
-            ConfigManager.validate_config(config)
-
-        # Invalid default agent
-        config.default_agent_id = "unknown"
-        config.agents = {}  # No agents
-        with pytest.raises(ValueError, match="Default agent 'unknown' not found"):
-            ConfigManager.validate_config(config)
 
     def test_dsn_property(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """Test PostgreSQL DSN generation."""

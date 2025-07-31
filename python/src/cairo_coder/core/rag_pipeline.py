@@ -419,10 +419,10 @@ class RagPipelineFactory:
         name: str,
         vector_store_config: VectorStoreConfig,
         sources: list[DocumentSource],
-        query_processor: QueryProcessorProgram | None = None,
+        query_processor: QueryProcessorProgram,
+        generation_program: GenerationProgram,
+        mcp_generation_program: McpGenerationProgram,
         document_retriever: DocumentRetrieverProgram | None = None,
-        generation_program: GenerationProgram | None = None,
-        mcp_generation_program: McpGenerationProgram | None = None,
         max_source_count: int = 5,
         similarity_threshold: float = 0.4,
         vector_db: Any = None,  # SourceFilteredPgVectorRM instance
@@ -433,10 +433,10 @@ class RagPipelineFactory:
         Args:
             name: Pipeline name
             vector_store: Vector store for document retrieval
-            query_processor: Optional query processor (creates default if None)
+            query_processor: Query processor
+            generation_program: Generation program
+            mcp_generation_program: "Generation" program to use if in MCP mode
             document_retriever: Optional document retriever (creates default if None)
-            generation_program: Optional generation program (creates default if None)
-            mcp_generation_program: Optional MCP program (creates default if None)
             max_source_count: Maximum documents to retrieve
             similarity_threshold: Minimum similarity for document inclusion
             sources: Sources to use for retrieval.
@@ -445,16 +445,7 @@ class RagPipelineFactory:
         Returns:
             Configured RagPipeline instance
         """
-        from cairo_coder.dspy import (
-            DocumentRetrieverProgram,
-            create_generation_program,
-            create_mcp_generation_program,
-            create_query_processor,
-        )
-
-        # Create default components if not provided
-        if query_processor is None:
-            query_processor = create_query_processor()
+        from cairo_coder.dspy import DocumentRetrieverProgram
 
         if document_retriever is None:
             document_retriever = DocumentRetrieverProgram(
@@ -463,12 +454,6 @@ class RagPipelineFactory:
                 max_source_count=max_source_count,
                 similarity_threshold=similarity_threshold,
             )
-
-        if generation_program is None:
-            generation_program = create_generation_program("general")
-
-        if mcp_generation_program is None:
-            mcp_generation_program = create_mcp_generation_program()
 
         # Create configuration
         config = RagPipelineConfig(
@@ -491,47 +476,3 @@ class RagPipelineFactory:
         rag_program.load(compiled_program_path)
 
         return rag_program
-
-    @staticmethod
-    def create_scarb_pipeline(
-        name: str, vector_store_config: VectorStoreConfig, **kwargs: Any
-    ) -> RagPipeline:
-        """
-        Create a Scarb-specialized RAG Pipeline.
-
-        Args:
-            name: Pipeline name
-            vector_store_config: Vector store for document retrieval
-            **kwargs: Additional configuration options
-
-        Returns:
-            Configured RagPipeline for Scarb queries
-        """
-        from cairo_coder.dspy import create_generation_program
-
-        # Create Scarb-specific generation program
-        scarb_generation_program = create_generation_program("scarb")
-
-        return RagPipelineFactory.create_pipeline(
-            name=name,
-            vector_store_config=vector_store_config,
-            sources=[DocumentSource.SCARB_DOCS],
-            max_source_count=5,
-            generation_program=scarb_generation_program,
-            **kwargs,
-        )
-
-
-def create_rag_pipeline(name: str, vector_store_config: VectorStoreConfig, **kwargs: Any) -> RagPipeline:
-    """
-    Convenience function to create a RAG Pipeline.
-
-    Args:
-        name: Pipeline name
-        vector_store_config: Vector store for document retrieval
-        **kwargs: Additional configuration options
-
-    Returns:
-        Configured RagPipeline instance
-    """
-    return RagPipelineFactory.create_pipeline(name, vector_store_config, **kwargs)

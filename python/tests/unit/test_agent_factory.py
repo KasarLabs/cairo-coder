@@ -1,106 +1,43 @@
 """
 Unit tests for Agent Factory.
 
-Tests the agent creation and configuration functionality including
-default agents, custom agents, and agent caching.
+Tests the agent creation and configuration functionality using
+the lightweight agent registry.
 """
 
 from unittest.mock import Mock, patch
 
 import pytest
 
-from cairo_coder.core.agent_factory import (
-    AgentFactory,
-    AgentFactoryConfig,
-    create_agent_factory,
-)
-from cairo_coder.core.config import AgentConfiguration, Config
+from cairo_coder.agents.registry import AgentId, get_agent_by_string_id, registry
+from cairo_coder.core.agent_factory import AgentFactory, create_agent_factory
 from cairo_coder.core.rag_pipeline import RagPipeline
-from cairo_coder.core.types import DocumentSource, Message, Role
 
 
 class TestAgentFactory:
     """Test suite for AgentFactory."""
 
     @pytest.fixture
-    def factory_config(self, mock_vector_store_config, mock_vector_db, sample_agent_configs):
-        """Create an agent factory configuration."""
-        return AgentFactoryConfig(
-            vector_store_config=mock_vector_store_config,
-            vector_db=mock_vector_db,
-            agent_configs=sample_agent_configs,
-        )
-
-    @pytest.fixture
-    def agent_factory(self, factory_config):
+    def agent_factory(self, mock_vector_db, mock_vector_store_config):
         """Create an AgentFactory instance."""
-        return AgentFactory(factory_config)
+        return AgentFactory(mock_vector_db, mock_vector_store_config)
 
-    @patch("cairo_coder.core.agent_factory.AgentFactory._create_pipeline_from_config")
-    def test_create_agent_by_id(self, mock_create, mock_vector_store_config):
-        """Test creating agent by ID."""
-        query = "How do I create a contract?"
-        history = [Message(role=Role.USER, content="Hello")]
-        agent_id = "test_agent"
-
-        with (patch("cairo_coder.config.manager.ConfigManager.load_config") as mock_load_config,):
-            mock_config = Mock(spec=Config)
-            mock_config.agents = {agent_id: Mock(spec=AgentConfiguration)}
-            mock_load_config.return_value = mock_config
-
-            mock_pipeline = Mock(spec=RagPipeline)
-            mock_create.return_value = mock_pipeline
-
-            agent = AgentFactory._create_agent_by_id(
-                query=query,
-                history=history,
-                agent_id=agent_id,
-                vector_store_config=mock_vector_store_config,
-            )
-
-            assert agent == mock_pipeline
-            # TODO: restore this before merge
-            # mock_config.get_agent_config.assert_called_once_with(mock_config, agent_id)
-            mock_create.assert_called_once()
-
-    def test_create_agent_by_id_not_found(self, mock_vector_store_config):
-        """Test creating agent by ID when agent not found."""
-        query = "How do I create a contract?"
-        history = []
-        agent_id = "nonexistent_agent"
-
-        with pytest.raises(ValueError, match="Agent 'nonexistent_agent' not found"):
-            AgentFactory._create_agent_by_id(
-                query=query,
-                history=history,
-                agent_id=agent_id,
-                vector_store_config=mock_vector_store_config,
-            )
-
-    def test_get_or_create_agent_cache_miss(self, agent_factory, mock_vector_db):
+    def test_get_or_create_agent_cache_miss(self, agent_factory, mock_vector_db, mock_vector_store_config):
         """Test get_or_create_agent with cache miss."""
         query = "Test query"
         history = []
-        agent_id = "test_agent"
+        agent_id = "cairo-coder"
 
-        with patch.object(agent_factory, "_create_agent_by_id") as mock_create:
+        with patch.object(registry[AgentId.CAIRO_CODER], "build") as mock_build:
             mock_pipeline = Mock(spec=RagPipeline)
-            mock_create.return_value = mock_pipeline
+            mock_build.return_value = mock_pipeline
 
             agent = agent_factory.get_or_create_agent(
                 agent_id=agent_id, query=query, history=history
             )
 
             assert agent == mock_pipeline
-            mock_create.assert_called_once_with(
-                query=query,
-                history=history,
-                agent_id=agent_id,
-                vector_store_config=agent_factory.vector_store_config,
-                mcp_mode=False,
-                vector_db=mock_vector_db,
-                full_config=agent_factory.full_config,
-            )
+            mock_build.assert_called_once_with(mock_vector_db, mock_vector_store_config)
 
             # Verify agent was cached
             cache_key = f"{agent_id}_False"
@@ -111,21 +48,32 @@ class TestAgentFactory:
         """Test get_or_create_agent with cache hit."""
         query = "Test query"
         history = []
-        agent_id = "test_agent"
+        agent_id = "cairo-coder"
 
         # Pre-populate cache
         mock_pipeline = Mock(spec=RagPipeline)
         cache_key = f"{agent_id}_False"
         agent_factory._agent_cache[cache_key] = mock_pipeline
 
-        with patch.object(agent_factory, "_create_agent_by_id") as mock_create:
+        with patch("cairo_coder.agents.registry.get_agent_by_string_id") as mock_get:
             agent = agent_factory.get_or_create_agent(
                 agent_id=agent_id, query=query, history=history
             )
 
             assert agent == mock_pipeline
-            # Should not call create_agent_by_id since it's cached
-            mock_create.assert_not_called()
+            # Should not call get_agent_by_string_id since it's cached
+            mock_get.assert_not_called()
+
+    def test_get_or_create_agent_invalid_id(self, agent_factory):
+        """Test get_or_create_agent with invalid agent ID."""
+        query = "Test query"
+        history = []
+        agent_id = "nonexistent"
+
+        with pytest.raises(ValueError, match="Agent not found: nonexistent"):
+            agent_factory.get_or_create_agent(
+                agent_id=agent_id, query=query, history=history
+            )
 
     def test_clear_cache(self, agent_factory):
         """Test clearing the agent cache."""
@@ -141,134 +89,107 @@ class TestAgentFactory:
         """Test getting available agent IDs."""
         available_agents = agent_factory.get_available_agents()
 
-        assert "test_agent" in available_agents
-        assert "scarb_agent" in available_agents
-        assert len(available_agents) >= 2  # At least these two agents should be available
+        assert "cairo-coder" in available_agents
+        assert "scarb-assistant" in available_agents
+        assert len(available_agents) == 2
 
     def test_get_agent_info(self, agent_factory):
         """Test getting agent information."""
-        info = agent_factory.get_agent_info("test_agent")
+        info = agent_factory.get_agent_info("cairo-coder")
 
-        assert info["id"] == "test_agent"
-        assert info["name"] == "Test Agent"
-        assert info["description"] == "Test agent for testing"
-        assert info["sources"] == ["cairo_book"]
+        assert info["id"] == "cairo-coder"
+        assert info["name"] == "Cairo Coder"
+        assert info["description"] == "General Cairo programming assistant"
+        assert len(info["sources"]) > 0
         assert info["max_source_count"] == 5
-        assert info["similarity_threshold"] == 0.5
+        assert info["similarity_threshold"] == 0.4
+
+    def test_get_agent_info_scarb(self, agent_factory):
+        """Test getting Scarb agent information."""
+        info = agent_factory.get_agent_info("scarb-assistant")
+
+        assert info["id"] == "scarb-assistant"
+        assert info["name"] == "Scarb Assistant"
+        assert info["description"] == "Specialized assistant for Scarb build tool"
+        assert info["sources"] == ["scarb_docs"]
+        assert info["max_source_count"] == 5
+        assert info["similarity_threshold"] == 0.3
 
     def test_get_agent_info_not_found(self, agent_factory):
         """Test getting agent information for non-existent agent."""
         with pytest.raises(ValueError, match="Agent not found"):
             agent_factory.get_agent_info("nonexistent_agent")
 
-    def test_create_pipeline_from_config_general(self, mock_vector_store_config):
-        """Test creating pipeline from general agent configuration."""
-        agent_config = AgentConfiguration(
-            id="general_agent",
-            name="General Agent",
-            description="General purpose agent",
-            sources=[DocumentSource.CAIRO_BOOK],
-            max_source_count=10,
-            similarity_threshold=0.4,
-        )
-
-        with patch(
-            "cairo_coder.core.agent_factory.RagPipelineFactory.create_pipeline"
-        ) as mock_create:
-            mock_pipeline = Mock(spec=RagPipeline)
-            mock_create.return_value = mock_pipeline
-
-            pipeline = AgentFactory._create_pipeline_from_config(
-                agent_config=agent_config,
-                vector_store_config=mock_vector_store_config,
-                query="Test query",
-                history=[],
-            )
-
-            assert pipeline == mock_pipeline
-            mock_create.assert_called_once_with(
-                name="General Agent",
-                vector_store_config=mock_vector_store_config,
-                sources=[DocumentSource.CAIRO_BOOK],
-                max_source_count=10,
-                similarity_threshold=0.4,
-                vector_db=None,
-            )
-
-    def test_create_pipeline_from_config_scarb(self, mock_vector_store_config):
-        """Test creating pipeline from Scarb agent configuration."""
-        agent_config = AgentConfiguration(
-            id="scarb-assistant",
-            name="Scarb Assistant",
-            description="Scarb-specific agent",
-            sources=[DocumentSource.SCARB_DOCS],
-            max_source_count=5,
-            similarity_threshold=0.4,
-        )
-
-        with patch(
-            "cairo_coder.core.agent_factory.RagPipelineFactory.create_scarb_pipeline"
-        ) as mock_create:
-            mock_pipeline = Mock(spec=RagPipeline)
-            mock_create.return_value = mock_pipeline
-
-            pipeline = AgentFactory._create_pipeline_from_config(
-                agent_config=agent_config,
-                vector_store_config=mock_vector_store_config,
-                query="Test query",
-                history=[],
-            )
-
-            assert pipeline == mock_pipeline
-            mock_create.assert_called_once_with(
-                name="Scarb Assistant",
-                vector_store_config=mock_vector_store_config,
-                sources=[DocumentSource.SCARB_DOCS],
-                max_source_count=5,
-                similarity_threshold=0.4,
-                vector_db=None,
-            )
-
-
-class TestAgentFactoryConfig:
-    """Test suite for AgentFactoryConfig."""
-
-    def test_agent_factory_config_creation(self, mock_vector_store_config, mock_vector_db):
-        """Test creating agent factory configuration."""
-        Mock()
-        Mock()
-        agent_configs = {"test": Mock()}
-
-        config = AgentFactoryConfig(
-            vector_store_config=mock_vector_store_config,
-            vector_db=mock_vector_db,
-            agent_configs=agent_configs,
-        )
-
-        assert config.vector_store_config == mock_vector_store_config
-        assert config.agent_configs == agent_configs
-
-    def test_agent_factory_config_defaults(self, mock_vector_store_config, mock_vector_db):
-        """Test agent factory configuration with defaults."""
-        config = AgentFactoryConfig(
-            vector_store_config=mock_vector_store_config,
-            vector_db=mock_vector_db,
-        )
-
-        assert config.agent_configs == {}
-
 
 class TestCreateAgentFactory:
     """Test suite for create_agent_factory function."""
 
-    def test_create_agent_factory_defaults(self, mock_vector_store_config, mock_vector_db):
-        """Test creating agent factory with defaults."""
-        factory = create_agent_factory(mock_vector_store_config, mock_vector_db)
+    def test_create_agent_factory(self, mock_vector_db, mock_vector_store_config):
+        """Test creating agent factory."""
+        factory = create_agent_factory(mock_vector_db, mock_vector_store_config)
 
         assert isinstance(factory, AgentFactory)
+        assert factory.vector_db == mock_vector_db
         assert factory.vector_store_config == mock_vector_store_config
 
-        # Check default agents are configured
+        # Check default agents are available
         available_agents = factory.get_available_agents()
-        assert "default" in available_agents
+        assert "cairo-coder" in available_agents
         assert "scarb-assistant" in available_agents
+
+
+class TestAgentRegistry:
+    """Test suite for agent registry functionality."""
+
+    def test_registry_contains_all_agents(self):
+        """Test that registry contains all expected agents."""
+        assert AgentId.CAIRO_CODER in registry
+        assert AgentId.SCARB in registry
+        assert len(registry) == 2
+
+    def test_get_agent_by_string_id_valid(self):
+        """Test getting agent by valid string ID."""
+        enum_id, spec = get_agent_by_string_id("cairo-coder")
+        assert enum_id == AgentId.CAIRO_CODER
+        assert spec.name == "Cairo Coder"
+
+        enum_id, spec = get_agent_by_string_id("scarb-assistant")
+        assert enum_id == AgentId.SCARB
+        assert spec.name == "Scarb Assistant"
+
+    def test_get_agent_by_string_id_invalid(self):
+        """Test getting agent by invalid string ID."""
+        with pytest.raises(ValueError, match="Agent not found: invalid"):
+            get_agent_by_string_id("invalid")
+
+    @patch("cairo_coder.core.rag_pipeline.RagPipelineFactory.create_pipeline")
+    def test_agent_spec_build_general(self, mock_create_pipeline, mock_vector_db, mock_vector_store_config):
+        """Test building a general agent from spec."""
+        spec = registry[AgentId.CAIRO_CODER]
+        mock_pipeline = Mock(spec=RagPipeline)
+        mock_create_pipeline.return_value = mock_pipeline
+
+        pipeline = spec.build(mock_vector_db, mock_vector_store_config)
+
+        assert pipeline == mock_pipeline
+        mock_create_pipeline.assert_called_once()
+        call_args = mock_create_pipeline.call_args[1]
+        assert call_args["name"] == "Cairo Coder"
+        assert call_args["vector_db"] == mock_vector_db
+        assert call_args["vector_store_config"] == mock_vector_store_config
+
+    @patch("cairo_coder.core.rag_pipeline.RagPipelineFactory.create_pipeline")
+    def test_agent_spec_build_scarb(self, mock_create_scarb, mock_vector_db, mock_vector_store_config):
+        """Test building a Scarb agent from spec."""
+        spec = registry[AgentId.SCARB]
+        mock_pipeline = Mock(spec=RagPipeline)
+        mock_create_scarb.return_value = mock_pipeline
+
+        pipeline = spec.build(mock_vector_db, mock_vector_store_config)
+
+        assert pipeline == mock_pipeline
+        mock_create_scarb.assert_called_once()
+        call_args = mock_create_scarb.call_args[1]
+        assert call_args["name"] == "Scarb Assistant"
+        assert call_args["vector_db"] == mock_vector_db
+        assert call_args["vector_store_config"] == mock_vector_store_config

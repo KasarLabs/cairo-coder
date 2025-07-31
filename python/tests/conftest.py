@@ -15,7 +15,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from cairo_coder.core.agent_factory import AgentFactory
-from cairo_coder.core.config import AgentConfiguration, VectorStoreConfig
+from cairo_coder.core.config import VectorStoreConfig
 from cairo_coder.core.types import (
     Document,
     DocumentSource,
@@ -113,27 +113,30 @@ def mock_lm():
 
 
 @pytest.fixture
-def mock_agent_factory(mock_agent: Mock, sample_agent_configs: dict[str, AgentConfiguration]):
+def mock_agent_factory(mock_agent: Mock):
     """
-    Create a mock agent factory with standard agent configurations.
+    Create a mock agent factory using the agent registry.
 
-    Returns a mock AgentFactory with common agent configurations.
+    Returns a mock AgentFactory.
     """
     factory = Mock(spec=AgentFactory)
-    factory.get_available_agents.return_value = list(sample_agent_configs.keys())
+    factory.get_available_agents.return_value = ["cairo-coder", "scarb-assistant"]
 
     def get_agent_info(agent_id, **kwargs):
-        if agent_id in sample_agent_configs:
-            agent_config = sample_agent_configs[agent_id]
+        # Use the actual registry
+        try:
+            from cairo_coder.agents.registry import get_agent_by_string_id
+            enum_id, spec = get_agent_by_string_id(agent_id)
             return {
-                "id": agent_config.id,
-                "name": agent_config.name,
-                "description": agent_config.description,
-                "sources": [s.value for s in agent_config.sources],
-                "max_source_count": agent_config.max_source_count,
-                "similarity_threshold": agent_config.similarity_threshold,
+                "id": enum_id.value,
+                "name": spec.name,
+                "description": spec.description,
+                "sources": [s.value for s in spec.sources],
+                "max_source_count": spec.max_source_count,
+                "similarity_threshold": spec.similarity_threshold,
             }
-        raise ValueError(f"Agent '{agent_id}' not found")
+        except ValueError as e:
+            raise ValueError(f"Agent '{agent_id}' not found") from e
 
     factory.get_agent_info.side_effect = get_agent_info
 
@@ -346,71 +349,6 @@ def sample_messages():
     ]
 
 
-@pytest.fixture
-def sample_agent_configs():
-    """
-    Create sample agent configurations for testing.
-
-    Returns a dictionary of AgentConfiguration objects.
-    """
-    return {
-        "cairo-coder": AgentConfiguration(
-            id="cairo-coder",
-            name="Cairo Coder",
-            description="Cairo programming assistant",
-            sources=[DocumentSource.CAIRO_BOOK, DocumentSource.STARKNET_DOCS],
-            max_source_count=10,
-            similarity_threshold=0.4,
-        ),
-        "default": AgentConfiguration(
-            id="default",
-            name="Cairo Coder",
-            description="General Cairo programming assistant",
-            sources=[DocumentSource.CAIRO_BOOK, DocumentSource.STARKNET_DOCS],
-            max_source_count=10,
-            similarity_threshold=0.4,
-        ),
-        "test_agent": AgentConfiguration(
-            id="test_agent",
-            name="Test Agent",
-            description="Test agent for testing",
-            sources=[DocumentSource.CAIRO_BOOK],
-            max_source_count=5,
-            similarity_threshold=0.5,
-        ),
-        "scarb_agent": AgentConfiguration(
-            id="scarb_agent",
-            name="Scarb Agent",
-            description="Scarb build tool and package manager agent",
-            sources=[DocumentSource.SCARB_DOCS],
-            max_source_count=5,
-            similarity_threshold=0.5,
-        ),
-        "scarb-assistant": AgentConfiguration(
-            id="scarb-assistant",
-            name="Scarb Assistant",
-            description="Scarb build tool and package manager assistant",
-            sources=[DocumentSource.SCARB_DOCS],
-            max_source_count=5,
-            similarity_threshold=0.5,
-        ),
-        "starknet_assistant": AgentConfiguration(
-            id="starknet_assistant",
-            name="Starknet Assistant",
-            description="Starknet-specific development assistant",
-            sources=[DocumentSource.STARKNET_DOCS, DocumentSource.STARKNET_FOUNDRY],
-            max_source_count=8,
-            similarity_threshold=0.45,
-        ),
-        "openzeppelin_assistant": AgentConfiguration(
-            id="openzeppelin_assistant",
-            name="OpenZeppelin Assistant",
-            description="OpenZeppelin Cairo contracts assistant",
-            sources=[DocumentSource.OPENZEPPELIN_DOCS],
-            max_source_count=6,
-            similarity_threshold=0.5,
-        ),
-    }
 
 
 # =============================================================================
