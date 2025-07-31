@@ -742,6 +742,13 @@ def patch_dspy_parallel():
         yield mock_parallel
 
 
+@pytest.fixture
+def dspy_env_patched():
+    """Patch dspy.LM and dspy.context for testing."""
+    with patch("dspy.LM"), patch("dspy.context"):
+        yield
+
+
 # =============================================================================
 # Cleanup Fixtures
 # =============================================================================
