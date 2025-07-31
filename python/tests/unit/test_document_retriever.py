@@ -11,19 +11,8 @@ import pytest
 
 from cairo_coder.core.config import VectorStoreConfig
 from cairo_coder.core.types import Document, DocumentSource, ProcessedQuery
-from cairo_coder.dspy.document_retriever import (
-    CONTRACT_TEMPLATE_TITLE,
-    TEST_TEMPLATE_TITLE,
-    DocumentRetrieverProgram,
-)
+from cairo_coder.dspy.document_retriever import DocumentRetrieverProgram
 
-
-@pytest.fixture(scope='session')
-def mock_embedder():
-    """Mock the embedder."""
-    with patch("cairo_coder.dspy.document_retriever.dspy.Embedder") as mock_embedder:
-        mock_embedder.return_value = Mock()
-        yield mock_embedder
 
 class TestDocumentRetrieverProgram:
     """Test suite for DocumentRetrieverProgram."""
@@ -39,6 +28,18 @@ class TestDocumentRetrieverProgram:
             max_source_count=5,
             similarity_threshold=0.4,
         )
+
+    @pytest.fixture(scope="session")
+    def mock_dspy_examples(self, sample_documents: list[Document]) -> list[dspy.Example]:
+        """Create mock DSPy Example objects from sample documents."""
+        examples = []
+        for doc in sample_documents:
+            example = Mock(spec=dspy.Example)
+            example.content = doc.page_content
+            example.metadata = doc.metadata
+            examples.append(example)
+        return examples
+
     @pytest.mark.asyncio
     async def test_basic_document_retrieval(
         self,

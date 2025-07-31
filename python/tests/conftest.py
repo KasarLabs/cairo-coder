@@ -1,18 +1,16 @@
-"""Shared pytest fixtures for the Cairo Coder test suite.
-
-- Deduplicates fixture creation that was scattered across files.
-- Wraps helper factories from tests.fixtures.rag_pipeline into pytest fixtures.
-- Provides isolated MonkeyPatch-based patches (e.g., for dspy.Parallel).
 """
+Shared test fixtures and utilities for Cairo Coder tests.
 
-from __future__ import annotations
+This module provides common fixtures and utilities used across multiple test files
+to reduce code duplication and ensure consistency.
+"""
 
 import asyncio
 import os
 import tempfile
 from collections.abc import AsyncGenerator, Generator
 from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock, Mock, patch
+from unittest.mock import AsyncMock, Mock, patch
 
 import dspy
 import pytest
@@ -31,37 +29,11 @@ from cairo_coder.core.types import (
     StreamEvent,
     StreamEventType,
 )
-from cairo_coder.dspy.document_retriever import SourceFilteredPgVectorRM
+from cairo_coder.dspy.document_retriever import DocumentRetrieverProgram, SourceFilteredPgVectorRM
+from cairo_coder.dspy.generation_program import GenerationProgram, McpGenerationProgram
+from cairo_coder.dspy.query_processor import QueryProcessorProgram
+from cairo_coder.dspy.retrieval_judge import RetrievalJudge
 from cairo_coder.server.app import CairoCoderServer, get_agent_factory
-
-# Import helper factories (not pytest fixtures) from the existing helper module
-from tests.fixtures.rag_pipeline import (
-    make_documents as _make_documents,
-)
-from tests.fixtures.rag_pipeline import (
-    make_processed_query as _make_processed_query,
-)
-from tests.fixtures.rag_pipeline import (
-    mock_document_retriever as _mock_document_retriever,
-)
-from tests.fixtures.rag_pipeline import (
-    mock_generation_program as _mock_generation_program,
-)
-from tests.fixtures.rag_pipeline import (
-    mock_mcp_program as _mock_mcp_program,
-)
-from tests.fixtures.rag_pipeline import (
-    mock_query_processor as _mock_query_processor,
-)
-from tests.fixtures.rag_pipeline import (
-    mock_retrieval_judge as _mock_retrieval_judge,
-)
-from tests.fixtures.rag_pipeline import (
-    pipeline_config_factory as _pipeline_config_factory,
-)
-from tests.fixtures.rag_pipeline import (
-    pipeline_factory as _pipeline_factory,
-)
 
 # =============================================================================
 # Common Mock Fixtures
@@ -104,6 +76,17 @@ def mock_vector_db(mock_returned_documents):
     mock_db.sources = []
 
     return mock_db
+
+
+@pytest.fixture(scope="session")
+def mock_vector_store_config():
+    """
+    Create a mock vector store configuration.
+    """
+    mock_config = Mock(spec=VectorStoreConfig)
+    mock_config.dsn = "postgresql://test_user:test_pass@localhost:5432/test_db"
+    mock_config.table_name = "test_table"
+    return mock_config
 
 
 @pytest.fixture(scope="session")
@@ -624,6 +607,142 @@ def event_loop():
 
 
 # =============================================================================
+# RAG Pipeline Fixtures
+# =============================================================================
+
+
+@pytest.fixture
+def mock_query_processor(sample_processed_query):
+    """Create a mock QueryProcessorProgram."""
+    processor = Mock(spec=QueryProcessorProgram)
+    processor.forward = Mock(return_value=sample_processed_query)
+    processor.aforward = AsyncMock(return_value=sample_processed_query)
+    processor.get_lm_usage = Mock(return_value={})
+    return processor
+
+
+@pytest.fixture
+def mock_document_retriever(sample_documents):
+    """Create a mock DocumentRetrieverProgram."""
+    retriever = Mock(spec=DocumentRetrieverProgram)
+    retriever.forward = Mock(return_value=sample_documents)
+    retriever.aforward = AsyncMock(return_value=sample_documents)
+    retriever.get_lm_usage = Mock(return_value={})
+    return retriever
+
+
+@pytest.fixture
+def mock_generation_program():
+    """Create a mock GenerationProgram."""
+    program = Mock(spec=GenerationProgram)
+    answer = "Here's how to write Cairo contracts..."
+    program.forward = Mock(return_value=dspy.Prediction(answer=answer))
+    program.aforward = AsyncMock(return_value=dspy.Prediction(answer=answer))
+    program.get_lm_usage = Mock(return_value={})
+    
+    async def mock_streaming(*args, **kwargs):
+        yield "Here's how to write "
+        yield "Cairo contracts..."
+    
+    program.forward_streaming = Mock(return_value=mock_streaming())
+    return program
+
+
+@pytest.fixture
+def mock_mcp_generation_program():
+    """Create a mock McpGenerationProgram."""
+    program = Mock(spec=McpGenerationProgram)
+    mcp_answer = """
+## 1. Cairo Contracts
+
+**Source:** Cairo Book
+**URL:** https://book.cairo-lang.org/contracts
+
+Cairo contracts are defined using #[starknet::contract].
+
+---
+
+## 2. Storage Variables
+
+**Source:** Starknet Documentation
+**URL:** https://docs.starknet.io/storage
+
+Storage variables use #[storage] attribute.
+"""
+    program.forward = Mock(return_value=dspy.Prediction(answer=mcp_answer))
+    program.get_lm_usage = Mock(return_value={})
+    return program
+
+
+@pytest.fixture
+def mock_retrieval_judge():
+    """Create a mock RetrievalJudge with default scoring behavior."""
+    judge = Mock(spec=RetrievalJudge)
+    
+    # Default score map for common test documents
+    default_score_map = {
+        "Introduction to Cairo": 0.9,
+        "Cairo Smart Contracts": 0.9,
+        "Cairo Storage": 0.8,
+        "What is Starknet": 0.3,
+        "Starknet Overview": 0.3,
+        "Scarb Overview": 0.2,
+        "OpenZeppelin Cairo": 0.2,
+        "Python Guide": 0.2,
+        "Python Basics": 0.1,
+    }
+    
+    def filter_docs(query: str, documents: list[Document]) -> list[Document]:
+        """Filter documents based on scores."""
+        filtered = []
+        for doc in documents:
+            title = doc.metadata.get("title", "")
+            score = default_score_map.get(title, 0.5)
+            
+            # Add judge metadata
+            doc.metadata["llm_judge_score"] = score
+            doc.metadata["llm_judge_reason"] = f"Document '{title}' scored {score} for relevance"
+            
+            # Filter based on threshold (default 0.4)
+            if score >= judge.threshold:
+                filtered.append(doc)
+        
+        return filtered
+    
+    async def async_filter_docs(query: str, documents: list[Document]) -> list[Document]:
+        """Async version of filter_docs."""
+        return filter_docs(query, documents)
+    
+    judge.forward = Mock(side_effect=filter_docs)
+    judge.aforward = AsyncMock(side_effect=async_filter_docs)
+    judge.threshold = 0.4
+    judge.get_lm_usage = Mock(return_value={})
+    
+    return judge
+
+
+@pytest.fixture
+def mock_pgvector_rm(mock_vector_db):
+    """Create a mock PgVectorRM for RAG pipeline tests."""
+    return mock_vector_db
+
+
+@pytest.fixture
+def patch_dspy_parallel():
+    """Patch dspy.Parallel to return the input directly (for judge tests)."""
+    with patch("dspy.Parallel") as mock_parallel:
+        # Make Parallel pass through the input directly
+        def passthrough(func, *args, **kwargs):
+            # If called with documents, just apply the function to each
+            if args and hasattr(args[0], '__iter__'):
+                return [func(item) for item in args[0]]
+            return func(*args, **kwargs)
+        
+        mock_parallel.side_effect = passthrough
+        yield mock_parallel
+
+
+# =============================================================================
 # Cleanup Fixtures
 # =============================================================================
 
@@ -638,141 +757,3 @@ def cleanup_mocks():
     yield
     # Any cleanup code can go here if needed
     pass
-
-
-# =============================================================================
-# RAG Pipeline Fixtures
-# =============================================================================
-
-
-@pytest.fixture
-def documents():
-    """Create sample documents for testing."""
-    return _make_documents()
-
-
-@pytest.fixture
-def query_processor():
-    """Mocked QueryProcessorProgram."""
-    return _mock_query_processor()
-
-
-@pytest.fixture
-def document_retriever(documents):
-    """Mocked DocumentRetrieverProgram returning our `documents` by default."""
-    return _mock_document_retriever(documents)
-
-
-@pytest.fixture
-def generation_program():
-    """Mocked GenerationProgram."""
-    return _mock_generation_program()
-
-
-@pytest.fixture
-def mcp_generation_program():
-    """Mocked McpGenerationProgram."""
-    return _mock_mcp_program()
-
-
-@pytest.fixture
-def retrieval_judge():
-    """Default mocked RetrievalJudge with sensible scores."""
-    return _mock_retrieval_judge()
-
-
-@pytest.fixture
-def pipeline_config(query_processor, document_retriever, generation_program, mcp_generation_program):
-    """RagPipelineConfig with LLM judge disabled by default (override in tests as needed)."""
-    return _pipeline_config_factory(
-        query_processor=query_processor,
-        document_retriever=document_retriever,
-        generation_program=generation_program,
-        mcp_generation_program=mcp_generation_program,
-    )
-
-
-@pytest.fixture
-def rag_pipeline(pipeline_config):
-    """Instantiate a RagPipeline using the config fixture."""
-    return _pipeline_factory(pipeline_config)
-
-
-# ---------------------------
-# External service / patch fixtures
-# ---------------------------
-
-@pytest.fixture
-def patch_dspy_parallel(monkeypatch):
-    """
-    Patch dspy.Parallel to a dummy callable so no real parallel LLM work is triggered in unit tests.
-
-    Returns the MagicMock so tests can assert call counts if desired.
-    """
-    dummy_parallel = MagicMock()
-
-    def _factory(num_threads: int = 10):
-        return dummy_parallel
-
-    monkeypatch.setattr("dspy.Parallel", _factory)
-    return dummy_parallel
-
-
-@pytest.fixture
-def mock_vector_store_config() -> VectorStoreConfig:
-    """Provide a simple VectorStoreConfig for factory tests."""
-    return VectorStoreConfig(
-        host="localhost",
-        port=5432,
-        database="test_db",
-        user="test_user",
-        password="test_pass",
-        table_name="test_table",
-    )
-
-
-@pytest.fixture(scope='session')
-def mock_dspy_examples(sample_documents: list[Document]) -> list[dspy.Example]:
-    """Create mock DSPy Example objects from sample documents."""
-    examples = []
-    for doc in sample_documents:
-        example = Mock(spec=dspy.Example)
-        example.content = doc.page_content
-        example.metadata = doc.metadata
-        examples.append(example)
-    return examples
-
-
-
-@pytest.fixture(scope='function')
-def mock_pgvector_rm(mock_dspy_examples: list[dspy.Example]):
-    """Patch the vector database for the document retriever."""
-    with patch("cairo_coder.dspy.document_retriever.SourceFilteredPgVectorRM") as mock_pgvector_rm:
-        mock_instance = Mock()
-        mock_instance.aforward = AsyncMock(return_value=mock_dspy_examples)
-        mock_instance.forward = Mock(return_value=mock_dspy_examples)
-        mock_pgvector_rm.return_value = mock_instance
-        yield mock_pgvector_rm
-
-# ---------------------------
-# Convenience fixtures used by some tests
-# ---------------------------
-
-@pytest.fixture
-def processed_query():
-    """Default processed query."""
-    return _make_processed_query()
-
-
-# Async generator helper for streaming if needed in future tests
-@pytest.fixture
-def async_event_collector():
-    """Utility to collect async generator outputs into a list."""
-
-    async def _collect(async_gen):
-        items = []
-        async for item in async_gen:
-            items.append(item)
-        return items
-
-    return _collect
