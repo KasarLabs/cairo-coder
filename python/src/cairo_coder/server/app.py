@@ -559,8 +559,10 @@ async def lifespan(app: FastAPI):
 
     logger.info("Starting Cairo Coder server - initializing resources")
 
-    # Initialize vector DB
-    vector_store_config = get_vector_store_config()
+    # Load config once
+    config = ConfigManager.load_config()
+    vector_store_config = config.vector_store
+    
     # TODO: These should not be literal constants like this.
     embedder = dspy.Embedder("openai/text-embedding-3-large", dimensions=1536, batch_size=512)
 
@@ -578,9 +580,9 @@ async def lifespan(app: FastAPI):
     # Ensure connection pool is initialized
     await _vector_db._ensure_pool()
 
-    # Initialize Agent Factory
+    # Initialize Agent Factory with full config to avoid repeated file I/O
     _agent_factory = create_agent_factory(
-        vector_store_config=vector_store_config, vector_db=_vector_db
+        vector_store_config=vector_store_config, vector_db=_vector_db, full_config=config
     )
 
     logger.info("Vector DB and Agent Factory initialized successfully")

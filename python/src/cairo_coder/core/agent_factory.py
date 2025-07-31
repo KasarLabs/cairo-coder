@@ -9,7 +9,7 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from cairo_coder.config.manager import ConfigManager
-from cairo_coder.core.config import AgentConfiguration, VectorStoreConfig
+from cairo_coder.core.config import AgentConfiguration, Config, VectorStoreConfig
 from cairo_coder.core.rag_pipeline import RagPipeline, RagPipelineFactory
 from cairo_coder.core.types import DocumentSource, Message
 from cairo_coder.dspy.document_retriever import SourceFilteredPgVectorRM
@@ -25,6 +25,7 @@ class AgentFactoryConfig:
     vector_store_config: VectorStoreConfig
     vector_db: SourceFilteredPgVectorRM
     agent_configs: dict[str, AgentConfiguration] = field(default_factory=dict)
+    full_config: Config | None = None
 
 
 class AgentFactory:
@@ -45,6 +46,7 @@ class AgentFactory:
         self.vector_store_config = config.vector_store_config
         self.vector_db = config.vector_db
         self.agent_configs = config.agent_configs
+        self.full_config = config.full_config
 
         # Cache for created agents to avoid recreation
         self._agent_cache: dict[str, RagPipeline] = {}
@@ -79,6 +81,7 @@ class AgentFactory:
             vector_store_config=self.vector_store_config,
             mcp_mode=mcp_mode,
             vector_db=self.vector_db,
+            full_config=self.full_config,
         )
 
         # Cache the agent
@@ -134,6 +137,7 @@ class AgentFactory:
         vector_store_config: VectorStoreConfig,
         mcp_mode: bool = False,
         vector_db: Any = None,
+        full_config: Config | None = None,
     ) -> RagPipeline:
         """
         Create an agent based on a specific agent ID configuration.
@@ -145,6 +149,7 @@ class AgentFactory:
             vector_store_config: Vector store for document retrieval
             mcp_mode: Whether to use MCP mode
             vector_db: Optional pre-initialized vector database instance
+            full_config: Optional pre-loaded configuration to avoid file I/O
 
         Returns:
             Configured RagPipeline instance
@@ -152,11 +157,14 @@ class AgentFactory:
         Raises:
             ValueError: If agent_id is not found in configuration
         """
+        if full_config is None:
+            # Fallback to loading from file if not provided
+            config_manager = ConfigManager()
+            full_config = config_manager.load_config()
+        
         config_manager = ConfigManager()
-        config = config_manager.load_config()
-
         try:
-            agent_config = config_manager.get_agent_config(config, agent_id)
+            agent_config = config_manager.get_agent_config(full_config, agent_id)
         except KeyError as e:
             raise ValueError(f"Agent configuration not found for ID: {agent_id}") from e
 
@@ -224,19 +232,26 @@ class AgentFactory:
 def create_agent_factory(
     vector_store_config: VectorStoreConfig,
     vector_db: SourceFilteredPgVectorRM,
+    full_config: Config | None = None,
 ) -> AgentFactory:
     """
     Create an AgentFactory with default configurations.
 
     Args:
-        vector_store: Vector store for document retrieval
-        vector_db: Optional pre-initialized vector database instance
+        vector_store_config: Vector store for document retrieval
+        vector_db: Pre-initialized vector database instance
+        full_config: Optional pre-loaded configuration to avoid file I/O
 
     Returns:
         Configured AgentFactory instance
     """
-    # Load default agent configurations
-    default_configs = {
+    # Load configuration if not provided
+    if full_config is None:
+        config_manager = ConfigManager()
+        full_config = config_manager.load_config()
+    
+    # Use agent configs from the loaded configuration
+    agent_configs = full_config.agents if full_config.agents else {
         "default": AgentConfiguration.default_cairo_coder(),
         "cairo-coder": AgentConfiguration.default_cairo_coder(),
         "scarb-assistant": AgentConfiguration.scarb_assistant(),
@@ -245,7 +260,8 @@ def create_agent_factory(
     factory_config = AgentFactoryConfig(
         vector_store_config=vector_store_config,
         vector_db=vector_db,
-        agent_configs=default_configs,
+        agent_configs=agent_configs,
+        full_config=full_config,
     )
 
     return AgentFactory(factory_config)

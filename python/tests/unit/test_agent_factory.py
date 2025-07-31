@@ -99,6 +99,7 @@ class TestAgentFactory:
                 vector_store_config=agent_factory.vector_store_config,
                 mcp_mode=False,
                 vector_db=mock_vector_db,
+                full_config=agent_factory.full_config,
             )
 
             # Verify agent was cached
