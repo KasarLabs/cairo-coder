@@ -104,9 +104,10 @@ def _(Path, dspy, json, logger):
 
 
 @app.cell
-def _(ConfigManager, dspy):
+def _(Path, ConfigManager, dspy):
     """Initialize the generation program."""
     # Initialize program
+
     from cairo_coder.core.types import DocumentSource, Message
     from cairo_coder.dspy.document_retriever import DocumentRetrieverProgram
     from cairo_coder.dspy.query_processor import QueryProcessorProgram
