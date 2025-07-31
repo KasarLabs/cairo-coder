@@ -34,24 +34,6 @@ def merge_usage_dict(sources: list[dict]) -> dict:
                 merged_usage[model_name][metric_name] = merged_usage[model_name].get(metric_name, 0) + value
     return merged_usage
 
-@pytest.fixture(scope='function')
-def mock_pgvector_rm():
-    """Patch the vector database for the document retriever."""
-    with patch("cairo_coder.dspy.document_retriever.SourceFilteredPgVectorRM") as mock_pgvector_rm:
-        mock_instance = Mock()
-        mock_instance.aforward = AsyncMock(return_value=[])
-        mock_instance.forward = Mock(return_value=[])
-        mock_pgvector_rm.return_value = mock_instance
-        yield mock_pgvector_rm
-
-
-@pytest.fixture(scope='session')
-def mock_embedder():
-    """Mock the embedder."""
-    with patch("cairo_coder.dspy.document_retriever.dspy.Embedder") as mock_embedder:
-        mock_embedder.return_value = Mock()
-        yield mock_embedder
-
 
 class TestRagPipeline:
     """Test suite for RagPipeline."""
@@ -582,9 +564,11 @@ class TestRagPipelineFactory:
         assert pipeline.config.contract_template == "Custom contract template"
         assert pipeline.config.test_template == "Custom test template"
 
-    def test_create_scarb_pipeline(self, mock_vector_store_config, mock_pgvector_rm: Mock):
+    def test_create_scarb_pipeline(self, mock_vector_store_config):
         """Test creating Scarb-specific pipeline."""
-        with patch("cairo_coder.dspy.create_generation_program") as mock_create_gp:
+        with patch("cairo_coder.dspy.create_generation_program") as mock_create_gp, patch(
+            "cairo_coder.dspy.document_retriever.SourceFilteredPgVectorRM"
+        ):
             mock_scarb_program = Mock()
             mock_create_gp.return_value = mock_scarb_program
 

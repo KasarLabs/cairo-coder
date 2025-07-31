@@ -96,8 +96,7 @@ class TestAgentFactory:
                 similarity_threshold=0.6,
             )
 
-    @pytest.mark.asyncio
-    async def test_create_agent_by_id(self, mock_vector_store_config, mock_config_manager):
+    def test_create_agent_by_id(self, mock_vector_store_config, mock_config_manager):
         """Test creating agent by ID."""
         query = "How do I create a contract?"
         history = [Message(role=Role.USER, content="Hello")]
@@ -123,8 +122,7 @@ class TestAgentFactory:
             mock_config_manager.get_agent_config.assert_called_once_with(config, agent_id)
             mock_create.assert_called_once()
 
-    @pytest.mark.asyncio
-    async def test_create_agent_by_id_not_found(
+    def test_create_agent_by_id_not_found(
         self, mock_vector_store_config, mock_config_manager
     ):
         """Test creating agent by ID when agent not found."""
@@ -143,7 +141,6 @@ class TestAgentFactory:
                 config_manager=mock_config_manager,
             )
 
-    @pytest.mark.asyncio
     def test_get_or_create_agent_cache_miss(self, agent_factory):
         """Test get_or_create_agent with cache miss."""
         query = "Test query"
@@ -174,8 +171,7 @@ class TestAgentFactory:
             assert cache_key in agent_factory._agent_cache
             assert agent_factory._agent_cache[cache_key] == mock_pipeline
 
-    @pytest.mark.asyncio
-    async def test_get_or_create_agent_cache_hit(self, agent_factory):
+    def test_get_or_create_agent_cache_hit(self, agent_factory):
         """Test get_or_create_agent with cache hit."""
         query = "Test query"
         history = []
@@ -229,51 +225,36 @@ class TestAgentFactory:
         with pytest.raises(ValueError, match="Agent not found"):
             agent_factory.get_agent_info("nonexistent_agent")
 
-    def test_infer_sources_from_query_scarb(self):
-        """Test inferring sources from Scarb-related query."""
-        query = "How do I configure Scarb for my project?"
-
+    @pytest.mark.parametrize(
+        "query, expected_sources",
+        [
+            ("How do I configure Scarb for my project?", [DocumentSource.SCARB_DOCS]),
+            ("How do I use forge test command?", [DocumentSource.STARKNET_FOUNDRY]),
+            (
+                "How do I implement ERC20 token with OpenZeppelin?",
+                [DocumentSource.OPENZEPPELIN_DOCS],
+            ),
+            (
+                "How do I create a function?",
+                [DocumentSource.CAIRO_BOOK, DocumentSource.STARKNET_DOCS],
+            ),
+            (
+                "How do I test Cairo contracts with Foundry and OpenZeppelin?",
+                [
+                    DocumentSource.STARKNET_FOUNDRY,
+                    DocumentSource.OPENZEPPELIN_DOCS,
+                    DocumentSource.CAIRO_BOOK,
+                ],
+            ),
+        ],
+    )
+    def test_infer_sources_from_query(self, query, expected_sources):
+        """Test inferring sources from various queries."""
         sources = AgentFactory._infer_sources_from_query(query)
+        for expected in expected_sources:
+            assert expected in sources
 
-        assert DocumentSource.SCARB_DOCS in sources
-
-    def test_infer_sources_from_query_foundry(self):
-        """Test inferring sources from Foundry-related query."""
-        query = "How do I use forge test command?"
-
-        sources = AgentFactory._infer_sources_from_query(query)
-
-        assert DocumentSource.STARKNET_FOUNDRY in sources
-
-    def test_infer_sources_from_query_openzeppelin(self):
-        """Test inferring sources from OpenZeppelin-related query."""
-        query = "How do I implement ERC20 token with OpenZeppelin?"
-
-        sources = AgentFactory._infer_sources_from_query(query)
-
-        assert DocumentSource.OPENZEPPELIN_DOCS in sources
-
-    def test_infer_sources_from_query_default(self):
-        """Test inferring sources from generic query."""
-        query = "How do I create a function?"
-
-        sources = AgentFactory._infer_sources_from_query(query)
-
-        assert DocumentSource.CAIRO_BOOK in sources
-        assert DocumentSource.STARKNET_DOCS in sources
-
-    def test_infer_sources_from_query_multiple(self):
-        """Test inferring sources from query with multiple relevant sources."""
-        query = "How do I test Cairo contracts with Foundry and OpenZeppelin?"
-
-        sources = AgentFactory._infer_sources_from_query(query)
-
-        assert DocumentSource.STARKNET_FOUNDRY in sources
-        assert DocumentSource.OPENZEPPELIN_DOCS in sources
-        assert DocumentSource.CAIRO_BOOK in sources
-
-    @pytest.mark.asyncio
-    async def test_create_pipeline_from_config_general(self, mock_vector_store_config):
+    def test_create_pipeline_from_config_general(self, mock_vector_store_config):
         """Test creating pipeline from general agent configuration."""
         agent_config = AgentConfiguration(
             id="general_agent",
@@ -309,8 +290,7 @@ class TestAgentFactory:
                 vector_db=None,
             )
 
-    @pytest.mark.asyncio
-    async def test_create_pipeline_from_config_scarb(self, mock_vector_store_config):
+    def test_create_pipeline_from_config_scarb(self, mock_vector_store_config):
         """Test creating pipeline from Scarb agent configuration."""
         agent_config = AgentConfiguration(
             id="scarb-assistant",

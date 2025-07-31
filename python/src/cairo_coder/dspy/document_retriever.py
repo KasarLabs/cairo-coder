@@ -574,7 +574,7 @@ class DocumentRetrieverProgram(dspy.Module):
             return []
 
         # Step 2: Enrich context with appropriate templates based on query type.
-        return self._enhance_context(processed_query.original, documents)
+        return self._enhance_context(processed_query, documents)
 
     def forward(
         self, processed_query: ProcessedQuery, sources: list[DocumentSource] | None = None
@@ -670,7 +670,7 @@ class DocumentRetrieverProgram(dspy.Module):
             logger.error(f"Error fetching documents: {traceback.format_exc()}")
             raise e
 
-    def _enhance_context(self, query: str, context: list[Document]) -> list[Document]:
+    def _enhance_context(self, processed_query: ProcessedQuery, context: list[Document]) -> list[Document]:
         """
         Enhance context with appropriate templates based on query type.
 
@@ -681,12 +681,12 @@ class DocumentRetrieverProgram(dspy.Module):
         Returns:
             Enhanced context with relevant templates
         """
-        query_lower = query.lower()
+        query_lower = processed_query.original.lower()
 
         # Add contract template for contract-related queries
         if any(
             keyword in query_lower for keyword in ["contract", "storage", "external", "interface"]
-        ):
+        ) or processed_query.is_contract_related:
             context.append(
                 Document(
                     page_content=CONTRACT_TEMPLATE,
@@ -695,7 +695,7 @@ class DocumentRetrieverProgram(dspy.Module):
             )
 
         # Add test template for test-related queries
-        if any(keyword in query_lower for keyword in ["test", "testing", "assert", "mock"]):
+        if any(keyword in query_lower for keyword in ["test", "testing", "assert", "mock"]) or processed_query.is_test_related:
             context.append(
                 Document(
                     page_content=TEST_TEMPLATE,

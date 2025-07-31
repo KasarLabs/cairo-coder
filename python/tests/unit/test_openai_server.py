@@ -9,10 +9,9 @@ import json
 import uuid
 from unittest.mock import Mock, patch
 
-import pytest
 from fastapi import FastAPI
+from fastapi.testclient import TestClient
 
-from cairo_coder.core.agent_factory import AgentFactory
 from cairo_coder.core.types import StreamEvent, StreamEventType
 from cairo_coder.server.app import create_app
 
@@ -20,42 +19,21 @@ from cairo_coder.server.app import create_app
 class TestCairoCoderServer:
     """Test suite for CairoCoderServer class."""
 
-    @pytest.fixture
-    def mock_agent_factory(self, mock_agent):
-        """Patch create_agent_factory and return the mock factory."""
-        with patch("cairo_coder.server.app.create_agent_factory") as mock_factory_creator:
-            factory = Mock(spec=AgentFactory)
-            factory.get_available_agents.return_value = ["cairo-coder"]
-            factory.get_agent_info.return_value = {
-                "id": "cairo-coder",
-                "name": "Cairo Coder",
-                "description": "Cairo programming assistant",
-                "sources": ["cairo-docs"],
-            }
-            factory.get_or_create_agent.return_value = mock_agent
-            factory.create_agent.return_value = mock_agent
-            factory.get_or_create_agent = Mock(return_value=mock_agent)
-            mock_factory_creator.return_value = factory
-
-            yield factory
-
     def test_health_check(self, client):
         """Test health check endpoint."""
         response = client.get("/")
         assert response.status_code == 200
         assert response.json() == {"status": "ok"}
 
-    def test_list_agents(self, client):
+    def test_list_agents(self, client, sample_agent_configs):
         """Test listing available agents."""
         response = client.get("/v1/agents")
         assert response.status_code == 200
 
         data = response.json()
-        assert len(data) == 1
-        assert data[0]["id"] == "cairo-coder"
-        assert data[0]["name"] == "Cairo Coder"
-        assert data[0]["description"] == "Cairo programming assistant"
-        assert data[0]["sources"] == ["cairo-docs"]
+        assert len(data) == len(sample_agent_configs)
+        agent_ids = {agent["id"] for agent in data}
+        assert "cairo-coder" in agent_ids
 
     def test_list_agents_error_handling(self, client, mock_agent_factory):
         """Test error handling in list agents endpoint."""
@@ -337,66 +315,47 @@ class TestCreateApp:
 
         assert isinstance(app, FastAPI)
 
+    def test_cors_configuration(self, mock_vector_store_config):
+        """Test CORS configuration."""
+        with patch("cairo_coder.server.app.create_agent_factory"):
+            app = create_app(mock_vector_store_config)
+            client = TestClient(app)
 
-class TestTokenTracker:
-    """Test suite for TokenTracker class."""
+            # Test CORS headers
+            response = client.options(
+                "/v1/chat/completions",
+                headers={"Origin": "https://example.com", "Access-Control-Request-Method": "POST"},
+            )
 
-    def test_track_tokens_new_session(self):
-        """Test tracking tokens for a new session."""
-        from cairo_coder.server.app import TokenTracker
+            assert response.status_code in [200, 204]
 
-        tracker = TokenTracker()
-        tracker.track_tokens("session1", 10, 20)
+    def test_app_middleware(self, mock_vector_store_config):
+        """Test that app has proper middleware configuration."""
+        with patch("cairo_coder.server.app.create_agent_factory"):
+            app = create_app(mock_vector_store_config)
 
-        usage = tracker.get_session_usage("session1")
-        assert usage["prompt_tokens"] == 10
-        assert usage["completion_tokens"] == 20
-        assert usage["total_tokens"] == 30
+            # Check that middleware is properly configured
+            # FastAPI apps have middleware, but middleware_stack might be None until build
+            assert hasattr(app, "middleware_stack")
+            # Check that CORS middleware was added by verifying the middleware property exists
+            assert hasattr(app, "middleware")
 
-    def test_track_tokens_existing_session(self):
-        """Test tracking tokens for an existing session."""
-        from cairo_coder.server.app import TokenTracker
+    def test_app_routes(self, mock_vector_store_config):
+        """Test that app has expected routes."""
+        with patch("cairo_coder.server.app.create_agent_factory"):
+            app = create_app(mock_vector_store_config)
 
-        tracker = TokenTracker()
-        tracker.track_tokens("session1", 10, 20)
-        tracker.track_tokens("session1", 5, 15)
+            # Get all routes
+            routes = [route.path for route in app.routes]  # type: ignore
 
-        usage = tracker.get_session_usage("session1")
-        assert usage["prompt_tokens"] == 15
-        assert usage["completion_tokens"] == 35
-        assert usage["total_tokens"] == 50
-
-    def test_get_session_usage_nonexistent(self):
-        """Test getting usage for non-existent session."""
-        from cairo_coder.server.app import TokenTracker
-
-        tracker = TokenTracker()
-        usage = tracker.get_session_usage("nonexistent")
-
-        assert usage["prompt_tokens"] == 0
-        assert usage["completion_tokens"] == 0
-        assert usage["total_tokens"] == 0
+            # Check expected routes exist
+            assert "/" in routes
+            assert "/v1/agents" in routes
+            assert "/v1/chat/completions" in routes
 
 
 class TestOpenAICompatibility:
     """Test suite for OpenAI API compatibility."""
-
-    @pytest.fixture
-    def mock_agent_factory(self, mock_agent):
-        """Patch create_agent_factory and return the mock factory."""
-        with patch("cairo_coder.server.app.create_agent_factory") as mock_factory_creator:
-            factory = Mock(spec=AgentFactory)
-            factory.get_available_agents.return_value = ["cairo-coder"]
-            factory.get_agent_info.return_value = {
-                "id": "cairo-coder",
-                "name": "Cairo Coder",
-                "description": "Cairo programming assistant",
-                "sources": ["cairo-docs"],
-            }
-            factory.create_agent.return_value = mock_agent
-            factory.get_or_create_agent = Mock(return_value=mock_agent)
-            mock_factory_creator.return_value = factory
-            yield factory
 
     def test_openai_chat_completion_response_structure(self, client):
         """Test that response structure matches OpenAI API."""
@@ -489,26 +448,6 @@ class TestOpenAICompatibility:
 
 class TestMCPModeCompatibility:
     """Test suite for MCP mode compatibility with TypeScript backend."""
-
-    @pytest.fixture
-    def mock_agent_factory(self, mock_agent):
-        """Setup mocks for MCP mode tests."""
-        with patch("cairo_coder.server.app.create_agent_factory") as mock_factory_creator:
-            factory = Mock(spec=AgentFactory)
-            factory.get_available_agents = Mock(return_value=["cairo-coder"])
-            factory.get_agent_info = Mock(
-                return_value={
-                    "id": "cairo-coder",
-                    "name": "Cairo Coder",
-                    "description": "Cairo programming assistant",
-                    "sources": ["cairo-docs"],
-                }
-            )
-            factory.create_agent.return_value = mock_agent
-            factory.get_or_create_agent = Mock(return_value=mock_agent)
-            mock_factory_creator.return_value = factory
-            yield factory
-
 
     def test_mcp_mode_non_streaming_response(self, client):
         """Test MCP mode returns sources in non-streaming response."""

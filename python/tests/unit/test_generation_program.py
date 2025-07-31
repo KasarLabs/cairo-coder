@@ -5,7 +5,7 @@ Tests the DSPy-based code generation functionality including Cairo code generati
 Scarb configuration, and MCP mode document formatting.
 """
 
-from unittest.mock import AsyncMock, Mock, patch
+from unittest.mock import AsyncMock, patch
 
 import dspy
 import pytest
@@ -20,27 +20,6 @@ from cairo_coder.dspy.generation_program import (
     create_generation_program,
     create_mcp_generation_program,
 )
-
-
-@pytest.fixture(scope="function")
-def mock_lm():
-    """Configure DSPy with a mock language model for testing."""
-    mock = Mock()
-    # Mock for sync calls
-    mock.forward.return_value = dspy.Prediction(
-        answer="Here's a Cairo contract example:\n\n```cairo\n#[starknet::contract]\nmod SimpleContract {\n    // Contract implementation\n}\n```\n\nThis contract demonstrates basic Cairo syntax."
-    )
-    mock.return_value = dspy.Prediction(
-        answer="Here's a Cairo contract example:\n\n```cairo\n#[starknet::contract]\nmod SimpleContract {\n    // Contract implementation\n}\n```\n\nThis contract demonstrates basic Cairo syntax."
-    )
-    # Mock for async calls - use AsyncMock for coroutine
-    mock.aforward = AsyncMock(return_value=dspy.Prediction(
-        answer="Here's a Cairo contract example:\n\n```cairo\n#[starknet::contract]\nmod SimpleContract {\n    // Contract implementation\n}\n```\n\nThis contract demonstrates basic Cairo syntax."
-    ))
-
-    with patch("dspy.ChainOfThought") as mock_cot:
-        mock_cot.return_value = mock
-        yield mock
 
 
 async def call_program(program, method, *args, **kwargs):
@@ -67,30 +46,6 @@ class TestGenerationProgram:
     def mcp_generation_program(self):
         """Create an MCP GenerationProgram instance."""
         return McpGenerationProgram()
-
-    @pytest.fixture
-    def sample_documents(self):
-        """Create sample documents for testing."""
-        return [
-            Document(
-                page_content="Cairo contracts are defined using #[starknet::contract] attribute.",
-                metadata={
-                    "source": "cairo_book",
-                    "title": "Cairo Contracts",
-                    "url": "https://book.cairo-lang.org/contracts",
-                    "source_display": "Cairo Book",
-                },
-            ),
-            Document(
-                page_content="Storage variables are defined with #[storage] attribute.",
-                metadata={
-                    "source": "starknet_docs",
-                    "title": "Storage Variables",
-                    "url": "https://docs.starknet.io/storage",
-                    "source_display": "Starknet Documentation",
-                },
-            ),
-        ]
 
     @pytest.mark.parametrize("call_method", ["forward", "aforward"])
     @pytest.mark.asyncio
@@ -205,30 +160,6 @@ class TestMcpGenerationProgram:
         """Create an MCP GenerationProgram instance."""
         return McpGenerationProgram()
 
-    @pytest.fixture
-    def sample_documents(self):
-        """Create sample documents for testing."""
-        return [
-            Document(
-                page_content="Cairo contracts are defined using #[starknet::contract] attribute.",
-                metadata={
-                    "source": "cairo_book",
-                    "title": "Cairo Contracts",
-                    "url": "https://book.cairo-lang.org/contracts",
-                    "source_display": "Cairo Book",
-                },
-            ),
-            Document(
-                page_content="Storage variables are defined with #[storage] attribute.",
-                metadata={
-                    "source": "starknet_docs",
-                    "title": "Storage Variables",
-                    "url": "https://docs.starknet.io/storage",
-                    "source_display": "Starknet Documentation",
-                },
-            ),
-        ]
-
     def test_mcp_document_formatting(self, mcp_program, sample_documents):
         """Test MCP mode document formatting."""
         answer = mcp_program.forward(sample_documents).answer
@@ -236,17 +167,20 @@ class TestMcpGenerationProgram:
         assert isinstance(answer, str)
         assert len(answer) > 0
 
-        # Verify document structure
-        assert "## 1. Cairo Contracts" in answer
-        assert "## 2. Storage Variables" in answer
-        assert "**Source:** Cairo Book" in answer
-        assert "**Source:** Starknet Documentation" in answer
-        assert "**URL:** https://book.cairo-lang.org/contracts" in answer
-        assert "**URL:** https://docs.starknet.io/storage" in answer
+        # Verify document structure is present
+        for i, doc in enumerate(sample_documents, 1):
+            assert f"## {i}." in answer
 
-        # Verify content is included
-        assert "starknet::contract" in answer
-        assert "#[storage]" in answer
+            # Check source display
+            source_display = doc.metadata.get("source_display", "Unknown Source")
+            assert f"**Source:** {source_display}" in answer
+
+            # Check URL
+            url = doc.metadata.get("url", "#")
+            assert f"**URL:** {url}" in answer
+
+            # Check content is included
+            assert doc.page_content in answer
 
     def test_mcp_empty_documents(self, mcp_program):
         """Test MCP mode with empty documents."""

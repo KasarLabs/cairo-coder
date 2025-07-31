@@ -5,7 +5,7 @@ Tests the DSPy-based query processing functionality including search term extrac
 resource identification, and query categorization.
 """
 
-from unittest.mock import AsyncMock, Mock, patch
+from unittest.mock import AsyncMock, patch
 
 import dspy
 import pytest
@@ -17,32 +17,21 @@ from cairo_coder.dspy.query_processor import CairoQueryAnalysis, QueryProcessorP
 class TestQueryProcessorProgram:
     """Test suite for QueryProcessorProgram."""
 
-    @pytest.fixture
-    def mock_lm(self):
-        """Configure DSPy with a mock language model for testing."""
-        mock = Mock()
-        mock.forward.return_value = dspy.Prediction(
-            search_queries=["cairo, contract, storage, variable"],
-            resources=["cairo_book", "starknet_docs"],
-            reasoning="I need to create a Cairo contract",
-        )
-        mock.aforward = AsyncMock(return_value=dspy.Prediction(
-            search_queries=["cairo, contract, storage, variable"],
-            resources=["cairo_book", "starknet_docs"],
-            reasoning="I need to create a Cairo contract",
-        ))
-
-        with patch("dspy.ChainOfThought") as mock_cot:
-            mock_cot.return_value = mock
-            yield mock
-
-    @pytest.fixture
+    @pytest.fixture(scope="function")
     def processor(self, mock_lm):
         """Create a QueryProcessorProgram instance with mocked LM."""
         return QueryProcessorProgram()
 
-    def test_contract_query_processing(self, processor):
+    def test_contract_query_processing(self, mock_lm, processor):
         """Test processing of contract-related queries."""
+        prediction = dspy.Prediction(
+            search_queries=["cairo, contract, storage, variable"],
+            resources=["cairo_book", "starknet_docs"],
+            reasoning="I need to create a Cairo contract",
+        )
+        mock_lm.forward.return_value = prediction
+        mock_lm.aforward.return_value = prediction
+
         query = "How do I define storage variables in a Cairo contract?"
 
         result = processor.forward(query)
@@ -80,36 +69,31 @@ class TestQueryProcessorProgram:
         assert DocumentSource.STARKNET_DOCS in validated
         assert len(validated) == 2
 
-    def test_test_detection(self, processor):
+    @pytest.mark.parametrize(
+        "query, expected",
+        [
+            ("How do I write tests for Cairo?", True),
+            ("Unit testing best practices", True),
+            ("How to assert in Cairo tests?", True),
+            ("Mock setup for integration tests", True),
+            ("Test fixture configuration", True),
+            ("How to create a contract?", False),
+            ("What are Cairo data types?", False),
+            ("StarkNet deployment guide", False),
+        ],
+    )
+    def test_test_detection(self, processor, query, expected):
         """Test detection of test-related queries."""
-        test_queries = [
-            "How do I write tests for Cairo?",
-            "Unit testing best practices",
-            "How to assert in Cairo tests?",
-            "Mock setup for integration tests",
-            "Test fixture configuration",
-        ]
-
-        for query in test_queries:
-            assert processor._is_test_query(query) is True
-
-        non_test_queries = [
-            "How to create a contract?",
-            "What are Cairo data types?",
-            "StarkNet deployment guide",
-        ]
-
-        for query in non_test_queries:
-            assert processor._is_test_query(query) is False
+        assert processor._is_test_query(query) is expected
 
     def test_empty_query_handling(self, processor):
         """Test handling of empty or whitespace queries."""
         with patch.object(processor, "retrieval_program") as mock_program:
-            mock_program.aforward = AsyncMock(return_value=dspy.Prediction(
-                search_queries=[], 
-                resources=[],
-                reasoning="Empty query"
-            ))
+            mock_program.aforward = AsyncMock(
+                return_value=dspy.Prediction(
+                    search_queries=[], resources=[], reasoning="Empty query"
+                )
+            )
 
             result = processor.forward("")
 
