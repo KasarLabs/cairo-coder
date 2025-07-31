@@ -22,7 +22,7 @@ yarn-error.log
 
 packages/ui/.env
 
-# Config files
+# Config files (legacy)
 config.toml
 packages/backend/config.toml
 

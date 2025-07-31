@@ -67,9 +67,6 @@ This guide helps you migrate from the old multi-file configuration system to the
    DEEPSEEK_API_KEY="your-key"
    GROQ_API_KEY="your-key"
 
-   # From [API_ENDPOINTS] section
-   OLLAMA_ENDPOINT="your-endpoint"
-
    # From [VERSIONS] section
    STARKNET_FOUNDRY_VERSION="0.38.0"
    SCARB_VERSION="2.11.2"
@@ -148,9 +145,24 @@ Ensure your `.env` file has the correct database credentials and that the `POSTG
 
 Check that all required API keys are present in your `.env` file. The application will show clear error messages for missing keys.
 
+## Python-Specific Changes
+
+### Before
+
+- `python/config.toml` - Python-specific configuration
+- `ConfigManager.load_config(path)` - Could load from custom paths
+- `toml` dependency required
+
+### After
+
+- `ConfigManager.load_config()` - No parameters, environment only
+- No TOML file support
+- `toml` dependency removed from pyproject.toml
+
 ## Benefits of the New System
 
-1. **Security**: No secrets in Docker images
-2. **Simplicity**: One file to configure everything
+1. **Security**: No secrets in Docker images or config files
+2. **Simplicity**: One `.env` file to configure everything
 3. **Flexibility**: Easy to override with environment variables
 4. **Consistency**: Same configuration approach across all services
+5. **No file I/O**: Faster startup, no file permission issues

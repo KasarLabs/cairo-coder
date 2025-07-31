@@ -96,7 +96,7 @@
     },
     "generate-embeddings:yes": {
       "dependsOn": ["build"],
-      "inputs": ["dist/**", "build/**", "out/**", ".next/**", ".env"  ],
+      "inputs": ["dist/**", "build/**", "out/**", ".next/**", ".env"],
       "cache": false,
       "interactive": false,
       "persistent": true,
