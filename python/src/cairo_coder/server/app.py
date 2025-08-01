@@ -1,11 +1,11 @@
 """
-FastAPI server for Cairo Coder - Python rewrite of TypeScript backend.
+FastAPI server for Cairo Coder.
 
-This module implements the FastAPI application that replicates the functionality
-of the TypeScript backend at packages/backend/src/, providing the same OpenAI-compatible
+This module implements the FastAPI application that provides OpenAI-compatible
 API endpoints and behaviors.
 """
 
+import argparse
 import json
 import os
 import time
@@ -14,6 +14,7 @@ from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 
 import dspy
+import uvicorn
 from fastapi import Depends, FastAPI, Header, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
@@ -137,17 +138,15 @@ class CairoCoderServer:
     """
 
     def __init__(
-        self, vector_store_config: VectorStoreConfig, config_manager: ConfigManager | None = None
+        self, vector_store_config: VectorStoreConfig
     ):
         """
         Initialize the Cairo Coder server.
 
         Args:
-            vector_store: Vector store for document retrieval
-            config_manager: Optional configuration manager
+            vector_store_config: Configuration of the vector store to use
         """
         self.vector_store_config = vector_store_config
-        self.config_manager = config_manager or ConfigManager()
 
         # Initialize FastAPI app with lifespan
         self.app = FastAPI(
@@ -185,7 +184,6 @@ class CairoCoderServer:
 
         @self.app.get("/v1/agents")
         async def list_agents(
-            vector_db: SourceFilteredPgVectorRM = Depends(get_vector_db),
             agent_factory: AgentFactory = Depends(get_agent_factory),
         ):
             """List all available agents."""
@@ -234,7 +232,7 @@ class CairoCoderServer:
             vector_db: SourceFilteredPgVectorRM = Depends(get_vector_db),
             agent_factory: AgentFactory = Depends(get_agent_factory),
         ):
-            """Agent-specific chat completions - matches TypeScript backend."""
+            """Agent-specific chat completions"""
             # Create agent factory to validate agent exists
             try:
                 agent_factory.get_agent_info(agent_id=agent_id)
@@ -267,7 +265,7 @@ class CairoCoderServer:
             vector_db: SourceFilteredPgVectorRM = Depends(get_vector_db),
             agent_factory: AgentFactory = Depends(get_agent_factory),
         ):
-            """Legacy chat completions endpoint - matches TypeScript backend."""
+            """Legacy chat completions endpoint"""
             # Determine MCP mode
             mcp_mode = bool(mcp or x_mcp_mode)
 
@@ -284,7 +282,7 @@ class CairoCoderServer:
             vector_db: SourceFilteredPgVectorRM = Depends(get_vector_db),
             agent_factory: AgentFactory = Depends(get_agent_factory),
         ):
-            """Legacy chat completions endpoint - matches TypeScript backend."""
+            """Legacy chat completions endpoint."""
             # Determine MCP mode
             mcp_mode = bool(mcp or x_mcp_mode)
 
@@ -301,7 +299,7 @@ class CairoCoderServer:
         mcp_mode: bool = False,
         vector_db: SourceFilteredPgVectorRM | None = None,
     ):
-        """Handle chat completion request - replicates TypeScript chatCompletionHandler."""
+        """Handle chat completion request."""
         try:
             # Convert messages to internal format
             messages = []
@@ -320,12 +318,12 @@ class CairoCoderServer:
                     mcp_mode=mcp_mode,
                 )
             else:
-                agent = agent_factory.create_agent(
+                # In the default case, fallback to cairo-coder
+                agent = agent_factory.get_or_create_agent(
+                    agent_id="cairo-coder",
                     query=query,
                     history=messages[:-1],  # Exclude last message
-                    vector_store_config=self.vector_store_config,
                     mcp_mode=mcp_mode,
-                    vector_db=vector_db,
                 )
 
             # Handle streaming vs non-streaming
@@ -359,7 +357,7 @@ class CairoCoderServer:
                     error=ErrorDetail(
                         message="Internal server error", type="server_error", code="internal_error"
                     )
-                ).dict(),
+                ).model_dump(),
             ) from e
 
     async def _stream_chat_completion(
@@ -451,7 +449,7 @@ class CairoCoderServer:
         # tracked usage.
         lm_usage = response.get_lm_usage()
         logger.info(f"LM usage from response: {lm_usage}")
-        
+
         if not lm_usage:
             logger.warning("No LM usage data available, setting defaults to 0")
             total_prompt_tokens = 0
@@ -493,19 +491,18 @@ class CairoCoderServer:
 
 
 def create_app(
-    vector_store_config: VectorStoreConfig, config_manager: ConfigManager | None = None
+    vector_store_config: VectorStoreConfig
 ) -> FastAPI:
     """
     Create FastAPI application.
 
     Args:
         vector_store: Vector store for document retrieval
-        config_manager: Optional configuration manager
 
     Returns:
         Configured FastAPI application
     """
-    server = CairoCoderServer(vector_store_config, config_manager)
+    server = CairoCoderServer(vector_store_config)
     server.app.router.lifespan_context = lifespan
     return server.app
 
@@ -517,13 +514,7 @@ def get_vector_store_config() -> VectorStoreConfig:
     Returns:
         Vector store instance
     """
-    # This would be configured based on your setup
-    from cairo_coder.core.config import VectorStoreConfig
-
     config = ConfigManager.load_config()
-
-    # Load from environment or config
-
     return VectorStoreConfig(
         host=config.vector_store.host,
         port=config.vector_store.port,
@@ -568,8 +559,10 @@ async def lifespan(app: FastAPI):
 
     logger.info("Starting Cairo Coder server - initializing resources")
 
-    # Initialize vector DB
-    vector_store_config = get_vector_store_config()
+    # Load config once
+    config = ConfigManager.load_config()
+    vector_store_config = config.vector_store
+    
     # TODO: These should not be literal constants like this.
     embedder = dspy.Embedder("openai/text-embedding-3-large", dimensions=1536, batch_size=512)
 
@@ -587,10 +580,8 @@ async def lifespan(app: FastAPI):
     # Ensure connection pool is initialized
     await _vector_db._ensure_pool()
 
-    # Initialize Agent Factory
-    _agent_factory = create_agent_factory(
-        vector_store_config=vector_store_config, vector_db=_vector_db
-    )
+    # Initialize Agent Factory with vector DB and config
+    _agent_factory = create_agent_factory(vector_db=_vector_db, vector_store_config=vector_store_config)
 
     logger.info("Vector DB and Agent Factory initialized successfully")
 
@@ -609,20 +600,14 @@ async def lifespan(app: FastAPI):
 
 def create_app_factory():
     """Factory function for creating the app, used by uvicorn in reload mode."""
-    ConfigManager.load_config()
     return create_app(get_vector_store_config())
 
 def main():
-    import argparse
-
-    import uvicorn
-
     parser = argparse.ArgumentParser(description="Cairo Coder Server")
     parser.add_argument("--dev", action="store_true", help="Enable development mode with reload")
     parser.add_argument("--workers", type=int, default=5, help="Number of workers to run")
     args = parser.parse_args()
 
-    ConfigManager.load_config()
     # TODO: configure DSPy with the proper LM.
     # TODO: Find a proper pattern for it?
     # TODO: multi-model management?

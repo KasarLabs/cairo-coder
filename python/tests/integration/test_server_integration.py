@@ -29,16 +29,15 @@ class TestServerIntegration:
         assert response.status_code == 200
         assert response.json() == {"status": "ok"}
 
-    def test_list_agents(self, client: TestClient, sample_agent_configs: dict):
+    def test_list_agents(self, client: TestClient):
         """Test listing available agents."""
         response = client.get("/v1/agents")
         assert response.status_code == 200
 
         data = response.json()
-        assert len(data) == len(sample_agent_configs)
+        assert len(data) == 2  # cairo-coder, scarb-assistant
         agent_ids = {agent["id"] for agent in data}
         assert "cairo-coder" in agent_ids
-        assert "default" in agent_ids
         assert "scarb-assistant" in agent_ids
 
     def test_list_agents_error_handling(self, client: TestClient, mock_agent_factory: Mock):
@@ -60,7 +59,7 @@ class TestServerIntegration:
         assert response.status_code == 200
 
         agents = response.json()
-        assert any(agent["id"] == "default" for agent in agents)
+        assert any(agent["id"] == "cairo-coder" for agent in agents)
         assert any(agent["id"] == "scarb-assistant" for agent in agents)
 
         # Mock the agent to return a specific response for this test
@@ -277,7 +276,7 @@ class TestServerIntegration:
 
     def test_error_handling_agent_creation_failure(self, client: TestClient, mock_agent_factory: Mock):
         """Test error handling when agent creation fails."""
-        mock_agent_factory.create_agent.side_effect = Exception("Agent creation failed")
+        mock_agent_factory.get_or_create_agent.side_effect = Exception("Agent creation failed")
 
         response = client.post(
             "/v1/chat/completions", json={"messages": [{"role": "user", "content": "Hello"}]}
@@ -290,8 +289,6 @@ class TestServerIntegration:
 
     def test_message_conversion(self, client: TestClient, mock_agent_factory: Mock, mock_agent: Mock):
         """Test proper conversion of messages to internal format."""
-        mock_agent_factory.create_agent.return_value = mock_agent
-
         client.post(
             "/v1/chat/completions",
             json={
@@ -305,8 +302,8 @@ class TestServerIntegration:
         )
 
         # Verify agent was called with proper message conversion
-        mock_agent_factory.create_agent.assert_called_once()
-        call_args, call_kwargs = mock_agent_factory.create_agent.call_args
+        mock_agent_factory.get_or_create_agent.assert_called_once()
+        call_args, call_kwargs = mock_agent_factory.get_or_create_agent.call_args
 
         # Check that history excludes the last message
         history = call_kwargs.get("history", [])
@@ -324,8 +321,6 @@ class TestServerIntegration:
             raise Exception("Stream error")
 
         mock_agent.forward_streaming = mock_forward_streaming_error
-        mock_agent_factory.create_agent.return_value = mock_agent
-
         response = client.post(
             "/v1/chat/completions",
             json={"messages": [{"role": "user", "content": "Hello"}], "stream": True},
@@ -377,10 +372,10 @@ class TestServerStartup:
 
     def test_server_startup_with_mocked_dependencies(self, mock_vector_store_config: Mock):
         """Test that server can start with mocked dependencies."""
-        mock_config_manager = Mock(spec=ConfigManager)
+        Mock(spec=ConfigManager)
 
         with patch("cairo_coder.server.app.create_agent_factory"):
-            app = create_app(mock_vector_store_config, mock_config_manager)
+            app = create_app(mock_vector_store_config)
             assert app.title == "Cairo Coder"
             assert app.version == "1.0.0"
             assert app.description == "OpenAI-compatible API for Cairo programming assistance"

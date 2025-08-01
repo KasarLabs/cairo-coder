@@ -8,12 +8,12 @@ and resource identification.
 
 from typing import Optional
 
-import dspy
 import structlog
-from dspy import InputField, OutputField, Signature
 from langsmith import traceable
 
+import dspy
 from cairo_coder.core.types import DocumentSource, ProcessedQuery
+from dspy import InputField, OutputField, Signature
 
 logger = structlog.get_logger(__name__)
 

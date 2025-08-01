@@ -1,11 +1,6 @@
 """Configuration data models for Cairo Coder."""
 
-from dataclasses import dataclass, field
-from typing import Any
-
-import dspy
-
-from .types import DocumentSource
+from dataclasses import dataclass
 
 
 @dataclass
@@ -28,87 +23,6 @@ class VectorStoreConfig:
 
 
 @dataclass
-class RagSearchConfig:
-    """Configuration for RAG search pipeline."""
-
-    name: str
-    vector_store: Any  # VectorStore instance
-    contract_template: str | None = None
-    test_template: str | None = None
-    max_source_count: int = 10
-    similarity_threshold: float = 0.4
-    sources: DocumentSource | list[DocumentSource] | None = None
-    retrieval_program: dspy.Module | None = None
-    generation_program: dspy.Module | None = None
-
-    def __post_init__(self) -> None:
-        """Ensure sources is a list if provided."""
-        if self.sources and isinstance(self.sources, DocumentSource):
-            self.sources = [self.sources]
-
-
-@dataclass
-class AgentConfiguration:
-    """Configuration for a specific agent."""
-
-    id: str
-    name: str
-    description: str
-    sources: list[DocumentSource] = field(default_factory=list)
-    contract_template: str | None = None
-    test_template: str | None = None
-    max_source_count: int = 5
-    similarity_threshold: float = 0.4
-    retrieval_program_name: str = "default"
-    generation_program_name: str = "default"
-
-    @classmethod
-    def default_cairo_coder(cls) -> "AgentConfiguration":
-        """Get default Cairo Coder agent configuration."""
-        return cls(
-            id="cairo-coder",
-            name="Cairo Coder",
-            description="General Cairo programming assistant",
-            sources=[
-                DocumentSource.CAIRO_BOOK,
-                DocumentSource.STARKNET_DOCS,
-                DocumentSource.CAIRO_BY_EXAMPLE,
-                DocumentSource.CORELIB_DOCS,
-            ],
-            contract_template="""
-You are helping write a Cairo smart contract. Consider:
-- Contract structure with #[contract] attribute
-- Storage variables and access patterns
-- External/view functions and their signatures
-- Event definitions and emissions
-- Error handling and custom errors
-- Interface implementations
-""",
-            test_template="""
-You are helping write Cairo tests. Consider:
-- Test module structure with #[cfg(test)]
-- Test functions with #[test] attribute
-- Assertions and test utilities
-- Mock contracts and test fixtures
-- Test coverage and edge cases
-""",
-        )
-
-    @classmethod
-    def scarb_assistant(cls) -> "AgentConfiguration":
-        """Get Scarb Assistant agent configuration."""
-        return cls(
-            id="scarb-assistant",
-            name="Scarb Assistant",
-            description="Specialized assistant for Scarb build tool",
-            sources=[DocumentSource.SCARB_DOCS],
-            retrieval_program_name="scarb_retrieval",
-            generation_program_name="scarb_generation",
-            similarity_threshold=0.3,  # Lower threshold for Scarb-specific queries
-        )
-
-
-@dataclass
 class Config:
     """Main application configuration."""
 
@@ -119,16 +33,3 @@ class Config:
     host: str = "0.0.0.0"
     port: int = 3001
     debug: bool = False
-
-    # TODO: because only set with defaults at post-init, should not be there.
-    # Agent configurations
-    agents: dict[str, AgentConfiguration] = field(default_factory=dict)
-    default_agent_id: str = "cairo-coder"
-
-    def __post_init__(self) -> None:
-        """Initialize default agents on top of custom ones."""
-        self.agents = {**self.agents, **{
-                "cairo-coder": AgentConfiguration.default_cairo_coder(),
-                "default": AgentConfiguration.default_cairo_coder(),
-                "scarb-assistant": AgentConfiguration.scarb_assistant(),
-            }}

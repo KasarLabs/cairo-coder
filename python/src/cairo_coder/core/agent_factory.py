@@ -2,147 +2,42 @@
 Agent Factory for Cairo Coder.
 
 This module implements the AgentFactory class that creates and configures
-RAG Pipeline agents based on agent IDs and configurations.
+RAG Pipeline agents using the lightweight agent registry.
 """
 
-from dataclasses import dataclass, field
 from typing import Any
 
-from cairo_coder.config.manager import ConfigManager
-from cairo_coder.core.config import AgentConfiguration, VectorStoreConfig
-from cairo_coder.core.rag_pipeline import RagPipeline, RagPipelineFactory
-from cairo_coder.core.types import DocumentSource, Message
+from cairo_coder.agents.registry import get_agent_by_string_id
+from cairo_coder.core.config import VectorStoreConfig
+from cairo_coder.core.rag_pipeline import RagPipeline
+from cairo_coder.core.types import Message
+from cairo_coder.dspy.document_retriever import SourceFilteredPgVectorRM
 from cairo_coder.utils.logging import get_logger
 
 logger = get_logger(__name__)
-
-
-@dataclass
-class AgentFactoryConfig:
-    """Configuration for Agent Factory."""
-
-    vector_store_config: VectorStoreConfig
-    config_manager: ConfigManager
-    default_agent_config: AgentConfiguration | None = None
-    agent_configs: dict[str, AgentConfiguration] = field(default_factory=dict)
-    vector_db: Any = None  # SourceFilteredPgVectorRM instance
 
 
 class AgentFactory:
     """
     Factory class for creating and configuring RAG Pipeline agents.
 
-    This factory manages agent configurations and creates appropriate
-    RAG Pipelines based on agent IDs and requirements.
+    This factory uses the lightweight agent registry to create appropriate
+    RAG Pipelines based on agent IDs.
     """
 
-    def __init__(self, config: AgentFactoryConfig):
+    def __init__(self, vector_db: SourceFilteredPgVectorRM, vector_store_config: VectorStoreConfig):
         """
         Initialize the Agent Factory.
 
         Args:
-            config: AgentFactoryConfig with vector store and configurations
+            vector_db: Pre-initialized vector database instance
+            vector_store_config: Vector store configuration
         """
-        self.config = config
-        self.vector_store_config = config.vector_store_config
-        self.config_manager = config.config_manager
-        self.agent_configs = config.agent_configs
-        self.default_agent_config = config.default_agent_config
-        self.vector_db = config.vector_db
+        self.vector_db = vector_db
+        self.vector_store_config = vector_store_config
 
         # Cache for created agents to avoid recreation
         self._agent_cache: dict[str, RagPipeline] = {}
-
-    @staticmethod
-    def create_agent(
-        query: str,
-        history: list[Message],
-        vector_store_config: VectorStoreConfig,
-        mcp_mode: bool = False,
-        sources: list[DocumentSource] | None = None,
-        max_source_count: int = 10,
-        similarity_threshold: float = 0.4,
-        vector_db: Any = None,
-    ) -> RagPipeline:
-        """
-        Create a default agent for general Cairo programming assistance.
-
-        Args:
-            query: User's query (used for agent optimization)
-            history: Chat history (used for context)
-            vector_store_config: Vector store configuration for document retrieval
-            mcp_mode: Whether to use MCP mode
-            sources: Optional document sources filter
-            max_source_count: Maximum documents to retrieve
-            similarity_threshold: Minimum similarity for documents
-            vector_db: Optional pre-initialized vector database instance
-
-        Returns:
-            Configured RagPipeline instance
-        """
-        # Determine appropriate sources based on query if not provided
-        if sources is None:
-            sources = AgentFactory._infer_sources_from_query(query)
-
-        # Create pipeline with appropriate configuration
-        return RagPipelineFactory.create_pipeline(
-            name="default_agent",
-            vector_store_config=vector_store_config,
-            sources=sources,
-            max_source_count=max_source_count,
-            similarity_threshold=similarity_threshold,
-            vector_db=vector_db,
-        )
-
-    @staticmethod
-    def create_agent_by_id(
-        query: str,
-        history: list[Message],
-        agent_id: str,
-        vector_store_config: VectorStoreConfig,
-        config_manager: ConfigManager | None = None,
-        mcp_mode: bool = False,
-        vector_db: Any = None,
-    ) -> RagPipeline:
-        """
-        Create an agent based on a specific agent ID configuration.
-
-        Args:
-            query: User's query
-            history: Chat history
-            agent_id: Specific agent identifier
-            vector_store_config: Vector store for document retrieval
-            config_manager: Optional configuration manager
-            mcp_mode: Whether to use MCP mode
-            vector_db: Optional pre-initialized vector database instance
-
-        Returns:
-            Configured RagPipeline instance
-
-        Raises:
-            ValueError: If agent_id is not found in configuration
-        """
-        # Load agent configuration
-        if config_manager is None:
-            config_manager = ConfigManager()
-
-        config = config_manager.load_config()
-
-        try:
-            agent_config = config_manager.get_agent_config(config, agent_id)
-        except KeyError as e:
-            raise ValueError(f"Agent configuration not found for ID: {agent_id}") from e
-
-        # Create pipeline based on agent configuration
-        return AgentFactory._create_pipeline_from_config(
-            agent_config=agent_config,
-            vector_store_config=vector_store_config,
-            query=query,
-            history=history,
-            mcp_mode=mcp_mode,
-            vector_db=vector_db,
-        )
-
 
     def get_or_create_agent(
         self, agent_id: str, query: str, history: list[Message], mcp_mode: bool = False
@@ -152,8 +47,8 @@ class AgentFactory:
 
         Args:
             agent_id: Agent identifier
-            query: User's query
-            history: Chat history
+            query: User's query (unused in new implementation)
+            history: Chat history (unused in new implementation)
             mcp_mode: Whether to use MCP mode
 
         Returns:
@@ -164,16 +59,11 @@ class AgentFactory:
         if cache_key in self._agent_cache:
             return self._agent_cache[cache_key]
 
-        # Create new agent
-        agent = self.create_agent_by_id(
-            query=query,
-            history=history,
-            agent_id=agent_id,
-            vector_store_config=self.vector_store_config,
-            config_manager=self.config_manager,
-            mcp_mode=mcp_mode,
-            vector_db=self.vector_db,
-        )
+        # Get agent spec from registry
+        _, spec = get_agent_by_string_id(agent_id)
+
+        # Create new agent from spec
+        agent = spec.build(self.vector_db, self.vector_store_config)
 
         # Cache the agent
         self._agent_cache[cache_key] = agent
@@ -191,7 +81,9 @@ class AgentFactory:
         Returns:
             List of configured agent IDs
         """
-        return list(self.agent_configs.keys())
+        # Return all agent enum values
+        from cairo_coder.agents.registry import AgentId
+        return [agent_id.value for agent_id in AgentId]
 
     def get_agent_info(self, agent_id: str) -> dict[str, Any]:
         """
@@ -206,207 +98,27 @@ class AgentFactory:
         Raises:
             ValueError: If agent_id is not found
         """
-        if agent_id not in self.agent_configs:
-            raise ValueError(f"Agent not found: {agent_id}")
+        enum_id, spec = get_agent_by_string_id(agent_id)
 
-        config = self.agent_configs[agent_id]
         return {
-            "id": config.id,
-            "name": config.name,
-            "description": config.description,
-            "sources": [source.value for source in config.sources],
-            "max_source_count": config.max_source_count,
-            "similarity_threshold": config.similarity_threshold,
-            "contract_template": config.contract_template,
-            "test_template": config.test_template,
+            "id": enum_id.value,
+            "name": spec.name,
+            "description": spec.description,
+            "sources": [source.value for source in spec.sources],
+            "max_source_count": spec.max_source_count,
+            "similarity_threshold": spec.similarity_threshold,
         }
 
-    @staticmethod
-    def _infer_sources_from_query(query: str) -> list[DocumentSource]:
-        """
-        Infer appropriate documentation sources from the query.
 
-        Args:
-            query: User's query
-
-        Returns:
-            List of relevant DocumentSource values
-        """
-        query_lower = query.lower()
-        sources = []
-
-        # Source-specific keywords
-        source_keywords = {
-            DocumentSource.SCARB_DOCS: ["scarb", "build", "package", "dependency", "toml"],
-            DocumentSource.STARKNET_FOUNDRY: ["foundry", "forge", "cast", "test", "anvil"],
-            DocumentSource.OPENZEPPELIN_DOCS: ["openzeppelin", "oz", "token", "erc", "standard"],
-            DocumentSource.CORELIB_DOCS: ["corelib", "core", "builtin", "primitive"],
-            DocumentSource.CAIRO_BY_EXAMPLE: ["example", "tutorial", "guide", "walkthrough"],
-            DocumentSource.STARKNET_DOCS: [
-                "starknet",
-                "account",
-                "transaction",
-                "fee",
-                "l2",
-                "contract",
-            ],
-            DocumentSource.CAIRO_BOOK: ["cairo", "syntax", "language", "type", "variable"],
-        }
-
-        # Check for specific source keywords
-        for source, keywords in source_keywords.items():
-            if any(keyword in query_lower for keyword in keywords):
-                sources.append(source)
-
-        # Default to Cairo Book and Starknet Docs if no specific sources found
-        if not sources:
-            sources = [DocumentSource.CAIRO_BOOK, DocumentSource.STARKNET_DOCS]
-
-        return sources
-
-    @staticmethod
-    def _create_pipeline_from_config(
-        agent_config: AgentConfiguration,
-        vector_store_config: VectorStoreConfig,
-        query: str,
-        history: list[Message],
-        mcp_mode: bool = False,
-        vector_db: Any = None,
-    ) -> RagPipeline:
-        """
-        Create a RAG Pipeline from agent configuration.
-
-        Args:
-            agent_config: Agent configuration
-            vector_store_config: Vector store for document retrieval
-            query: User's query
-            history: Chat history
-            mcp_mode: Whether to use MCP mode
-            vector_db: Optional pre-initialized vector database instance
-
-        Returns:
-            Configured RagPipeline instance
-        """
-        # Determine pipeline type based on agent configuration
-        pipeline_type = "general"
-        if agent_config.id == "scarb-assistant":
-            pipeline_type = "scarb"
-
-        # Create pipeline with agent-specific configuration
-        if pipeline_type == "scarb":
-            pipeline = RagPipelineFactory.create_scarb_pipeline(
-                name=agent_config.name,
-                vector_store_config=vector_store_config,
-                sources=agent_config.sources or [DocumentSource.SCARB_DOCS],
-                max_source_count=agent_config.max_source_count,
-                similarity_threshold=agent_config.similarity_threshold,
-                contract_template=agent_config.contract_template,
-                test_template=agent_config.test_template,
-                vector_db=vector_db,
-            )
-        else:
-            pipeline = RagPipelineFactory.create_pipeline(
-                name=agent_config.name,
-                vector_store_config=vector_store_config,
-                sources=agent_config.sources,
-                max_source_count=agent_config.max_source_count,
-                similarity_threshold=agent_config.similarity_threshold,
-                contract_template=agent_config.contract_template,
-                test_template=agent_config.test_template,
-                vector_db=vector_db,
-            )
-
-        return pipeline
-
-
-class DefaultAgentConfigurations:
+def create_agent_factory(vector_db: SourceFilteredPgVectorRM, vector_store_config: VectorStoreConfig) -> AgentFactory:
     """
-    Default agent configurations for common use cases.
-    """
-
-    @staticmethod
-    def get_default_agent() -> AgentConfiguration:
-        """Get the default general-purpose agent configuration."""
-        return AgentConfiguration(
-            id="default",
-            name="Cairo Assistant",
-            description="General-purpose Cairo programming assistant",
-            sources=[DocumentSource.CAIRO_BOOK, DocumentSource.STARKNET_DOCS],
-            max_source_count=5,
-            similarity_threshold=0.35,
-            contract_template="""
-When writing Cairo contracts:
-1. Use #[starknet::contract] for contract modules
-2. Define storage with #[storage] struct
-3. Use #[external(v0)] for external functions
-4. Use #[view] for read-only functions
-5. Include proper error handling
-6. Follow Cairo naming conventions
-            """,
-            test_template="""
-When writing Cairo tests:
-1. Use #[test] for test functions
-2. Include proper setup and teardown
-3. Test both success and failure cases
-4. Use descriptive test names
-5. Include assertions with clear messages
-            """,
-        )
-
-    @staticmethod
-    def get_scarb_agent() -> AgentConfiguration:
-        """Get the Scarb-specific agent configuration."""
-        return AgentConfiguration(
-            id="scarb-assistant",
-            name="Scarb Assistant",
-            description="Specialized assistant for Scarb build tool",
-            sources=[DocumentSource.SCARB_DOCS],
-            max_source_count=5,
-            similarity_threshold=0.35,
-            contract_template=None,
-            test_template=None,
-        )
-
-
-def create_agent_factory(
-    vector_store_config: VectorStoreConfig,
-    config_manager: ConfigManager | None = None,
-    custom_agents: dict[str, AgentConfiguration] | None = None,
-    vector_db: Any = None,
-) -> AgentFactory:
-    """
-    Create an AgentFactory with default configurations.
+    Create an AgentFactory with the given vector database and config.
 
     Args:
-        vector_store: Vector store for document retrieval
-        config_manager: Optional configuration manager
-        custom_agents: Optional custom agent configurations
-        vector_db: Optional pre-initialized vector database instance
+        vector_db: Pre-initialized vector database instance
+        vector_store_config: Vector store configuration
 
     Returns:
         Configured AgentFactory instance
     """
-    if config_manager is None:
-        config_manager = ConfigManager()
-
-    # Load default agent configurations
-    default_configs = {
-        "default": DefaultAgentConfigurations.get_default_agent(),
-        "cairo-coder": DefaultAgentConfigurations.get_default_agent(),
-        "scarb-assistant": DefaultAgentConfigurations.get_scarb_agent(),
-    }
-
-    # Add custom agents if provided
-    if custom_agents:
-        default_configs.update(custom_agents)
-
-    # Create factory configuration
-    factory_config = AgentFactoryConfig(
-        vector_store_config=vector_store_config,
-        config_manager=config_manager,
-        default_agent_config=default_configs["default"],
-        agent_configs=default_configs,
-        vector_db=vector_db,
-    )
-
-    return AgentFactory(factory_config)
+    return AgentFactory(vector_db, vector_store_config)

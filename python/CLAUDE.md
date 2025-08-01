@@ -62,8 +62,9 @@ Cairo Coder uses a three-stage RAG pipeline implemented with DSPy modules:
 
 ### Agent-Based Architecture
 
-- **Agent Factory** (`src/cairo_coder/core/agent_factory.py`): Creates specialized agents from TOML configs
-- **Agents**: General, Scarb-specific, or custom agents with filtered sources
+- **Agent Registry** (`src/cairo_coder/agents/registry.py`): Lightweight enum-based registry of available agents
+- **Agent Factory** (`src/cairo_coder/core/agent_factory.py`): Creates agents from the registry with caching
+- **Agents**: Two built-in agents - Cairo Coder (general purpose) and Scarb Assistant (Scarb-specific)
 - **Pipeline Factory**: Creates optimized RAG pipelines loading from `optimizers/results/`
 
 ### FastAPI Server
@@ -93,15 +94,14 @@ Cairo Coder uses a three-stage RAG pipeline implemented with DSPy modules:
 
 ### Adding New Features
 
-1. **New Agent**: Extend `AgentConfiguration` with default agent configurations
+1. **New Agent**: Add an entry to `agents/registry.py` with `AgentId` enum and `AgentSpec` in the registry
 2. **New DSPy Module**: Create signature, implement forward/aforward methods
 3. **New Optimizer**: Create Marimo notebook, define metrics, use MIPROv2
 
 ### Configuration Management
 
-- `ConfigManager` loads from environment variables only
 - All configuration comes from environment variables (see `.env.example` in root)
-- Default agents are hardcoded in `AgentConfiguration` class
+- Agents are configured in the registry in `agents/registry.py`
 
 ## Important Notes
 
@@ -159,7 +159,7 @@ Familiarize yourself with these core fixtures defined in `conftest.py`. Use them
 - `mock_agent_factory`: A mock of the `AgentFactory` used in server tests to control which agent is created.
 - `mock_vector_db`: A mock of `SourceFilteredPgVectorRM` for testing the document retrieval layer without a real database.
 - `mock_lm`: A mock of a `dspy` language model for testing DSPy programs (`QueryProcessorProgram`, `GenerationProgram`) without making real API calls.
-- `sample_documents`, `sample_agent_configs`, `sample_processed_query`: Consistent, reusable data fixtures for your tests.
+- `sample_documents`, `sample_processed_query`: Consistent, reusable data fixtures for your tests.
 
 ### 5. Guidelines for Adding & Modifying Tests
 

@@ -7,14 +7,14 @@ relevant documents from the vector store based on processed queries.
 
 
 import asyncpg
-import dspy
 import structlog
-from dspy.retrieve.pgvector_rm import PgVectorRM
 from langsmith import traceable
 from psycopg2 import sql
 
+import dspy
 from cairo_coder.core.config import VectorStoreConfig
 from cairo_coder.core.types import Document, DocumentSource, ProcessedQuery
+from dspy.retrieve.pgvector_rm import PgVectorRM
 
 logger = structlog.get_logger()
 

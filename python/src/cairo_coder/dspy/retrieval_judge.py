@@ -11,10 +11,10 @@ import asyncio
 from collections.abc import Sequence
 from typing import Any
 
-import dspy
 import structlog
 from langsmith import traceable
 
+import dspy
 from cairo_coder.core.types import Document
 from cairo_coder.dspy.document_retriever import CONTRACT_TEMPLATE_TITLE, TEST_TEMPLATE_TITLE
 
@@ -214,10 +214,10 @@ class RetrievalJudge(dspy.Module):
             # Handle exceptions propagated by gather
             if isinstance(result, Exception):
                 logger.warning(
-                    "Error judging document (async), dropping it", error=str(result), exc_info=True
+                    "Error judging document (async), keeping it", error=str(result), exc_info=True
                 )
-                doc.metadata[LLM_JUDGE_SCORE_KEY] = 0.0
-                doc.metadata[LLM_JUDGE_REASON_KEY] = "Error during judgment"
+                doc.metadata[LLM_JUDGE_SCORE_KEY] = 1.0
+                doc.metadata[LLM_JUDGE_REASON_KEY] = "Could not judge document. Keeping it."
                 # Do not append to keep_docs
                 continue
 

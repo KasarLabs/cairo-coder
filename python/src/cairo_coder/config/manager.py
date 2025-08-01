@@ -2,11 +2,7 @@
 
 import os
 
-from ..core.config import (
-    AgentConfiguration,
-    Config,
-    VectorStoreConfig,
-)
+from ..core.config import Config, VectorStoreConfig
 
 
 class ConfigManager:
@@ -50,31 +46,8 @@ class ConfigManager:
             host=host,
             port=port,
             debug=debug,
-            default_agent_id="cairo-coder",
         )
 
-    @staticmethod
-    def get_agent_config(config: Config, agent_id: str | None = None) -> AgentConfiguration:
-        """
-        Get agent configuration by ID.
-
-        Args:
-            config: Application configuration.
-            agent_id: Agent ID to retrieve. Defaults to default agent.
-
-        Returns:
-            Agent configuration.
-
-        Raises:
-            ValueError: If agent ID is not found.
-        """
-        if agent_id is None:
-            agent_id = config.default_agent_id
-
-        if agent_id not in config.agents:
-            raise ValueError(f"Agent '{agent_id}' not found in configuration")
-
-        return config.agents[agent_id]
 
     @staticmethod
     def validate_config(config: Config) -> None:
@@ -90,14 +63,3 @@ class ConfigManager:
         # Check database configuration
         if not config.vector_store.password:
             raise ValueError("Database password is required")
-
-        # Check agents have valid sources
-        for agent_id, agent in config.agents.items():
-            if not agent.sources:
-                raise ValueError(f"Agent '{agent_id}' has no sources configured")
-
-        # Check default agent exists
-        if config.default_agent_id not in config.agents:
-            raise ValueError(
-                f"Default agent '{config.default_agent_id}' not found in configuration"
-            )

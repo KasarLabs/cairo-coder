@@ -14,7 +14,6 @@ from cairo_coder.core.rag_pipeline import (
     RagPipeline,
     RagPipelineConfig,
     RagPipelineFactory,
-    create_rag_pipeline,
 )
 from cairo_coder.core.types import Document, DocumentSource, Message, Role
 from cairo_coder.dspy.retrieval_judge import RetrievalJudge
@@ -36,6 +35,7 @@ def pipeline_config(
         document_retriever=mock_document_retriever,
         generation_program=mock_generation_program,
         mcp_generation_program=mock_mcp_generation_program,
+        sources=list(DocumentSource),
         max_source_count=10,
         similarity_threshold=0.4,
     )
@@ -47,9 +47,9 @@ def pipeline(pipeline_config):
     with patch("cairo_coder.core.rag_pipeline.RetrievalJudge") as mock_judge_class:
         mock_judge = Mock()
         mock_judge.get_lm_usage.return_value = {}
-        mock_judge_class.return_value = mock_judge
         mock_judge.forward.return_value = dspy.Prediction()
         mock_judge.aforward = AsyncMock(return_value=dspy.Prediction())
+        mock_judge_class.return_value = mock_judge
         return RagPipeline(pipeline_config)
 
 
@@ -435,20 +435,13 @@ class TestRagPipelineWithJudge:
 class TestRagPipelineFactory:
     """Tests for RagPipelineFactory."""
 
-    def test_create_pipeline_with_judge_params(self, mock_vector_store_config, mock_pgvector_rm):
+    def test_create_pipeline_has_judge_enabled(self, mock_vector_store_config, mock_pgvector_rm):
         """Test factory creates pipeline with judge parameters."""
         with (
             patch("cairo_coder.core.rag_pipeline.os.path.exists", return_value=True),
             patch.object(RagPipeline, "load"),
-            patch("cairo_coder.dspy.create_query_processor") as mock_qp_factory,
             patch("cairo_coder.dspy.DocumentRetrieverProgram") as mock_retriever_class,
-            patch("cairo_coder.dspy.create_generation_program") as mock_gp_factory,
-            patch("cairo_coder.dspy.create_mcp_generation_program") as mock_mcp_factory,
         ):
-            # Create mock components
-            mock_qp_factory.return_value = Mock()
-            mock_gp_factory.return_value = Mock()
-            mock_mcp_factory.return_value = Mock()
 
             # Mock DocumentRetrieverProgram to return a mock retriever
             mock_retriever = Mock()
@@ -458,50 +451,20 @@ class TestRagPipelineFactory:
             pipeline = RagPipelineFactory.create_pipeline(
                 name="test",
                 vector_store_config=mock_vector_store_config,
+                sources=list(DocumentSource),
+                generation_program=Mock(),
+                query_processor=Mock(),
+                mcp_generation_program=Mock(),
             )
 
             assert isinstance(pipeline.retrieval_judge, RetrievalJudge)
-
-    def test_create_pipeline_judge_disabled(self, mock_vector_store_config, mock_pgvector_rm):
-        """Test factory with judge disabled."""
-        with (
-            patch("cairo_coder.core.rag_pipeline.os.path.exists", return_value=True),
-            patch.object(RagPipeline, "load"),
-            patch("cairo_coder.dspy.create_query_processor") as mock_qp_factory,
-            patch("cairo_coder.dspy.DocumentRetrieverProgram") as mock_retriever_class,
-            patch("cairo_coder.dspy.create_generation_program") as mock_gp_factory,
-            patch("cairo_coder.dspy.create_mcp_generation_program") as mock_mcp_factory,
-        ):
-            # Create mock components
-            mock_qp_factory.return_value = Mock()
-            mock_gp_factory.return_value = Mock()
-            mock_mcp_factory.return_value = Mock()
-
-            # Mock DocumentRetrieverProgram to return a mock retriever
-            mock_retriever = Mock()
-            mock_retriever.vector_db = mock_pgvector_rm
-            mock_retriever_class.return_value = mock_retriever
-
-            pipeline = RagPipelineFactory.create_pipeline(
-                name="test",
-                vector_store_config=mock_vector_store_config,
-            )
-
-            assert pipeline.retrieval_judge is not None
 
     def test_optimizer_file_missing_error(self, mock_vector_store_config, mock_pgvector_rm):
         """Test error when optimizer file is missing."""
         with (
             patch("cairo_coder.core.rag_pipeline.os.path.exists", return_value=False),
-            patch("cairo_coder.dspy.create_query_processor") as mock_qp_factory,
             patch("cairo_coder.dspy.DocumentRetrieverProgram") as mock_retriever_class,
-            patch("cairo_coder.dspy.create_generation_program") as mock_gp_factory,
-            patch("cairo_coder.dspy.create_mcp_generation_program") as mock_mcp_factory,
         ):
-            # Create mock components
-            mock_qp_factory.return_value = Mock()
-            mock_gp_factory.return_value = Mock()
-            mock_mcp_factory.return_value = Mock()
 
             # Mock DocumentRetrieverProgram to return a mock retriever
             mock_retriever = Mock()
@@ -512,6 +475,10 @@ class TestRagPipelineFactory:
                 RagPipelineFactory.create_pipeline(
                     name="test",
                     vector_store_config=mock_vector_store_config,
+                    sources=list(DocumentSource),
+                    generation_program=Mock(),
+                    query_processor=Mock(),
+                    mcp_generation_program=Mock(),
                 )
 
 
@@ -556,42 +523,6 @@ class TestPipelineHelperMethods:
         assert sources[0]["title"] == "Test Doc"
         assert len(sources[0]["content_preview"]) == 203  # 200 + "..."
         assert sources[0]["content_preview"].endswith("...")
-
-    def test_prepare_context_with_templates(self, pipeline_config):
-        """Test context preparation with templates."""
-        # Create pipeline with templates
-        pipeline_config.contract_template = "Contract guidelines"
-        pipeline_config.test_template = "Test guidelines"
-        pipeline = RagPipeline(pipeline_config)
-
-        docs = create_custom_documents([("Doc", "Content", "source")])
-
-        # Contract-related query
-        from cairo_coder.core.types import ProcessedQuery
-        query = ProcessedQuery(
-            original="test",
-            search_queries=["test"],
-            reasoning="test",
-            is_contract_related=True,
-            is_test_related=False,
-            resources=[]
-        )
-        context = pipeline._prepare_context(docs, query)
-        assert "Contract Development Guidelines:" in context
-        assert "Contract guidelines" in context
-
-        # Test-related query
-        query = ProcessedQuery(
-            original="test",
-            search_queries=["test"],
-            reasoning="test",
-            is_contract_related=False,
-            is_test_related=True,
-            resources=[]
-        )
-        context = pipeline._prepare_context(docs, query)
-        assert "Testing Guidelines:" in context
-        assert "Test guidelines" in context
 
     def test_get_current_state(self, sample_documents, sample_processed_query, pipeline):
         """Test pipeline state retrieval."""
@@ -720,18 +651,19 @@ class TestConvenienceFunctions:
     def test_create_pipeline_with_defaults(self, mock_vector_store_config):
         """Test creating pipeline with default components."""
         with (
-            patch("cairo_coder.dspy.create_query_processor") as mock_create_qp,
             patch("cairo_coder.dspy.DocumentRetrieverProgram") as mock_create_dr,
-            patch("cairo_coder.dspy.create_generation_program") as mock_create_gp,
-            patch("cairo_coder.dspy.create_mcp_generation_program") as mock_create_mcp,
         ):
-            mock_create_qp.return_value = Mock()
             mock_create_dr.return_value = Mock()
-            mock_create_gp.return_value = Mock()
-            mock_create_mcp.return_value = Mock()
 
+            mock_gp = Mock(),
+            mock_qp = Mock(),
+            mock_mcp = Mock(),
             pipeline = RagPipelineFactory.create_pipeline(
-                name="test_pipeline", vector_store_config=mock_vector_store_config
+                name="test_pipeline", vector_store_config=mock_vector_store_config,
+                sources=list(DocumentSource),
+                query_processor=mock_qp,
+                generation_program=mock_gp,
+                mcp_generation_program=mock_mcp,
             )
 
             assert isinstance(pipeline, RagPipeline)
@@ -741,15 +673,12 @@ class TestConvenienceFunctions:
             assert pipeline.config.similarity_threshold == 0.4
 
             # Verify factory functions were called
-            mock_create_qp.assert_called_once()
             mock_create_dr.assert_called_once_with(
                 vector_store_config=mock_vector_store_config,
                 max_source_count=5,
                 similarity_threshold=0.4,
                 vector_db=None,
             )
-            mock_create_gp.assert_called_once_with("general")
-            mock_create_mcp.assert_called_once()
 
     def test_create_pipeline_with_custom_components(self, mock_vector_store_config):
         """Test creating pipeline with custom components."""
@@ -768,8 +697,6 @@ class TestConvenienceFunctions:
             max_source_count=20,
             similarity_threshold=0.6,
             sources=[DocumentSource.CAIRO_BOOK],
-            contract_template="Custom contract template",
-            test_template="Custom test template",
         )
 
         assert isinstance(pipeline, RagPipeline)
@@ -781,41 +708,3 @@ class TestConvenienceFunctions:
         assert pipeline.config.max_source_count == 20
         assert pipeline.config.similarity_threshold == 0.6
         assert pipeline.config.sources == [DocumentSource.CAIRO_BOOK]
-        assert pipeline.config.contract_template == "Custom contract template"
-        assert pipeline.config.test_template == "Custom test template"
-
-    def test_create_scarb_pipeline(self, mock_vector_store_config):
-        """Test creating Scarb-specific pipeline."""
-        with patch("cairo_coder.dspy.create_generation_program") as mock_create_gp, patch(
-            "cairo_coder.dspy.document_retriever.SourceFilteredPgVectorRM"
-        ):
-            mock_scarb_program = Mock()
-            mock_create_gp.return_value = mock_scarb_program
-
-            pipeline = RagPipelineFactory.create_scarb_pipeline(
-                name="scarb_pipeline", vector_store_config=mock_vector_store_config
-            )
-
-            assert isinstance(pipeline, RagPipeline)
-            assert pipeline.config.name == "scarb_pipeline"
-            assert pipeline.config.sources == [DocumentSource.SCARB_DOCS]
-            assert pipeline.config.max_source_count == 5
-
-            # Verify Scarb generation program was created
-            mock_create_gp.assert_called_with("scarb")
-
-    def test_create_rag_pipeline_convenience_function(self, mock_vector_store_config):
-        """Test the convenience function for creating RAG pipeline."""
-        with patch(
-            "cairo_coder.core.rag_pipeline.RagPipelineFactory.create_pipeline"
-        ) as mock_create:
-            mock_create.return_value = Mock()
-
-            create_rag_pipeline(
-                name="test",
-                vector_store_config=mock_vector_store_config,
-            )
-
-            mock_create.assert_called_once_with(
-                "test", mock_vector_store_config
-            )

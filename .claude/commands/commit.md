@@ -61,4 +61,4 @@ them manually.
 ```
 
 The commit message will be concise, meaningful, and follow your project's
-conventions if I can detect them from recent commits
+conventions if I can detect them from recent commits.

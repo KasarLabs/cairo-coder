@@ -4,8 +4,7 @@
 import pytest
 
 from cairo_coder.config.manager import ConfigManager
-from cairo_coder.core.config import AgentConfiguration
-from cairo_coder.core.types import DocumentSource
+from cairo_coder.core.config import Config
 
 
 class TestConfigManager:
@@ -21,7 +20,7 @@ class TestConfigManager:
         """Test loading configuration with default values."""
         # Set required password
         monkeypatch.setenv("POSTGRES_PASSWORD", "test-password")
-        
+
         config = ConfigManager.load_config()
 
         # Check defaults
@@ -64,32 +63,11 @@ class TestConfigManager:
         assert config.port == 8080
         assert config.debug is True
 
-    def test_get_agent_config(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        """Test retrieving agent configuration."""
-        monkeypatch.setenv("POSTGRES_PASSWORD", "test-password")
-        config = ConfigManager.load_config()
-
-        # Get default agent
-        agent = ConfigManager.get_agent_config(config, "cairo-coder")
-        assert agent.id == "cairo-coder"
-        assert agent.name == "Cairo Coder"
-        assert DocumentSource.CAIRO_BOOK in agent.sources
-
-        # Get specific agent
-        scarb_agent = ConfigManager.get_agent_config(config, "scarb-assistant")
-        assert scarb_agent.id == "scarb-assistant"
-        assert scarb_agent.name == "Scarb Assistant"
-        assert DocumentSource.SCARB_DOCS in scarb_agent.sources
-
-        # Get non-existent agent
-        with pytest.raises(ValueError, match="Agent 'unknown' not found"):
-            ConfigManager.get_agent_config(config, "unknown")
-
     def test_validate_config(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """Test configuration validation."""
         # Valid config
         monkeypatch.setenv("POSTGRES_PASSWORD", "test-pass")
-        config = ConfigManager.load_config()
+        config: Config = ConfigManager.load_config()
         ConfigManager.validate_config(config)
 
         # No database password
@@ -97,19 +75,6 @@ class TestConfigManager:
         with pytest.raises(ValueError, match="Database password is required"):
             ConfigManager.validate_config(config)
 
-        # Agent without sources
-        config.vector_store.password = "test-pass"
-        config.agents["test"] = AgentConfiguration(
-            id="test", name="Test", description="Test agent", sources=[]
-        )
-        with pytest.raises(ValueError, match="has no sources configured"):
-            ConfigManager.validate_config(config)
-
-        # Invalid default agent
-        config.default_agent_id = "unknown"
-        config.agents = {}  # No agents
-        with pytest.raises(ValueError, match="Default agent 'unknown' not found"):
-            ConfigManager.validate_config(config)
 
     def test_dsn_property(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """Test PostgreSQL DSN generation."""
