@@ -46,7 +46,6 @@ class ConfigManager:
             host=host,
             port=port,
             debug=debug,
-            default_agent_id="cairo-coder",
         )
 
 

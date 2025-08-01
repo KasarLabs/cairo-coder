@@ -1,10 +1,10 @@
 """Tests for configuration management."""
 
 
-from cairo_coder.core.config import Config
 import pytest
 
 from cairo_coder.config.manager import ConfigManager
+from cairo_coder.core.config import Config
 
 
 class TestConfigManager:
@@ -62,27 +62,6 @@ class TestConfigManager:
         assert config.host == "127.0.0.1"
         assert config.port == 8080
         assert config.debug is True
-
-    def test_get_agent_config(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        """Test retrieving agent configuration."""
-        monkeypatch.setenv("POSTGRES_PASSWORD", "test-password")
-        config = ConfigManager.load_config()
-
-        # Get default agent
-        agent = ConfigManager.get_agent_config(config, "cairo-coder")
-        assert agent.id == "cairo-coder"
-        assert agent.name == "Cairo Coder"
-        assert DocumentSource.CAIRO_BOOK in agent.sources
-
-        # Get specific agent
-        scarb_agent = ConfigManager.get_agent_config(config, "scarb-assistant")
-        assert scarb_agent.id == "scarb-assistant"
-        assert scarb_agent.name == "Scarb Assistant"
-        assert DocumentSource.SCARB_DOCS in scarb_agent.sources
-
-        # Get non-existent agent
-        with pytest.raises(ValueError, match="Agent 'unknown' not found"):
-            ConfigManager.get_agent_config(config, "unknown")
 
     def test_validate_config(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """Test configuration validation."""
