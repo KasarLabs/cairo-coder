@@ -1,100 +1,50 @@
-//TODO deduplicate this file!
-
-import fs from 'fs';
 import path from 'path';
-import toml from '@iarna/toml';
-import { Config, RecursivePartial, VectorStoreConfig } from '../types';
+import { VectorStoreConfig } from '../types';
+import dotenv from 'dotenv';
+const dotenvPath = path.join(__dirname, '../../../../.env');
+dotenv.config({ path: dotenvPath });
 
-const configFileName = 'config.toml';
+// Provider configuration from environment variables with defaults
+export const getHostedModeConfig = () => ({
+  DEFAULT_CHAT_PROVIDER: process.env.DEFAULT_CHAT_PROVIDER || 'gemini',
+  DEFAULT_CHAT_MODEL: process.env.DEFAULT_CHAT_MODEL || 'Gemini Flash 2.5',
+  DEFAULT_FAST_CHAT_PROVIDER:
+    process.env.DEFAULT_FAST_CHAT_PROVIDER || 'gemini',
+  DEFAULT_FAST_CHAT_MODEL:
+    process.env.DEFAULT_FAST_CHAT_MODEL || 'Gemini Flash 2.5',
+  DEFAULT_EMBEDDING_PROVIDER:
+    process.env.DEFAULT_EMBEDDING_PROVIDER || 'openai',
+  DEFAULT_EMBEDDING_MODEL:
+    process.env.DEFAULT_EMBEDDING_MODEL || 'Text embedding 3 large',
+});
 
-const loadConfig = () => {
-  // Find the package root by looking for package.json
-  let packageRoot = __dirname;
-  while (
-    !fs.existsSync(path.join(packageRoot, 'package.json')) &&
-    packageRoot !== '/'
-  ) {
-    packageRoot = path.dirname(packageRoot);
-  }
+export const getPort = () => parseInt(process.env.PORT || '3001');
 
-  if (packageRoot === '/') {
-    throw new Error('Could not find package.json in any parent directory');
-  }
+export const getSimilarityMeasure = () => process.env.SIMILARITY_MEASURE;
 
-  return toml.parse(
-    fs.readFileSync(path.join(packageRoot, configFileName), 'utf-8'),
-  ) as any as Config;
-};
+// API Keys from environment variables only
+export const getOpenaiApiKey = () => process.env.OPENAI_API_KEY;
 
-export const getHostedModeConfig = () => loadConfig().PROVIDERS;
+export const getGroqApiKey = () => process.env.GROQ_API_KEY;
 
-export const getPort = () => loadConfig().GENERAL.PORT;
+export const getAnthropicApiKey = () => process.env.ANTHROPIC_API_KEY;
 
-export const getSimilarityMeasure = () =>
-  loadConfig().GENERAL.SIMILARITY_MEASURE;
+export const getDeepseekApiKey = () => process.env.DEEPSEEK_API_KEY;
 
-export const getOpenaiApiKey = () => loadConfig().API_KEYS.OPENAI;
+export const getGeminiApiKey = () => process.env.GEMINI_API_KEY;
 
-export const getGroqApiKey = () => loadConfig().API_KEYS.GROQ;
-
-export const getAnthropicApiKey = () => loadConfig().API_KEYS.ANTHROPIC;
-
-export const getDeepseekApiKey = () => loadConfig().API_KEYS.DEEPSEEK;
-
-export const getGeminiApiKey = () => loadConfig().API_KEYS.GEMINI;
-
-export const getVectorDbConfig = () => {
-  const config = loadConfig();
-
+export const getVectorDbConfig = (): VectorStoreConfig => {
+  // All database configuration from environment variables
   return {
-    POSTGRES_USER: config.VECTOR_DB.POSTGRES_USER || '',
-    POSTGRES_PASSWORD: config.VECTOR_DB.POSTGRES_PASSWORD || '',
-    POSTGRES_DB: config.VECTOR_DB.POSTGRES_DB || '',
-    POSTGRES_HOST: config.VECTOR_DB.POSTGRES_HOST || '',
-    POSTGRES_PORT: config.VECTOR_DB.POSTGRES_PORT || '',
-  } as VectorStoreConfig;
-};
-
-export const updateConfig = (config: RecursivePartial<Config>) => {
-  const currentConfig = loadConfig();
-
-  for (const key in currentConfig) {
-    if (!config[key]) config[key] = {};
-
-    if (typeof currentConfig[key] === 'object' && currentConfig[key] !== null) {
-      for (const nestedKey in currentConfig[key]) {
-        if (
-          !config[key][nestedKey] &&
-          currentConfig[key][nestedKey] &&
-          config[key][nestedKey] !== ''
-        ) {
-          config[key][nestedKey] = currentConfig[key][nestedKey];
-        }
-      }
-    } else if (currentConfig[key] && config[key] !== '') {
-      config[key] = currentConfig[key];
-    }
-  }
-
-  // Find the package root by looking for package.json
-  let packageRoot = __dirname;
-  while (
-    !fs.existsSync(path.join(packageRoot, 'package.json')) &&
-    packageRoot !== '/'
-  ) {
-    packageRoot = path.dirname(packageRoot);
-  }
-
-  if (packageRoot === '/') {
-    throw new Error('Could not find package.json in any parent directory');
-  }
-
-  fs.writeFileSync(
-    path.join(packageRoot, configFileName),
-    toml.stringify(config),
-  );
+    POSTGRES_USER: process.env.POSTGRES_USER || 'cairocoder',
+    POSTGRES_PASSWORD: process.env.POSTGRES_PASSWORD || '',
+    POSTGRES_DB: process.env.POSTGRES_DB || 'cairocoder',
+    POSTGRES_HOST: process.env.POSTGRES_HOST || 'postgres',
+    POSTGRES_PORT: process.env.POSTGRES_PORT || '5432',
+  };
 };
 
 export const getStarknetFoundryVersion = () =>
-  loadConfig().VERSIONS.STARKNET_FOUNDRY;
-export const getScarbVersion = () => loadConfig().VERSIONS.SCARB;
+  process.env.STARKNET_FOUNDRY_VERSION || '0.47.0';
+
+export const getScarbVersion = () => process.env.SCARB_VERSION || '2.11.4';

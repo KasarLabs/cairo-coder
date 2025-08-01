@@ -66,14 +66,12 @@ Cairo Coder is an open-source Cairo language code generation service using Retri
 
 ### Configuration
 
-- Copy `packages/agents/sample.config.toml` to `config.toml`
-- Required configurations:
-  - LLM provider API keys (OPENAI, GEMINI, ANTHROPIC)
-  - Database connection in [VECTOR_DB] section
-  - Model selection in [PROVIDERS] section
-- Environment variables:
-  - Root `.env`: PostgreSQL initialization (POSTGRES_USER, POSTGRES_PASSWORD, POSTGRES_DB)
-  - `packages/backend/.env`: Optional LangSmith tracing configuration
+- All sensitive configuration is managed via environment variables
+- Copy `.env.example` to `.env` in the root directory
+- Required environment variables:
+  - Database credentials: POSTGRES_USER, POSTGRES_PASSWORD, POSTGRES_DB, POSTGRES_HOST, POSTGRES_PORT
+  - LLM provider API keys: OPENAI_API_KEY, ANTHROPIC_API_KEY, GEMINI_API_KEY (at least one required)
+  - Optional: LANGSMITH_API_KEY for tracing
 
 ### Database Architecture
 

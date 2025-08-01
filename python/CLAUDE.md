@@ -12,8 +12,7 @@ Cairo Coder is an open-source Cairo language code generation service using Retri
 
 - `curl -LsSf https://astral.sh/uv/install.sh | sh` - Install uv package manager
 - `uv sync` - Install all dependencies
-- `cp sample.config.toml config.toml` - Create configuration file
-- `cp .env.example .env` - Set up environment variables (if .env.example exists)
+- `cp .env.example .env` - Set up environment variables (from root directory)
 
 ### Development
 
@@ -94,16 +93,15 @@ Cairo Coder uses a three-stage RAG pipeline implemented with DSPy modules:
 
 ### Adding New Features
 
-1. **New Agent**: Add configuration to `config.toml`, extend `AgentConfiguration`
+1. **New Agent**: Extend `AgentConfiguration` with default agent configurations
 2. **New DSPy Module**: Create signature, implement forward/aforward methods
 3. **New Optimizer**: Create Marimo notebook, define metrics, use MIPROv2
 
 ### Configuration Management
 
-- `ConfigManager` loads from `config.toml` and environment
-- Vector store config in `[VECTOR_DB]` section
-- LLM providers in `[PROVIDERS]` section
-- Agent definitions in `[[AGENTS]]` array
+- `ConfigManager` loads from environment variables only
+- All configuration comes from environment variables (see `.env.example` in root)
+- Default agents are hardcoded in `AgentConfiguration` class
 
 ## Important Notes
 
@@ -162,7 +160,6 @@ Familiarize yourself with these core fixtures defined in `conftest.py`. Use them
 - `mock_vector_db`: A mock of `SourceFilteredPgVectorRM` for testing the document retrieval layer without a real database.
 - `mock_lm`: A mock of a `dspy` language model for testing DSPy programs (`QueryProcessorProgram`, `GenerationProgram`) without making real API calls.
 - `sample_documents`, `sample_agent_configs`, `sample_processed_query`: Consistent, reusable data fixtures for your tests.
-- `sample_config_file`: A temporary, valid `config.toml` file for integration testing the configuration manager.
 
 ### 5. Guidelines for Adding & Modifying Tests
 

@@ -1,10 +1,6 @@
 """Configuration management for Cairo Coder."""
 
 import os
-from pathlib import Path
-from typing import Any
-
-import toml
 
 from ..core.config import (
     AgentConfiguration,
@@ -14,69 +10,46 @@ from ..core.config import (
 
 
 class ConfigManager:
-    """Manages application configuration from TOML files and environment variables."""
+    """Manages application configuration from environment variables."""
 
     @staticmethod
-    def load_config(config_path: Path | None = None) -> Config:
+    def load_config() -> Config:
         """
-        Load configuration from TOML file and environment variables.
-
-        Args:
-            config_path: Path to configuration file. Defaults to config.toml in project root.
+        Load configuration from environment variables.
 
         Returns:
             Loaded configuration object.
+
+        Raises:
+            ValueError: If required environment variables are missing.
         """
-        if config_path is None:
-            config_path = Path("config.toml")
-            if not config_path.exists():
-                raise FileNotFoundError(f"Configuration file not found at {config_path}")
-
-        # Check if config file exists when explicitly provided
-        if config_path and not config_path.exists():
-            raise FileNotFoundError(f"Configuration file not found at {config_path}")
-
-        # Validate config
-
-        # Load base configuration from TOML
-        config_dict: dict[str, Any] = {}
-        if config_path:
-            with open(config_path) as f:
-                config_dict = toml.load(f)
-
-        if "VECTOR_DB" not in config_dict:
-            raise ValueError("VECTOR_DB section is required in config.toml")
-
-        # Update vector store settings
-        vector_db_config = config_dict["VECTOR_DB"]
+        # Get vector store configuration from environment variables
         vector_store_config = VectorStoreConfig(
-            host=vector_db_config["POSTGRES_HOST"],
-            port=vector_db_config["POSTGRES_PORT"],
-            database=vector_db_config["POSTGRES_DB"],
-            user=vector_db_config["POSTGRES_USER"],
-            password=vector_db_config["POSTGRES_PASSWORD"],
-            table_name=vector_db_config["POSTGRES_TABLE_NAME"],
-            similarity_measure=vector_db_config["SIMILARITY_MEASURE"],
+            host=os.getenv("POSTGRES_HOST", "postgres"),
+            port=int(os.getenv("POSTGRES_PORT", "5432")),
+            database=os.getenv("POSTGRES_DB", "cairocoder"),
+            user=os.getenv("POSTGRES_USER", "cairocoder"),
+            password=os.getenv("POSTGRES_PASSWORD", ""),
+            table_name=os.getenv("POSTGRES_TABLE_NAME", "documents"),
+            similarity_measure=os.getenv("SIMILARITY_MEASURE", "cosine"),
         )
 
-        # Override with environment variables if explicitly set
-        if os.getenv("POSTGRES_HOST") is not None:
-            vector_store_config.host = os.getenv("POSTGRES_HOST", vector_store_config.host)
-        if os.getenv("POSTGRES_PORT") is not None:
-            vector_store_config.port = int(
-                os.getenv("POSTGRES_PORT", str(vector_store_config.port))
+        # Validate essential configuration
+        if not vector_store_config.password:
+            raise ValueError(
+                "Database password is required. Set POSTGRES_PASSWORD environment variable."
             )
-        if os.getenv("POSTGRES_DB") is not None:
-            vector_store_config.database = os.getenv("POSTGRES_DB", vector_store_config.database)
-        if os.getenv("POSTGRES_USER") is not None:
-            vector_store_config.user = os.getenv("POSTGRES_USER", vector_store_config.user)
-        if os.getenv("POSTGRES_PASSWORD") is not None:
-            vector_store_config.password = os.getenv(
-                "POSTGRES_PASSWORD", vector_store_config.password
-            )
+
+        # Get server configuration from environment
+        host = os.getenv("HOST", "0.0.0.0")
+        port = int(os.getenv("PORT", "3001"))
+        debug = os.getenv("DEBUG", "false").lower() == "true"
 
         return Config(
             vector_store=vector_store_config,
+            host=host,
+            port=port,
+            debug=debug,
             default_agent_id="cairo-coder",
         )
 

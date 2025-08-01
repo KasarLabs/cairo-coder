@@ -18,37 +18,6 @@ export interface VectorStoreConfig {
   POSTGRES_PORT: string;
 }
 
-export interface Config {
-  GENERAL: {
-    PORT: number;
-    SIMILARITY_MEASURE: string;
-  };
-  VECTOR_DB: VectorStoreConfig;
-  API_KEYS: {
-    OPENAI: string;
-    GROQ: string;
-    ANTHROPIC: string;
-    DEEPSEEK: string;
-    GEMINI: string;
-  };
-  PROVIDERS?: {
-    DEFAULT_CHAT_PROVIDER: string;
-    DEFAULT_CHAT_MODEL: string;
-    DEFAULT_FAST_CHAT_PROVIDER: string;
-    DEFAULT_FAST_CHAT_MODEL: string;
-    DEFAULT_EMBEDDING_PROVIDER: string;
-    DEFAULT_EMBEDDING_MODEL: string;
-  };
-  VERSIONS: {
-    STARKNET_FOUNDRY: string;
-    SCARB: string;
-  };
-}
-
-export type RecursivePartial<T> = {
-  [P in keyof T]?: RecursivePartial<T[P]>;
-};
-
 export interface AgentPrompts {
   searchRetrieverPrompt: string;
   searchResponsePrompt: string;

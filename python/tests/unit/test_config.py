@@ -1,6 +1,5 @@
 """Tests for configuration management."""
 
-from pathlib import Path
 
 import pytest
 
@@ -12,57 +11,63 @@ from cairo_coder.core.types import DocumentSource
 class TestConfigManager:
     """Test configuration manager functionality."""
 
-    def test_load_config_fails_if_no_config_file(self) -> None:
-        """Test loading configuration with no config file."""
-        with pytest.raises(FileNotFoundError, match="Configuration file not found at"):
-            ConfigManager.load_config(Path("nonexistent.toml"))
+    def test_load_config_requires_password(self) -> None:
+        """Test loading configuration requires database password."""
+        # No password set due to autouse fixture
+        with pytest.raises(ValueError, match="Database password is required"):
+            ConfigManager.load_config()
 
-    def test_load_toml_config(
-        self, monkeypatch: pytest.MonkeyPatch, sample_config_file: Path
-    ) -> None:
-        """Test loading configuration from TOML file."""
-        # Clear environment variables that might interfere
-        monkeypatch.delenv("POSTGRES_HOST", raising=False)
-        monkeypatch.delenv("POSTGRES_PORT", raising=False)
-        monkeypatch.delenv("POSTGRES_DB", raising=False)
-        monkeypatch.delenv("POSTGRES_USER", raising=False)
-        monkeypatch.delenv("POSTGRES_PASSWORD", raising=False)
-        monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
-        monkeypatch.delenv("OPENAI_API_KEY", raising=False)
-        monkeypatch.delenv("GOOGLE_API_KEY", raising=False)
+    def test_load_config_with_defaults(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """Test loading configuration with default values."""
+        # Set required password
+        monkeypatch.setenv("POSTGRES_PASSWORD", "test-password")
+        
+        config = ConfigManager.load_config()
 
-        config = ConfigManager.load_config(sample_config_file)
+        # Check defaults
+        assert config.vector_store.host == "postgres"
+        assert config.vector_store.port == 5432
+        assert config.vector_store.database == "cairocoder"
+        assert config.vector_store.user == "cairocoder"
+        assert config.vector_store.password == "test-password"
+        assert config.vector_store.table_name == "documents"
+        assert config.vector_store.similarity_measure == "cosine"
+        assert config.host == "0.0.0.0"
+        assert config.port == 3001
+        assert config.debug is False
 
-        assert config.vector_store.host == "test-db.example.com"
-        assert config.vector_store.port == 5433
-        assert config.vector_store.database == "test_cairo"
-
-    def test_environment_override(
-        self, monkeypatch: pytest.MonkeyPatch, sample_config_file: Path
-    ) -> None:
-        """Test environment variable overrides."""
-        # Set environment variables
+    def test_load_config_from_environment(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """Test loading configuration from environment variables."""
+        # Set all environment variables
         monkeypatch.setenv("POSTGRES_HOST", "env-host")
         monkeypatch.setenv("POSTGRES_PORT", "5555")
         monkeypatch.setenv("POSTGRES_DB", "env-db")
         monkeypatch.setenv("POSTGRES_USER", "env-user")
         monkeypatch.setenv("POSTGRES_PASSWORD", "env-pass")
-        monkeypatch.setenv("OPENAI_API_KEY", "env-openai-key")
-        monkeypatch.setenv("ANTHROPIC_API_KEY", "env-anthropic-key")
-        monkeypatch.setenv("GEMINI_API_KEY", "env-gemini-key")
+        monkeypatch.setenv("POSTGRES_TABLE_NAME", "env-table")
+        monkeypatch.setenv("SIMILARITY_MEASURE", "dot_product")
+        monkeypatch.setenv("HOST", "127.0.0.1")
+        monkeypatch.setenv("PORT", "8080")
+        monkeypatch.setenv("DEBUG", "true")
 
-        config = ConfigManager.load_config(sample_config_file)
+        config = ConfigManager.load_config()
 
-        # Check environment overrides
+        # Check all values from environment
         assert config.vector_store.host == "env-host"
         assert config.vector_store.port == 5555
         assert config.vector_store.database == "env-db"
         assert config.vector_store.user == "env-user"
         assert config.vector_store.password == "env-pass"
+        assert config.vector_store.table_name == "env-table"
+        assert config.vector_store.similarity_measure == "dot_product"
+        assert config.host == "127.0.0.1"
+        assert config.port == 8080
+        assert config.debug is True
 
-    def test_get_agent_config(self, sample_config_file: Path) -> None:
+    def test_get_agent_config(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """Test retrieving agent configuration."""
-        config = ConfigManager.load_config(sample_config_file)
+        monkeypatch.setenv("POSTGRES_PASSWORD", "test-password")
+        config = ConfigManager.load_config()
 
         # Get default agent
         agent = ConfigManager.get_agent_config(config, "cairo-coder")
@@ -80,21 +85,19 @@ class TestConfigManager:
         with pytest.raises(ValueError, match="Agent 'unknown' not found"):
             ConfigManager.get_agent_config(config, "unknown")
 
-    def test_validate_config(self, sample_config_file: Path) -> None:
+    def test_validate_config(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """Test configuration validation."""
         # Valid config
-        config = ConfigManager.load_config(sample_config_file)
-        config.vector_store.password = "test-pass"
+        monkeypatch.setenv("POSTGRES_PASSWORD", "test-pass")
+        config = ConfigManager.load_config()
         ConfigManager.validate_config(config)
 
         # No database password
-        config = ConfigManager.load_config(sample_config_file)
         config.vector_store.password = ""
         with pytest.raises(ValueError, match="Database password is required"):
             ConfigManager.validate_config(config)
 
         # Agent without sources
-        config = ConfigManager.load_config(sample_config_file)
         config.vector_store.password = "test-pass"
         config.agents["test"] = AgentConfiguration(
             id="test", name="Test", description="Test agent", sources=[]
@@ -103,21 +106,20 @@ class TestConfigManager:
             ConfigManager.validate_config(config)
 
         # Invalid default agent
-        config = ConfigManager.load_config(sample_config_file)
-        config.vector_store.password = "test-pass"
         config.default_agent_id = "unknown"
         config.agents = {}  # No agents
         with pytest.raises(ValueError, match="Default agent 'unknown' not found"):
             ConfigManager.validate_config(config)
 
-    def test_dsn_property(self, sample_config_file: Path) -> None:
+    def test_dsn_property(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """Test PostgreSQL DSN generation."""
-        config = ConfigManager.load_config(sample_config_file)
-        config.vector_store.user = "testuser"
-        config.vector_store.password = "testpass"
-        config.vector_store.host = "testhost"
-        config.vector_store.port = 5432
-        config.vector_store.database = "testdb"
+        monkeypatch.setenv("POSTGRES_USER", "testuser")
+        monkeypatch.setenv("POSTGRES_PASSWORD", "testpass")
+        monkeypatch.setenv("POSTGRES_HOST", "testhost")
+        monkeypatch.setenv("POSTGRES_PORT", "5432")
+        monkeypatch.setenv("POSTGRES_DB", "testdb")
+
+        config = ConfigManager.load_config()
 
         expected_dsn = "postgresql://testuser:testpass@testhost:5432/testdb"
         assert config.vector_store.dsn == expected_dsn

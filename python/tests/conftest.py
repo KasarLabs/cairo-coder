@@ -7,14 +7,11 @@ to reduce code duplication and ensure consistency.
 
 import asyncio
 import os
-import tempfile
-from collections.abc import AsyncGenerator, Generator
-from pathlib import Path
+from collections.abc import AsyncGenerator
 from unittest.mock import AsyncMock, Mock, patch
 
 import dspy
 import pytest
-import toml
 from fastapi.testclient import TestClient
 
 from cairo_coder.config.manager import ConfigManager
@@ -454,29 +451,46 @@ def sample_agent_configs():
 # =============================================================================
 
 
-@pytest.fixture(scope="session")
-def sample_config_file() -> Generator[Path, None, None]:
-    """Create a temporary config file for testing."""
-    config_data = {
-        "VECTOR_DB": {
-            "POSTGRES_HOST": "test-db.example.com",
-            "POSTGRES_PORT": 5433,
-            "POSTGRES_DB": "test_cairo",
-            "POSTGRES_USER": "test_user",
-            "POSTGRES_PASSWORD": "test_password",
-            "POSTGRES_TABLE_NAME": "test_documents",
-            "SIMILARITY_MEASURE": "cosine",
-        },
-    }
 
-    with tempfile.NamedTemporaryFile(mode="w", suffix=".toml", delete=False) as f:
-        toml.dump(config_data, f)
-        temp_path = Path(f.name)
 
-    yield temp_path
-
-    # Cleanup
-    os.unlink(temp_path)
+@pytest.fixture(autouse=True)
+def clean_config_env_vars(monkeypatch):
+    """Automatically clean configuration-related environment variables before each test."""
+    env_vars_to_clean = [
+        "POSTGRES_HOST",
+        "POSTGRES_PORT",
+        "POSTGRES_DB",
+        "POSTGRES_USER",
+        "POSTGRES_PASSWORD",
+        "POSTGRES_TABLE_NAME",
+        "POSTGRES_ROOT_DB",
+        "SIMILARITY_MEASURE",
+        "HOST",
+        "PORT",
+        "DEBUG",
+        "OPENAI_API_KEY",
+        "ANTHROPIC_API_KEY",
+        "GEMINI_API_KEY",
+        "DEEPSEEK_API_KEY",
+        "GROQ_API_KEY",
+        "LANGSMITH_API_KEY",
+        "LANGSMITH_TRACING",
+        "LANGSMITH_ENDPOINT",
+        "LANGSMITH_OTEL_ENABLED",
+    ]
+    
+    # Store original values
+    original_values = {}
+    for var in env_vars_to_clean:
+        original_values[var] = os.environ.get(var)
+        monkeypatch.delenv(var, raising=False)
+    
+    yield
+    
+    # Restore original values after test
+    for var, value in original_values.items():
+        if value is not None:
+            monkeypatch.setenv(var, value)
 
 
 @pytest.fixture

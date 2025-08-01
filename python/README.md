@@ -27,55 +27,54 @@ uv sync
 
 ## Configuration
 
-Copy `sample.config.toml` to `config.toml` and configure:
-
-- LLM provider API keys
-- Database connection settings
-- Agent configurations
-
-Add your API keys to the `.env` file based on the providers you want to use.
+Cairo Coder uses environment variables for all sensitive configuration like API keys and database credentials. The `.env` file in the root directory is the single source of truth.
 
 ```bash
+# From the root directory
 cp .env.example .env
+# Edit .env with your credentials
 ```
 
 ## Running the Service
 
 ### Locally
 
-1. Start the PostgreSQL database in the docker container. Update your config.toml values to use host `localhost` and port `5455`.
+1. Set the database host for local development:
 
 ```bash
+export POSTGRES_HOST=localhost
+```
+
+2. Start the PostgreSQL database:
+
+```bash
+# From root directory
 docker compose up postgres
 ```
 
-2(optional). Fill the database by running `turbo run generate-embeddings` in the parent directory `cairo-coder/`
-
-3. Start the FastAPI server
+3. (Optional) Fill the database:
 
 ```bash
-# Start the FastAPI server
+# From root directory
+pnpm generate-embeddings
+```
+
+4. Start the FastAPI server:
+
+```bash
 uv run cairo-coder
 ```
 
 ### Dockerized
 
-1. Start the PostgreSQL database in the docker container. Update your config.toml values to use host `postgres` and port `5432`.
+All configuration is handled automatically via Docker Compose. From the root directory:
 
 ```bash
-docker compose up postgres
-```
+# First time setup
+docker compose up postgres ingester --build
 
-2(optional). Start the ingester if you need to fill the database.
-
-```bash
-docker compose run ingester
-```
-
-3. Start the FastAPI server
-
-```bash
-docker compose up backend
+# Run the service
+docker compose up postgres backend --build
 ```
 
 4. Send a request to the server
