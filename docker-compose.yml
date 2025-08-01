@@ -18,6 +18,9 @@ services:
       context: .
       dockerfile: backend.dockerfile
     container_name: 'cairo-coder-backend'
+    volumes:
+      - ./python/config.toml:/app/python/config.toml
+      - ./python/.env:/app/python/.env
     ports:
       - 3001:3001
     depends_on:

@@ -10,8 +10,6 @@ WORKDIR /app
 COPY python/pyproject.toml python/uv.lock ./python/
 COPY python/src ./python/src
 COPY python/optimizers ./python/optimizers
-COPY python/config.toml ./python/
-COPY python/.env ./python/
 COPY README.md ./python/
 
 # For psycopg2
