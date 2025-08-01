@@ -47,6 +47,12 @@ dependencies = [
   "langsmith>=0.4.6",
   "psycopg2-binary>=2.9.10",
   "typer>=0.15.0",
+  # Docs crawler dependencies
+  "aiohttp>=3.9.0",
+  "beautifulsoup4>=4.12.0",
+  "lxml>=4.9.0",
+  "markdownify>=0.11.0",
+  "tqdm>=4.66.0",
 ]
 
 [project.optional-dependencies]
@@ -72,6 +78,7 @@ generate_starklings_dataset = "cairo_coder.optimizers.generation.generate_starkl
 optimize_generation = "cairo_coder.optimizers.generation.optimize_generation:main"
 starklings_evaluate = "scripts.starklings_evaluate:main"
 cairo-coder-summarize = "scripts.summarizer.cli:app"
+docs-crawler = "scripts.docs_crawler:main"
 
 [project.urls]
 "Homepage" = "https://github.com/cairo-coder/cairo-coder"
