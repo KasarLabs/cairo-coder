@@ -47,6 +47,7 @@ dependencies = [
   "langsmith>=0.4.6",
   "psycopg2-binary>=2.9.10",
   "typer>=0.15.0",
+  "toml>=0.10.2",
   # Docs crawler dependencies
   "aiohttp>=3.9.0",
   "beautifulsoup4>=4.12.0",
