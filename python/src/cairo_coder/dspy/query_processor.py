@@ -44,7 +44,7 @@ class CairoQueryAnalysis(Signature):
     )
 
     search_queries: list[str] = OutputField(
-        desc="A list of __3__ specific semantic search queries to make to a vector store to find relevant documentation."
+    desc="A list of __3__ specific semantic search queries to make to a vector store to find relevant documentation."
     )
 
     resources: list[str] = OutputField(

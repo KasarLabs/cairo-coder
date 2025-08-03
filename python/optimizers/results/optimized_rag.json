@@ -4,51 +4,36 @@
     "train": [],
     "demos": [
       {
-        "augmented": true,
-        "query": "Complete the following Cairo code:\n\n```cairo\n\/\/ Fill in the rest of the line that has code missing!\n\/\/ No hints, there's no tricks, just get used to typing these :)\n\n\/\/ I AM NOT DONE\n\nfn main() {\n    \/\/ Booleans (`bool`)\n\n    let is_morning = true;\n    if is_morning {\n        println!(\"Good morning!\");\n    }\n\n    let \/\/ Finish the rest of this line like the example! Or make it be false!\n    if is_evening {\n        println!(\"Good evening!\");\n    }\n}\n```\n\nHint: No hints this time ;)",
-        "chat_history": "",
-        "reasoning": "Let's think step by step in order to complete the Cairo code snippet by declaring a boolean variable. The user wants to fill in a line that declares a boolean variable named `is_evening` and assigns it a boolean value, similar to the `is_morning` example already present in the code. This involves understanding basic variable declaration syntax in Cairo and the `bool` type. The `bool` type in Cairo can hold either `true` or `false`.",
+        "query": "Refactor this contract to add access control on public functions",
         "search_queries": [
-          "Declaring a new variable with the `let` keyword",
-          "Defining a variable with the boolean type",
-          "Assigning a boolean value to a variable"
+          "Access control library for Cairo smart contracts",
+          "Asserting the caller of a contract entrypoint",
+          "Component for access control",
+          "Writing Starknet Smart Contracts"
         ],
-        "resources": ["cairo_book", "cairo_by_example", "corelib_docs"]
+        "resources": [
+          "openzeppelin_docs",
+          "cairo_book"
+        ],
+        "chat_history": ""
       },
       {
-        "augmented": true,
-        "query": "Complete the following Cairo code:\n\n```cairo\n\/\/ Make me compile!\n\n\/\/ I AM NOT DONE\n\nfn main() {\n    x = 5 ;\n    println!(\" x is {}\", x)\n}\n```\n\nHint: The declaration on line 8 is missing a keyword that is needed in Cairo\nto create a new variable binding.",
-        "chat_history": "",
-        "reasoning": "Let's think step by step in order to complete the provided Cairo code snippet and make it compile. The user's query includes a Cairo code snippet with a compilation error, and a hint explicitly states that a keyword for variable declaration is missing.\n\n1.  **Identify the core problem**: The line `x = 5;` attempts to assign a value to `x` without `x` being previously declared. In Cairo, all variables must be explicitly declared before use.\n2.  **Recall Cairo's variable declaration syntax**: Cairo, like Rust, uses the `let` keyword to declare new variable bindings. For immutable variables, it's simply `let variable_name = value;`. For mutable variables, it's `let mut variable_name = value;`.\n3.  **Apply the fix**: To declare `x` and initialize it with `5`, the line should be `let x = 5;`.\n4.  **Verify `println!` usage**: The `println!(\" x is {}\", x)` syntax is correct for Cairo's `println!` macro, which is part of the core library and used for printing formatted output to the console.\n5.  **Formulate the complete, corrected code**:\n    ```cairo\n    \/\/ Make me compile!\n\n    \/\/ I AM NOT DONE\n\n    fn main() {\n        let x = 5; \/\/ Added 'let' keyword\n        println!(\" x is {}\", x);\n    }\n    ```\nThis approach directly addresses the missing keyword, ensuring the variable `x` is properly declared according to Cairo's syntax rules, thus allowing the code to compile and execute as intended.",
+        "query": "Implement an ERC20 token with mint and burn mechanism",
         "search_queries": [
-          "Declaring a new variable with the `let` keyword",
-          "Defining a variable with the boolean type",
-          "Printing values to console with the `println!` macro"
+          "Creating ERC20 tokens with Openzeppelin",
+          "Adding mint and burn entrypoints to ERC20",
+          "Writing Starknet Smart Contracts",
+          "Integrating Openzeppelin library in Cairo project"
         ],
-        "resources": ["cairo_book", "corelib_docs", "cairo_by_example"]
-      },
-      {
-        "augmented": true,
-        "query": "Complete the following Cairo code:\n\n```cairo\n\/\/ I AM NOT DONE\n\n\/\/ This function returns how much icecream there is left in the fridge.\n\/\/ If it's before 10PM, there's 5 pieces left. At 10PM, someone eats them\n\/\/ all, so there'll be no more left :(\nfn maybe_icecream(\n    time_of_day: usize\n) -> Option<usize> { \/\/ We use the 24-hour system here, so 10PM is a value of 22 and 12AM is a value of 0\n\/\/ The Option output should gracefully handle cases where time_of_day > 23.\n\/\/ TODO: Complete the function body - remember to return an Option!\n}\n\n\n#[cfg(test)]\n#[test]\nfn check_icecream() {\n    assert(maybe_icecream(9).unwrap() == 5, 'err_1');\n    assert(maybe_icecream(10).unwrap() == 5, 'err_2');\n    assert(maybe_icecream(23).unwrap() == 0, 'err_3');\n    assert(maybe_icecream(22).unwrap() == 0, 'err_4');\n    assert(maybe_icecream(25).is_none(), 'err_5');\n}\n\n#[cfg(test)]\n#[test]\nfn raw_value() {\n    \/\/ TODO: Fix this test. How do you get at the value contained in the Option?\n    let icecreams = maybe_icecream(12);\n    assert(icecreams == 5, 'err_6');\n}\n```\n\nHint: Options can have a Some value, with an inner value, or a None value, without an inner value.\nThere's multiple ways to get at the inner value, you can use unwrap, or pattern match. Unwrapping\nis the easiest, but how do you do it safely so that it doesn't panic in your face later?\nhttps:\/\/book.cairo-lang.org\/ch06-01-enums.html#the-option-enum-and-its-advantages\n",
-        "chat_history": "",
-        "reasoning": "Let's think step by step in order to complete the provided Cairo code for the `maybe_icecream` function and fix the `raw_value` test.\n\nThe user's query involves completing a Cairo function that uses the `Option` enum and fixing a test case that incorrectly handles an `Option` type.\n\n**1. Understanding the `maybe_icecream` function requirements:**\n*   The function `maybe_icecream` takes a `usize` `time_of_day` (24-hour system) as input.\n*   It should return an `Option<usize>`, representing the number of ice creams left.\n*   **Logic:**\n    *   If `time_of_day` is invalid (greater than 23), it should return `Option::None`. This handles the \"gracefully handle cases where time_of_day > 23\" requirement.\n    *   If `time_of_day` is before 10 PM (i.e., `time_of_day < 22`), there are 5 pieces left, so it should return `Option::Some(5)`.\n    *   If `time_of_day` is 10 PM (22) or later (23), someone eats them all, so there are 0 pieces left. It should return `Option::Some(0)`.\n\n**2. Implementing `maybe_icecream`:**\nI will use `if-else if-else` statements to implement the conditional logic, checking the invalid time first, then the \"before 10 PM\" condition, and finally the \"10 PM or later\" condition.\n\n```cairo\nfn maybe_icecream(\n    time_of_day: usize\n) -> Option<usize> {\n    if time_of_day > 23 {\n        \/\/ Handle invalid time: return None\n        Option::None\n    } else if time_of_day < 22 {\n        \/\/ Before 10 PM: 5 pieces left\n        Option::Some(5)\n    } else {\n        \/\/ 10 PM or later (22 or 23): 0 pieces left\n        Option::Some(0)\n    }\n}\n```\n\n**3. Fixing the `raw_value` test:**\n*   The `raw_value` test has `let icecreams = maybe_icecream(12);`. This means `icecreams` is of type `Option<usize>`.\n*   The assertion `assert(icecreams == 5, 'err_6');` is incorrect because you cannot directly compare an `Option<usize>` with a `usize`.\n*   To access the inner value of an `Option` when you are certain it contains a `Some` value, you can use the `unwrap()` method. Since `maybe_icecream(12)` should return `Some(5)`, `unwrap()` is safe here.\n*   Alternatively, one could use pattern matching (`match icecreams { Some(val) => assert(val == 5, 'err_6'), None => panic_with_felt252('Expected Some value') }`), but `unwrap()` is simpler for this specific test case where we expect a `Some` value.\n\n**4. Correcting the `raw_value` test:**\n```cairo\n#[cfg(test)]\n#[test]\nfn raw_value() {\n    let icecreams = maybe_icecream(12);\n    \/\/ Fix: Use unwrap() to get the inner value from the Option\n    assert(icecreams.unwrap() == 5, 'err_6');\n}\n```\n\nThis approach directly addresses the user's request by completing the function logic and correcting the test, leveraging Cairo's `Option` enum and basic control flow.",
-        "search_queries": [
-          "Using the Option enum to handle possible values",
-          "Implementing conditional logic with if-else statements",
-          "Safely unwrapping an Option value with `unwrap()`",
-          "Handling invalid time values with `Option::None`",
-          "Defining a basic function with `fn` keyword"
+        "resources": [
+          "openzeppelin_docs",
+          "cairo_book"
         ],
-        "resources": ["cairo_book", "corelib_docs"]
-      },
-      {
-        "query": "Complete the following Cairo code:\n\n```cairo\n\/\/ I AM NOT DONE\n\n#[cfg(test)]\n#[test]\nfn test_loop() {\n    let mut counter = 0;\n\n    let result = loop {\n        if counter == 5 {\n    \/\/TODO return a value from the loop\n        }\n        counter += 1;\n    };\n\n    assert(result == 5, 'result should be 5');\n}\n```\n\nHint: You can return values from loops by adding the value you want returned after the `break` expression you use to stop the loop. Don't forget that assigning a variable to the value returned from a `loop` is an expression, and thus must end with a semicolomn.\n",
-        "chat_history": "",
-        "expected": "#[cfg(test)]\n#[test]\nfn test_loop() {\n    let mut counter = 0;\n\n    let result = loop {\n        if counter == 5 {\n            break counter;\n        }\n        counter += 1;\n    };\n\n    assert(result == 5, 'result should be 5');\n}"
+        "chat_history": ""
       }
     ],
     "signature": {
-      "instructions": "Analyze a Cairo programming problem, to extract essential search terms and identify relevant official documentation sources (e.g., Cairo Book, Openzeppelin Docs) that would aid in solving the problem.",
+      "instructions": "You are an AI assistant specialized in Starknet smart contract development using the Cairo programming language. Your task is to meticulously analyze a given user query from a chat history, which will be a technical, task-oriented request for smart contract development, refactoring, or understanding. Based on this query, you must generate a detailed reasoning process, a list of highly relevant search queries, and identify authoritative documentation sources.\n\n**Input:** A `Chat History` containing a `Query` from a user.\n\n**Output Structure:**\nYour output must be structured with three distinct fields: `Reasoning`, `Search Queries`, and `Resources`.\n\n1.  **Reasoning**: Provide a comprehensive, step-by-step thought process explaining how you arrived at the chosen search queries and resources. This section should always begin with the exact phrase \"Let's think step by step in order to\". Clearly articulate the user's core intent, identify key technical concepts and libraries (e.g., OpenZeppelin Cairo Contracts), and justify why specific search terms or documentation sources are most appropriate for addressing the query.\n2.  **Search Queries**: Generate a list of precise and targeted search queries that an AI development assistant could use to find solutions, code examples, or relevant information for the user's request. These queries should be optimized for finding information related to Cairo, Starknet, and standard smart contract libraries like OpenZeppelin, focusing on practical implementation details.\n3.  **Resources**: Identify the most authoritative and relevant documentation sources from the following predefined list. You must use only these exact keywords:\n    *   `cairo_book`: For fundamental Cairo language syntax, features, core concepts, and general Starknet smart contract development principles.\n    *   `starknet_docs`: For Starknet protocol, architecture, APIs, syscalls, network interaction, deployment, ecosystem tools (Starkli, indexers), general Starknet knowledge. This should not be included for Coding and Programming questions, but rather, only for questions about Starknet itself.\n    *   `starknet_foundry`: For using the Foundry toolchain: writing, compiling, testing (unit tests, integration tests), and debugging Starknet contracts.\n    *   `cairo_by_example`: For practical Cairo code snippets for specific language features or common patterns. Useful for how-to syntax questions. This should not be included for Smart Contract questions, but for all other Cairo programming questions.\n    *   `openzeppelin_docs`: For standard smart contract implementations, patterns, and best practices (e.g., ERC20, Ownable, AccessControl) within the Cairo ecosystem.\n    *   `corelib_docs`: For using the Cairo core library: basic types, stdlib functions, stdlib structs, macros, and other core concepts. Essential for Cairo programming questions.\n    *   `scarb_docs`: For using the Scarb package manager: building, compiling, generating compilation artifacts, managing dependencies, configuration of Scarb.toml.\n\n**Constraints & Guidelines:**\n*   Your analysis should be geared towards providing information that directly assists with code generation, refactoring, or in-depth understanding of specific smart contract functionalities on Starknet.\n*   Ensure the generated search queries are highly specific and actionable within the context of the Starknet and Cairo development environment.\n*   The `Resources` list should only contain the exact keywords provided above, based on their direct relevance and authoritative nature to the query.\n*   **Crucially, your output must not contain any code snippets; only the analysis and the specified lists.**",
       "fields": [
         {
           "prefix": "Chat History:",

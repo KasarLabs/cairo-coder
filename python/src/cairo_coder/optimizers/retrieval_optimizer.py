@@ -1,6 +1,6 @@
 import marimo
 
-__generated_with = "0.14.11"
+__generated_with = "0.14.12"
 app = marimo.App(width="medium")
 
 
@@ -14,11 +14,11 @@ def _():
 
     from cairo_coder.dspy.query_processor import CairoQueryAnalysis
 
-    mlflow.set_tracking_uri("http://127.0.0.1:5000")
-    mlflow.set_experiment("DSPy")
-    mlflow.dspy.autolog()
+    # mlflow.set_tracking_uri("http://127.0.0.1:5000")
+    # mlflow.set_experiment("DSPy")
+    # mlflow.dspy.autolog()
 
-    lm = dspy.LM("gemini/gemini-2.5-flash", max_tokens=10000)
+    lm = dspy.LM("gemini/gemini-2.5-flash", max_tokens=20000)
     dspy.configure(lm=lm)
     retrieval_program = dspy.ChainOfThought(CairoQueryAnalysis)
     return dspy, lm, retrieval_program
@@ -372,7 +372,6 @@ def _(RetrievalF1, example, retrieval_program):
     print(f"Predicted Response: \t {pred.search_queries}, {pred.resources}\n")
     print(f"Semantic F1 Score: {score:.2f}")
 
-    # Semantic F1 score ranks is ~0.56, which is ok-ish. Now, the real work is to make sure these queries are _actually_ good to research the vector store.
     return (metric,)
 
 
@@ -387,10 +386,12 @@ def _(data, metric, retrieval_program):
 
     # Set up the evaluator, which can be re-used in your code.
     print(f"Evaluating on dataset with len {len(test_set)}")
-    evaluator = Evaluate(devset=test_set, num_threads=3, display_progress=True, display_table=10)
+    evaluator = Evaluate(devset=test_set, num_threads=8, display_progress=True, display_table=10)
 
     # Launch evaluation.
     evaluator(retrieval_program, metric=metric)
+
+    # Evaluation yields 0.67 on test set
     return Evaluate, test_set, train_set
 
 
@@ -407,13 +408,14 @@ def _(lm):
 
 @app.cell
 def _(dspy, metric, retrieval_program, train_set):
-    # Let's now use the optimizer - then, we'll run the eval again
+    ## Let's now use the optimizer - then, we'll run the eval again
     import nest_asyncio
     nest_asyncio.apply()
 
     mipro_optimizer = dspy.MIPROv2(
         metric=metric,
         auto="medium",
+        num_threads=8
     )
     optimized_retrieval_program = mipro_optimizer.compile(
         retrieval_program,
@@ -432,13 +434,13 @@ def _(Evaluate, metric, optimized_retrieval_program, test_set):
     # Set up the evaluator, which can be re-used in your code.
     print(f"Evaluating on dataset with len {len(test_set)}")
     evaluator_optimized = Evaluate(
-        devset=test_set, num_threads=3, display_progress=True, display_table=10
+        devset=test_set, num_threads=8, display_progress=True, display_table=10
     )
 
     # Launch evaluation.
     evaluator_optimized(optimized_retrieval_program, metric=metric)
 
-    # Previous score -> 45; New Score -> 52. Better but not _significantly_ !
+    # Previous score -> 67; New Score -> 85. Much better!
     return
 
 
@@ -451,7 +453,7 @@ def _(optimized_retrieval_program):
 
 @app.cell
 def _(dspy):
-    dspy.inspect_history()
+    dspy.inspect_history(n=10)
     return
 
 
