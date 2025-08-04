@@ -6,12 +6,12 @@ const path = require('path');
 const DEBUG = true;
 const SINGLE_EXERCISE = process.env.SINGLE_EXERCISE || null;
 const SAVE_RESPONSES = true;
-const MAX_FEEDBACK_ATTEMPTS = 3; // Nombre maximum de tentatives de feedback
+const MAX_FEEDBACK_ATTEMPTS = 1; // Nombre maximum de tentatives de feedback
 const RUN_NUMBER = 1;
 
 function log(message) {
   if (DEBUG) {
-    console.log(`[DEBUG] ${message}`);
+    console.log(`${message}`);
   }
 }
 
@@ -97,7 +97,7 @@ function parseInfoToml(infoPath) {
 }
 
 async function testServerConnection() {
-  log('Testing server connection...');
+  // log('Testing server connection...');
 
   try {
     const response = await fetch('http://localhost:3001/', {
@@ -106,7 +106,7 @@ async function testServerConnection() {
     });
 
     if (response.ok) {
-      log('✅ Server connection successful');
+      // log('✅ Server connection successful');
       return true;
     } else {
       log(`❌ Server responded with status: ${response.status}`);
@@ -180,9 +180,9 @@ Please provide only the corrected code, without any additional explanation or ma
 
   for (let attempt = 1; attempt <= retries; attempt++) {
     try {
-      log(
-        `API call attempt ${attempt}/${retries} for ${exercise.name} (feedback attempt ${attemptNumber})`,
-      );
+      // log(
+      //   `API call attempt ${attempt}/${retries} for ${exercise.name} (feedback attempt ${attemptNumber})`,
+      // );
 
       const response = await fetch(
         'http://localhost:3001/v1/chat/completions',
@@ -223,16 +223,16 @@ Please provide only the corrected code, without any additional explanation or ma
         const rawContent = data.choices[0].message.content;
         const cleanCode = extractCairoCode(rawContent);
         log(
-          `✅ API call successful for ${exercise.name} (attempt ${attemptNumber})`,
+          // `✅ API call successful for ${exercise.name} (attempt ${attemptNumber})`,
         );
         return cleanCode;
       } else {
         throw new Error('Invalid response format from API');
       }
     } catch (error) {
-      log(
-        `❌ API call failed (attempt ${attempt}/${retries}) for ${exercise.name} (feedback attempt ${attemptNumber}): ${error.message}`,
-      );
+      // log(
+      //   `❌ API call failed (attempt ${attempt}/${retries}) for ${exercise.name} (feedback attempt ${attemptNumber}): ${error.message}`,
+      // );
 
       if (attempt === retries) {
         throw error; // Dernier essai, on lance l'erreur
@@ -240,7 +240,7 @@ Please provide only the corrected code, without any additional explanation or ma
 
       // Attendre de plus en plus longtemps à chaque retry
       const waitTime = 3000 * attempt; // 3s, 6s, 9s
-      log(`Waiting ${waitTime}ms before retry...`);
+      // log(`Waiting ${waitTime}ms before retry...`);
       await new Promise((resolve) => setTimeout(resolve, waitTime));
     }
   }
@@ -251,7 +251,7 @@ async function testExerciseWithFeedback(
   starklingsPath,
   runNumber = 1,
 ) {
-  log(`\n=== Testing exercise with feedback: ${exercise.name} ===`);
+  // log(`\n=== Testing exercise with feedback: ${exercise.name} ===`);
 
   const exercisePath = path.join(starklingsPath, exercise.path);
 
@@ -297,9 +297,9 @@ async function testExerciseWithFeedback(
 
         // Sauvegarder la solution de cette tentative
         fs.writeFileSync(exercisePath, correctedCode);
-        log(
-          `Updated exercise file with generated code (attempt ${attemptNumber})`,
-        );
+        // log(
+        //   `Updated exercise file with generated code (attempt ${attemptNumber})`,
+        // );
 
         // Sauvegarder les fichiers de debug pour chaque tentative si c'est le dernier run
         if (SAVE_RESPONSES && runNumber === RUN_NUMBER) {
@@ -316,9 +316,9 @@ async function testExerciseWithFeedback(
 
         // Tester la solution
         try {
-          log(
-            `Running starklings for ${exercise.name} (attempt ${attemptNumber})...`,
-          );
+          // log(
+          //   `Running starklings for ${exercise.name} (attempt ${attemptNumber})...`,
+          // );
           const result = execSync(
             `cargo run --bin starklings run ${exercise.name}`,
             {
@@ -330,7 +330,7 @@ async function testExerciseWithFeedback(
           );
 
           log(`✅ ${exercise.name} - Success on attempt ${attemptNumber}!`);
-          log(`Starklings output: ${result.substring(0, 200)}...`);
+          // log(`Starklings output: ${result.substring(0, 200)}...`);
 
           return {
             success: true,
@@ -342,12 +342,12 @@ async function testExerciseWithFeedback(
             `❌ ${exercise.name} - Execution failed on attempt ${attemptNumber}`,
           );
           log(`Error code: ${error.status}`);
-          log(
-            `stdout: ${error.stdout ? error.stdout.substring(0, 500) : 'none'}`,
-          );
-          log(
-            `stderr: ${error.stderr ? error.stderr.substring(0, 500) : 'none'}`,
-          );
+          // log(
+          //   `stdout: ${error.stdout ? error.stdout.substring(0, 500) : 'none'}`,
+          // );
+          // log(
+          //   `stderr: ${error.stderr ? error.stderr.substring(0, 500) : 'none'}`,
+          // );
 
           // Formater l'erreur pour le feedback
           lastError = {
@@ -369,7 +369,7 @@ async function testExerciseWithFeedback(
               errorFile,
               `Attempt: ${attemptNumber}/${MAX_FEEDBACK_ATTEMPTS + 1}\nExit code: ${error.status}\n\nSTDOUT:\n${error.stdout}\n\nSTDERR:\n${error.stderr}`,
             );
-            log(`Error details saved to: ${errorFile}`);
+            // log(`Error details saved to: ${errorFile}`);
           }
 
           // Si c'est la dernière tentative, retourner l'échec
@@ -392,9 +392,9 @@ async function testExerciseWithFeedback(
           await new Promise((resolve) => setTimeout(resolve, 2000));
         }
       } catch (apiError) {
-        log(
-          `❌ ${exercise.name} - API call failed on attempt ${attemptNumber}: ${apiError.message}`,
-        );
+        // log(
+        //   `❌ ${exercise.name} - API call failed on attempt ${attemptNumber}: ${apiError.message}`,
+        // );
 
         // Si c'est la dernière tentative ou si l'API échoue, retourner l'erreur
         if (attemptNumber === MAX_FEEDBACK_ATTEMPTS + 1) {
@@ -414,7 +414,7 @@ async function testExerciseWithFeedback(
     // Restaurer l'original
     fs.writeFileSync(exercisePath, originalContent);
     fs.unlinkSync(backupPath);
-    log(`Restored original file and cleaned up backup`);
+    // log(`Restored original file and cleaned up backup`);
   }
 }
 
@@ -433,7 +433,7 @@ async function processCategoryWorker(
     feedbackSuccesses: 0, // Succès après feedback (attempt > 1)
   };
 
-  log(`\n[${categoryName}] Starting ${exercises.length} exercises...`);
+  // log(`\n[${categoryName}] Starting ${exercises.length} exercises...`);
 
   for (const exercise of exercises) {
     // Délai entre chaque exercice pour éviter la surcharge
@@ -472,7 +472,7 @@ async function processCategoryWorker(
     const statusEmoji = result.success ? '✅' : '❌';
     const attemptInfo =
       result.attempts > 1 ? ` (${result.attempts} attempts)` : '';
-    log(`[${categoryName}] ${exercise.name}: ${statusEmoji}${attemptInfo}`);
+    // log(`[${categoryName}] ${exercise.name}: ${statusEmoji}${attemptInfo}`);
   }
 
   categoryResults.successRate = (
@@ -494,7 +494,7 @@ async function processCategoryWorker(
   fs.writeFileSync(reportPath, JSON.stringify(categoryResults, null, 2));
 
   log(
-    `[${categoryName}] Completed: ${categoryResults.passed}/${categoryResults.total} (${categoryResults.successRate}%) - Avg attempts: ${categoryResults.averageAttempts} - Feedback successes: ${categoryResults.feedbackSuccesses}`,
+    `Completed: ${categoryResults.passed}/${categoryResults.total} (${categoryResults.successRate}%) - Avg attempts: ${categoryResults.averageAttempts} - Feedback successes: ${categoryResults.feedbackSuccesses}`,
   );
   return categoryResults;
 }
@@ -691,9 +691,9 @@ async function runSingleTest(runNumber) {
         (ex) => ex.name === SINGLE_EXERCISE,
       ),
     };
-    log(
-      `Testing single exercise: ${SINGLE_EXERCISE} in category: ${foundCategory}`,
-    );
+    // log(
+    //   `Testing single exercise: ${SINGLE_EXERCISE} in category: ${foundCategory}`,
+    // );
   }
 
   // Créer le dossier de debug
@@ -706,7 +706,7 @@ async function runSingleTest(runNumber) {
     0,
   );
   console.log(
-    `\n🧪 [RUN ${runNumber}/${RUN_NUMBER}] Starting evaluation of ${totalExercises} exercises across ${Object.keys(categoriesToTest).length} categories with feedback system (max ${MAX_FEEDBACK_ATTEMPTS + 1} attempts per exercise)...`,
+    `\n\n🧪 [RUN ${runNumber}/${RUN_NUMBER}] Starting evaluation of ${totalExercises} exercises across ${Object.keys(categoriesToTest).length} categories with feedback system (max ${MAX_FEEDBACK_ATTEMPTS + 1} attempts per exercise)...`,
   );
 
   // Traiter les catégories en parallèle
@@ -768,9 +768,9 @@ async function main() {
   const NUM_RUNS = 1;
   const allResults = [];
 
-  console.log(
-    `🚀 Starting ${NUM_RUNS} successive test runs with feedback system (max ${MAX_FEEDBACK_ATTEMPTS + 1} attempts per exercise)...`,
-  );
+  // console.log(
+  //   `🚀 Starting ${NUM_RUNS} successive test runs with feedback system (max ${MAX_FEEDBACK_ATTEMPTS + 1} attempts per exercise)...`,
+  // );
 
   for (let i = 1; i <= NUM_RUNS; i++) {
     try {
@@ -806,12 +806,12 @@ async function main() {
   console.log(
     `Average attempts per exercise: ${consolidatedReport.summary.averageAttemptsPerExercise}`,
   );
-  console.log(
-    `Total feedback successes: ${consolidatedReport.summary.totalFeedbackSuccesses}`,
-  );
-  console.log(
-    `Feedback success rate: ${consolidatedReport.summary.feedbackSuccessRate}`,
-  );
+  // console.log(
+  //   `Total feedback successes: ${consolidatedReport.summary.totalFeedbackSuccesses}`,
+  // );
+  // console.log(
+  //   `Feedback success rate: ${consolidatedReport.summary.feedbackSuccessRate}`,
+  // );
 
   // Calculer le meilleur et pire run pour l'affichage
   if (allResults.length > 0) {
@@ -828,16 +828,16 @@ async function main() {
         : worst,
     );
 
-    console.log(
-      `Best run: ${bestRun.globalSuccessRate}% (Run ${bestRun.runNumber})`,
-    );
-    console.log(
-      `Worst run: ${worstRun.globalSuccessRate}% (Run ${worstRun.runNumber})`,
-    );
+    // console.log(
+    //   `Best run: ${bestRun.globalSuccessRate}% (Run ${bestRun.runNumber})`,
+    // );
+    // console.log(
+    //   `Worst run: ${worstRun.globalSuccessRate}% (Run ${worstRun.runNumber})`,
+    // );
   }
 
-  log(`All reports saved in: ${debugDir}`);
-  log(`Consolidated report: ${consolidatedReportPath}`);
+  // log(`All reports saved in: ${debugDir}`);
+  // log(`Consolidated report: ${consolidatedReportPath}`);
 }
 
 main().catch((error) => {

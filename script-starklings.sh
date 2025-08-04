@@ -2,21 +2,21 @@
 
 
 # 1. Nettoyer les éventuels anciens dossiers
-echo "🧹 Cleaning up previous installations..."
+# echo "🧹 Cleaning up previous installations..."
 rm -rf starklings
 
 # 2. Cloner le repo starklings
-echo "📦 Cloning starklings repository..."
-git clone https://github.com/shramee/starklings.git
+# echo "📦 Cloning starklings repository..."
+git clone https://github.com/shramee/starklings.git > /dev/null
 if [ $? -ne 0 ]; then
     echo "❌ Failed to clone starklings repository"
     exit 1
 fi
 
 # 3. Changer vers la branche feat/upgrade-cairo-and-use-scarb
-echo "🔄 Switching to feat/upgrade-cairo-and-use-scarb branch..."
+# echo "🔄 Switching to feat/upgrade-cairo-and-use-scarb branch..."
 cd starklings
-git checkout feat/upgrade-cairo-and-use-scarb
+git checkout feat/upgrade-cairo-and-use-scarb > /dev/null
 if [ $? -ne 0 ]; then
     echo "❌ Failed to switch to feat/upgrade-cairo-and-use-scarb branch"
     exit 1
@@ -33,13 +33,13 @@ if ! curl -s http://localhost:3001/ > /dev/null 2>&1; then
 fi
 
 # 8. Lancer le test avec un seul exercice
-echo "🎯 Running single Starklings evaluation..."
+# echo "🎯 Running single Starklings evaluation..."
 
-# SINGLE_EXERCISE=starknet3  node .github/scripts/starklings-evaluate.js
-node .github/scripts/starklings-evaluate.js
+SINGLE_EXERCISE=starknet3  node .github/scripts/starklings-evaluate.js
+# node .github/scripts/starklings-evaluate.js
 
 # 9. Nettoyer
-echo "🧹 Cleaning up..."
+# echo "🧹 Cleaning up..."
 kill $SERVER_PID 2>/dev/null || true
 
 if command -v docker &> /dev/null; then
