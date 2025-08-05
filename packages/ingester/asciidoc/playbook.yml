@@ -12,8 +12,6 @@ content:
     - url: https://github.com/starknet-io/starknet-docs.git
       branches: HEAD
       edit_url: 'https://github.com/starknet-io/starknet-docs/edit/main/{path}'
-      start_paths:
-        - components/Starknet
     - url: https://github.com/starknet-io/docs-common-content.git
       branches:
         - 'HEAD'

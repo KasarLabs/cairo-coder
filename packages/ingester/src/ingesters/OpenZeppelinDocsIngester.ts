@@ -1,22 +1,24 @@
-import * as fs from 'fs';
-import * as fsPromises from 'fs/promises';
+import * as fs from 'fs/promises';
 import * as path from 'path';
 import { Document } from '@langchain/core/documents';
 import { BookChunk, DocumentSource } from '@cairo-coder/agents/types/index';
-import { BookConfig, BookPageDto } from '../utils/types';
+import { BookConfig } from '../utils/types';
 import { logger } from '@cairo-coder/agents/utils/index';
-import { AsciiDocIngesterConfig } from './AsciiDocIngester';
-import { AsciiDocIngester } from './AsciiDocIngester';
-
-const OZ_VERSION = 'v2.0.0';
+import { MarkdownIngester } from './MarkdownIngester';
+import { VectorStore } from '@cairo-coder/agents/db/postgresVectorStore';
+import { calculateHash } from '../utils/contentUtils';
+import {
+  RecursiveMarkdownSplitter,
+  SplitOptions,
+} from '../utils/RecursiveMarkdownSplitter';
 
 /**
  * Ingester for the OpenZeppelin documentation
  *
- * This ingester processes the OpenZeppelin documentation using the AsciiDoc format,
- * with special handling for the cairo-contracts/1.0.0 path structure.
+ * This ingester processes the pre-crawled OpenZeppelin documentation
+ * from a local markdown file and creates chunks for the vector store.
  */
-export class OpenZeppelinDocsIngester extends AsciiDocIngester {
+export class OpenZeppelinDocsIngester extends MarkdownIngester {
   /**
    * Constructor for the OpenZeppelin Docs ingester
    */
@@ -25,105 +27,131 @@ export class OpenZeppelinDocsIngester extends AsciiDocIngester {
     const config: BookConfig = {
       repoOwner: 'OpenZeppelin',
       repoName: 'cairo-contracts',
-      fileExtension: '.adoc',
+      fileExtension: '.md',
       chunkSize: 4096,
       chunkOverlap: 512,
     };
 
-    // Find the package root by looking for package.json
-    let packageRoot = __dirname;
-    while (
-      !fs.existsSync(path.join(packageRoot, 'package.json')) &&
-      packageRoot !== '/'
-    ) {
-      packageRoot = path.dirname(packageRoot);
-    }
-
-    if (packageRoot === '/') {
-      throw new Error('Could not find package.json in any parent directory');
-    }
-
-    const asciiDocIngesterConfig: AsciiDocIngesterConfig = {
-      bookConfig: config,
-      playbookPath: path.join(packageRoot, 'asciidoc', 'oz-playbook.yml'),
-      outputDir: path.join(packageRoot, 'antora-output'),
-      restructuredDir: path.join(packageRoot, 'oz-docs-restructured'),
-      source: DocumentSource.OPENZEPPELIN_DOCS,
-    };
-    super(asciiDocIngesterConfig);
+    super(config, DocumentSource.OPENZEPPELIN_DOCS);
   }
 
   /**
-   * Custom processDocFiles function for OpenZeppelin docs
-   * This preserves the special handling for the cairo-contracts/1.0.0 path
-   *
-   * @param config - Book configuration
-   * @param directory - Directory to process
-   * @returns Promise<BookPageDto[]> - Array of book pages
+   * Read the pre-crawled OpenZeppelin documentation file
    */
-  protected async processDocFilesCustom(
-    config: BookConfig,
-    directory: string,
-  ): Promise<BookPageDto[]> {
-    try {
-      logger.info(`Processing OpenZeppelin doc files in ${directory}`);
-      const pages: BookPageDto[] = [];
+  async readSummaryFile(): Promise<string> {
+    const summaryPath = path.join(
+      __dirname,
+      '..',
+      '..',
+      '..',
+      '..',
+      '..',
+      'python',
+      'scripts',
+      'summarizer',
+      'generated',
+      'openzeppelin_docs_summary.md',
+    );
 
-      async function processDirectory(dir: string) {
-        const entries = await fsPromises.readdir(dir, { withFileTypes: true });
-
-        for (const entry of entries) {
-          const fullPath = path.join(dir, entry.name);
-
-          if (entry.isDirectory()) {
-            // Recursively process subdirectories
-            await processDirectory(fullPath);
-          } else if (
-            entry.isFile() &&
-            path.extname(entry.name).toLowerCase() === config.fileExtension
-          ) {
-            // Process AsciiDoc files
-            const content = await fsPromises.readFile(fullPath, 'utf8');
-
-            // Get the relative path of the file from the base directory - which reflects the online website directory structure
-            const relativePath = path.relative(directory, fullPath);
-
-            // Inject cairo-contracts/1.0.0 in the fullPath to reflect online website directory structure
-            // This is the special handling for OpenZeppelin docs
-            const adaptedFullPageName = path.join(
-              'contracts-cairo',
-              OZ_VERSION,
-              relativePath,
-            );
-
-            pages.push({
-              name: path
-                .relative(directory, adaptedFullPageName)
-                .replace(config.fileExtension, ''),
-              content,
-            });
-          }
-        }
-      }
-
-      await processDirectory(directory);
-      return pages;
-    } catch (err) {
-      console.error('Error processing directory:', (err as Error).message);
-      throw new Error(`Failed to process directory: ${(err as Error).message}`);
-    }
+    logger.info(`Reading OpenZeppelin documentation from ${summaryPath}`);
+    const text = await fs.readFile(summaryPath, 'utf-8');
+    return text;
   }
 
   /**
-   * createChunks function for OpenZeppelin docs
-   * Pages are not split into sections because this gives bad results otherwise.
+   * Chunk the OpenZeppelin summary file using RecursiveMarkdownSplitter
    *
-   * @param pages - Array of book pages
+   * This function takes the markdown content and splits it using a recursive
+   * strategy that respects headers, code blocks, and maintains overlap between chunks.
+   *
+   * @param text - The markdown content to chunk
    * @returns Promise<Document<BookChunk>[]> - Array of document chunks
    */
-  protected async createChunks(
-    pages: BookPageDto[],
-  ): Promise<Document<BookChunk>[]> {
-    return super.createChunks(pages, false);
+  async chunkSummaryFile(text: string): Promise<Document<BookChunk>[]> {
+    logger.info(
+      'Using RecursiveMarkdownSplitter to chunk OpenZeppelin documentation',
+    );
+
+    // Configure the splitter with appropriate settings
+    const splitOptions: SplitOptions = {
+      maxChars: 2048,
+      minChars: 500,
+      overlap: 256,
+      headerLevels: [1, 2], // Split on H1 and H2 headers
+      preserveCodeBlocks: true,
+      idPrefix: 'openzeppelin-docs',
+      trim: true,
+    };
+
+    // Create the splitter and split the content
+    const splitter = new RecursiveMarkdownSplitter(splitOptions);
+    const chunks = splitter.splitMarkdownToChunks(text);
+
+    logger.info(
+      `Created ${chunks.length} chunks using RecursiveMarkdownSplitter`,
+    );
+
+    // Convert chunks to Document<BookChunk> format
+    const localChunks: Document<BookChunk>[] = chunks.map((chunk) => {
+      const contentHash = calculateHash(chunk.content);
+
+      return new Document<BookChunk>({
+        pageContent: chunk.content,
+        metadata: {
+          name: chunk.meta.title,
+          title: chunk.meta.title,
+          chunkNumber: chunk.meta.chunkNumber, // Already 0-based
+          contentHash: contentHash,
+          uniqueId: chunk.meta.uniqueId,
+          sourceLink: '',
+          source: this.source,
+        },
+      });
+    });
+
+    return localChunks;
+  }
+
+  /**
+   * OpenZeppelin specific processing based on the pre-crawled markdown file
+   * @param vectorStore
+   */
+  public async process(vectorStore: VectorStore): Promise<void> {
+    try {
+      // 1. Read the pre-crawled documentation
+      const text = await this.readSummaryFile();
+
+      // 2. Create chunks from the documentation
+      const chunks = await this.chunkSummaryFile(text);
+
+      logger.info(
+        `Created ${chunks.length} chunks from OpenZeppelin documentation`,
+      );
+
+      // 3. Update the vector store with the chunks
+      await this.updateVectorStore(vectorStore, chunks);
+
+      // 4. Clean up any temporary files (no temp files in this case)
+      await this.cleanupDownloadedFiles();
+    } catch (error) {
+      this.handleError(error);
+    }
+  }
+
+  /**
+   * Get the directory path for extracting files
+   *
+   * @returns string - Path to the extract directory
+   */
+  protected getExtractDir(): string {
+    return path.join(__dirname, '..', '..', 'temp', 'openzeppelin-docs');
+  }
+
+  /**
+   * Override cleanupDownloadedFiles since we don't download anything
+   */
+  protected async cleanupDownloadedFiles(): Promise<void> {
+    // No cleanup needed as we're reading from a local file
+    logger.info('No cleanup needed - using local summary file');
   }
 }
