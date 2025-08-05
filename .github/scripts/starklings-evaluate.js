@@ -280,9 +280,9 @@ async function testExerciseWithFeedback(
       attemptNumber <= MAX_FEEDBACK_ATTEMPTS + 1;
       attemptNumber++
     ) {
-      log(
-        `\n--- Attempt ${attemptNumber}/${MAX_FEEDBACK_ATTEMPTS + 1} for ${exercise.name} ---`,
-      );
+      // log(
+      //   `\n--- Attempt ${attemptNumber}/${MAX_FEEDBACK_ATTEMPTS + 1} for ${exercise.name} ---`,
+      // );
 
       try {
         // Appeler l'API avec ou sans feedback selon l'attempt
