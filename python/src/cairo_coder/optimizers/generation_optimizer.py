@@ -22,11 +22,11 @@ def _():
 
     """Optional: Set up MLflow tracking for experiment monitoring."""
     # Uncomment to enable MLflow tracking
-    import mlflow
+    # import mlflow
 
-    mlflow.set_tracking_uri("http://127.0.0.1:5000")
-    mlflow.set_experiment("DSPy-Generation")
-    mlflow.dspy.autolog()
+    # mlflow.set_tracking_uri("http://127.0.0.1:5000")
+    # mlflow.set_experiment("DSPy-Generation")
+    # mlflow.dspy.autolog()
 
     # Configure DSPy with Gemini
     lm = dspy.LM("gemini/gemini-2.5-flash", max_tokens=30000)
@@ -99,6 +99,10 @@ def _(GenerationProgram):
     # Initialize program
     program = GenerationProgram()
     return (program,)
+
+@app.cell
+def test_notebook(program):
+    assert program is not None
 
 
 @app.cell

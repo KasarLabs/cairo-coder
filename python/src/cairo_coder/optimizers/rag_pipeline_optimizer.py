@@ -21,29 +21,35 @@ def _():
     from cairo_coder.optimizers.generation.utils import generation_metric
 
     logger = structlog.get_logger(__name__)
-    global_config = ConfigManager.load_config()
-    postgres_config = global_config.vector_store
     try:
-        # Attempt to connect to PostgreSQL
-        conn = psycopg2.connect(
-            host=postgres_config.host,
-            port=postgres_config.port,
-            database=postgres_config.database,
-            user=postgres_config.user,
-            password=postgres_config.password,
-        )
-        conn.close()
-        logger.info("PostgreSQL connection successful")
-    except OperationalError as e:
-        raise Exception(f"PostgreSQL is not running or not accessible: {e}") from e
+        global_config = ConfigManager.load_config()
+        postgres_config = global_config.vector_store
+        try:
+            # Attempt to connect to PostgreSQL
+            conn = psycopg2.connect(
+                host=postgres_config.host,
+                port=postgres_config.port,
+                database=postgres_config.database,
+                user=postgres_config.user,
+                password=postgres_config.password,
+            )
+            conn.close()
+            logger.info("PostgreSQL connection successful")
+        except OperationalError as e:
+            raise Exception(f"PostgreSQL is not running or not accessible: {e}") from e
+    except FileNotFoundError:
+        # Running in test environment without config.toml
+        logger.warning("Config file not found, skipping database connection in test mode")
+        global_config = None
+        postgres_config = None
 
     """Optional: Set up MLflow tracking for experiment monitoring."""
     # Uncomment to enable MLflow tracking
-    import mlflow
+    # import mlflow
 
-    mlflow.set_tracking_uri("http://127.0.0.1:5000")
-    mlflow.set_experiment("DSPy-Generation")
-    mlflow.dspy.autolog()
+    # mlflow.set_tracking_uri("http://127.0.0.1:5000")
+    # mlflow.set_experiment("DSPy-Generation")
+    # mlflow.dspy.autolog()
 
     # Configure DSPy with Gemini
     lm = dspy.LM("gemini/gemini-2.5-flash", max_tokens=30000)
@@ -112,12 +118,17 @@ def _(Path, dspy, json, logger):
 def _(global_config):
     """Initialize the generation program."""
     # Initialize program
-    from cairo_coder.core.rag_pipeline import create_rag_pipeline
+    from cairo_coder.agents.registry import get_agent_by_string_id
 
-    rag_pipeline_program = create_rag_pipeline(
-        name="cairo-coder", vector_store_config=global_config.vector_store
-    )
+    # Get agent spec from registry
+    _, spec = get_agent_by_string_id("cairo-coder")
+    rag_pipeline_program = spec.build(global_config.vector_store, global_config.vector_store)
     return (rag_pipeline_program,)
+
+
+@app.cell
+def test_pipeline_setup(rag_pipeline_program):
+    assert rag_pipeline_program
 
 
 @app.cell
@@ -129,7 +140,6 @@ def _(generation_metric, rag_pipeline_program, valset):
         # You can use this cell to run more comprehensive evaluation
         evaluator__ = Evaluate(devset=valset, num_threads=12, display_progress=True)
         return evaluator__(rag_pipeline_program, metric=generation_metric)
-
 
     _()
     return
@@ -146,7 +156,6 @@ def _(
     valset,
 ):
     """Run optimization using MIPROv2."""
-
 
     def run_optimization(trainset, valset):
         """Run the optimization process using MIPROv2."""

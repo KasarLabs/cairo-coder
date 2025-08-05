@@ -5,7 +5,7 @@ from datetime import datetime
 from enum import Enum
 from typing import Any
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
 
 class Role(str, Enum):
@@ -79,21 +79,6 @@ class Document:
         metadata_items = tuple(sorted(self.metadata.items())) if self.metadata else ()
         return hash((self.page_content, metadata_items))
 
-
-@dataclass
-class RagInput:
-    """Input for RAG pipeline."""
-
-    query: str
-    chat_history: list[Message]
-    sources: DocumentSource | list[DocumentSource]
-
-    def __post_init__(self) -> None:
-        """Ensure sources is a list."""
-        if isinstance(self.sources, DocumentSource):
-            self.sources = [self.sources]
-
-
 class StreamEventType(str, Enum):
     """Types of stream events."""
 
@@ -133,21 +118,6 @@ class ErrorResponse:
             "details": self.details,
             "timestamp": self.timestamp.isoformat(),
         }
-
-
-class AgentRequest(BaseModel):
-    """Request for agent processing."""
-
-    query: str
-    chat_history: list[Message] = Field(default_factory=list)
-    agent_id: str | None = None
-    mcp_mode: bool = False
-    sources: list[DocumentSource] | None = None
-
-    class Config:
-        use_enum_values = True
-
-
 class AgentResponse(BaseModel):
     """Response from agent processing."""
 
