@@ -15,12 +15,15 @@ def setup_logging(level: str = "INFO", format_type: str = "json") -> None:
         level: Log level (DEBUG, INFO, WARNING, ERROR).
         format_type: Output format (json or text).
     """
-    # Configure standard logging
+    # Set root logger to WARNING to suppress all dependency logs by default
     logging.basicConfig(
-        level=getattr(logging, level.upper()),
+        level=logging.WARNING,
         stream=sys.stdout,
         format="%(message)s",
     )
+
+    # Only enable desired level for cairo_coder namespace
+    logging.getLogger("cairo_coder").setLevel(getattr(logging, level.upper()))
 
     # Configure structlog
     processors = [

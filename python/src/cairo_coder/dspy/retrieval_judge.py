@@ -217,9 +217,8 @@ class RetrievalJudge(dspy.Module):
                     "Error judging document (async), keeping it", error=str(result), exc_info=True
                 )
                 doc.metadata[LLM_JUDGE_SCORE_KEY] = 1.0
-                doc.metadata[LLM_JUDGE_REASON_KEY] = "Could not judge document. Keeping it."
-                # Do not append to keep_docs
-                continue
+                doc.metadata[LLM_JUDGE_REASON_KEY] = "Error during judgment, but keeping it"
+                keep_docs.append(doc)
 
             self._process_single_result(doc, result, keep_docs)
 
