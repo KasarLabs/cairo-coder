@@ -7,7 +7,7 @@ rm -rf starklings
 
 # 2. Cloner le repo starklings
 # echo "📦 Cloning starklings repository..."
-git clone https://github.com/shramee/starklings.git > /dev/null
+git clone https://github.com/shramee/starklings.git > /dev/null 2>&1
 if [ $? -ne 0 ]; then
     echo "❌ Failed to clone starklings repository"
     exit 1
@@ -16,7 +16,7 @@ fi
 # 3. Changer vers la branche feat/upgrade-cairo-and-use-scarb
 # echo "🔄 Switching to feat/upgrade-cairo-and-use-scarb branch..."
 cd starklings
-git checkout feat/upgrade-cairo-and-use-scarb > /dev/null
+git checkout feat/upgrade-cairo-and-use-scarb > /dev/null 2>&1
 if [ $? -ne 0 ]; then
     echo "❌ Failed to switch to feat/upgrade-cairo-and-use-scarb branch"
     exit 1
@@ -47,4 +47,4 @@ if command -v docker &> /dev/null; then
     docker rm cairo-coder-test-db 2>/dev/null || true
 fi
 
-echo "✅ Test completed!"
+echo "Test completed!"

@@ -222,9 +222,7 @@ Please provide only the corrected code, without any additional explanation or ma
       if (data.choices && data.choices[0] && data.choices[0].message) {
         const rawContent = data.choices[0].message.content;
         const cleanCode = extractCairoCode(rawContent);
-        log(
-          // `✅ API call successful for ${exercise.name} (attempt ${attemptNumber})`,
-        );
+        // log(`✅ API call successful for ${exercise.name} (attempt ${attemptNumber})`);
         return cleanCode;
       } else {
         throw new Error('Invalid response format from API');
@@ -706,7 +704,7 @@ async function runSingleTest(runNumber) {
     0,
   );
   console.log(
-    `\n\n🧪 [RUN ${runNumber}/${RUN_NUMBER}] Starting evaluation of ${totalExercises} exercises across ${Object.keys(categoriesToTest).length} categories with feedback system (max ${MAX_FEEDBACK_ATTEMPTS + 1} attempts per exercise)...`,
+    `\n🧪 [RUN ${runNumber}/${RUN_NUMBER}] Starting evaluation of ${totalExercises} exercises across ${Object.keys(categoriesToTest).length} categories with feedback system (max ${MAX_FEEDBACK_ATTEMPTS + 1} attempts per exercise)...`,
   );
 
   // Traiter les catégories en parallèle
@@ -758,7 +756,7 @@ async function runSingleTest(runNumber) {
   fs.writeFileSync(globalReportPath, JSON.stringify(globalResults, null, 2));
 
   console.log(
-    `[RUN ${runNumber}] ${totalPassed}/${totalExercises} exercises passed (${globalResults.globalSuccessRate}%) - Avg attempts: ${globalResults.averageAttempts} - Feedback successes: ${totalFeedbackSuccesses} (${globalResults.feedbackSuccessRate}%)`,
+    `\n\n[RUN ${runNumber}] ${totalPassed}/${totalExercises} exercises passed (${globalResults.globalSuccessRate}%) - Avg attempts: ${globalResults.averageAttempts}`,
   );
 
   return globalResults;
