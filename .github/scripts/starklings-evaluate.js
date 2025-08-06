@@ -785,6 +785,10 @@ async function main() {
     JSON.stringify(consolidatedReport, null, 2),
   );
 
+  if (consolidatedReport.summary) {
+    console.log(`\nFinal Results: ${allResults[0].totalPassed}/${allResults[0].totalExercises} exercises passed (${consolidatedReport.summary.globalSuccessRate})`);
+  }
+
 
 }
 
