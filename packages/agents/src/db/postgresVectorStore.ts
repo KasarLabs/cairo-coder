@@ -89,6 +89,7 @@ class Query {
  */
 export class VectorStore {
   private static instance: VectorStore | null = null;
+  private static initializing: Promise<VectorStore> | null = null;
   private pool: Pool;
   private embeddings: Embeddings;
   private tableName: string;
@@ -103,30 +104,65 @@ export class VectorStore {
     config: VectorStoreConfig,
     embeddings: Embeddings,
   ): Promise<VectorStore> {
-    if (!VectorStore.instance) {
-      const pool = new Pool({
-        user: config.POSTGRES_USER,
-        host: config.POSTGRES_HOST,
-        database: config.POSTGRES_DB,
-        password: config.POSTGRES_PASSWORD,
-        port: parseInt(config.POSTGRES_PORT),
-        max: 10,
-        min: 5,
-      });
-
-      pool.on('error', (err) => {
-        logger.error('Postgres pool error:', err);
-      });
-
-      logger.info('Connected to PostgreSQL');
-
-      const tableName = 'documents';
-
-      // Create instance first, then initialize DB
-      VectorStore.instance = new VectorStore(pool, embeddings, tableName);
-      await VectorStore.instance.initializeDb();
+    if (VectorStore.instance) {
+      return VectorStore.instance;
     }
-    return VectorStore.instance;
+
+    if (VectorStore.initializing) {
+      return await VectorStore.initializing;
+    }
+
+    // Single-flight initialization block
+    VectorStore.initializing = (async () => {
+      if (VectorStore.instance) {
+        return VectorStore.instance;
+      }
+
+      let pool: Pool | null = null;
+      try {
+        pool = new Pool({
+          user: config.POSTGRES_USER,
+          host: config.POSTGRES_HOST,
+          database: config.POSTGRES_DB,
+          password: config.POSTGRES_PASSWORD,
+          port: parseInt(config.POSTGRES_PORT),
+          max: 10,
+          min: 5,
+        });
+
+        pool.on('error', (err) => {
+          logger.error('Postgres pool error:', err);
+        });
+
+        logger.info('Connected to PostgreSQL');
+
+        // Create instance but do not publish it until DB is ready
+        const newInstance = new VectorStore(
+          pool,
+          embeddings,
+          config.POSTGRES_TABLE_NAME,
+        );
+        await newInstance.initializeDb();
+
+        VectorStore.instance = newInstance;
+        return newInstance;
+      } catch (err) {
+        // Ensure pool is closed on failure to avoid leaks
+        if (pool) {
+          try {
+            await pool.end();
+          } catch {}
+        }
+        throw err;
+      }
+    })();
+
+    try {
+      return await VectorStore.initializing;
+    } finally {
+      // Clear the initializing flag (instance is set on success, remains null on failure)
+      VectorStore.initializing = null;
+    }
   }
 
   /**
@@ -421,7 +457,9 @@ export class VectorStore {
     logger.info('Disconnecting from PostgreSQL');
     if (this.pool) {
       await this.pool.end();
-      VectorStore.instance = null; // Reset the singleton instance
+      // Reset singletons so future calls can re-initialize cleanly
+      VectorStore.instance = null;
+      VectorStore.initializing = null;
     }
   }
 

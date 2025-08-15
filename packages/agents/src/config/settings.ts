@@ -41,6 +41,7 @@ export const getVectorDbConfig = (): VectorStoreConfig => {
     POSTGRES_DB: process.env.POSTGRES_DB || 'cairocoder',
     POSTGRES_HOST: process.env.POSTGRES_HOST || 'postgres',
     POSTGRES_PORT: process.env.POSTGRES_PORT || '5432',
+    POSTGRES_TABLE_NAME: process.env.POSTGRES_TABLE_NAME || 'documents',
   };
 };
 
