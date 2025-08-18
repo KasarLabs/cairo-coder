@@ -7,7 +7,6 @@ document retrieval, response generation, and retrieval judge feature.
 
 from unittest.mock import AsyncMock, Mock, patch
 
-import dspy
 import pytest
 
 from cairo_coder.core.rag_pipeline import (
@@ -47,8 +46,7 @@ def pipeline(pipeline_config):
     with patch("cairo_coder.core.rag_pipeline.RetrievalJudge") as mock_judge_class:
         mock_judge = Mock()
         mock_judge.get_lm_usage.return_value = {}
-        mock_judge.forward.return_value = dspy.Prediction()
-        mock_judge.aforward = AsyncMock(return_value=dspy.Prediction())
+        mock_judge.aforward = AsyncMock(side_effect=lambda query, documents: documents)
         mock_judge_class.return_value = mock_judge
         return RagPipeline(pipeline_config)
 
@@ -143,7 +141,7 @@ class TestRagPipeline:
     async def test_streaming_pipeline_execution(self, pipeline):
         """Test streaming pipeline execution."""
         events = []
-        async for event in pipeline.forward_streaming("How to write Cairo contracts?"):
+        async for event in pipeline.aforward_streaming("How to write Cairo contracts?"):
             events.append(event)
 
         # Verify event sequence
@@ -153,47 +151,50 @@ class TestRagPipeline:
         assert "response" in event_types
         assert "end" in event_types
 
-    def test_mcp_mode_execution(self, pipeline):
+    @pytest.mark.asyncio
+    async def test_mcp_mode_execution(self, pipeline):
         """Test MCP mode pipeline execution."""
-        result = pipeline.forward("How to write Cairo contracts?", mcp_mode=True)
+        result = await pipeline.aforward("How to write Cairo contracts?", mcp_mode=True)
 
         # Verify MCP program was used
-        pipeline.mcp_generation_program.forward.assert_called_once()
+        pipeline.mcp_generation_program.aforward.assert_called_once()
         assert "Cairo contracts are defined using #[starknet::contract]" in result.answer
 
-    def test_pipeline_with_chat_history(self, pipeline):
+    @pytest.mark.asyncio
+    async def test_pipeline_with_chat_history(self, pipeline):
         """Test pipeline with chat history."""
         chat_history = [
             Message(role=Role.USER, content="Previous question"),
             Message(role=Role.ASSISTANT, content="Previous answer"),
         ]
 
-        pipeline.forward("Follow-up question", chat_history=chat_history)
+        await pipeline.aforward("Follow-up question", chat_history=chat_history)
 
         # Verify chat history was formatted and passed
-        call_args = pipeline.query_processor.forward.call_args
+        call_args = pipeline.query_processor.aforward.call_args
         assert "User: Previous question" in call_args[1]["chat_history"]
         assert "Assistant: Previous answer" in call_args[1]["chat_history"]
 
-    def test_pipeline_with_custom_sources(self, pipeline):
+    @pytest.mark.asyncio
+    async def test_pipeline_with_custom_sources(self, pipeline):
         """Test pipeline with custom sources."""
         sources = [DocumentSource.SCARB_DOCS]
-        pipeline.forward("Scarb question", sources=sources)
+        await pipeline.aforward("Scarb question", sources=sources)
 
         # Verify sources were passed to retriever
-        call_args = pipeline.document_retriever.forward.call_args[1]
+        call_args = pipeline.document_retriever.aforward.call_args[1]
         assert call_args["sources"] == sources
 
-    def test_empty_documents_handling(self, pipeline, mock_document_retriever):
+    @pytest.mark.asyncio
+    async def test_empty_documents_handling(self, pipeline, mock_document_retriever):
         """Test pipeline handling of empty document list."""
         # Configure retriever to return empty list
-        mock_document_retriever.forward.return_value = []
         mock_document_retriever.aforward.return_value = []
 
-        pipeline.forward("test query")
+        await pipeline.aforward("test query")
 
         # Verify generation was called with "No relevant documentation found"
-        call_args = pipeline.generation_program.forward.call_args
+        call_args = pipeline.generation_program.aforward.call_args
         assert "No relevant documentation found" in call_args[1]["context"]
 
     @pytest.mark.asyncio
@@ -203,7 +204,7 @@ class TestRagPipeline:
         mock_document_retriever.aforward.side_effect = Exception("Retrieval error")
 
         events = []
-        async for event in pipeline.forward_streaming("test query"):
+        async for event in pipeline.aforward_streaming("test query"):
             events.append(event)
 
         # Should have an error event
@@ -216,7 +217,8 @@ class TestRagPipelineWithJudge:
     """Tests for RAG Pipeline with Retrieval Judge feature."""
 
     @patch("cairo_coder.core.rag_pipeline.RetrievalJudge")
-    def test_judge_enabled_filters_documents(
+    @pytest.mark.asyncio
+    async def test_judge_enabled_filters_documents(
         self, mock_judge_class, dspy_env_patched,
         patch_dspy_parallel, pipeline, mock_document_retriever
     ):
@@ -227,7 +229,7 @@ class TestRagPipelineWithJudge:
             ("Python Guide", "Python content", "python_docs"),
             ("Cairo Storage", "Cairo storage content", "cairo_book"),
         ])
-        mock_document_retriever.forward.return_value = docs
+        mock_document_retriever.aforward.return_value = docs
 
         # Setup judge with specific scores
         judge = create_custom_retrieval_judge({
@@ -236,50 +238,50 @@ class TestRagPipelineWithJudge:
             "Cairo Storage": 0.7,
         })
         # Configure the mock instance that the pipeline will use
-        pipeline.retrieval_judge.forward.side_effect = judge.forward
         pipeline.retrieval_judge.aforward.side_effect = judge.aforward
         pipeline.retrieval_judge.threshold = judge.threshold
 
-        pipeline.forward("Cairo question")
+        await pipeline.aforward("Cairo question")
 
         # Verify judge was called
-        pipeline.retrieval_judge.forward.assert_called_once()
+        pipeline.retrieval_judge.aforward.assert_called_once()
 
         # Verify context only contains high-scoring docs
-        call_args = pipeline.generation_program.forward.call_args
+        call_args = pipeline.generation_program.aforward.call_args
         context = call_args[1]["context"]
         assert "Cairo contract content" in context
         assert "Cairo storage content" in context
         assert "Python content" not in context
 
     @patch("cairo_coder.core.rag_pipeline.RetrievalJudge")
-    def test_judge_disabled_passes_all_documents(
+    @pytest.mark.asyncio
+    async def test_judge_disabled_passes_all_documents(
         self, mock_judge_class, dspy_env_patched, sample_documents, pipeline
     ):
         """Test that when judge fails, all documents are passed through."""
         # Mock the judge to fail
-        pipeline.retrieval_judge.forward.side_effect = Exception("Judge failed")
         pipeline.retrieval_judge.aforward.side_effect = Exception("Judge failed")
 
-        pipeline.forward("test query")
+        await pipeline.aforward("test query")
 
         # Verify judge exists
         assert pipeline.retrieval_judge is not None
 
         # All documents should be in context (because judge failed)
-        call_args = pipeline.generation_program.forward.call_args
+        call_args = pipeline.generation_program.aforward.call_args
         context = call_args[1]["context"]
         for doc in sample_documents:
             assert doc.page_content in context
 
     @pytest.mark.parametrize("threshold", [0.0, 0.4, 0.6, 0.9])
     @patch("cairo_coder.core.rag_pipeline.RetrievalJudge")
-    def test_judge_threshold_parameterization(
+    @pytest.mark.asyncio
+    async def test_judge_threshold_parameterization(
         self, mock_judge_class, dspy_env_patched,
         patch_dspy_parallel, threshold, sample_documents, pipeline, mock_document_retriever
     ):
         """Test different judge thresholds."""
-        mock_document_retriever.forward.return_value = sample_documents
+        mock_document_retriever.aforward.return_value = sample_documents
 
         # Judge with scores: 0.9, 0.8, 0.7, 0.6 (based on sample_documents)
         score_map = {
@@ -290,17 +292,17 @@ class TestRagPipelineWithJudge:
         }
 
         judge = create_custom_retrieval_judge(score_map, threshold=threshold)
-        pipeline.retrieval_judge.forward.side_effect = judge.forward
+        pipeline.retrieval_judge.aforward.side_effect = judge.aforward
         pipeline.retrieval_judge.threshold = judge.threshold
 
-        pipeline.forward("test query")
+        await pipeline.aforward("test query")
 
         # Count filtered docs based on threshold
         scores = [0.9, 0.8, 0.7, 0.6]
         expected_count = sum(1 for score in scores if score >= threshold)
 
         # Verify judge was called
-        pipeline.retrieval_judge.forward.assert_called_once()
+        pipeline.retrieval_judge.aforward.assert_called_once()
 
         # Check that the pipeline stored the correct number of filtered documents
         assert hasattr(pipeline, "_current_documents")
@@ -312,25 +314,26 @@ class TestRagPipelineWithJudge:
             assert doc.metadata.get("llm_judge_score", 0) >= threshold
 
     @patch("cairo_coder.core.rag_pipeline.RetrievalJudge")
-    def test_judge_failure_fallback(
+    @pytest.mark.asyncio
+    async def test_judge_failure_fallback(
         self, mock_judge_class, dspy_env_patched, sample_documents, pipeline
     ):
         """Test fallback when judge fails."""
         # Create failing judge
-        pipeline.retrieval_judge.forward.side_effect = Exception("Judge failed")
         pipeline.retrieval_judge.aforward.side_effect = Exception("Judge failed")
 
         # Should not raise, should use all docs
-        pipeline.forward("test query")
+        await pipeline.aforward("test query")
 
         # All documents should be passed through
-        call_args = pipeline.generation_program.forward.call_args
+        call_args = pipeline.generation_program.aforward.call_args
         context = call_args[1]["context"]
         for doc in sample_documents:
             assert doc.page_content in context
 
     @patch("cairo_coder.core.rag_pipeline.RetrievalJudge")
-    def test_judge_parse_error_handling(
+    @pytest.mark.asyncio
+    async def test_judge_parse_error_handling(
         self, mock_judge_class, dspy_env_patched,
         patch_dspy_parallel, pipeline, mock_document_retriever
     ):
@@ -339,7 +342,7 @@ class TestRagPipelineWithJudge:
             ("Doc1", "Content1", "source1"),
             ("Doc2", "Content2", "source2"),
         ])
-        mock_document_retriever.forward.return_value = docs
+        mock_document_retriever.aforward.return_value = docs
 
         # Create judge that returns invalid score
         judge = Mock(spec=RetrievalJudge)
@@ -356,16 +359,16 @@ class TestRagPipelineWithJudge:
             # The mock's side effect must replicate the real judge's behavior.
             return [documents[1]]
 
-        judge.forward = Mock(side_effect=filter_with_parse_error)
+        judge.aforward = AsyncMock(side_effect=filter_with_parse_error)
         judge.threshold = 0.5
 
-        pipeline.retrieval_judge.forward.side_effect = judge.forward
+        pipeline.retrieval_judge.aforward.side_effect = judge.aforward
         pipeline.retrieval_judge.threshold = judge.threshold
 
-        pipeline.forward("test query")
+        await pipeline.aforward("test query")
 
         # The doc with the parse error ("Content1") should be dropped and not in the context.
-        call_args = pipeline.generation_program.forward.call_args
+        call_args = pipeline.generation_program.aforward.call_args
         context = call_args[1]["context"]
         assert "Content1" not in context
         assert "Content2" in context
@@ -385,8 +388,8 @@ class TestRagPipelineWithJudge:
         pipeline.retrieval_judge.aforward.assert_called_once()
         assert result.answer == "Here's how to write Cairo contracts..."
 
-    @pytest.mark.asyncio
     @patch("cairo_coder.core.rag_pipeline.RetrievalJudge")
+    @pytest.mark.asyncio
     async def test_streaming_with_judge(
         self, mock_judge_class, dspy_env_patched,
         patch_dspy_parallel, pipeline, mock_retrieval_judge
@@ -395,7 +398,7 @@ class TestRagPipelineWithJudge:
         pipeline.retrieval_judge.aforward.side_effect = mock_retrieval_judge.aforward
 
         events = []
-        async for event in pipeline.forward_streaming("test query"):
+        async for event in pipeline.aforward_streaming("test query"):
             events.append(event)
 
         # Verify judge was called
@@ -408,24 +411,25 @@ class TestRagPipelineWithJudge:
         assert sources_event.data[0]["title"] == "Introduction to Cairo"
 
     @patch("cairo_coder.core.rag_pipeline.RetrievalJudge")
-    def test_judge_metadata_enrichment(
+    @pytest.mark.asyncio
+    async def test_judge_metadata_enrichment(
         self, mock_judge_class, dspy_env_patched,
         patch_dspy_parallel, pipeline, mock_document_retriever
     ):
         """Test that judge adds metadata to documents."""
         docs = create_custom_documents([("Test Doc", "Test content", "test_source")])
-        mock_document_retriever.forward.return_value = docs
+        mock_document_retriever.aforward.return_value = docs
 
         judge = create_custom_retrieval_judge({"Test Doc": 0.75})
-        pipeline.retrieval_judge.forward.side_effect = judge.forward
+        pipeline.retrieval_judge.aforward.side_effect = judge.aforward
 
-        pipeline.forward("test query")
+        await pipeline.aforward("test query")
 
         # Check that judge was called and documents have metadata
-        pipeline.retrieval_judge.forward.assert_called_once()
+        pipeline.retrieval_judge.aforward.assert_called_once()
 
         # Verify that generation received the filtered document with metadata
-        gen_call_args = pipeline.generation_program.forward.call_args[1]
+        gen_call_args = pipeline.generation_program.aforward.call_args[1]
         context = gen_call_args["context"]
 
         # The document should be in the context (score 0.75 is above threshold)
@@ -633,7 +637,7 @@ class TestPipelineHelperMethods:
             pipeline = RagPipeline(pipeline_config)
 
             # Execute the pipeline to ensure the full flow is invoked.
-            async for _ in pipeline.forward_streaming(
+            async for _ in pipeline.aforward_streaming(
                 query="How do I create a Cairo contract?", mcp_mode=mcp_mode
             ):
                 pass

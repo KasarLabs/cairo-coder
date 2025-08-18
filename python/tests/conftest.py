@@ -95,10 +95,6 @@ def mock_lm():
     """
     with patch("dspy.ChainOfThought") as mock_cot:
         mock_program = Mock()
-        # Mock for sync calls
-        mock_program.forward.return_value = dspy.Prediction(
-            answer="Here's a Cairo contract example:\n\n```cairo\n#[starknet::contract]\nmod SimpleContract {\n    // Contract implementation\n}\n```\n\nThis contract demonstrates basic Cairo syntax."
-        )
         mock_program.return_value = dspy.Prediction(
             answer="Here's a Cairo contract example:\n\n```cairo\n#[starknet::contract]\nmod SimpleContract {\n    // Contract implementation\n}\n```\n\nThis contract demonstrates basic Cairo syntax."
         )
@@ -383,15 +379,15 @@ def clean_config_env_vars(monkeypatch):
         "LANGSMITH_ENDPOINT",
         "LANGSMITH_OTEL_ENABLED",
     ]
-    
+
     # Store original values
     original_values = {}
     for var in env_vars_to_clean:
         original_values[var] = os.environ.get(var)
         monkeypatch.delenv(var, raising=False)
-    
+
     yield
-    
+
     # Restore original values after test
     for var, value in original_values.items():
         if value is not None:
@@ -588,7 +584,7 @@ Cairo contracts are defined using #[starknet::contract].
 
 Storage variables use #[storage] attribute.
 """
-    program.forward = Mock(return_value=dspy.Prediction(answer=mcp_answer))
+    program.aforward = AsyncMock(return_value=dspy.Prediction(answer=mcp_answer))
     program.get_lm_usage = Mock(return_value={})
     return program
 

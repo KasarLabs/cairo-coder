@@ -70,40 +70,6 @@ class RetrievalJudge(dspy.Module):
         self.parallel_threads = DEFAULT_PARALLEL_THREADS
         self.threshold = DEFAULT_THRESHOLD
 
-    # =========================
-    # Public API
-    # =========================
-    @traceable(name="RetrievalJudge", run_type="llm")
-    def forward(self, query: str, documents: list[Document]) -> list[Document]:
-        """Sync judge."""
-        if not documents:
-            return documents
-
-        keep_docs, judged_indices, judged_payloads = self._split_templates_and_prepare_docs(documents)
-
-        if judged_payloads:
-            try:
-                # Build batches for dspy.Parallel exactly as tests expect
-                parallel = dspy.Parallel(num_threads=self.parallel_threads)
-                batches = []
-                for doc_string in judged_payloads:
-                    example = dspy.Example(query=query, system_resource=doc_string).with_inputs("query", "system_resource")
-                    batches.append((self.rater, example))
-
-                results = parallel(batches)
-                self._attach_scores_and_filter(
-                    query=query,
-                    documents=documents,
-                    judged_indices=judged_indices,
-                    results=results,
-                    keep_docs=keep_docs,
-                )
-            except Exception as e:
-                logger.error("Retrieval judge failed (sync), returning all docs", error=str(e), exc_info=True)
-                return documents
-
-        return keep_docs
-
     @traceable(name="RetrievalJudge", run_type="llm")
     async def aforward(self, query: str, documents: list[Document]) -> list[Document]:
         """Async judge."""
@@ -112,6 +78,7 @@ class RetrievalJudge(dspy.Module):
 
         keep_docs, judged_indices, judged_payloads = self._split_templates_and_prepare_docs(documents)
 
+        # TODO: can we use dspy.Parallel here instead of asyncio gather?
         if judged_payloads:
             try:
                 # Judge concurrently
@@ -218,7 +185,8 @@ class RetrievalJudge(dspy.Module):
                 )
                 doc.metadata[LLM_JUDGE_SCORE_KEY] = 1.0
                 doc.metadata[LLM_JUDGE_REASON_KEY] = "Could not judge document. Keeping it."
-                # Do not append to keep_docs
+                # Actually keep it, as the log claims.
+                keep_docs.append(doc)
                 continue
 
             self._process_single_result(doc, result, keep_docs)
