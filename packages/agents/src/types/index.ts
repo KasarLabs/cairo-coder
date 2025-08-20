@@ -16,6 +16,7 @@ export interface VectorStoreConfig {
   POSTGRES_DB: string;
   POSTGRES_HOST: string;
   POSTGRES_PORT: string;
+  POSTGRES_TABLE_NAME: string;
 }
 
 export interface AgentPrompts {
