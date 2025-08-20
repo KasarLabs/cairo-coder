@@ -147,8 +147,11 @@ export class RecursiveMarkdownSplitter {
       tokens.codeBlocks,
     );
 
+    // Remove empty chunks
+    const nonEmptyChunks = rawChunks.filter((chunk) => chunk.content.trim().length > 0);
+
     // Attach metadata
-    return this.attachMetadata(rawChunks, normalizedMarkdown, tokens.headers);
+    return this.attachMetadata(nonEmptyChunks, normalizedMarkdown, tokens.headers);
   }
 
   /**
