@@ -99,36 +99,6 @@ class GenerationProgram(dspy.Module):
         return self.generation_program.get_lm_usage()
 
     @traceable(name="GenerationProgram", run_type="llm")
-    def forward(self, query: str, context: str, chat_history: Optional[str] = None) -> dspy.Prediction | None :
-        """
-        Generate Cairo code response based on query and context.
-
-        Args:
-            query: User's Cairo programming question
-            context: Retrieved documentation and examples
-            chat_history: Previous conversation context (optional)
-
-        Returns:
-            Generated Cairo code response with explanations
-        """
-        if chat_history is None:
-            chat_history = ""
-
-        # Execute the generation program
-        max_retries = 3
-        for attempt in range(max_retries):
-            try:
-                return self.generation_program.forward(query=query, context=context, chat_history=chat_history)
-            except AdapterParseError as e:
-                if attempt < max_retries - 1:
-                        continue
-                code = self._try_extract_code_from_response(e.lm_response)
-                if code:
-                    return dspy.Prediction(answer=code)
-                raise e
-        return None
-
-    @traceable(name="GenerationProgram", run_type="llm")
     async def aforward(self, query: str, context: str, chat_history: Optional[str] = None) -> dspy.Prediction | None :
         """
         Generate Cairo code response based on query and context - async
@@ -268,6 +238,12 @@ class McpGenerationProgram(dspy.Module):
             formatted_docs.append(formatted_doc)
 
         return dspy.Prediction(answer='\n'.join(formatted_docs))
+
+    async def aforward(self, documents: list[Document]) -> dspy.Prediction:
+        """
+        Format documents for MCP mode response.
+        """
+        return self.forward(documents)
 
     def get_lm_usage(self) -> dict[str, int]:
         """

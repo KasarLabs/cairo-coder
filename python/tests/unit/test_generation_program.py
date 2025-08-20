@@ -22,13 +22,6 @@ from cairo_coder.dspy.generation_program import (
 )
 
 
-async def call_program(program, method, *args, **kwargs):
-    """Helper to call sync or async method on a program."""
-    if method == "aforward":
-        return await program.aforward(*args, **kwargs)
-    return getattr(program, method)(*args, **kwargs)
-
-
 @pytest.fixture(scope="function")
 def generation_program(mock_lm):
     """Create a GenerationProgram instance."""
@@ -47,14 +40,13 @@ class TestGenerationProgram:
         """Create an MCP GenerationProgram instance."""
         return McpGenerationProgram()
 
-    @pytest.mark.parametrize("call_method", ["forward", "aforward"])
     @pytest.mark.asyncio
-    async def test_general_code_generation(self, generation_program, call_method):
+    async def test_general_code_generation(self, generation_program):
         """Test general Cairo code generation for both sync and async."""
         query = "How do I create a simple Cairo contract?"
         context = "Cairo contracts use #[starknet::contract] attribute..."
 
-        result = await call_program(generation_program, call_method, query, context)
+        result = await generation_program.aforward(query, context)
 
         # Result should be a dspy.Predict object with an answer attribute
         assert hasattr(result, "answer")
@@ -62,39 +54,31 @@ class TestGenerationProgram:
         assert len(result.answer) > 0
         assert "cairo" in result.answer.lower()
 
-        # Verify the generation program was called with correct parameters
-        mocked_method = getattr(generation_program.generation_program, call_method)
-        mocked_method.assert_called_once()
-        call_args = mocked_method.call_args[1]
+        generation_program.generation_program.aforward.assert_called_once()
+        call_args = generation_program.generation_program.aforward.call_args[1]
         assert call_args["query"] == query
         assert "cairo" in call_args["context"].lower()
         assert call_args["chat_history"] == ""
 
-    @pytest.mark.parametrize("call_method", ["forward", "aforward"])
     @pytest.mark.asyncio
-    async def test_generation_with_chat_history(self, generation_program, call_method):
+    async def test_generation_with_chat_history(self, generation_program):
         """Test code generation with chat history for both sync and async."""
         query = "How do I add storage to that contract?"
         context = "Storage variables are defined with #[storage]..."
         chat_history = "Previous conversation about contracts"
 
-        result = await call_program(
-            generation_program, call_method, query, context, chat_history
-        )
+        result = await generation_program.aforward(query, context, chat_history)
 
         # Result should be a dspy.Predict object with an answer attribute
         assert hasattr(result, "answer")
         assert isinstance(result.answer, str)
         assert len(result.answer) > 0
 
-        # Verify chat history was passed
-        mocked_method = getattr(generation_program.generation_program, call_method)
-        call_args = mocked_method.call_args[1]
-        assert call_args["chat_history"] == chat_history
+        # Verify chat history was passed to the mocked inner program
+        assert generation_program.generation_program.aforward.call_args[1]["chat_history"] == chat_history
 
-    @pytest.mark.parametrize("call_method", ["forward", "aforward"])
     @pytest.mark.asyncio
-    async def test_scarb_generation_program(self, scarb_generation_program, call_method):
+    async def test_scarb_generation_program(self, scarb_generation_program):
         """Test Scarb-specific code generation for both sync and async."""
         with patch.object(
             scarb_generation_program, "generation_program"
@@ -102,16 +86,10 @@ class TestGenerationProgram:
             mock_program.aforward = AsyncMock(return_value=dspy.Prediction(
                 answer='Here\'s your Scarb configuration:\n\n```toml\n[package]\nname = "my-project"\nversion = "0.1.0"\n```'
             ))
-            mock_program.forward.return_value = dspy.Prediction(
-                answer='Here\'s your Scarb configuration:\n\n```toml\n[package]\nname = "my-project"\nversion = "0.1.0"\n```'
-            )
-
             query = "How do I configure Scarb for my project?"
             context = "Scarb configuration documentation..."
 
-            result = await call_program(
-                scarb_generation_program, call_method, query, context
-            )
+            result = await scarb_generation_program.aforward(query, context)
 
             # Result should be a dspy.Predict object with an answer attribute
             assert hasattr(result, "answer")
@@ -119,7 +97,7 @@ class TestGenerationProgram:
             assert (
                 "scarb" in result.answer.lower() or "toml" in result.answer.lower()
             )
-            getattr(mock_program, call_method).assert_called_once()
+            mock_program.aforward.assert_called_once()
 
     def test_format_chat_history(self, generation_program):
         """Test chat history formatting."""
@@ -160,9 +138,10 @@ class TestMcpGenerationProgram:
         """Create an MCP GenerationProgram instance."""
         return McpGenerationProgram()
 
-    def test_mcp_document_formatting(self, mcp_program, sample_documents):
+    @pytest.mark.asyncio
+    async def test_mcp_document_formatting(self, mcp_program, sample_documents):
         """Test MCP mode document formatting."""
-        answer = mcp_program.forward(sample_documents).answer
+        answer = (await mcp_program.aforward(sample_documents)).answer
 
         assert isinstance(answer, str)
         assert len(answer) > 0
@@ -182,17 +161,19 @@ class TestMcpGenerationProgram:
             # Check content is included
             assert doc.page_content in answer
 
-    def test_mcp_empty_documents(self, mcp_program):
+    @pytest.mark.asyncio
+    async def test_mcp_empty_documents(self, mcp_program):
         """Test MCP mode with empty documents."""
-        result = mcp_program.forward([])
+        result = await mcp_program.aforward([])
 
         assert result.answer == "No relevant documentation found."
 
-    def test_mcp_documents_with_missing_metadata(self, mcp_program):
+    @pytest.mark.asyncio
+    async def test_mcp_documents_with_missing_metadata(self, mcp_program):
         """Test MCP mode with documents missing metadata."""
         documents = [Document(page_content="Some Cairo content", metadata={})]  # Missing metadata
 
-        answer = mcp_program.forward(documents).answer
+        answer = (await mcp_program.aforward(documents)).answer
 
         assert isinstance(answer, str)
         assert "Some Cairo content" in answer
@@ -301,9 +282,8 @@ class TestFactoryFunctions:
 class TestForwardRetries:
     """Test suite for forward retry logic."""
 
-    @pytest.mark.parametrize("call_method", ["forward", "aforward"])
     @pytest.mark.asyncio
-    async def test_forward_retry_logic(self, call_method, generation_program):
+    async def test_forward_retry_logic(self, generation_program):
         """Test that forward retries AdapterParseError up to 3 times."""
         # Mock the generation_program to raise AdapterParseError
         side_effect = [
@@ -315,19 +295,18 @@ class TestForwardRetries:
             ),
             dspy.Prediction(answer="Success"),
         ]
-        getattr(generation_program.generation_program, call_method).side_effect = side_effect
+        generation_program.generation_program.aforward = AsyncMock(side_effect=side_effect)
 
         # Should succeed after 2 retries
-        result = await call_program(generation_program, call_method, "test query", "test context")
+        result = await generation_program.aforward("test query", "test context")
 
         # Verify forward was called 3 times (2 failures + 1 success)
-        assert getattr(generation_program.generation_program, call_method).call_count == 3
+        assert generation_program.generation_program.aforward.call_count == 3
         assert result is not None
         assert result.answer == "Success"
 
-    @pytest.mark.parametrize("call_method", ["forward", "aforward"])
     @pytest.mark.asyncio
-    async def test_forward_max_retries_exceeded(self, call_method, generation_program):
+    async def test_forward_max_retries_exceeded(self, generation_program):
         """Test that forward raises AdapterParseError after max retries."""
 
         # Mock the generation_program to always raise AdapterParseError
@@ -345,37 +324,35 @@ class TestForwardRetries:
                 "Parse error", CairoCodeGeneration, "", "test response", None
             ),
         ]
-        getattr(generation_program.generation_program, call_method).side_effect = side_effect
+        generation_program.generation_program.aforward = AsyncMock(side_effect=side_effect)
 
         # Should raise after 3 attempts
         with pytest.raises(AdapterParseError):
-            await call_program(generation_program, call_method, "test query", "test context")
+            await generation_program.aforward("test query", "test context")
 
             # Verify forward was called exactly 3 times
-            assert getattr(generation_program.generation_program, call_method).call_count == 3
+            assert generation_program.generation_program.aforward.call_count == 3
 
-    @pytest.mark.parametrize("call_method", ["forward", "aforward"])
     @pytest.mark.asyncio
-    async def test_forward_other_exceptions_not_retried(self, call_method, generation_program):
+    async def test_forward_other_exceptions_not_retried(self, generation_program):
         """Test that forward doesn't retry non-AdapterParseError exceptions."""
 
         # Mock the generation_program to raise a different exception
         side_effect = [
             ValueError("Some other error"),
         ]
-        getattr(generation_program.generation_program, call_method).side_effect = side_effect
+        generation_program.generation_program.aforward = AsyncMock(side_effect=side_effect)
 
         # Should raise immediately without retries
         with pytest.raises(ValueError):
-            await call_program(generation_program, call_method, "test query", "test context")
+            await generation_program.aforward("test query", "test context")
 
         # Verify forward was called only once
-        assert getattr(generation_program.generation_program, call_method).call_count == 1
+        assert generation_program.generation_program.aforward.call_count == 1
 
 
-    @pytest.mark.parametrize("call_method", ["forward", "aforward"])
     @pytest.mark.asyncio
-    async def test_should_extract_code_before_raising(self, generation_program, call_method):
+    async def test_should_extract_code_before_raising(self, generation_program):
         """Test that code is extracted before raising AdapterParseError."""
         # Mock the generation_program to raise AdapterParseError
         side_effect = [
@@ -389,7 +366,7 @@ class TestForwardRetries:
                 "Parse error", CairoCodeGeneration, "```cairo\nfn main() {}\n```", "test response", None
             ),
         ]
-        generation_program.generation_program.aforward.side_effect = side_effect
+        generation_program.generation_program.aforward = AsyncMock(side_effect=side_effect)
 
-        response = await call_program(generation_program, "aforward", "test query", "test context")
+        response = await generation_program.aforward("test query", "test context")
         assert response.answer == "\nfn main() {}\n"

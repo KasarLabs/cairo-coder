@@ -39,7 +39,7 @@ def get_context_for_query(full_query: str, config) -> str:
     try:
         # Create instances per task to avoid shared state issues
         document_retriever = DocumentRetrieverProgram(vector_store_config=config.vector_store)
-        query_processor = QueryProcessorProgram()
+        query_processor = dspy.syncify(QueryProcessorProgram())
         context_summarizer = dspy.ChainOfThought(CairoContextSummarization)
 
         processed_query = query_processor.forward(query=full_query)

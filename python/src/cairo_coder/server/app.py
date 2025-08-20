@@ -15,6 +15,7 @@ from contextlib import asynccontextmanager
 
 import dspy
 import uvicorn
+from dspy.adapters.baml_adapter import BAMLAdapter
 from fastapi import Depends, FastAPI, Header, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
@@ -170,7 +171,7 @@ class CairoCoderServer:
 
         # TODO: This is the place where we should select the proper LLM configuration.
         # TODO: For now we just Hard-code DSPY - GEMINI
-        dspy.configure(lm=dspy.LM("gemini/gemini-2.5-flash", max_tokens=30000))
+        dspy.configure(lm=dspy.LM("gemini/gemini-2.5-flash", max_tokens=30000), adapter=BAMLAdapter())
         dspy.configure(callbacks=[AgentLoggingCallback(), LangsmithTracingCallback()])
         dspy.configure(track_usage=True)
 
@@ -562,7 +563,7 @@ async def lifespan(app: FastAPI):
     # Load config once
     config = ConfigManager.load_config()
     vector_store_config = config.vector_store
-    
+
     # TODO: These should not be literal constants like this.
     embedder = dspy.Embedder("openai/text-embedding-3-large", dimensions=1536, batch_size=512)
 

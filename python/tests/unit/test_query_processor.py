@@ -22,19 +22,19 @@ class TestQueryProcessorProgram:
         """Create a QueryProcessorProgram instance with mocked LM."""
         return QueryProcessorProgram()
 
-    def test_contract_query_processing(self, mock_lm, processor):
+    @pytest.mark.asyncio
+    async def test_contract_query_processing(self, mock_lm, processor):
         """Test processing of contract-related queries."""
         prediction = dspy.Prediction(
             search_queries=["cairo, contract, storage, variable"],
             resources=["cairo_book", "starknet_docs"],
             reasoning="I need to create a Cairo contract",
         )
-        mock_lm.forward.return_value = prediction
         mock_lm.aforward.return_value = prediction
 
         query = "How do I define storage variables in a Cairo contract?"
 
-        result = processor.forward(query)
+        result = await processor.aforward(query)
 
         assert isinstance(result, ProcessedQuery)
         assert result.original == query
@@ -86,7 +86,8 @@ class TestQueryProcessorProgram:
         """Test detection of test-related queries."""
         assert processor._is_test_query(query) is expected
 
-    def test_empty_query_handling(self, processor):
+    @pytest.mark.asyncio
+    async def test_empty_query_handling(self, processor):
         """Test handling of empty or whitespace queries."""
         with patch.object(processor, "retrieval_program") as mock_program:
             mock_program.aforward = AsyncMock(
@@ -95,7 +96,7 @@ class TestQueryProcessorProgram:
                 )
             )
 
-            result = processor.forward("")
+            result = await processor.aforward("")
 
             assert result.original == ""
             assert result.resources == [DocumentSource.CAIRO_BOOK]  # Default fallback

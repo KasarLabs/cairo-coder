@@ -14,7 +14,6 @@ def _():
     import dspy
     import psycopg2
     import structlog
-    from dspy import MIPROv2
     from psycopg2 import OperationalError
 
     from cairo_coder.config.manager import ConfigManager
@@ -57,7 +56,7 @@ def _():
     dspy.settings.configure(lm=lm)
     logger.info("Configured DSPy with Gemini 2.5 Flash")
 
-    return ConfigManager, MIPROv2, Path, dspy, json, lm, logger, time
+    return ConfigManager, Path, dspy, json, lm, logger, time
 
 
 @app.cell
@@ -104,9 +103,10 @@ def _(Path, dspy, json, logger):
 
 
 @app.cell
-def _(Path, ConfigManager, dspy):
+def _(ConfigManager, Path, dspy):
     """Initialize the generation program."""
     # Initialize program
+
 
     from cairo_coder.core.types import DocumentSource, Message
     from cairo_coder.dspy.document_retriever import DocumentRetrieverProgram
@@ -116,35 +116,35 @@ def _(Path, ConfigManager, dspy):
         def __init__(self):
             try:
                 config = ConfigManager.load_config()
+                db_config = config.vector_store
             except FileNotFoundError:
                 # Running in test environment without config.toml
-                config = None
+                db_config = None
 
-            self.processor = QueryProcessorProgram()
+            self.processor = dspy.syncify(QueryProcessorProgram())
             if Path("optimizers/results/optimized_mcp_program.json").exists():
                 self.processor.load("optimizers/results/optimized_mcp_program.json")
-            self.document_retriever = DocumentRetrieverProgram(vector_store_config=config.vector_store if config else None)
+            self.document_retriever = DocumentRetrieverProgram(vector_store_config=db_config)
 
-        def forward(
+        async def aforward(
             self,
             query: str,
             chat_history: list[Message] | None = None,
             sources: list[DocumentSource] | None = None,
         ) -> dspy.Prediction:
 
-            processed_query = self.processor.forward(query=query, chat_history=chat_history)
-            document_list = self.document_retriever.forward(processed_query=processed_query)
+            processed_query = await self.processor.aforward(query=query, chat_history=chat_history)
+            document_list = self.document_retriever(processed_query=processed_query)
 
             return dspy.Prediction(answer=document_list)
 
-    query_retrieval_program = QueryAndRetrieval()
+    query_retrieval_program = dspy.syncify(QueryAndRetrieval())
     return (query_retrieval_program,)
 
 
 @app.cell
 def _(dspy):
     # Defining our metrics here.
-
     class RetrievalRecallPrecision(dspy.Signature):
         """
         Compare a system's retrieval response to the query and to compute recall and precision.
@@ -161,7 +161,7 @@ def _(dspy):
             self.threshold = threshold
             self.rater = dspy.Predict(RetrievalRecallPrecision)
 
-        def forward(self, example, pred, trace=None):
+        def forward(self, example, pred, trace=None, pred_name=None, pred_trace=None):
             parallel = dspy.Parallel(num_threads=10)
             batches = []
             for resource in pred.answer:
@@ -189,34 +189,37 @@ def _(RetrievalF1, query_retrieval_program, valset):
         metric = RetrievalF1()
 
         # You can use this cell to run more comprehensive evaluation
-        evaluator__ = Evaluate(devset=valset, num_threads=12, display_progress=True)
+        evaluator__ = Evaluate(devset=valset, num_threads=12, display_progress=True, provide_traceback=True)
         return evaluator__(query_retrieval_program, metric=metric)
 
 
     baseline_score = _()
     return (baseline_score,)
 
+
 @app.cell
 def test_notebook(query_retrieval_program):
     assert query_retrieval_program is not None
+    return
+
 
 @app.cell
 def _(
-    MIPROv2,
     RetrievalF1,
+    dspy,
     logger,
     query_retrieval_program,
     time,
     trainset,
     valset,
 ):
-    """Run optimization using MIPROv2."""
-
+    """Run optimization."""
+    from dspy import MIPROv2
     metric = RetrievalF1()
 
 
     def run_optimization(trainset, valset):
-        """Run the optimization process using MIPROv2."""
+        """Run the optimization process."""
         logger.info("Starting optimization process")
 
         # Configure optimizer
@@ -224,7 +227,6 @@ def _(
             metric=metric,
             auto="light",
             num_threads=12,
-
         )
 
         # Run optimization

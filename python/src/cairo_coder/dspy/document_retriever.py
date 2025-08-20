@@ -14,7 +14,7 @@ from psycopg2 import sql
 import dspy
 from cairo_coder.core.config import VectorStoreConfig
 from cairo_coder.core.types import Document, DocumentSource, ProcessedQuery
-from dspy.retrieve.pgvector_rm import PgVectorRM
+from cairo_coder.dspy.pgvector_rm import PgVectorRM
 
 logger = structlog.get_logger()
 
@@ -134,6 +134,9 @@ pub mod Registry {
 - Always import strictly the required types in the module the interface is implemented in.
 - Always import the required types of the contract inside the contract module.
 - Always make the interface and the contract module 'pub'
+- In assert! macros, the string is using double \" quotes, not \'; e.g.: assert!(caller == owner,
+"Caller is not owner"). You can also not use any string literals in assert! macros.
+- Always match the generated code against context-provided code to reduce hallucination risk.
 </important_rules>
 
 The content inside the <contract> tag is the contract code for a 'Registry' contract, demonstrating
