@@ -51,6 +51,7 @@ export class CairoBookIngester extends MarkdownIngester {
       '..',
       '..',
       'python',
+      'src',
       'scripts',
       'summarizer',
       'generated',

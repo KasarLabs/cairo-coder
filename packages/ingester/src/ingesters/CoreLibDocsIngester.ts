@@ -47,6 +47,7 @@ export class CoreLibDocsIngester extends MarkdownIngester {
       '..',
       '..',
       'python',
+      'src',
       'scripts',
       'summarizer',
       'generated',

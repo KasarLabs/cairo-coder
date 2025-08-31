@@ -47,6 +47,7 @@ export class OpenZeppelinDocsIngester extends MarkdownIngester {
       '..',
       '..',
       'python',
+      'src',
       'scripts',
       'summarizer',
       'generated',
