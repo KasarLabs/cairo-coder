@@ -6,6 +6,7 @@ import { logger } from '@cairo-coder/agents/utils/index';
 import { exec as execCallback } from 'child_process';
 import { promisify } from 'util';
 import { MarkdownIngester } from './MarkdownIngester';
+import * as fs from 'fs/promises';
 
 /**
  * Ingester for the Scarb documentation
@@ -53,6 +54,7 @@ export class ScarbDocsIngester extends MarkdownIngester {
     // Clone the repository
     const exec = promisify(execCallback);
     try {
+      await fs.rm(extractDir, { recursive: true, force: true });
       await exec(`git clone ${repoUrl} ${extractDir}`);
     } catch (error) {
       logger.error('Error cloning repository:', error);

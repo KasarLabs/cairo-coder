@@ -26,14 +26,23 @@ LLM_JUDGE_SCORE_KEY = "llm_judge_score"
 LLM_JUDGE_REASON_KEY = "llm_judge_reason"
 
 
+# Note: examples here should be auto-generated from using an optimizer.
 class RetrievalRecallPrecision(dspy.Signature):
     """Compare a system's retrieval response to the query and rate how much it can be leveraged to answer the query.
 
     When asked to reason, enumerate key ideas in each response, and whether they are present in the expected output.
+    A document is considered useful if it is directly relevant to the query, or if it is informative and can be useful for context.
 
-    A document is considered useful if it is directly relevant to the query, or if it is informative and can be useful for context. For example, if the query is about creating or fixing a smart contract, then, an example of a smart contract, even if not _directly_ related, is considered useful. If the query is about a specific Cairo language feature, then a document about that feature is considered useful.
+    For example, if the query is about creating or fixing a smart contract, then, an example of a smart contract, even if not _directly_ related, is considered useful. If the query is about a specific Cairo language feature, then a document about that feature is considered useful.
+
+    If the query is about learning about a concept, like cryptography, STARKs, AIRs, and the document is related to that concept, then it can be considered useful.
 
     Contract and test templates are always considered useful.
+
+    Examples:
+    - The query asks about writing an AIR with STWO. The provided document is titled 'Basic building blocks' and covers the basic building blocks used to build the Cairo AIR. While it mentions Cairo AIR, it does not specifically address how to write an AIR with STWO but could be useful for context. Therefore, it is indirectly relevant to the user's query about STWO and AIRs.
+    - The query asks about writing an AIR with STWO. The provided document discusses writing a spreadsheet and mentions STWO in the context of SIMD operations and prover speed-up. While it touches upon STWO, it does not explain how to write an AIR with it. The document focuses on creating tables for proofs, which is a related but distinct topic. Therefore, the document is not indirectly relevant to answering the query about writing an AIR and can be kept.
+    - The query asks about writing an ERC20 contract. The provided document is called 'Components in Cairo' and covers the syntax of composable components in Cairo. While it does not directly address the ERC20 contract, it provides valuable context about including components in contracts, which can be useful to integrate the ERC20 Openzeppelin component. Therefore, it is relevant to the user's query about writing an ERC20 contract.
     """
 
     query: str = dspy.InputField()
