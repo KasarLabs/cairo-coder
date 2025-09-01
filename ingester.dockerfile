@@ -17,7 +17,7 @@ COPY packages/ingester ./packages/ingester
 COPY packages/agents ./packages/agents
 
 # Copy ingester files generated from python
-COPY python/scripts/summarizer/generated ./python/scripts/summarizer/generated
+COPY python/src/scripts/summarizer/generated ./python/src/scripts/summarizer/generated
 
 # Copy shared TypeScript config
 COPY packages/typescript-config ./packages/typescript-config
