@@ -111,7 +111,8 @@ def _(dspy, os, retriever):
     data = [dspy.Example(**d).with_inputs("query") for d in example_dataset]
 
     # Take maximum 300 random values from the dataset
-    random.Random(0).shuffle(data)
+    random.seed(42)
+    random.shuffle(data)
     data = data[0:300]
     train_set = data[: int(len(data) * 0.33)]
     val_set = data[int(len(data) * 0.33) : int(len(data) * 0.66)]
@@ -337,7 +338,7 @@ def _(evaluate, optimized_program):
 
 @app.cell
 def _(RETRIEVER, os):
-    compiled_program_path = "./dspy_program/program.json"
+    compiled_program_path = "optimizers/results/optimized_retrieval_program.json"
     if not os.path.exists(compiled_program_path):
         raise FileNotFoundError(f"{compiled_program_path} not found")
 
