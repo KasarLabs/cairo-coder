@@ -316,11 +316,11 @@ class TestServerIntegration:
     def test_streaming_error_handling(self, client: TestClient, mock_agent_factory: Mock, mock_agent: Mock):
         """Test error handling during streaming."""
 
-        async def mock_forward_streaming_error(*args, **kwargs):
+        async def mock_aforward_streaming_error(*args, **kwargs):
             yield StreamEvent(type=StreamEventType.RESPONSE, data="Starting response...")
             raise Exception("Stream error")
 
-        mock_agent.forward_streaming = mock_forward_streaming_error
+        mock_agent.aforward_streaming = mock_aforward_streaming_error
         response = client.post(
             "/v1/chat/completions",
             json={"messages": [{"role": "user", "content": "Hello"}], "stream": True},

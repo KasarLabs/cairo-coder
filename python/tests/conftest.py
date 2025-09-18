@@ -146,10 +146,10 @@ def mock_agent():
     """Create a mock agent with OpenAI-specific forward method."""
     mock_agent = AsyncMock()
 
-    async def mock_forward_streaming(
+    async def mock_aforward_streaming(
         query: str, chat_history: list[Message] | None = None, mcp_mode: bool = False
     ):
-        """Mock agent forward_streaming method that yields StreamEvent objects."""
+        """Mock agent forward_astreaming method that yields StreamEvent objects."""
         if mcp_mode:
             # MCP mode returns sources
             yield StreamEvent(
@@ -198,7 +198,7 @@ def mock_agent():
     # Assign both sync and async forward methods
     mock_agent.forward = mock_forward
     mock_agent.aforward = mock_aforward
-    mock_agent.forward_streaming = mock_forward_streaming
+    mock_agent.aforward_streaming = mock_aforward_streaming
     return mock_agent
 
 

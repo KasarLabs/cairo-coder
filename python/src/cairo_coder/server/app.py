@@ -382,7 +382,7 @@ class CairoCoderServer:
         content_buffer = ""
 
         try:
-            async for event in agent.forward_streaming(
+            async for event in agent.aforward_streaming(
                 query=query, chat_history=history, mcp_mode=mcp_mode
             ):
                 if event.type == "sources":
