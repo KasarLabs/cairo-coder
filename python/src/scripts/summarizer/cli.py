@@ -8,9 +8,9 @@ import structlog
 import typer
 from dotenv import load_dotenv
 
-from .base_summarizer import SummarizerConfig
-from .header_fixer import HeaderFixer
-from .summarizer_factory import DocumentationType, SummarizerFactory
+from scripts.summarizer.base_summarizer import SummarizerConfig
+from scripts.summarizer.header_fixer import HeaderFixer
+from scripts.summarizer.summarizer_factory import DocumentationType, SummarizerFactory
 
 # Load environment variables
 load_dotenv()

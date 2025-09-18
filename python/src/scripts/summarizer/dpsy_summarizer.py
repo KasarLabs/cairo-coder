@@ -14,20 +14,9 @@ logger = logging.getLogger(__name__)
 
 
 # Initialize DSPy configuration
-def configure_dspy(provider: str = "gemini", model: str = "gemini/gemini-2.5-flash-lite-preview-06-17", temperature: float = 0.50):
+def configure_dspy(provider: str = "gemini", model: str = "gemini/gemini-2.5-flash-lite", temperature: float = 0.50):
     """Configure DSPy with the specified provider and model"""
-    api_key = None
-    if provider == "gemini":
-        api_key = os.getenv('GEMINI_API_KEY')
-    elif provider == "openai":
-        api_key = os.getenv('OPENAI_API_KEY')
-    elif provider == "anthropic":
-        api_key = os.getenv('ANTHROPIC_API_KEY')
-
-    if not api_key:
-        raise ValueError(f"API key not found for provider: {provider}")
-
-    lm = dspy.LM(model, api_key=api_key, max_tokens=30000, temperature=temperature)
+    lm = dspy.LM(model, max_tokens=30000, temperature=temperature)
     dspy.settings.configure(lm=lm)
 
 class ProduceGist(dspy.Signature):
