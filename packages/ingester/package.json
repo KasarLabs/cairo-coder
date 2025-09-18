@@ -10,10 +10,10 @@
   "dependencies": {
     "@antora/lunr-extension": "1.0.0-alpha.10",
     "@asciidoctor/tabs": "1.0.0-beta.6",
+    "@cairo-coder/agents": "workspace:*",
     "@iarna/toml": "^2.2.5",
     "@langchain/core": "^0.2.36",
-    "@cairo-coder/agents": "workspace:*",
-    "@cairo-coder/backend": "workspace:*",
+    "@langchain/openai": "^0.0.25",
     "adm-zip": "^0.5.16",
     "asciidoctor": "^3.0.4",
     "axios": "^1.7.9",

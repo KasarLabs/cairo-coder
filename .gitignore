@@ -24,7 +24,6 @@ packages/ui/.env
 
 # Config files (legacy)
 config.toml
-packages/backend/config.toml
 
 # Log files
 logs/

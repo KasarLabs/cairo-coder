@@ -1,10 +1,41 @@
 import { createInterface } from 'readline';
 import { logger } from '@cairo-coder/agents/utils/index';
 import { VectorStore } from '@cairo-coder/agents/db/postgresVectorStore';
-import { getVectorDbConfig } from '@cairo-coder/agents/config/settings';
-import { loadOpenAIEmbeddingsModels } from '@cairo-coder/backend/config/provider/openai';
+import {
+  getOpenaiApiKey,
+  getVectorDbConfig,
+} from '@cairo-coder/agents/config/settings';
 import { DocumentSource } from '@cairo-coder/agents/types/index';
 import { IngesterFactory } from './IngesterFactory';
+import { OpenAIEmbeddings } from '@langchain/openai';
+
+export const loadOpenAIEmbeddingsModels = async () => {
+  const openAIApiKey = getOpenaiApiKey();
+
+  if (!openAIApiKey) return {};
+
+  try {
+    const embeddingModels = {
+      'Text embedding 3 small': new OpenAIEmbeddings({
+        openAIApiKey,
+        modelName: 'text-embedding-3-small',
+        batchSize: 512,
+        dimensions: 1536,
+      }),
+      'Text embedding 3 large': new OpenAIEmbeddings({
+        openAIApiKey,
+        modelName: 'text-embedding-3-large',
+        batchSize: 512,
+        dimensions: 1536,
+      }),
+    };
+
+    return embeddingModels;
+  } catch (err) {
+    logger.error(`Error loading OpenAI embeddings model: ${err}`);
+    return {};
+  }
+};
 
 /**
  * Global vector store instance
