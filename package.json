@@ -4,9 +4,7 @@
   "version": "0.2.1",
   "scripts": {
     "build": "turbo run build",
-    "dev": "turbo run dev",
     "lint": "turbo run lint",
-    "start": "turbo run start",
     "generate-embeddings": "turbo run generate-embeddings",
     "generate-embeddings:yes": "turbo run generate-embeddings:yes",
     "clean": "find packages -type d -name 'dist' -exec rm -rf {} +; find packages -type d -name '.turbo' -exec rm -rf {} +",

@@ -11,8 +11,7 @@ COPY package.json ./
 COPY pnpm-lock.yaml ./
 COPY turbo.json ./
 
-# Copy backend & agents packages
-COPY packages/backend ./packages/backend
+# Copy ingester & agents packages
 COPY packages/ingester ./packages/ingester
 COPY packages/agents ./packages/agents
 
