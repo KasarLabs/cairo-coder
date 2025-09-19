@@ -9,15 +9,30 @@ verification, and OpenAI compatibility checks.
 import concurrent.futures
 import json
 import uuid
+from typing import Any
 from unittest.mock import AsyncMock, Mock, patch
 
+import dspy
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from cairo_coder.config.manager import ConfigManager
 from cairo_coder.core.config import VectorStoreConfig
-from cairo_coder.core.types import StreamEvent, StreamEventType
-from cairo_coder.server.app import CairoCoderServer, create_app
+from cairo_coder.core.rag_pipeline import RagPipeline, RagPipelineConfig
+from cairo_coder.core.types import (
+    Message,
+    ProcessedQuery,
+    StreamEvent,
+    StreamEventType,
+    DocumentSource,
+)
+from cairo_coder.dspy.document_retriever import DocumentRetrieverProgram
+from cairo_coder.dspy.generation_program import (
+    create_generation_program,
+    create_mcp_generation_program,
+)
+from cairo_coder.dspy.query_processor import QueryProcessorProgram
+from cairo_coder.server.app import CairoCoderServer, create_app, get_agent_factory
 
 
 class TestServerIntegration:
@@ -62,17 +77,8 @@ class TestServerIntegration:
         assert any(agent["id"] == "cairo-coder" for agent in agents)
         assert any(agent["id"] == "scarb-assistant" for agent in agents)
 
-        # Mock the agent to return a specific response for this test
-        mock_response = Mock()
-        mock_response.answer = "Smart contract response."
-        mock_response.get_lm_usage.return_value = {
-            "gemini/gemini-2.5-flash": {
-                "prompt_tokens": 10,
-                "completion_tokens": 20,
-                "total_tokens": 30,
-            }
-        }
-        mock_agent.aforward = AsyncMock(return_value=mock_response)
+        # Note: Integration client injects a real pipeline; we assert response content shape,
+        # not exact LLM text.
 
         # Test chat completion with default agent
         response = client.post(
@@ -84,7 +90,8 @@ class TestServerIntegration:
         )
         assert response.status_code == 200
         data = response.json()
-        assert data["choices"][0]["message"]["content"] == "Smart contract response."
+        content = data["choices"][0]["message"]["content"]
+        assert isinstance(content, str) and len(content) > 0
 
     def test_multiple_conversation_turns(self, client: TestClient, mock_agent: Mock):
         """Test handling multiple conversation turns."""
@@ -119,31 +126,34 @@ class TestServerIntegration:
         data = response.json()
         assert data["choices"][0]["message"]["content"] == conversation_responses[1]
 
-    def test_streaming_integration(self, client: TestClient, mock_agent: Mock):
-        """Test streaming response integration."""
-
-        async def mock_forward_streaming(query: str, chat_history=None, mcp_mode=False, **kwargs):
-            chunks = [
-                "To create a Cairo contract, ",
-                "you need to use the #[contract] attribute ",
-                "on a module. This tells the compiler ",
-                "that the module contains contract code.",
-            ]
-            for chunk in chunks:
-                yield {"type": "response", "data": chunk}
-            yield {"type": "end", "data": ""}
-
-        mock_agent.forward_streaming = mock_forward_streaming
+    def test_streaming_integration(
+        self,
+        client: TestClient,
+        patch_dspy_streaming_success,
+    ):
+        """Test streaming response end-to-end using a real pipeline with low-level patches."""
 
         response = client.post(
             "/v1/chat/completions",
-            json={
-                "messages": [{"role": "user", "content": "How do I create a contract?"}],
-                "stream": True,
-            },
+            json={"messages": [{"role": "user", "content": "hello"}], "stream": True},
         )
         assert response.status_code == 200
         assert "text/event-stream" in response.headers.get("content-type", "")
+
+        # Gather streamed content
+        chunks = []
+        for line in response.text.split("\n"):
+            if not line.startswith("data: "):
+                continue
+            data = line[6:]
+            if data == "[DONE]":
+                continue
+            obj = json.loads(data)
+            delta = obj.get("choices", [{}])[0].get("delta", {})
+            if "content" in delta:
+                chunks.append(delta["content"])
+
+        assert "".join(chunks) == "Hello world"
 
     def test_error_handling_integration(self, client: TestClient, mock_agent_factory: Mock):
         """Test error handling in integration context."""
@@ -313,14 +323,13 @@ class TestServerIntegration:
         query = call_kwargs.get("query")
         assert query == "How are you?"
 
-    def test_streaming_error_handling(self, client: TestClient, mock_agent_factory: Mock, mock_agent: Mock):
-        """Test error handling during streaming."""
+    def test_streaming_error_handling(
+        self,
+        client: TestClient,
+        patch_dspy_streaming_error,
+    ):
+        """Test that streaming errors surface as an SSE error chunk using a real pipeline."""
 
-        async def mock_aforward_streaming_error(*args, **kwargs):
-            yield StreamEvent(type=StreamEventType.RESPONSE, data="Starting response...")
-            raise Exception("Stream error")
-
-        mock_agent.aforward_streaming = mock_aforward_streaming_error
         response = client.post(
             "/v1/chat/completions",
             json={"messages": [{"role": "user", "content": "Hello"}], "stream": True},

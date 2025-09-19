@@ -8,7 +8,13 @@ to reduce code duplication and ensure consistency.
 import asyncio
 import os
 from collections.abc import AsyncGenerator
+from typing import Any
 from unittest.mock import AsyncMock, Mock, patch
+
+# Ensure DSPy cache writes to a workspace-local directory to avoid sandbox issues
+_DSPY_CACHE_DIR = os.path.join(os.getcwd(), ".dspy_cache")
+os.makedirs(_DSPY_CACHE_DIR, exist_ok=True)
+os.environ.setdefault("DSPY_CACHEDIR", _DSPY_CACHE_DIR)
 
 import dspy
 import pytest
@@ -36,22 +42,9 @@ from cairo_coder.server.app import CairoCoderServer, get_agent_factory
 # =============================================================================
 
 @pytest.fixture(scope="session")
-def mock_returned_documents():
-    """Create a mock vector database instance for dependency injection."""
-    return [
-        dspy.Example(
-            content="Cairo is a programming language for writing provable programs.",
-            metadata={"source": "cairo_book", "score": 0.9, "chapter": 1},
-        ),
-        dspy.Example(
-            content="Starknet is a validity rollup (also known as a ZK rollup).",
-            metadata={"source": "starknet_docs", "score": 0.8, "section": "overview"},
-        ),
-        dspy.Example(
-            content="OpenZeppelin provides secure smart contract libraries for Cairo.",
-            metadata={"source": "openzeppelin_docs", "score": 0.7},
-        ),
-    ]
+def mock_returned_documents(sample_documents):
+    """DSPy Examples derived from sample_documents for DRY content."""
+    return [dspy.Example(content=doc.page_content, metadata=doc.metadata) for doc in sample_documents]
 
 @pytest.fixture(scope="function")
 def mock_vector_db(mock_returned_documents):
@@ -178,16 +171,8 @@ def mock_agent():
         else:
             mock_predict.answer = "Hello! I'm Cairo Coder. How can I help you?"
 
-        # Set up the get_lm_usage method
-        mock_predict.get_lm_usage = Mock(
-            return_value={
-                "gemini/gemini-2.5-flash": {
-                    "prompt_tokens": 100,
-                    "completion_tokens": 200,
-                    "total_tokens": 300,
-                }
-            }
-        )
+        # Deterministic LM usage for unit tests
+        mock_predict.get_lm_usage = Mock(return_value={})
 
         return mock_predict
 
@@ -203,52 +188,9 @@ def mock_agent():
 
 
 @pytest.fixture
-def mock_pool():
-    """
-    Create a mock database connection pool.
-
-    Returns a mock pool with standard database operations.
-    """
-    pool = AsyncMock()
-    mock_conn = AsyncMock()
-    mock_conn.execute = AsyncMock()
-    mock_conn.fetch = AsyncMock()
-    mock_conn.fetchrow = AsyncMock()
-    mock_conn.fetchval = AsyncMock()
-
-    # Create a proper context manager for acquire
-    pool.acquire.return_value.__aenter__ = AsyncMock(return_value=mock_conn)
-    pool.acquire.return_value.__aexit__ = AsyncMock(return_value=None)
-
-    pool.release = AsyncMock()
-    pool.close = AsyncMock()
-    return pool
-
-
-@pytest.fixture
 def server(mock_vector_store_config):
     """Create a CairoCoderServer instance for testing."""
     return CairoCoderServer(mock_vector_store_config)
-
-
-@pytest.fixture
-def client(server, mock_agent_factory):
-    """Create a test client for the server."""
-    from cairo_coder.server.app import get_vector_db
-
-    async def mock_get_vector_db():
-        mock_db = AsyncMock()
-        mock_db.pool = AsyncMock()
-        mock_db._ensure_pool = AsyncMock()
-        mock_db.sources = []
-        return mock_db
-
-    async def mock_get_agent_factory():
-        return mock_agent_factory
-
-    server.app.dependency_overrides[get_vector_db] = mock_get_vector_db
-    server.app.dependency_overrides[get_agent_factory] = mock_get_agent_factory
-    return TestClient(server.app)
 
 
 @pytest.fixture(scope="session")
@@ -258,6 +200,29 @@ def mock_embedder():
         mock_embedder.return_value = Mock()
         yield mock_embedder
 
+
+# =============================================================================
+# Low-level pipeline fixtures (for integration tests)
+# =============================================================================
+
+
+# Integration pipeline fixtures moved to tests/integration/conftest.py
+
+
+ 
+
+
+@pytest.fixture
+def client(server, mock_agent_factory, mock_vector_db):
+    """Unit-level client: uses mock_agent_factory and shared mock_vector_db."""
+    from cairo_coder.server.app import get_vector_db
+
+    async def mock_get_agent_factory():
+        return mock_agent_factory
+
+    server.app.dependency_overrides[get_vector_db] = lambda: mock_vector_db
+    server.app.dependency_overrides[get_agent_factory] = mock_get_agent_factory
+    return TestClient(server.app)
 
 # =============================================================================
 # Sample Data Fixtures
