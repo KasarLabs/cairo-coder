@@ -69,7 +69,7 @@ def create_custom_documents(specs):
                 "source": source,
                 "url": f"https://example.com/{source}",
                 "source_display": source.replace("_", " ").title(),
-            }
+            },
         )
         documents.append(doc)
     return documents
@@ -117,7 +117,9 @@ def merge_usage_dict(sources: list[dict]) -> dict:
             if model_name not in merged_usage:
                 merged_usage[model_name] = {}
             for metric_name, value in metrics.items():
-                merged_usage[model_name][metric_name] = merged_usage[model_name].get(metric_name, 0) + value
+                merged_usage[model_name][metric_name] = (
+                    merged_usage[model_name].get(metric_name, 0) + value
+                )
     return merged_usage
 
 
@@ -219,24 +221,27 @@ class TestRagPipelineWithJudge:
     @patch("cairo_coder.core.rag_pipeline.RetrievalJudge")
     @pytest.mark.asyncio
     async def test_judge_enabled_filters_documents(
-        self, mock_judge_class, dspy_env_patched,
-        patch_dspy_parallel, pipeline, mock_document_retriever
+        self, mock_judge_class, pipeline, mock_document_retriever
     ):
         """Test that judge filters out low-scoring documents."""
         # Create documents with varying relevance
-        docs = create_custom_documents([
-            ("Cairo Contracts", "Cairo contract content", "cairo_book"),
-            ("Python Guide", "Python content", "python_docs"),
-            ("Cairo Storage", "Cairo storage content", "cairo_book"),
-        ])
+        docs = create_custom_documents(
+            [
+                ("Cairo Contracts", "Cairo contract content", "cairo_book"),
+                ("Python Guide", "Python content", "python_docs"),
+                ("Cairo Storage", "Cairo storage content", "cairo_book"),
+            ]
+        )
         mock_document_retriever.aforward.return_value = docs
 
         # Setup judge with specific scores
-        judge = create_custom_retrieval_judge({
-            "Cairo Contracts": 0.8,
-            "Python Guide": 0.2,  # Below threshold
-            "Cairo Storage": 0.7,
-        })
+        judge = create_custom_retrieval_judge(
+            {
+                "Cairo Contracts": 0.8,
+                "Python Guide": 0.2,  # Below threshold
+                "Cairo Storage": 0.7,
+            }
+        )
         # Configure the mock instance that the pipeline will use
         pipeline.retrieval_judge.aforward.side_effect = judge.aforward
         pipeline.retrieval_judge.threshold = judge.threshold
@@ -256,7 +261,7 @@ class TestRagPipelineWithJudge:
     @patch("cairo_coder.core.rag_pipeline.RetrievalJudge")
     @pytest.mark.asyncio
     async def test_judge_disabled_passes_all_documents(
-        self, mock_judge_class, dspy_env_patched, sample_documents, pipeline
+        self, mock_judge_class, sample_documents, pipeline
     ):
         """Test that when judge fails, all documents are passed through."""
         # Mock the judge to fail
@@ -277,8 +282,7 @@ class TestRagPipelineWithJudge:
     @patch("cairo_coder.core.rag_pipeline.RetrievalJudge")
     @pytest.mark.asyncio
     async def test_judge_threshold_parameterization(
-        self, mock_judge_class, dspy_env_patched,
-        patch_dspy_parallel, threshold, sample_documents, pipeline, mock_document_retriever
+        self, mock_judge_class, threshold, sample_documents, pipeline, mock_document_retriever
     ):
         """Test different judge thresholds."""
         mock_document_retriever.aforward.return_value = sample_documents
@@ -315,9 +319,7 @@ class TestRagPipelineWithJudge:
 
     @patch("cairo_coder.core.rag_pipeline.RetrievalJudge")
     @pytest.mark.asyncio
-    async def test_judge_failure_fallback(
-        self, mock_judge_class, dspy_env_patched, sample_documents, pipeline
-    ):
+    async def test_judge_failure_fallback(self, mock_judge_class, sample_documents, pipeline):
         """Test fallback when judge fails."""
         # Create failing judge
         pipeline.retrieval_judge.aforward.side_effect = Exception("Judge failed")
@@ -334,14 +336,15 @@ class TestRagPipelineWithJudge:
     @patch("cairo_coder.core.rag_pipeline.RetrievalJudge")
     @pytest.mark.asyncio
     async def test_judge_parse_error_handling(
-        self, mock_judge_class, dspy_env_patched,
-        patch_dspy_parallel, pipeline, mock_document_retriever
+        self, mock_judge_class, pipeline, mock_document_retriever
     ):
         """Test handling of parse errors in judge scores."""
-        docs = create_custom_documents([
-            ("Doc1", "Content1", "source1"),
-            ("Doc2", "Content2", "source2"),
-        ])
+        docs = create_custom_documents(
+            [
+                ("Doc1", "Content1", "source1"),
+                ("Doc2", "Content2", "source2"),
+            ]
+        )
         mock_document_retriever.aforward.return_value = docs
 
         # Create judge that returns invalid score
@@ -375,10 +378,7 @@ class TestRagPipelineWithJudge:
 
     @pytest.mark.asyncio
     @patch("cairo_coder.core.rag_pipeline.RetrievalJudge")
-    async def test_async_judge_execution(
-        self, mock_judge_class, dspy_env_patched,
-        patch_dspy_parallel, pipeline, mock_retrieval_judge
-    ):
+    async def test_async_judge_execution(self, mock_judge_class, pipeline, mock_retrieval_judge):
         """Test async execution with judge."""
         pipeline.retrieval_judge.aforward.side_effect = mock_retrieval_judge.aforward
 
@@ -390,10 +390,7 @@ class TestRagPipelineWithJudge:
 
     @patch("cairo_coder.core.rag_pipeline.RetrievalJudge")
     @pytest.mark.asyncio
-    async def test_streaming_with_judge(
-        self, mock_judge_class, dspy_env_patched,
-        patch_dspy_parallel, pipeline, mock_retrieval_judge
-    ):
+    async def test_streaming_with_judge(self, mock_judge_class, pipeline, mock_retrieval_judge):
         """Test streaming execution with judge."""
         pipeline.retrieval_judge.aforward.side_effect = mock_retrieval_judge.aforward
 
@@ -413,8 +410,7 @@ class TestRagPipelineWithJudge:
     @patch("cairo_coder.core.rag_pipeline.RetrievalJudge")
     @pytest.mark.asyncio
     async def test_judge_metadata_enrichment(
-        self, mock_judge_class, dspy_env_patched,
-        patch_dspy_parallel, pipeline, mock_document_retriever
+        self, mock_judge_class, pipeline, mock_document_retriever
     ):
         """Test that judge adds metadata to documents."""
         docs = create_custom_documents([("Test Doc", "Test content", "test_source")])
@@ -439,7 +435,7 @@ class TestRagPipelineWithJudge:
 class TestRagPipelineFactory:
     """Tests for RagPipelineFactory."""
 
-    def test_create_pipeline_has_judge_enabled(self, mock_vector_store_config, mock_pgvector_rm):
+    def test_create_pipeline_has_judge_enabled(self, mock_vector_store_config, mock_vector_db):
         """Test factory creates pipeline with judge parameters."""
         with (
             patch("cairo_coder.core.rag_pipeline.os.path.exists", return_value=True),
@@ -449,7 +445,7 @@ class TestRagPipelineFactory:
 
             # Mock DocumentRetrieverProgram to return a mock retriever
             mock_retriever = Mock()
-            mock_retriever.vector_db = mock_pgvector_rm
+            mock_retriever.vector_db = mock_vector_db
             mock_retriever_class.return_value = mock_retriever
 
             pipeline = RagPipelineFactory.create_pipeline(
@@ -463,7 +459,7 @@ class TestRagPipelineFactory:
 
             assert isinstance(pipeline.retrieval_judge, RetrievalJudge)
 
-    def test_optimizer_file_missing_error(self, mock_vector_store_config, mock_pgvector_rm):
+    def test_optimizer_file_missing_error(self, mock_vector_store_config, mock_vector_db):
         """Test error when optimizer file is missing."""
         with (
             patch("cairo_coder.core.rag_pipeline.os.path.exists", return_value=False),
@@ -472,7 +468,7 @@ class TestRagPipelineFactory:
 
             # Mock DocumentRetrieverProgram to return a mock retriever
             mock_retriever = Mock()
-            mock_retriever.vector_db = mock_pgvector_rm
+            mock_retriever.vector_db = mock_vector_db
             mock_retriever_class.return_value = mock_retriever
 
             with pytest.raises(FileNotFoundError, match="optimized_rag.json not found"):
@@ -552,7 +548,11 @@ class TestPipelineHelperMethods:
         "gpt-4o": {"prompt_tokens": 1000, "completion_tokens": 500, "total_tokens": 1500}
     }
     _JUDGE_USAGE = {
-        "anthropic/claude-3-haiku": {"prompt_tokens": 50, "completion_tokens": 5, "total_tokens": 55}
+        "anthropic/claude-3-haiku": {
+            "prompt_tokens": 50,
+            "completion_tokens": 5,
+            "total_tokens": 55,
+        }
     }
 
     @pytest.mark.parametrize(
@@ -612,9 +612,7 @@ class TestPipelineHelperMethods:
             ),
         ],
     )
-    async def test_get_lm_usage_after_streaming(
-        self, pipeline_config, mcp_mode, expected_usage
-    ):
+    async def test_get_lm_usage_after_streaming(self, pipeline_config, mcp_mode, expected_usage):
         """Tests that get_lm_usage works correctly after a streaming execution."""
         # To test token aggregation, we mock the return values of sub-components'
         # get_lm_usage methods. The test logic simulates which components would
@@ -654,16 +652,15 @@ class TestConvenienceFunctions:
 
     def test_create_pipeline_with_defaults(self, mock_vector_store_config):
         """Test creating pipeline with default components."""
-        with (
-            patch("cairo_coder.dspy.DocumentRetrieverProgram") as mock_create_dr,
-        ):
+        with (patch("cairo_coder.dspy.DocumentRetrieverProgram") as mock_create_dr,):
             mock_create_dr.return_value = Mock()
 
-            mock_gp = Mock(),
-            mock_qp = Mock(),
-            mock_mcp = Mock(),
+            mock_gp = (Mock(),)
+            mock_qp = (Mock(),)
+            mock_mcp = (Mock(),)
             pipeline = RagPipelineFactory.create_pipeline(
-                name="test_pipeline", vector_store_config=mock_vector_store_config,
+                name="test_pipeline",
+                vector_store_config=mock_vector_store_config,
                 sources=list(DocumentSource),
                 query_processor=mock_qp,
                 generation_program=mock_gp,
