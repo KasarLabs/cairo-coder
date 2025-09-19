@@ -23,7 +23,6 @@ Cairo Coder is an open-source Cairo language code generation service using Retri
 - `pnpm test` - Run all tests across packages
 - `pnpm --filter @cairo-coder/agents test` - Run tests for specific package
 - `pnpm --filter @cairo-coder/agents test -- -t "test name"` - Run specific test
-- `pnpm --filter @cairo-coder/backend check-types` - Type check specific package
 
 ### Documentation Ingestion
 
@@ -40,7 +39,6 @@ Cairo Coder is an open-source Cairo language code generation service using Retri
 ### Monorepo Structure
 
 - **packages/agents**: Core RAG pipeline orchestrating query processing, document retrieval, and code generation
-- **packages/backend**: Express API server providing OpenAI-compatible endpoints
 - **packages/ingester**: Documentation processing system using template method pattern
 - **packages/typescript-config**: Shared TypeScript configuration
 
