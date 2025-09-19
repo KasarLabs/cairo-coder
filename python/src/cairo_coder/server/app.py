@@ -170,7 +170,7 @@ class CairoCoderServer:
 
         # TODO: This is the place where we should select the proper LLM configuration.
         # TODO: For now we just Hard-code DSPY - GEMINI
-        dspy.configure(lm=dspy.LM("gemini/gemini-2.5-flash", max_tokens=30000), adapter=BAMLAdapter())
+        dspy.configure(lm=dspy.LM("gemini/gemini-2.5-flash", max_tokens=30000, cache=False), adapter=BAMLAdapter())
         dspy.configure(callbacks=[AgentLoggingCallback()])
         dspy.configure(track_usage=True)
 
