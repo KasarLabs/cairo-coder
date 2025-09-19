@@ -57,16 +57,6 @@ class AgentLoggingCallback(BaseCallback):
         return any(k.startswith("Thought") for k in outputs if isinstance(k, str))
 
 
-class LangsmithTracingCallback(BaseCallback):
-    @traceable()
-    def on_lm_start(self, call_id: str, instance: Any, inputs: dict[str, Any]) -> None:
-        pass
-
-    @traceable()
-    def on_lm_end(self, call_id: str, outputs: dict[str, Any], exception: Exception | None) -> None:
-        pass
-
-
 @dataclass
 class RagPipelineConfig:
     """Configuration for RAG Pipeline."""
