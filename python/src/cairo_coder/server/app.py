@@ -386,6 +386,7 @@ class CairoCoderServer:
                 query=query, chat_history=history, mcp_mode=mcp_mode
             ):
                 if event.type == "sources":
+                    # Currently not surfaced in OpenAI stream format; ignore or map if needed.
                     pass
                 elif event.type == "response":
                     content_buffer += event.data
@@ -401,6 +402,23 @@ class CairoCoderServer:
                         ],
                     }
                     yield f"data: {json.dumps(chunk)}\n\n"
+                elif event.type == "error":
+                    # Emit an error as a final delta and stop
+                    error_chunk = {
+                        "id": response_id,
+                        "object": "chat.completion.chunk",
+                        "created": created,
+                        "model": "cairo-coder",
+                        "choices": [
+                            {
+                                "index": 0,
+                                "delta": {"content": f"\n\nError: {event.data}"},
+                                "finish_reason": "stop",
+                            }
+                        ],
+                    }
+                    yield f"data: {json.dumps(error_chunk)}\n\n"
+                    break
                 elif event.type == "end":
                     break
 

@@ -8,13 +8,7 @@ to reduce code duplication and ensure consistency.
 import asyncio
 import os
 from collections.abc import AsyncGenerator
-from typing import Any
 from unittest.mock import AsyncMock, Mock, patch
-
-# Ensure DSPy cache writes to a workspace-local directory to avoid sandbox issues
-_DSPY_CACHE_DIR = os.path.join(os.getcwd(), ".dspy_cache")
-os.makedirs(_DSPY_CACHE_DIR, exist_ok=True)
-os.environ.setdefault("DSPY_CACHEDIR", _DSPY_CACHE_DIR)
 
 import dspy
 import pytest
@@ -209,7 +203,7 @@ def mock_embedder():
 # Integration pipeline fixtures moved to tests/integration/conftest.py
 
 
- 
+
 
 
 @pytest.fixture

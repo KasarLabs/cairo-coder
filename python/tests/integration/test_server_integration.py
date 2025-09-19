@@ -9,30 +9,14 @@ verification, and OpenAI compatibility checks.
 import concurrent.futures
 import json
 import uuid
-from typing import Any
-from unittest.mock import AsyncMock, Mock, patch
+from unittest.mock import Mock, patch
 
-import dspy
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from cairo_coder.config.manager import ConfigManager
 from cairo_coder.core.config import VectorStoreConfig
-from cairo_coder.core.rag_pipeline import RagPipeline, RagPipelineConfig
-from cairo_coder.core.types import (
-    Message,
-    ProcessedQuery,
-    StreamEvent,
-    StreamEventType,
-    DocumentSource,
-)
-from cairo_coder.dspy.document_retriever import DocumentRetrieverProgram
-from cairo_coder.dspy.generation_program import (
-    create_generation_program,
-    create_mcp_generation_program,
-)
-from cairo_coder.dspy.query_processor import QueryProcessorProgram
-from cairo_coder.server.app import CairoCoderServer, create_app, get_agent_factory
+from cairo_coder.server.app import CairoCoderServer, create_app
 
 
 class TestServerIntegration:

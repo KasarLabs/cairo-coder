@@ -117,7 +117,10 @@ def _patch_dspy_streaming_default(monkeypatch):
 def real_pipeline(mock_query_processor, mock_vector_store_config, mock_vector_db, mock_embedder):
     """Create RagPipeline with mocked components to avoid external calls."""
     from cairo_coder.core.rag_pipeline import RagPipeline, RagPipelineConfig
-    from cairo_coder.dspy.generation_program import create_generation_program, create_mcp_generation_program
+    from cairo_coder.dspy.generation_program import (
+        create_generation_program,
+        create_mcp_generation_program,
+    )
 
     pipeline = RagPipeline(
         RagPipelineConfig(

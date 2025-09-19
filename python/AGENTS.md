@@ -23,6 +23,7 @@ This repo uses a unified, deterministic testing infrastructure to keep tests fas
 ## Unit vs Integration
 
 - Unit tests
+
   - Import from `python/tests/conftest.py`.
   - Use the unit `client` fixture.
   - Validate response shape, headers, error handling; set per‑test factory behavior via `side_effect` or `return_value`.
@@ -44,4 +45,3 @@ This repo uses a unified, deterministic testing infrastructure to keep tests fas
 2. Run `pytest python/tests/unit`
 3. Fix fallout; keep fixtures deterministic.
 4. If you add an agent/pipeline, update this file with how to inject/mock it in tests.
-
