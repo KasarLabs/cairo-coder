@@ -41,7 +41,5 @@ This repo uses a unified, deterministic testing infrastructure to keep tests fas
 
 ## After Changes
 
-1. Run `pytest python/tests/integration`
-2. Run `pytest python/tests/unit`
-3. Fix fallout; keep fixtures deterministic.
-4. If you add an agent/pipeline, update this file with how to inject/mock it in tests.
+1. Run `uv run pytest`
+2. If tests are failing, investigate the failure and properly fix it; don't losen up assertions. Keep fixtures deterministic.

@@ -5,9 +5,7 @@ This module provides common fixtures and utilities used across multiple test fil
 to reduce code duplication and ensure consistency.
 """
 
-import asyncio
 import os
-from collections.abc import AsyncGenerator
 from unittest.mock import AsyncMock, Mock, patch
 
 import dspy
@@ -21,7 +19,6 @@ from cairo_coder.core.types import (
     DocumentSource,
     Message,
     ProcessedQuery,
-    Role,
     StreamEvent,
     StreamEventType,
 )
@@ -31,9 +28,6 @@ from cairo_coder.dspy.query_processor import QueryProcessorProgram
 from cairo_coder.dspy.retrieval_judge import RetrievalJudge
 from cairo_coder.server.app import CairoCoderServer, get_agent_factory
 
-# =============================================================================
-# Common Mock Fixtures
-# =============================================================================
 
 @pytest.fixture(scope="session")
 def mock_returned_documents(sample_documents):
@@ -166,7 +160,16 @@ def mock_agent():
             mock_predict.answer = "Hello! I'm Cairo Coder. How can I help you?"
 
         # Deterministic LM usage for unit tests
-        mock_predict.get_lm_usage = Mock(return_value={})
+        # Set up the get_lm_usage method
+        mock_predict.get_lm_usage = Mock(
+            return_value={
+                "gemini/gemini-2.5-flash": {
+                    "prompt_tokens": 100,
+                    "completion_tokens": 200,
+                    "total_tokens": 300,
+                }
+            }
+        )
 
         return mock_predict
 
@@ -187,23 +190,9 @@ def server(mock_vector_store_config):
     return CairoCoderServer(mock_vector_store_config)
 
 
-@pytest.fixture(scope="session")
-def mock_embedder():
-    """Mock the embedder."""
-    with patch("cairo_coder.dspy.document_retriever.dspy.Embedder") as mock_embedder:
-        mock_embedder.return_value = Mock()
-        yield mock_embedder
-
-
 # =============================================================================
 # Low-level pipeline fixtures (for integration tests)
 # =============================================================================
-
-
-# Integration pipeline fixtures moved to tests/integration/conftest.py
-
-
-
 
 
 @pytest.fixture
@@ -287,31 +276,9 @@ def sample_documents():
     ]
 
 
-@pytest.fixture
-def sample_messages():
-    """
-    Create sample chat messages for testing.
-
-    Returns a list of Message objects representing a conversation.
-    """
-    return [
-        Message(role=Role.SYSTEM, content="You are a helpful Cairo programming assistant."),
-        Message(role=Role.USER, content="How do I create a smart contract in Cairo?"),
-        Message(
-            role=Role.ASSISTANT, content="To create a smart contract in Cairo, you need to..."
-        ),
-        Message(role=Role.USER, content="Can you show me an example?"),
-    ]
-
-
-
-
 # =============================================================================
 # Test Configuration Fixtures
 # =============================================================================
-
-
-
 
 @pytest.fixture(autouse=True)
 def clean_config_env_vars(monkeypatch):
@@ -351,139 +318,6 @@ def clean_config_env_vars(monkeypatch):
     for var, value in original_values.items():
         if value is not None:
             monkeypatch.setenv(var, value)
-
-
-@pytest.fixture
-def test_env_vars(monkeypatch):
-    """
-    Set up test environment variables.
-
-    Sets common environment variables used in tests.
-    """
-    test_vars = {
-        "OPENAI_API_KEY": "test-openai-key",
-        "ANTHROPIC_API_KEY": "test-anthropic-key",
-        "GOOGLE_API_KEY": "test-google-key",
-        "POSTGRES_HOST": "localhost",
-        "POSTGRES_PORT": "5432",
-        "POSTGRES_DB": "cairo_coder_test",
-        "POSTGRES_USER": "test_user",
-        "POSTGRES_PASSWORD": "test_password",
-    }
-
-    for key, value in test_vars.items():
-        monkeypatch.setenv(key, value)
-
-    return test_vars
-
-
-# =============================================================================
-# Utility Functions
-# =============================================================================
-
-
-def create_test_document(
-    content: str, source: str = "cairo_book", score: float = 0.8, **metadata
-) -> Document:
-    """
-    Create a test document with standard metadata.
-
-    Args:
-        content: The document content
-        source: Document source
-        score: Similarity score
-        **metadata: Additional metadata
-
-    Returns:
-        Document object with the provided content and metadata
-    """
-    base_metadata = {
-        "source": source,
-        "score": score,
-        "title": f"Test Document from {source}",
-        "url": f"https://example.com/{source}",
-        "source_display": source.replace("_", " ").title(),
-    }
-    base_metadata.update(metadata)
-
-    return Document(page_content=content, metadata=base_metadata)
-
-
-async def create_test_stream_events(
-    response_text: str = "Test response",
-) -> AsyncGenerator[StreamEvent, None]:
-    """
-    Create a test stream of events for testing streaming functionality.
-
-    Args:
-        response_text: The response text to stream
-
-    Yields:
-        StreamEvent objects
-    """
-    events = [
-        StreamEvent(type=StreamEventType.PROCESSING, data="Processing query..."),
-        StreamEvent(type=StreamEventType.SOURCES, data=[{"title": "Test Doc", "url": "#"}]),
-        StreamEvent(type=StreamEventType.RESPONSE, data=response_text),
-        StreamEvent(type=StreamEventType.END, data=None),
-    ]
-
-    for event in events:
-        yield event
-
-
-# =============================================================================
-# Parametrized Fixtures
-# =============================================================================
-
-
-@pytest.fixture(
-    params=[
-        DocumentSource.CAIRO_BOOK,
-        DocumentSource.STARKNET_DOCS,
-        DocumentSource.SCARB_DOCS,
-        DocumentSource.OPENZEPPELIN_DOCS,
-        DocumentSource.CAIRO_BY_EXAMPLE,
-    ]
-)
-def document_source(request):
-    """Parametrized fixture for testing with different document sources."""
-    return request.param
-
-
-@pytest.fixture(params=[0.3, 0.4, 0.5, 0.6, 0.7])
-def similarity_threshold(request):
-    """Parametrized fixture for testing with different similarity thresholds."""
-    return request.param
-
-
-@pytest.fixture(params=[5, 10, 15, 20])
-def max_source_count(request):
-    """Parametrized fixture for testing with different max source counts."""
-    return request.param
-
-
-# =============================================================================
-# Event Loop Fixture
-# =============================================================================
-
-
-@pytest.fixture(scope="session")
-def event_loop():
-    """
-    Create an event loop for the test session.
-
-    This fixture ensures that async tests have access to an event loop.
-    """
-    loop = asyncio.new_event_loop()
-    yield loop
-    loop.close()
-
-
-# =============================================================================
-# RAG Pipeline Fixtures
-# =============================================================================
-
 
 @pytest.fixture
 def mock_query_processor(sample_processed_query):
@@ -593,48 +427,3 @@ def mock_retrieval_judge():
     judge.get_lm_usage = Mock(return_value={})
 
     return judge
-
-
-@pytest.fixture
-def mock_pgvector_rm(mock_vector_db):
-    """Create a mock PgVectorRM for RAG pipeline tests."""
-    return mock_vector_db
-
-
-@pytest.fixture
-def patch_dspy_parallel():
-    """Patch dspy.Parallel to return the input directly (for judge tests)."""
-    with patch("dspy.Parallel") as mock_parallel:
-        # Make Parallel pass through the input directly
-        def passthrough(func, *args, **kwargs):
-            # If called with documents, just apply the function to each
-            if args and hasattr(args[0], '__iter__'):
-                return [func(item) for item in args[0]]
-            return func(*args, **kwargs)
-
-        mock_parallel.side_effect = passthrough
-        yield mock_parallel
-
-
-@pytest.fixture
-def dspy_env_patched():
-    """Patch dspy.LM and dspy.context for testing."""
-    with patch("dspy.LM"), patch("dspy.context"):
-        yield
-
-
-# =============================================================================
-# Cleanup Fixtures
-# =============================================================================
-
-
-@pytest.fixture(autouse=True)
-def cleanup_mocks():
-    """
-    Automatically clean up mocks after each test.
-
-    This fixture ensures that mock state doesn't leak between tests.
-    """
-    yield
-    # Any cleanup code can go here if needed
-    pass

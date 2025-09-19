@@ -16,7 +16,7 @@ from fastapi.testclient import TestClient
 
 from cairo_coder.config.manager import ConfigManager
 from cairo_coder.core.config import VectorStoreConfig
-from cairo_coder.server.app import CairoCoderServer, create_app
+from cairo_coder.server.app import CairoCoderServer, ChatCompletionResponse, create_app
 
 
 class TestServerIntegration:
@@ -36,8 +36,7 @@ class TestServerIntegration:
         data = response.json()
         assert len(data) == 2  # cairo-coder, scarb-assistant
         agent_ids = {agent["id"] for agent in data}
-        assert "cairo-coder" in agent_ids
-        assert "scarb-assistant" in agent_ids
+        assert agent_ids == {"cairo-coder", "scarb-assistant"}
 
     def test_list_agents_error_handling(self, client: TestClient, mock_agent_factory: Mock):
         """Test error handling in list agents endpoint."""
@@ -74,6 +73,8 @@ class TestServerIntegration:
         )
         assert response.status_code == 200
         data = response.json()
+        # Validate full response model
+        ChatCompletionResponse.model_validate(data)
         content = data["choices"][0]["message"]["content"]
         assert isinstance(content, str) and len(content) > 0
 
@@ -249,6 +250,8 @@ class TestServerIntegration:
 
         assert response.status_code == 200
         data = response.json()
+        # Validate full response model
+        ChatCompletionResponse.model_validate(data)
         assert data["model"] == "cairo-coder"
         assert len(data["choices"]) == 1
 
@@ -564,6 +567,17 @@ class TestMCPModeCompatibility:
             "/v1/agents/cairo-coder/chat/completions",
             json={"messages": [{"role": "user", "content": "Cairo is a programming language"}]},
             headers={"x-mcp-mode": "true"},
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["choices"][0]["message"]["content"] == "Cairo is a programming language"
+
+    def test_mcp_mode_agent_specific_endpoint_mcp_header(self, client: TestClient):
+        """Test MCP mode agent route with 'mcp' header variant."""
+        response = client.post(
+            "/v1/agents/cairo-coder/chat/completions",
+            json={"messages": [{"role": "user", "content": "Docs please"}]},
+            headers={"mcp": "true"},
         )
         assert response.status_code == 200
         data = response.json()

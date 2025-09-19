@@ -78,43 +78,8 @@ def patch_dspy_streaming_error(monkeypatch):
     monkeypatch.setattr(dspy, "streamify", fake_streamify)
 
 
-@pytest.fixture(autouse=True)
-def _patch_dspy_streaming_default(monkeypatch):
-    """Default safe streaming patch for all integration tests.
-
-    Ensures no real LLM streaming is attempted unless a test overrides it.
-    """
-    import dspy
-
-    class FakeStreamResponse:
-        def __init__(self, chunk: str):
-            self.chunk = chunk
-
-    class FakeStreamListener:
-        def __init__(self, signature_field_name: str):  # noqa: ARG002
-            pass
-
-    monkeypatch.setattr(
-        dspy,
-        "streaming",
-        type("S", (), {"StreamResponse": FakeStreamResponse, "StreamListener": FakeStreamListener}),
-    )
-
-    def fake_streamify(_program, stream_listeners=None):  # noqa: ARG001
-        def runner(**kwargs):  # noqa: ARG001
-            async def gen():
-                yield FakeStreamResponse("Hello ")
-                yield FakeStreamResponse("world")
-
-            return gen()
-
-        return runner
-
-    monkeypatch.setattr(dspy, "streamify", fake_streamify)
-
-
 @pytest.fixture
-def real_pipeline(mock_query_processor, mock_vector_store_config, mock_vector_db, mock_embedder):
+def real_pipeline(mock_query_processor, mock_vector_store_config, mock_vector_db):
     """Create RagPipeline with mocked components to avoid external calls."""
     from cairo_coder.core.rag_pipeline import RagPipeline, RagPipelineConfig
     from cairo_coder.dspy.generation_program import (
