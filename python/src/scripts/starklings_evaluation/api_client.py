@@ -17,7 +17,7 @@ class CairoCoderAPIClient:
         self,
         base_url: str = "http://localhost:3001",
         model: str = "cairo-coder",
-        timeout: int = 120,
+        timeout: int = 180,
     ):
         """Initialize API client.
 
@@ -108,8 +108,9 @@ class CairoCoderAPIClient:
                     raise Exception(f"API call failed after {max_retries} attempts: {str(e)}") from e
 
             except Exception as e:
-                logger.error("Unexpected error in API call", error=str(e))
-                raise
+                import traceback
+                logger.error("Unexpected error in API call", error=traceback.format_exc())
+                raise e
         return None
 
 
