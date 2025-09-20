@@ -73,7 +73,6 @@ class TestDocumentRetrieverProgram:
         query = ProcessedQuery(
             original="Simple query",
             search_queries=[],  # Empty transformed terms
-            reasoning="Simple reasoning",
             is_contract_related=False,
             is_test_related=False,
             resources=[DocumentSource.CAIRO_BOOK],
@@ -85,7 +84,7 @@ class TestDocumentRetrieverProgram:
         assert len(result) != 0
 
         # Query should just be the reasoning with empty tags
-        expected_query = query.reasoning
+        expected_query = query.original
         retriever.vector_db.aforward.assert_called_with(
             query=expected_query, sources=query.resources
         )
@@ -231,7 +230,6 @@ class TestDocumentRetrieverProgram:
         query = ProcessedQuery(
             original=query_str,
             search_queries=["None"],
-            reasoning="Some reasoning",
             resources=[DocumentSource.CAIRO_BOOK],
             **query_details,
         )

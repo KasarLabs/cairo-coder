@@ -45,7 +45,6 @@ class ProcessedQuery:
 
     original: str
     search_queries: list[str]
-    reasoning: str
     is_contract_related: bool = False
     is_test_related: bool = False
     resources: list[DocumentSource] = field(default_factory=list)
