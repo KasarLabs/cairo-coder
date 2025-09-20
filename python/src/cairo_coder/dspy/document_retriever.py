@@ -16,7 +16,7 @@ from cairo_coder.core.config import VectorStoreConfig
 from cairo_coder.core.types import Document, DocumentSource, ProcessedQuery
 from cairo_coder.dspy.pgvector_rm import PgVectorRM
 
-logger = structlog.get_logger()
+logger = structlog.get_logger(__name__)
 
 # Templates for different types of requests
 CONTRACT_TEMPLATE_TITLE = "Contract Template"

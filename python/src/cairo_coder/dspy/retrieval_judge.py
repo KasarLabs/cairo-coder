@@ -18,7 +18,7 @@ import dspy
 from cairo_coder.core.types import Document
 from cairo_coder.dspy.document_retriever import CONTRACT_TEMPLATE_TITLE, TEST_TEMPLATE_TITLE
 
-logger = structlog.get_logger()
+logger = structlog.get_logger(__name__)
 
 TEMPLATE_TITLES = {CONTRACT_TEMPLATE_TITLE, TEST_TEMPLATE_TITLE}
 JUDGE_DOCUMENT_PREVIEW_MAX_LEN = 1000

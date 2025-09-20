@@ -11,6 +11,7 @@ from dataclasses import dataclass
 from typing import Any
 
 import dspy
+import structlog
 from dspy.adapters.baml_adapter import BAMLAdapter
 from dspy.utils.callback import BaseCallback
 from langsmith import traceable
@@ -28,9 +29,8 @@ from cairo_coder.dspy.document_retriever import DocumentRetrieverProgram
 from cairo_coder.dspy.generation_program import GenerationProgram, McpGenerationProgram
 from cairo_coder.dspy.query_processor import QueryProcessorProgram
 from cairo_coder.dspy.retrieval_judge import RetrievalJudge
-from cairo_coder.utils.logging import get_logger
 
-logger = get_logger(__name__)
+logger = structlog.get_logger(__name__)
 
 SOURCE_PREVIEW_MAX_LEN = 200
 

@@ -1,54 +1,113 @@
-"""Logging configuration for Cairo Coder."""
+"""Logging configuration for Cairo Coder.
+
+Goals:
+- Respect environment log level (e.g., LOG_LEVEL=INFO|DEBUG|...)
+- Only emit our own package logs (silence dependencies by default)
+"""
+
+from __future__ import annotations
 
 import logging
-import sys
+import logging.config
 
 import structlog
-from structlog.processors import JSONRenderer, TimeStamper, add_log_level
 
 
-def setup_logging(level: str = "INFO", format_type: str = "json") -> None:
+def _coerce_level(level: str | int | None, default: int = logging.INFO) -> int:
+    if isinstance(level, int):
+        return level
+    if not level:
+        return default
+    name = str(level).upper()
+    return getattr(logging, name, default)
+
+
+def setup_logging(level: str | int = "INFO", format_type: str = "json") -> None:
     """
-    Configure logging for the application.
+    Configure logging for the application using structlog + stdlib logging.
+
+    - Level is read from argument (defaults to "INFO").
+      Pass os.environ.get("LOG_LEVEL") to respect environment if desired.
+    - Only the "cairo_coder" logger is configured with a handler; all other
+      loggers stay silent unless explicitly configured.
 
     Args:
-        level: Log level (DEBUG, INFO, WARNING, ERROR).
-        format_type: Output format (json or text).
+        level: Log level (e.g. "DEBUG", "INFO", or an int).
+        format_type: "json" or "console".
     """
-    # Configure standard logging
-    logging.basicConfig(
-        level=getattr(logging, level.upper()),
-        stream=sys.stdout,
-        format="%(message)s",
-    )
+    lvl = _coerce_level(level)
 
-    # Configure structlog
-    processors = [
-        TimeStamper(fmt="iso"),
-        add_log_level,
-        structlog.processors.format_exc_info,
+    timestamper = structlog.processors.TimeStamper(fmt="iso")
+    pre_chain = [
+        structlog.stdlib.add_log_level,
+        structlog.stdlib.ExtraAdder(),
+        timestamper,
     ]
 
-    if format_type == "json":
-        processors.append(JSONRenderer())
-    else:
-        processors.append(structlog.dev.ConsoleRenderer())
+    # Configure stdlib logging so only our package logger emits.
+    # - disable_existing_loggers=True silences already-created 3rd-party loggers
+    # - root has no handlers (so propagation to root won't emit)
+    # - our package logger ("cairo_coder") has the console handler
+    is_console = (format_type or "").lower() == "console"
 
-    structlog.configure(
-        processors=processors,
-        logger_factory=structlog.stdlib.LoggerFactory(),
-        cache_logger_on_first_use=True,
+    logging.config.dictConfig(
+        {
+            "version": 1,
+            "disable_existing_loggers": True,
+            "formatters": {
+                "console": {
+                    "()": structlog.stdlib.ProcessorFormatter,
+                    "processors": [
+                        structlog.stdlib.ProcessorFormatter.remove_processors_meta,
+                        structlog.dev.ConsoleRenderer(colors=True),
+                    ],
+                    "foreign_pre_chain": pre_chain,
+                },
+                "json": {
+                    "()": structlog.stdlib.ProcessorFormatter,
+                    "processors": [
+                        structlog.stdlib.ProcessorFormatter.remove_processors_meta,
+                        structlog.processors.JSONRenderer(),
+                    ],
+                    "foreign_pre_chain": pre_chain,
+                },
+            },
+            "handlers": {
+                "console": {
+                    "class": "logging.StreamHandler",
+                    "level": "NOTSET",  # filter by logger level
+                    "formatter": "console" if is_console else "json",
+                    "stream": "ext://sys.stdout",
+                }
+            },
+            "loggers": {
+                # Our package namespace only.
+                "cairo_coder": {
+                    "handlers": ["console"],
+                    "level": logging.getLevelName(lvl),
+                    "propagate": False,
+                }
+            },
+            "root": {
+                "level": "WARNING",
+                "handlers": [],  # keep root silent
+            },
+        }
     )
 
-
-def get_logger(name: str) -> structlog.stdlib.BoundLogger:
-    """
-    Get a logger instance.
-
-    Args:
-        name: Logger name, typically __name__.
-
-    Returns:
-        Configured logger instance.
-    """
-    return structlog.get_logger(name)
+    # Configure structlog. The filtering bound logger short-circuits work
+    # below the selected level for speed.
+    structlog.configure(
+        processors=[
+            structlog.stdlib.add_log_level,
+            structlog.stdlib.PositionalArgumentsFormatter(),
+            timestamper,
+            structlog.processors.StackInfoRenderer(),
+            structlog.processors.format_exc_info,
+            # Prepare for ProcessorFormatter from stdlib logging
+            structlog.stdlib.ProcessorFormatter.wrap_for_formatter,
+        ],
+        logger_factory=structlog.stdlib.LoggerFactory(),
+        wrapper_class=structlog.make_filtering_bound_logger(lvl),
+        cache_logger_on_first_use=True,
+    )
