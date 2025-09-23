@@ -156,6 +156,8 @@ For local development of the Python service, navigate to `python/` and run the f
 
 A script is included to evaluate the agent's performance on the Starklings exercises.
 
+> Note: we recommend pre-warming the compilation cache by running `cd fixtures/runner_crate && scarb build` before running the evaluation.
+
 ```bash
 # Run a single evaluation round
 uv run starklings_evaluate
