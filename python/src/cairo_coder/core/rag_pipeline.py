@@ -12,6 +12,7 @@ from typing import Any
 
 import dspy
 import structlog
+from dspy.adapters import XMLAdapter
 from dspy.adapters.baml_adapter import BAMLAdapter
 from dspy.utils.callback import BaseCallback
 from langsmith import traceable
@@ -204,11 +205,12 @@ class RagPipeline(dspy.Module):
                 # Prepare context for generation
                 context = self._prepare_context(documents, processed_query)
 
-                # Stream response generation
-                async for chunk in self.generation_program.forward_streaming(
-                    query=query, context=context, chat_history=chat_history_str
-                ):
-                    yield StreamEvent(type=StreamEventType.RESPONSE, data=chunk)
+                # Stream response generation. BAMLAdapter is not available for streaming, thus we swap it with the default adapter.
+                with dspy.context(lm=dspy.LM("gemini/gemini-2.5-flash-lite", max_tokens=10000), adapter=XMLAdapter()):
+                    async for chunk in self.generation_program.forward_streaming(
+                        query=query, context=context, chat_history=chat_history_str
+                    ):
+                        yield StreamEvent(type=StreamEventType.RESPONSE, data=chunk)
 
             # Pipeline completed
             yield StreamEvent(type=StreamEventType.END, data=None)

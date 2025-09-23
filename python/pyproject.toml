@@ -52,6 +52,8 @@ dependencies = [
   "lxml>=4.9.0",
   "markdownify>=0.11.0",
   "tqdm>=4.66.0",
+  "toml>=0.10.2",
+  "jsonlines>=4.0.0",
 ]
 
 [project.optional-dependencies]
