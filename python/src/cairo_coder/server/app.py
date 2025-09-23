@@ -14,6 +14,7 @@ from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 
 import dspy
+import structlog
 import uvicorn
 from dspy.adapters.baml_adapter import BAMLAdapter
 from fastapi import Depends, FastAPI, Header, HTTPException, Request
@@ -30,11 +31,11 @@ from cairo_coder.core.rag_pipeline import (
 )
 from cairo_coder.core.types import Message, Role
 from cairo_coder.dspy.document_retriever import SourceFilteredPgVectorRM
-from cairo_coder.utils.logging import get_logger, setup_logging
+from cairo_coder.utils.logging import setup_logging
 
 # Configure structured logging
 setup_logging(os.environ.get("LOG_LEVEL", "INFO"), os.environ.get("LOG_FORMAT", "console"))
-logger = get_logger(__name__)
+logger = structlog.get_logger(__name__)
 
 # Global vector DB instance managed by FastAPI lifecycle
 _vector_db: SourceFilteredPgVectorRM | None = None

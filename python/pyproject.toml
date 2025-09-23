@@ -20,7 +20,6 @@ classifiers = [
   "Programming Language :: Python :: 3.12",
 ]
 dependencies = [
-  "dspy-ai>=2.5.0",
   "fastapi>=0.115.0",
   "uvicorn[standard]>=0.32.0",
   "websockets>=13.0",
@@ -37,7 +36,7 @@ dependencies = [
   "tenacity>=8.0.0",
   "prometheus-client>=0.20.0",
   "python-multipart>=0.0.6",
-  "dspy>=3.0.0",
+  "dspy>=3.0.3",
   "psycopg2>=2.9.10",
   "pgvector>=0.4.1",
   "marimo>=0.14.11",
