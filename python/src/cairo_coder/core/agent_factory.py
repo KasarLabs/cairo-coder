@@ -41,7 +41,7 @@ class AgentFactory:
         self._agent_cache: dict[str, RagPipeline] = {}
 
     def get_or_create_agent(
-        self, agent_id: str, query: str, history: list[Message], mcp_mode: bool = False
+        self, agent_id: str, mcp_mode: bool = False
     ) -> RagPipeline:
         """
         Get an existing agent from cache or create a new one.

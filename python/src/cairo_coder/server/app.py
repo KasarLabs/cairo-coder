@@ -314,16 +314,12 @@ class CairoCoderServer:
             if agent_id:
                 agent = agent_factory.get_or_create_agent(
                     agent_id=agent_id,
-                    query=query,
-                    history=messages[:-1],  # Exclude last message
                     mcp_mode=mcp_mode,
                 )
             else:
                 # In the default case, fallback to cairo-coder
                 agent = agent_factory.get_or_create_agent(
                     agent_id="cairo-coder",
-                    query=query,
-                    history=messages[:-1],  # Exclude last message
                     mcp_mode=mcp_mode,
                 )
 
