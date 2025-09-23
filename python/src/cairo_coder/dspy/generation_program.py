@@ -143,27 +143,24 @@ class GenerationProgram(dspy.Module):
             stream_listeners=[dspy.streaming.StreamListener(signature_field_name="answer")],  # type: ignore
         )
 
-        try:
-            # Execute the streaming generation
-            output_stream = stream_generation( # type: ignore
-                query=query, context=context, chat_history=chat_history # type: ignore
-            )
+        # Execute the streaming generation. Do not swallow exceptions here;
+        # let them propagate so callers can emit structured error events.
+        output_stream = stream_generation(  # type: ignore
+            query=query, context=context, chat_history=chat_history  # type: ignore
+        )
 
-            # Process the stream and yield tokens
-            is_cached = True
-            async for chunk in output_stream:
-                if isinstance(chunk, dspy.streaming.StreamResponse): # type: ignore
-                    # No streaming if cached
-                    is_cached = False
-                    # Yield the actual token content
-                    yield chunk.chunk
-                elif isinstance(chunk, dspy.Prediction):
-                    if is_cached:
-                        yield chunk.answer
-                    # Final output received - streaming is complete
-
-        except Exception as e:
-            yield f"Error generating response: {str(e)}"
+        # Process the stream and yield tokens
+        is_cached = True
+        async for chunk in output_stream:
+            if isinstance(chunk, dspy.streaming.StreamResponse):  # type: ignore
+                # No streaming if cached
+                is_cached = False
+                # Yield the actual token content
+                yield chunk.chunk
+            elif isinstance(chunk, dspy.Prediction):
+                if is_cached:
+                    yield chunk.answer
+                # Final output received - streaming is complete
 
     def _format_chat_history(self, chat_history: list[Message]) -> str:
         """
