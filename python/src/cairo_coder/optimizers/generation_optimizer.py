@@ -227,9 +227,8 @@ def _(DocumentSource, XMLAdapter, check_compilation, dspy, extract_cairo_code):
 
     from cairo_coder.dspy.query_processor import RESOURCE_DESCRIPTIONS
 
-    [d.value for d in DocumentSource]
     ", ".join(
-        [f"{key}: {value}" for key, value in RESOURCE_DESCRIPTIONS.items()]
+        [f"{key.value}: {value}" for key, value in RESOURCE_DESCRIPTIONS.items()]
     )
 
     class GeneratedCodeRater(dspy.Signature):
@@ -296,7 +295,7 @@ def _(DocumentSource, XMLAdapter, check_compilation, dspy, extract_cairo_code):
                 "score": score,
                 "gold": {"query": gold.query if hasattr(gold, "query") else str(gold)},
                 "pred": {
-                    "response": pred.answer 
+                    "response": pred.answer
                 },
                 "feedback": llm_feedback,
             }

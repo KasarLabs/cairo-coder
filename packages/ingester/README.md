@@ -29,6 +29,9 @@ The ingester currently supports the following documentation sources:
 3. **Starknet Foundry** (`starknet_foundry`): Documentation for the Starknet Foundry testing framework
 4. **Cairo By Example** (`cairo_by_example`): Examples of Cairo programming
 5. **OpenZeppelin Docs** (`openzeppelin_docs`): OpenZeppelin documentation for Starknet
+6. **Core Library Docs** (`corelib_docs`): Cairo core library documentation
+7. **Scarb Docs** (`scarb_docs`): Scarb package manager documentation
+8. **StarknetJS Guides** (`starknet_js`): StarknetJS guides and tutorials
 
 ## Architecture
 
