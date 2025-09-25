@@ -13,12 +13,11 @@ from langsmith import traceable
 
 import dspy
 from cairo_coder.core.types import DocumentSource, ProcessedQuery
-from dspy import InputField, OutputField, Signature
 
 logger = structlog.get_logger(__name__)
 
 RESOURCE_DESCRIPTIONS = {
-    "cairo_book": "The Cairo Programming Language Book. Essential for core language syntax, semantics, types (felt252, structs, enums, Vec), traits, generics, control flow, memory management, writing tests, organizing a project, standard library usage, starknet interactions. Crucial for smart contract structure, storage, events, ABI, syscalls, contract deployment, interaction, L1<>L2 messaging, Starknet-specific attributes.",
+    "cairo_book": "The Cairo Programming Language Book. Essential for core language syntax, semantics, types (felt252, structs, enums, Vec), traits, generics, control flow, memory management, writing tests, organizing a project, standard library usage, starknet interactions. Crucial for smart contract structure, storage, events, ABI, syscalls, contract deployment, interaction, L1<>L2 messaging, Starknet-specific attributes. Very important for interactions with the Starknet state and context (e.g. block, transaction) through syscalls.",
     "starknet_docs": "The Starknet Documentation. For the Starknet protocol, the STWO prover, architecture, APIs, syscalls, network interaction, deployment, ecosystem tools (Starkli, indexers, StarknetJS, wallets), general Starknet knowledge. This should not be included for Coding and Programming questions, but rather, only for questions about Starknet, Proving, ZK, STWO, SHARP itself.",
     "starknet_foundry": "The Starknet Foundry Documentation. For using the Foundry toolchain: writing, compiling, testing (unit tests, integration tests), and debugging Starknet contracts.",
     "cairo_by_example": "Cairo by Example Documentation. Provides practical Cairo code snippets for specific language features or common patterns. Useful for how-to syntax questions. This should not be included for Smart Contract questions, but for all other Cairo programming questions.",
@@ -28,26 +27,26 @@ RESOURCE_DESCRIPTIONS = {
 }
 
 
-class CairoQueryAnalysis(Signature):
+class CairoQueryAnalysis(dspy.Signature):
     """
     Analyze a Cairo programming query to extract search terms and identify relevant documentation sources.
     Your output must not contain any code; only an analysis of the query and the search queries to make.
     """
 
-    chat_history: Optional[str] = InputField(
+    chat_history: Optional[str] = dspy.InputField(
         desc="Previous conversation context for better understanding of the query. May be empty.",
         default="",
     )
 
-    query: str = InputField(
+    query: str = dspy.InputField(
         desc="User's Cairo/Starknet programming question or request that needs to be processed"
     )
 
-    search_queries: list[str] = OutputField(
+    search_queries: list[str] = dspy.OutputField(
         desc="A list of __3__ specific semantic search queries to make to a vector store to find relevant documentation."
     )
 
-    resources: list[str] = OutputField(
+    resources: list[str] = dspy.OutputField(
         desc="List of documentation sources. Available sources: "
         + ", ".join([f"{key}: {value}" for key, value in RESOURCE_DESCRIPTIONS.items()])
     )
@@ -63,7 +62,7 @@ class QueryProcessorProgram(dspy.Module):
 
     def __init__(self):
         super().__init__()
-        self.retrieval_program = dspy.ChainOfThought(CairoQueryAnalysis)
+        self.retrieval_program = dspy.Predict(CairoQueryAnalysis)
 
         # TODO: only the main rag pipeline should be loaded - in one shot
         # # Validate that the file exists
@@ -132,7 +131,6 @@ class QueryProcessorProgram(dspy.Module):
         return ProcessedQuery(
             original=query,
             search_queries=search_queries,
-            reasoning=result.reasoning,
             is_contract_related=self._is_contract_query(query),
             is_test_related=self._is_test_query(query),
             resources=resources,
@@ -155,7 +153,7 @@ class QueryProcessorProgram(dspy.Module):
             List of valid DocumentSource enum values
         """
         if not resources or resources is None:
-            return [DocumentSource.CAIRO_BOOK]  # Default fallback
+            return list(DocumentSource)  # Default fallback - return all sources
 
         # Parse resource names
         valid_resources = []
@@ -175,7 +173,7 @@ class QueryProcessorProgram(dspy.Module):
 
         # Return valid resources or default fallback
         # TODO: Upon failure, this should return an error message to the user.
-        return valid_resources if valid_resources else [DocumentSource.CAIRO_BOOK]
+        return valid_resources if valid_resources else list(DocumentSource)
 
     def _is_contract_query(self, query: str) -> bool:
         """

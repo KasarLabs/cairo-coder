@@ -88,6 +88,31 @@ def mock_lm():
         mock_cot.return_value = mock_program
         yield mock_program
 
+@pytest.fixture(scope="function")
+def mock_lm_predict():
+    """
+    Create a mock language model for DSPy programs.
+
+    This fixture provides a mock LM that can be used with DSPy programs
+    for testing without making actual API calls. It patches `dspy.ChainOfThought`
+    and returns a configurable mock.
+    """
+    with patch("dspy.Predict") as mock_cot:
+        mock_program = Mock()
+        mock_program.return_value = dspy.Prediction(
+            answer="Here's a Cairo contract example:\n\n```cairo\n#[starknet::contract]\nmod SimpleContract {\n    // Contract implementation\n}\n```\n\nThis contract demonstrates basic Cairo syntax."
+        )
+        # Mock for async calls - use AsyncMock for coroutine
+        mock_program.aforward = AsyncMock(
+            return_value=dspy.Prediction(
+                answer="Here's a Cairo contract example:\n\n```cairo\n#[starknet::contract]\nmod SimpleContract {\n    // Contract implementation\n}\n```\n\nThis contract demonstrates basic Cairo syntax."
+            )
+        )
+        mock_cot.return_value = mock_program
+        yield mock_program
+
+
+
 
 @pytest.fixture
 def mock_agent_factory(mock_agent: Mock):
@@ -218,7 +243,6 @@ def sample_processed_query():
     return ProcessedQuery(
         original="How do I create a Cairo contract?",
         search_queries=["cairo", "contract", "create"],
-        reasoning="I need to create a Cairo contract",
         is_contract_related=True,
         is_test_related=False,
         resources=[DocumentSource.CAIRO_BOOK, DocumentSource.STARKNET_DOCS],

@@ -12,7 +12,6 @@ import structlog
 from cairo_coder.agents.registry import get_agent_by_string_id
 from cairo_coder.core.config import VectorStoreConfig
 from cairo_coder.core.rag_pipeline import RagPipeline
-from cairo_coder.core.types import Message
 from cairo_coder.dspy.document_retriever import SourceFilteredPgVectorRM
 
 logger = structlog.get_logger(__name__)
@@ -41,7 +40,7 @@ class AgentFactory:
         self._agent_cache: dict[str, RagPipeline] = {}
 
     def get_or_create_agent(
-        self, agent_id: str, query: str, history: list[Message], mcp_mode: bool = False
+        self, agent_id: str, mcp_mode: bool = False
     ) -> RagPipeline:
         """
         Get an existing agent from cache or create a new one.

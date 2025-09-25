@@ -7,6 +7,7 @@ relevant documents from the vector store based on processed queries.
 
 
 import asyncpg
+import os
 import structlog
 from langsmith import traceable
 from psycopg2 import sql
@@ -348,7 +349,10 @@ class SourceFilteredPgVectorRM(PgVectorRM):
         Returns:
             list[dspy.Example]: List of retrieved passages as DSPy Examples.
         """
-        await self._ensure_pool()
+        # Select connection strategy via env var.
+        # If OPTIMIZER_RUN is truthy, use per-call connections;
+        # otherwise use a (loop-local) pool.
+        per_call = os.getenv("OPTIMIZER_RUN", "").lower() in {"1", "true", "yes", "on"}
 
         # Embed query (assuming _get_embeddings is sync; make async if needed)
         query_embedding_raw = self._get_embeddings(query)
@@ -406,25 +410,33 @@ class SourceFilteredPgVectorRM(PgVectorRM):
         # Build SQL query as plain string for asyncpg
         sql_query = f"SELECT {fields} FROM {self.pg_table_name}{where_clause} ORDER BY {self.embedding_field} <=> ${order_param_idx}::vector LIMIT ${limit_param_idx}"
 
-        async with self.pool.acquire() as conn:
-            rows = await conn.fetch(sql_query, *params)
+        if per_call:
+            conn = await asyncpg.connect(dsn=self.db_url)
+            try:
+                rows = await conn.fetch(sql_query, *params)
+            finally:
+                await conn.close()
+        else:
+            await self._ensure_pool()
+            async with self.pool.acquire() as conn:
+                rows = await conn.fetch(sql_query, *params)
 
-            for row in rows:
-                # Convert asyncpg Record to dict using column names
-                columns = list(row.keys())
-                data = dict(zip(columns, row.values(), strict=False))
-                data["long_text"] = data[self.content_field]
+        for row in rows:
+            # Convert asyncpg Record to dict using column names
+            columns = list(row.keys())
+            data = dict(zip(columns, row.values(), strict=False))
+            data["long_text"] = data[self.content_field]
 
-                # Deserialize JSON metadata if it exists
-                if "metadata" in data and isinstance(data["metadata"], str):
-                    try:
-                        import json
-                        data["metadata"] = json.loads(data["metadata"])
-                    except (json.JSONDecodeError, TypeError):
-                        # Keep original value if JSON parsing fails
-                        pass
+            # Deserialize JSON metadata if it exists
+            if "metadata" in data and isinstance(data["metadata"], str):
+                try:
+                    import json
+                    data["metadata"] = json.loads(data["metadata"])
+                except (json.JSONDecodeError, TypeError):
+                    # Keep original value if JSON parsing fails
+                    pass
 
-                retrieved_docs.append(dspy.Example(**data))
+            retrieved_docs.append(dspy.Example(**data))
 
         return retrieved_docs
 
@@ -601,7 +613,7 @@ class DocumentRetrieverProgram(dspy.Module):
         try:
             search_queries = processed_query.search_queries
             if len(search_queries) == 0:
-                search_queries = [processed_query.reasoning]
+                search_queries = [processed_query.original]
 
 
             db_url = self.vector_store_config.dsn
@@ -654,7 +666,7 @@ class DocumentRetrieverProgram(dspy.Module):
             search_queries = processed_query.search_queries
             if len(search_queries) == 0:
             # TODO: revert
-                search_queries = [processed_query.reasoning]
+                search_queries = [processed_query.original]
 
 
             retrieved_examples: list[dspy.Example] = []

@@ -18,19 +18,19 @@ class TestQueryProcessorProgram:
     """Test suite for QueryProcessorProgram."""
 
     @pytest.fixture(scope="function")
-    def processor(self, mock_lm):
+    def processor(self, mock_lm_predict):
         """Create a QueryProcessorProgram instance with mocked LM."""
         return QueryProcessorProgram()
 
     @pytest.mark.asyncio
-    async def test_contract_query_processing(self, mock_lm, processor):
+    async def test_contract_query_processing(self, mock_lm_predict, processor):
         """Test processing of contract-related queries."""
         prediction = dspy.Prediction(
             search_queries=["cairo, contract, storage, variable"],
             resources=["cairo_book", "starknet_docs"],
             reasoning="I need to create a Cairo contract",
         )
-        mock_lm.aforward.return_value = prediction
+        mock_lm_predict.aforward.return_value = prediction
 
         query = "How do I define storage variables in a Cairo contract?"
 
@@ -55,19 +55,19 @@ class TestQueryProcessorProgram:
         assert DocumentSource.STARKNET_DOCS in validated
         assert DocumentSource.OPENZEPPELIN_DOCS in validated
 
+    def test_resource_validation_fallback(self, processor: QueryProcessorProgram):
+        """Test validation of resource strings with fallback."""
         # Test invalid resources with fallback
         resources: list[str] = ["invalid_source", "another_invalid"]
         validated = processor._validate_resources(resources)
 
-        assert validated == [DocumentSource.CAIRO_BOOK]  # Default fallback
+        assert validated == list(DocumentSource)  # Default fallback
 
         # Test mixed valid and invalid
         resources: list[str] = ["cairo_book", "invalid_source", "starknet_docs"]
         validated = processor._validate_resources(resources)
 
-        assert DocumentSource.CAIRO_BOOK in validated
-        assert DocumentSource.STARKNET_DOCS in validated
-        assert len(validated) == 2
+        assert validated == [DocumentSource.CAIRO_BOOK, DocumentSource.STARKNET_DOCS]
 
     @pytest.mark.parametrize(
         "query, expected",
@@ -99,7 +99,7 @@ class TestQueryProcessorProgram:
             result = await processor.aforward("")
 
             assert result.original == ""
-            assert result.resources == [DocumentSource.CAIRO_BOOK]  # Default fallback
+            assert result.resources == list(DocumentSource)  # Default fallback
 
 
 class TestCairoQueryAnalysis:

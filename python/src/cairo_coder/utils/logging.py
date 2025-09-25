@@ -53,7 +53,7 @@ def setup_logging(level: str | int = "INFO", format_type: str = "json") -> None:
     logging.config.dictConfig(
         {
             "version": 1,
-            "disable_existing_loggers": True,
+            "disable_existing_loggers": False,
             "formatters": {
                 "console": {
                     "()": structlog.stdlib.ProcessorFormatter,
@@ -86,7 +86,12 @@ def setup_logging(level: str | int = "INFO", format_type: str = "json") -> None:
                     "handlers": ["console"],
                     "level": logging.getLevelName(lvl),
                     "propagate": False,
-                }
+                },
+                "dspy": {
+                    "handlers": ["console"],
+                    "level": logging.getLevelName(lvl),
+                    "propagate": False,
+                },
             },
             "root": {
                 "level": "WARNING",

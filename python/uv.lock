@@ -421,7 +421,7 @@ requires-dist = [
     { name = "jsonlines", specifier = ">=4.0.0" },
     { name = "langsmith", specifier = ">=0.4.6" },
     { name = "lxml", specifier = ">=4.9.0" },
-    { name = "marimo", specifier = ">=0.14.11" },
+    { name = "marimo", specifier = ">=0.16.0" },
     { name = "markdownify", specifier = ">=0.11.0" },
     { name = "mlflow", specifier = ">=2.20" },
     { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.0.0" },
@@ -453,7 +453,7 @@ requires-dist = [
     { name = "tqdm", specifier = ">=4.66.0" },
     { name = "typer", specifier = ">=0.15.0" },
     { name = "types-toml", marker = "extra == 'dev'", specifier = ">=0.10.0" },
-    { name = "uvicorn", extras = ["standard"], specifier = ">=0.32.0" },
+    { name = "uvicorn", extras = ["standard"], specifier = ">=0.36.0" },
     { name = "websockets", specifier = ">=13.0" },
 ]
 provides-extras = ["dev"]
@@ -2495,7 +2495,7 @@ wheels = [
 
 [[package]]
 name = "marimo"
-version = "0.16.1"
+version = "0.16.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "click" },
@@ -2517,9 +2517,9 @@ dependencies = [
     { name = "uvicorn" },
     { name = "websockets" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/7f/73/7f9156d9842c556861fe3dd82b819a90229a0f71cffc256b9532167cddff/marimo-0.16.1.tar.gz", hash = "sha256:c3d99f0bcd34fe28ba262eaa44797e79bd91db2a27a47522520f2601dd1cb67a", size = 33650084, upload-time = "2025-09-22T19:34:46.338Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/c2/ad/10292a9410786135e9a9ad35297590df4fa7538161c54b3c669d5a7be999/marimo-0.16.0.tar.gz", hash = "sha256:81377a0cfe4e95f9d7341a860a0a2772caccc1e8a7bbc8d3ad20c7945d77b07c", size = 33640723, upload-time = "2025-09-18T21:20:42.815Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/21/38/6b3bebaa8c3f745f5d3e34efe11749d7fcc2bc2cbe83c5da7c972b62b4ba/marimo-0.16.1-py3-none-any.whl", hash = "sha256:0513426a53348c4e3b5d648a3f67db1464205e0e3eab71da1a249d2ff12a2fa2", size = 34044898, upload-time = "2025-09-22T19:34:50.866Z" },
+    { url = "https://files.pythonhosted.org/packages/a4/16/387627a14a18eac0556e3f9ca85b3264d120f6492cd4d3477dc32abd012b/marimo-0.16.0-py3-none-any.whl", hash = "sha256:8b7d092894a23461e087b0fdf86942876602a779b6403c01f324b35be4c99495", size = 34033289, upload-time = "2025-09-18T21:20:37.108Z" },
 ]
 
 [[package]]
@@ -5294,16 +5294,16 @@ wheels = [
 
 [[package]]
 name = "uvicorn"
-version = "0.35.0"
+version = "0.37.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "click" },
     { name = "h11" },
     { name = "typing-extensions", marker = "python_full_version < '3.11'" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/5e/42/e0e305207bb88c6b8d3061399c6a961ffe5fbb7e2aa63c9234df7259e9cd/uvicorn-0.35.0.tar.gz", hash = "sha256:bc662f087f7cf2ce11a1d7fd70b90c9f98ef2e2831556dd078d131b96cc94a01", size = 78473, upload-time = "2025-06-28T16:15:46.058Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/71/57/1616c8274c3442d802621abf5deb230771c7a0fec9414cb6763900eb3868/uvicorn-0.37.0.tar.gz", hash = "sha256:4115c8add6d3fd536c8ee77f0e14a7fd2ebba939fed9b02583a97f80648f9e13", size = 80367, upload-time = "2025-09-23T13:33:47.486Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/d2/e2/dc81b1bd1dcfe91735810265e9d26bc8ec5da45b4c0f6237e286819194c3/uvicorn-0.35.0-py3-none-any.whl", hash = "sha256:197535216b25ff9b785e29a0b79199f55222193d47f820816e7da751e9bc8d4a", size = 66406, upload-time = "2025-06-28T16:15:44.816Z" },
+    { url = "https://files.pythonhosted.org/packages/85/cd/584a2ceb5532af99dd09e50919e3615ba99aa127e9850eafe5f31ddfdb9a/uvicorn-0.37.0-py3-none-any.whl", hash = "sha256:913b2b88672343739927ce381ff9e2ad62541f9f8289664fa1d1d3803fa2ce6c", size = 67976, upload-time = "2025-09-23T13:33:45.842Z" },
 ]
 
 [package.optional-dependencies]

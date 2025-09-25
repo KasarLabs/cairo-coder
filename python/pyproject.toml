@@ -31,7 +31,7 @@ dependencies = [
   "jsonlines>=4.0.0",
   "langsmith>=0.4.6",
   "lxml>=4.9.0",
-  "marimo>=0.14.11",
+  "marimo>=0.16.0",
   "markdownify>=0.11.0",
   "mlflow>=2.20",
   "numpy>=1.24.0",
@@ -52,7 +52,7 @@ dependencies = [
   "toml>=0.10.2",
   "tqdm>=4.66.0",
   "typer>=0.15.0",
-  "uvicorn[standard]>=0.32.0",
+  "uvicorn[standard]>=0.36.0",
   "websockets>=13.0",
 ]
 
@@ -80,6 +80,7 @@ optimize_generation = "cairo_coder.optimizers.generation.optimize_generation:mai
 starklings_evaluate = "scripts.starklings_evaluate:main"
 cairo-coder-summarize = "scripts.summarizer.cli:app"
 docs-crawler = "scripts.docs_crawler:main"
+cairo-coder-datasets = "scripts.datasets.cli:app"
 
 [project.urls]
 "Homepage" = "https://github.com/cairo-coder/cairo-coder"

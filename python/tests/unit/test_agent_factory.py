@@ -24,8 +24,6 @@ class TestAgentFactory:
 
     def test_get_or_create_agent_cache_miss(self, agent_factory, mock_vector_db, mock_vector_store_config):
         """Test get_or_create_agent with cache miss."""
-        query = "Test query"
-        history = []
         agent_id = "cairo-coder"
 
         with patch.object(registry[AgentId.CAIRO_CODER], "build") as mock_build:
@@ -33,7 +31,7 @@ class TestAgentFactory:
             mock_build.return_value = mock_pipeline
 
             agent = agent_factory.get_or_create_agent(
-                agent_id=agent_id, query=query, history=history
+                agent_id=agent_id
             )
 
             assert agent == mock_pipeline
@@ -46,8 +44,6 @@ class TestAgentFactory:
 
     def test_get_or_create_agent_cache_hit(self, agent_factory):
         """Test get_or_create_agent with cache hit."""
-        query = "Test query"
-        history = []
         agent_id = "cairo-coder"
 
         # Pre-populate cache
@@ -57,7 +53,7 @@ class TestAgentFactory:
 
         with patch("cairo_coder.agents.registry.get_agent_by_string_id") as mock_get:
             agent = agent_factory.get_or_create_agent(
-                agent_id=agent_id, query=query, history=history
+                agent_id=agent_id
             )
 
             assert agent == mock_pipeline
@@ -66,13 +62,11 @@ class TestAgentFactory:
 
     def test_get_or_create_agent_invalid_id(self, agent_factory):
         """Test get_or_create_agent with invalid agent ID."""
-        query = "Test query"
-        history = []
         agent_id = "nonexistent"
 
         with pytest.raises(ValueError, match="Agent not found: nonexistent"):
             agent_factory.get_or_create_agent(
-                agent_id=agent_id, query=query, history=history
+                agent_id=agent_id
             )
 
     def test_clear_cache(self, agent_factory):

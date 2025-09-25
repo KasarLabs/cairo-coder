@@ -1,3 +1,5 @@
+# Quick CLI script to analyze a dataset of question-answer pairs.
+
 import json
 
 import dspy
