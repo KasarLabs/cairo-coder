@@ -54,7 +54,6 @@ def _():
 @app.cell
 def _(dspy, vector_db, vector_store_config):
     # Checking what responses look like without any Optimization / Training Set
-    from cairo_coder.dspy.document_retriever import DocumentRetrieverProgram
     from cairo_coder.core.agent_factory import AgentFactory
     from cairo_coder.core.types import DocumentSource
 
@@ -87,8 +86,6 @@ def _(dspy, vector_db, vector_store_config):
 @app.cell
 def _(dspy, os):
     import random
-    from pathlib import Path
-    import json
 
     ### Let's add some examples
 
@@ -203,7 +200,7 @@ def _(dspy, os):
 @app.cell
 def _(data, dspy, generation_program):
     # Extract cairo code from answer, if any
-    from cairo_coder.optimizers.generation.utils import extract_cairo_code, check_compilation
+    from cairo_coder.optimizers.generation.utils import check_compilation, extract_cairo_code
 
     # Selecting one example
     example = data[0]
@@ -230,8 +227,8 @@ def _(DocumentSource, XMLAdapter, check_compilation, dspy, extract_cairo_code):
 
     from cairo_coder.dspy.query_processor import RESOURCE_DESCRIPTIONS
 
-    doc_source_strings = [d.value for d in DocumentSource]
-    sources_descriptions = ", ".join(
+    [d.value for d in DocumentSource]
+    ", ".join(
         [f"{key}: {value}" for key, value in RESOURCE_DESCRIPTIONS.items()]
     )
 
@@ -248,7 +245,7 @@ def _(DocumentSource, XMLAdapter, check_compilation, dspy, extract_cairo_code):
             desc="A confidence score in range [0, 1.0] on the possibility to give a precise and fully accurate answer based on the provided context. 0 means that the code is totally wrong, as it has logical issues AND wont compile; 0.5 means that the code is _mostly_ correct but there might be a few minor compilation issues left, but it's close to the golden reference; 1.0 means that the code is correct, similar on behavior to the reference AND it compiles."
         )
         feedback: Optional[str] = dspy.OutputField(
-            desc=f"A textual feedback on how to improve the generated code. First, have we properly leveraged libraries (mostly openzeppelin), are our corelib imports correct, have we imported the right items; and if not, what should we change, based on the reference? Second, how can we fix our compilation issues, based on the golden reference? Third, is the logic implemented correct? If we made logical issues, how to fix them? Are we properly leveraging the Cairo features outlined in the golden example? Third, note all differences between the gold reference and the prediction and make feedback on how to code closer to the gold reference.\n A few Cairo-specific things for feedback:\n 1. Events should #[derive(Drop, starknet::Event)]. No need to `use starknet::Event`, which will cause further conflicts. 2. If the compilation errors are cryptic, base your feedback on mostly what you observe are the diffs between the gold reference and the generated code."
+            desc="A textual feedback on how to improve the generated code. First, have we properly leveraged libraries (mostly openzeppelin), are our corelib imports correct, have we imported the right items; and if not, what should we change, based on the reference? Second, how can we fix our compilation issues, based on the golden reference? Third, is the logic implemented correct? If we made logical issues, how to fix them? Are we properly leveraging the Cairo features outlined in the golden example? Third, note all differences between the gold reference and the prediction and make feedback on how to code closer to the gold reference.\n A few Cairo-specific things for feedback:\n 1. Events should #[derive(Drop, starknet::Event)]. No need to `use starknet::Event`, which will cause further conflicts. 2. If the compilation errors are cryptic, base your feedback on mostly what you observe are the diffs between the gold reference and the generated code."
         )
 
     ## Metrics for self-improvement: Rating whether the context provided can be used to answer the question properly or not.
@@ -256,7 +253,7 @@ def _(DocumentSource, XMLAdapter, check_compilation, dspy, extract_cairo_code):
 
     def compute_metrics(gold, pred, trace=None) -> dict:
         gen_code = extract_cairo_code(pred.answer)
-        if gen_code is "":
+        if gen_code == "":
             return {"score": 0.0, "feedback": f"No code was successfully generated for this query. The reference was: {gold.reference}"}
         compil_res = check_compilation(gen_code)
         if compil_res["success"] is False:
@@ -317,7 +314,7 @@ def _(DocumentSource, XMLAdapter, check_compilation, dspy, extract_cairo_code):
                 existing_logs = []
                 if log_file.exists():
                     try:
-                        with open(log_file, "r") as f:
+                        with open(log_file) as f:
                             existing_logs = json.load(f)
                     except (json.JSONDecodeError, FileNotFoundError):
                         existing_logs = []

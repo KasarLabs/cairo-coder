@@ -12,7 +12,6 @@ import structlog
 from cairo_coder.agents.registry import get_agent_by_string_id
 from cairo_coder.core.config import VectorStoreConfig
 from cairo_coder.core.rag_pipeline import RagPipeline
-from cairo_coder.core.types import Message
 from cairo_coder.dspy.document_retriever import SourceFilteredPgVectorRM
 
 logger = structlog.get_logger(__name__)

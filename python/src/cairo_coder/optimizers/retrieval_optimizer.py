@@ -97,16 +97,15 @@ def _(dspy, vector_db, vector_store_config):
 
 @app.cell
 def _(dspy, os, retriever):
-    import random
-    from pathlib import Path
     import json
+    import random
 
     ### Let's add some examples
 
     # Note: we can add non-input fields in examples - others are considered labels or metadata
     # print current path
     dataset_path = f"{os.getcwd()}/optimizers/datasets/user_queries.json"
-    with open(dataset_path, "r", encoding="utf-8") as f:
+    with open(dataset_path, encoding="utf-8") as f:
         example_dataset = json.load(f)
 
     data = [dspy.Example(**d).with_inputs("query") for d in example_dataset]
@@ -237,7 +236,7 @@ def _(XMLAdapter, dspy):
                 existing_logs = []
                 if log_file.exists():
                     try:
-                        with open(log_file, "r") as f:
+                        with open(log_file) as f:
                             existing_logs = json.load(f)
                     except (json.JSONDecodeError, FileNotFoundError):
                         existing_logs = []

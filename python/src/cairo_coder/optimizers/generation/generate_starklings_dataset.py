@@ -8,12 +8,9 @@ import time
 from dataclasses import asdict, dataclass
 from pathlib import Path
 
-import dspy
 import structlog
 
 from cairo_coder.config.manager import ConfigManager
-from cairo_coder.dspy.document_retriever import DocumentRetrieverProgram
-from cairo_coder.dspy.query_processor import QueryProcessorProgram
 from cairo_coder.optimizers.generation.starklings_helper import (
     StarklingsExercise,
     ensure_starklings_repo,
@@ -79,7 +76,7 @@ def process_exercise(exercise: StarklingsExercise) -> GenerationExample | None:
 async def generate_dataset() -> list[GenerationExample]:
     """Generate the complete dataset from Starklings exercises."""
     # Load config once
-    config = ConfigManager.load_config()
+    ConfigManager.load_config()
 
     # Ensure Starklings repo exists
     success = ensure_starklings_repo("temp/starklings-cairo1")

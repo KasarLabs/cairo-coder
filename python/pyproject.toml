@@ -80,6 +80,7 @@ optimize_generation = "cairo_coder.optimizers.generation.optimize_generation:mai
 starklings_evaluate = "scripts.starklings_evaluate:main"
 cairo-coder-summarize = "scripts.summarizer.cli:app"
 docs-crawler = "scripts.docs_crawler:main"
+cairo-coder-datasets = "scripts.datasets.cli:app"
 
 [project.urls]
 "Homepage" = "https://github.com/cairo-coder/cairo-coder"
