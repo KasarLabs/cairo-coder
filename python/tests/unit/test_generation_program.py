@@ -219,7 +219,7 @@ class TestCairoCodeGeneration:
         assert "cairo" in query_desc.lower()
         assert "documentation" in context_desc.lower()
         assert "cairo code" in answer_desc.lower()
-        assert "explanations" in answer_desc.lower()
+        assert "the cairo code that solves" in answer_desc.lower()
 
 
 class TestScarbGeneration:

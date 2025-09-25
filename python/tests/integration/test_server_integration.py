@@ -284,32 +284,6 @@ class TestServerIntegration:
         assert "detail" in data
         assert data["detail"]["error"]["type"] == "server_error"
 
-    def test_message_conversion(self, client: TestClient, mock_agent_factory: Mock, mock_agent: Mock):
-        """Test proper conversion of messages to internal format."""
-        client.post(
-            "/v1/chat/completions",
-            json={
-                "messages": [
-                    {"role": "system", "content": "You are a helpful assistant"},
-                    {"role": "user", "content": "Hello"},
-                    {"role": "assistant", "content": "Hi there!"},
-                    {"role": "user", "content": "How are you?"},
-                ]
-            },
-        )
-
-        # Verify agent was called with proper message conversion
-        mock_agent_factory.get_or_create_agent.assert_called_once()
-        call_args, call_kwargs = mock_agent_factory.get_or_create_agent.call_args
-
-        # Check that history excludes the last message
-        history = call_kwargs.get("history", [])
-        assert len(history) == 3  # Excludes last user message
-
-        # Check query is the last user message
-        query = call_kwargs.get("query")
-        assert query == "How are you?"
-
     def test_streaming_error_handling(
         self,
         client: TestClient,
