@@ -108,7 +108,7 @@ def _(dspy, os, retriever):
     with open(dataset_path, encoding="utf-8") as f:
         example_dataset = json.load(f)
 
-    data = [dspy.Example(**d).with_inputs("query") for d in example_dataset]
+    data = [dspy.Example({"query": d}).with_inputs("query") for d in example_dataset]
 
     # Take maximum 300 random values from the dataset
     random.seed(42)
@@ -253,7 +253,7 @@ def _(XMLAdapter, dspy):
             score=score,
             feedback=feedback_text,
         )
-    return RESOURCE_DESCRIPTIONS, compute_overall_score_with_feedback
+    return (compute_overall_score_with_feedback,)
 
 
 @app.cell
@@ -367,6 +367,7 @@ def _(dspy, example, loading_progr):
 @app.cell
 def _():
     return
+
 
 @app.cell
 def _():

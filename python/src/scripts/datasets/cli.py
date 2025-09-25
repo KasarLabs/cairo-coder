@@ -18,36 +18,13 @@ class HelpOnInvalidCommand(TyperGroup):
     def get_command(self, ctx, cmd_name):  # type: ignore[override]
         cmd = super().get_command(ctx, cmd_name)
         if cmd is None:
+            # Show a friendly message and the group's help, then exit with code 2
             typer.secho(f"Error: Unknown command '{cmd_name}'.", fg=typer.colors.RED, err=True)
             typer.echo()
             typer.echo(ctx.get_help())
-            ctx.exit(2)
+            # Use Click's normal control flow to avoid rich tracebacks
+            raise click.exceptions.Exit(2)
         return cmd
-
-    def main(self, *args, **kwargs):  # type: ignore[override]
-        # Ensure we handle errors ourselves to show full help
-        kwargs.setdefault("standalone_mode", False)
-        try:
-            return super().main(*args, **kwargs)
-        except click.exceptions.UsageError as e:  # missing option, bad invocation, etc.
-            ctx = e.ctx or click.Context(self)
-            # Show the specific command help if available
-            typer.secho(f"Error: {e.format_message().strip()}", fg=typer.colors.RED, err=True)
-            typer.echo()
-            typer.echo(ctx.get_help())
-            ctx.exit(2)
-
-    def __call__(self, *args, **kwargs):  # type: ignore[override]
-        # Force standalone_mode=False so exceptions propagate
-        kwargs["standalone_mode"] = False
-        try:
-            return super().__call__(*args, **kwargs)
-        except click.exceptions.UsageError as e:
-            ctx = e.ctx or click.Context(self)
-            typer.secho(f"Error: {e.format_message().strip()}", fg=typer.colors.RED, err=True)
-            typer.echo()
-            typer.echo(ctx.get_help())
-            ctx.exit(2)
 
 
 app = typer.Typer(
@@ -87,16 +64,48 @@ def extract_starknet_agent(
         "--output",
         help="Where to write the extracted [{query, answer}] JSON array.",
     ),
+    query_only: bool = typer.Option(
+        False,
+        "--query",
+        help="Write only queries as a JSON array instead of [{query, answer}] objects.",
+    ),
 ) -> None:
     """Extract de-duplicated QA pairs from a Starknet Agent chat dataset."""
     pairs = extract_starknet_agent_pairs(str(input))
 
+    # De-duplicate pairs by (query, answer) while preserving order
+    seen_pairs: set[tuple[str, str]] = set()
+    unique_pairs: list[dict] = []
+    for p in pairs:
+        q = p.get("query")
+        a = p.get("answer")
+        key = (q, a)
+        if key not in seen_pairs:
+            seen_pairs.add(key)
+            unique_pairs.append(p)
+
+    if query_only:
+        # De-duplicate queries while preserving order
+        seen_queries: set[str] = set()
+        queries_only: list[str] = []
+        for p in unique_pairs:
+            q = p.get("query")
+            if q not in seen_queries:
+                seen_queries.add(q)
+                queries_only.append(q)
+        data_to_write = queries_only
+    else:
+        data_to_write = unique_pairs
+
     output = Path(output).expanduser()
     output.parent.mkdir(parents=True, exist_ok=True)
     with output.open("w", encoding="utf-8") as f:
-        json.dump(pairs, f, ensure_ascii=False, indent=2)
+        json.dump(data_to_write, f, ensure_ascii=False, indent=2)
 
-    typer.echo(f"Wrote {len(pairs)} pairs to {output}")
+    if query_only:
+        typer.echo(f"Wrote {len(data_to_write)} queries to {output}")
+    else:
+        typer.echo(f"Wrote {len(data_to_write)} pairs to {output}")
 
 
 @extract_app.command("cairo-coder")
@@ -133,6 +142,11 @@ def extract_cairo_coder(
             "`reasoning=`."
         ),
     ),
+    query_only: bool = typer.Option(
+        False,
+        "--query",
+        help="Write only queries as a JSON array instead of [{query, answer}] objects.",
+    ),
 ) -> None:
     """Extract QA pairs from a Cairo-Coder LangSmith export with `outputs.output`.
 
@@ -145,16 +159,42 @@ def extract_cairo_coder(
         str(input), only_mcp=only_mcp, only_generated_answers=only_generated_answers
     )
 
+    # De-duplicate pairs by (query, answer) while preserving order
+    seen_pairs: set[tuple[str, str]] = set()
+    unique_pairs: list[dict] = []
+    for p in pairs:
+        q = p.get("query")
+        a = p.get("answer")
+        key = (q, a)
+        if key not in seen_pairs:
+            seen_pairs.add(key)
+            unique_pairs.append(p)
+
+    if query_only:
+        # De-duplicate queries while preserving order
+        seen_queries: set[str] = set()
+        queries_only: list[str] = []
+        for p in unique_pairs:
+            q = p.get("query")
+            if q not in seen_queries:
+                seen_queries.add(q)
+                queries_only.append(q)
+        data_to_write = queries_only
+    else:
+        data_to_write = unique_pairs
+
     output = Path(output).expanduser()
     output.parent.mkdir(parents=True, exist_ok=True)
     with output.open("w", encoding="utf-8") as f:
-        json.dump(pairs, f, ensure_ascii=False, indent=2)
+        json.dump(data_to_write, f, ensure_ascii=False, indent=2)
 
     typer.echo(
         json.dumps(
             {
                 "input": str(Path(input).expanduser()),
                 "output": str(output),
+                "wrote": len(data_to_write),
+                "format": "queries" if query_only else "pairs",
                 **stats,
             },
             indent=2,
