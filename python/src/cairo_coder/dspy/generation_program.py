@@ -24,9 +24,6 @@ class CairoCodeGeneration(Signature):
     """
     Analyze a Cairo programming query and use the context to generate a high-quality Cairo code solution and explanations.
     Reason about how to properly solve the query, based on the input code (if any) and the context.
-
-    When generating Cairo Code, all `starknet` imports should be included explicitly (e.g. use starknet::storage::*, use starknet::ContractAddress, etc.)
-    However, most `core` library imports are already included (like panic, println, etc.) - dont include them if they're not explicitly mentioned in the context.
     """
 
     chat_history: Optional[str] = InputField(
@@ -42,7 +39,7 @@ class CairoCodeGeneration(Signature):
     )
 
     answer: str = OutputField(
-        desc="Complete Cairo code solution with explanations, following Cairo syntax and best practices. Include code examples, explanations, and step-by-step guidance."
+        desc="The Cairo code that solves the user's query. It should be complete, correct, and follow Cairo syntax and best practices. It should be wrapped inside a ```cairo block."
     )
 
 

@@ -151,7 +151,7 @@ class RagPipeline(dspy.Module):
         if mcp_mode:
             return await self.mcp_generation_program.aforward(documents)
 
-        context = self._prepare_context(documents, processed_query)
+        context = self._prepare_context(documents)
 
         return await self.generation_program.aforward(
             query=query, context=context, chat_history=chat_history_str
@@ -203,7 +203,7 @@ class RagPipeline(dspy.Module):
                 yield StreamEvent(type=StreamEventType.PROCESSING, data="Generating response...")
 
                 # Prepare context for generation
-                context = self._prepare_context(documents, processed_query)
+                context = self._prepare_context(documents)
 
                 # Stream response generation. BAMLAdapter is not available for streaming, thus we swap it with the default adapter.
                 with dspy.context(lm=dspy.LM("gemini/gemini-2.5-flash-lite", max_tokens=10000), adapter=XMLAdapter()):
@@ -290,7 +290,7 @@ class RagPipeline(dspy.Module):
 
         return sources
 
-    def _prepare_context(self, documents: list[Document], processed_query: ProcessedQuery) -> str:
+    def _prepare_context(self, documents: list[Document]) -> str:
         """
         Prepare context for generation from retrieved documents.
 
