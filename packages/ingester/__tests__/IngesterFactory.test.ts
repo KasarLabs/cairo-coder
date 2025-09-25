@@ -85,6 +85,7 @@ describe('IngesterFactory', () => {
         'openzeppelin_docs',
         'corelib_docs',
         'scarb_docs',
+        'starknet_js',
       ]);
     });
   });

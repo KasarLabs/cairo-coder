@@ -17,14 +17,28 @@ from cairo_coder.core.types import DocumentSource, ProcessedQuery
 logger = structlog.get_logger(__name__)
 
 RESOURCE_DESCRIPTIONS = {
-    "cairo_book": "The Cairo Programming Language Book. Essential for core language syntax, semantics, types (felt252, structs, enums, Vec), traits, generics, control flow, memory management, writing tests, organizing a project, standard library usage, starknet interactions. Crucial for smart contract structure, storage, events, ABI, syscalls, contract deployment, interaction, L1<>L2 messaging, Starknet-specific attributes. Very important for interactions with the Starknet state and context (e.g. block, transaction) through syscalls.",
-    "starknet_docs": "The Starknet Documentation. For the Starknet protocol, the STWO prover, architecture, APIs, syscalls, network interaction, deployment, ecosystem tools (Starkli, indexers, StarknetJS, wallets), general Starknet knowledge. This should not be included for Coding and Programming questions, but rather, only for questions about Starknet, Proving, ZK, STWO, SHARP itself.",
-    "starknet_foundry": "The Starknet Foundry Documentation. For using the Foundry toolchain: writing, compiling, testing (unit tests, integration tests), and debugging Starknet contracts.",
-    "cairo_by_example": "Cairo by Example Documentation. Provides practical Cairo code snippets for specific language features or common patterns. Useful for how-to syntax questions. This should not be included for Smart Contract questions, but for all other Cairo programming questions.",
-    "openzeppelin_docs": "OpenZeppelin Cairo Contracts Documentation. For using the OZ library: standard implementations (ERC20, ERC721), access control, security patterns, contract upgradeability. Crucial for building standard-compliant contracts.",
-    "corelib_docs": "Cairo Core Library Documentation. For using the Cairo core library: basic types, stdlib functions, stdlib structs, macros, and other core concepts. Essential for Cairo programming questions.",
-    "scarb_docs": "Scarb Documentation. For using the Scarb package manager: building, compiling, generating compilation artifacts, managing dependencies, configuration of Scarb.toml.",
+    DocumentSource.CAIRO_BOOK: "The Cairo Programming Language Book. Essential for core language syntax, semantics, types (felt252, structs, enums, Vec), traits, generics, control flow, memory management, writing tests, organizing a project, standard library usage, starknet interactions. Crucial for smart contract structure, storage, events, ABI, syscalls, contract deployment, interaction, L1<>L2 messaging, Starknet-specific attributes. Very important for interactions with the Starknet state and context (e.g. block, transaction) through syscalls.",
+    DocumentSource.STARKNET_DOCS: "The Starknet Documentation. For the Starknet protocol, the STWO prover, architecture, APIs, syscalls, network interaction, deployment, ecosystem tools (Starkli, indexers, StarknetJS, wallets), general Starknet knowledge. This should not be included for Coding and Programming questions, but rather, only for questions about Starknet, Proving, ZK, STWO, SHARP itself.",
+    DocumentSource.STARKNET_FOUNDRY: "The Starknet Foundry Documentation. For using the Foundry toolchain: writing, compiling, testing (unit tests, integration tests), and debugging Starknet contracts.",
+    DocumentSource.CAIRO_BY_EXAMPLE: "Cairo by Example Documentation. Provides practical Cairo code snippets for specific language features or common patterns. Useful for how-to syntax questions. This should not be included for Smart Contract questions, but for all other Cairo programming questions.",
+    DocumentSource.OPENZEPPELIN_DOCS: "OpenZeppelin Cairo Contracts Documentation. For using the OZ library: standard implementations (ERC20, ERC721), access control, security patterns, contract upgradeability. Crucial for building standard-compliant contracts.",
+    DocumentSource.CORELIB_DOCS: "Cairo Core Library Documentation. For using the Cairo core library: basic types, stdlib functions, stdlib structs, macros, and other core concepts. Essential for Cairo programming questions.",
+    DocumentSource.SCARB_DOCS: "Scarb Documentation. For using the Scarb package manager: building, compiling, generating compilation artifacts, managing dependencies, configuration of Scarb.toml.",
+    DocumentSource.STARKNET_JS: "StarknetJS Documentation. For using the StarknetJS library: interacting with Starknet contracts, StarknetJS APIs, StarknetJS examples, StarknetJS tutorials, StarknetJS guides, StarknetJS documentation.",
 }
+
+# Ensure all DocumentSource variants are covered
+_ALL_SOURCES = set(DocumentSource)
+_COVERED_SOURCES = set(RESOURCE_DESCRIPTIONS.keys())
+if _ALL_SOURCES != _COVERED_SOURCES:
+    missing = _ALL_SOURCES - _COVERED_SOURCES
+    extra = _COVERED_SOURCES - _ALL_SOURCES
+    error_msg = []
+    if missing:
+        error_msg.append(f"Missing DocumentSource variants in RESOURCE_DESCRIPTIONS: {missing}")
+    if extra:
+        error_msg.append(f"Extra keys in RESOURCE_DESCRIPTIONS not in DocumentSource: {extra}")
+    raise ValueError("; ".join(error_msg))
 
 
 class CairoQueryAnalysis(dspy.Signature):
@@ -48,7 +62,7 @@ class CairoQueryAnalysis(dspy.Signature):
 
     resources: list[str] = dspy.OutputField(
         desc="List of documentation sources. Available sources: "
-        + ", ".join([f"{key}: {value}" for key, value in RESOURCE_DESCRIPTIONS.items()])
+        + ", ".join([f"{key.value}: {value}" for key, value in RESOURCE_DESCRIPTIONS.items()])
     )
 
 

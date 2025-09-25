@@ -57,7 +57,8 @@ Lists every agent registered in Cairo Coder.
       "cairo_by_example",
       "openzeppelin_docs",
       "corelib_docs",
-      "scarb_docs"
+      "scarb_docs",
+      "starknet_js"
     ]
   },
   {
@@ -80,6 +81,7 @@ Lists every agent registered in Cairo Coder.
 | `openzeppelin_docs` | OpenZeppelin Cairo contracts documentation |
 | `corelib_docs`      | Cairo core library docs                    |
 | `scarb_docs`        | Scarb package manager documentation        |
+| `starknet_js`       | StarknetJS guides and SDK documentation    |
 
 ## Chat Completions
 

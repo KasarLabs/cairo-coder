@@ -1,6 +1,6 @@
 import marimo
 
-__generated_with = "0.16.0"
+__generated_with = "0.16.2"
 app = marimo.App(width="medium")
 
 
@@ -139,7 +139,7 @@ def _(XMLAdapter, dspy):
 
     doc_source_strings = [d.value for d in DocumentSource]
     sources_descriptions = ", ".join(
-        [f"{key}: {value}" for key, value in RESOURCE_DESCRIPTIONS.items()]
+        [f"{key.value}: {value}" for key, value in RESOURCE_DESCRIPTIONS.items()]
     )
 
     class ContextProviderRater(dspy.Signature):
@@ -253,7 +253,7 @@ def _(XMLAdapter, dspy):
             score=score,
             feedback=feedback_text,
         )
-    return (compute_overall_score_with_feedback,)
+    return RESOURCE_DESCRIPTIONS, compute_overall_score_with_feedback
 
 
 @app.cell
@@ -367,7 +367,6 @@ def _(dspy, example, loading_progr):
 @app.cell
 def _():
     return
-
 
 @app.cell
 def _():

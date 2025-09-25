@@ -74,6 +74,7 @@ export enum DocumentSource {
   OPENZEPPELIN_DOCS = 'openzeppelin_docs',
   CORELIB_DOCS = 'corelib_docs',
   SCARB_DOCS = 'scarb_docs',
+  STARKNET_JS = 'starknet_js',
 }
 
 export type BookChunk = {

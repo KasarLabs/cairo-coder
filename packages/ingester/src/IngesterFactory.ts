@@ -58,6 +58,12 @@ export class IngesterFactory {
         const { ScarbDocsIngester } = require('./ingesters/ScarbDocsIngester');
         return new ScarbDocsIngester();
 
+      case 'starknet_js':
+        const {
+          StarknetJSIngester,
+        } = require('./ingesters/StarknetJSIngester');
+        return new StarknetJSIngester();
+
       default:
         throw new Error(`Unsupported source: ${source}`);
     }
@@ -69,14 +75,7 @@ export class IngesterFactory {
    * @returns Array of available document sources
    */
   public static getAvailableSources(): DocumentSource[] {
-    return [
-      DocumentSource.CAIRO_BOOK,
-      DocumentSource.STARKNET_DOCS,
-      DocumentSource.STARKNET_FOUNDRY,
-      DocumentSource.CAIRO_BY_EXAMPLE,
-      DocumentSource.OPENZEPPELIN_DOCS,
-      DocumentSource.CORELIB_DOCS,
-      DocumentSource.SCARB_DOCS,
-    ];
+    const sources = Object.values(DocumentSource);
+    return sources;
   }
 }

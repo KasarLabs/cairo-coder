@@ -72,7 +72,7 @@ graph TD
 Cairo Coder's goal is to democratize Cairo development by providing an intelligent code generation service that:
 
 - Understands natural language queries (e.g., "Create an ERC20 token with minting").
-- Retrieves relevant documentation from sources like Cairo Book, Starknet Docs, Scarb, OpenZeppelin.
+- Retrieves relevant documentation from sources like Cairo Book, Starknet Docs, Scarb, OpenZeppelin, and StarknetJS.
 - Generates compilable Cairo code with explanations, following best practices.
 - Supports specialized agents (e.g., for Scarb config, Starknet deployment).
 - Is optimizable to improve accuracy over time using datasets like Starklings exercises.
