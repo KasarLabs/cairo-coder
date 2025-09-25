@@ -12,7 +12,6 @@ import dspy
 import structlog
 
 from cairo_coder.config.manager import ConfigManager
-from cairo_coder.dspy.context_summarizer import CairoContextSummarization
 from cairo_coder.dspy.document_retriever import DocumentRetrieverProgram
 from cairo_coder.dspy.query_processor import QueryProcessorProgram
 from cairo_coder.optimizers.generation.starklings_helper import (
@@ -29,43 +28,10 @@ class GenerationExample:
     """A dataset entry for optimization."""
 
     query: str
-    chat_history: str
-    context: str
-    expected: str
+    reference: str
 
 
-def get_context_for_query(full_query: str, config) -> str:
-    """Get context using RAG and summarize it."""
-    try:
-        # Create instances per task to avoid shared state issues
-        document_retriever = DocumentRetrieverProgram(vector_store_config=config.vector_store)
-        query_processor = dspy.syncify(QueryProcessorProgram())
-        context_summarizer = dspy.ChainOfThought(CairoContextSummarization)
-
-        processed_query = query_processor.forward(query=full_query)
-
-        # Get raw context from vector store with timeout
-        raw_context = ""
-        retrieved_docs = document_retriever.forward(processed_query)
-
-        for doc in retrieved_docs:
-            raw_context += doc.page_content
-
-        if not raw_context:
-            logger.warning("No context found for query", query=full_query[:100] + "...")
-            return ""
-
-        # Summarize the context with timeout
-        summarized_response = context_summarizer.forward(
-            processed_query=processed_query, raw_context=raw_context
-        )
-        return summarized_response.summarized_context
-    except Exception as e:
-        logger.error("Failed to get context", error=str(e), query=full_query[:100] + "...")
-        return ""
-
-
-def process_exercise(exercise: StarklingsExercise, config) -> GenerationExample | None:
+def process_exercise(exercise: StarklingsExercise) -> GenerationExample | None:
     """Process a single exercise into a dataset example."""
     try:
         # Read exercise code
@@ -99,18 +65,10 @@ def process_exercise(exercise: StarklingsExercise, config) -> GenerationExample 
         # Format query
         query = f"Complete the following Cairo code and address the TODOs:\n\n```cairo\n{exercise_code}\n```\n\nHint: {exercise.hint}"
 
-        # Get context with retry
-        context = get_context_for_query(query, config)
-        if not context:
-            logger.warning("Skipping exercise due to missing context", name=exercise.name)
-            return None
-
         # Create example
         return GenerationExample(
             query=query,
-            chat_history="",
-            context=context,
-            expected=solution_code,
+            reference=solution_code,
         )
 
     except Exception as e:
@@ -140,7 +98,7 @@ async def generate_dataset() -> list[GenerationExample]:
     async def process_with_semaphore(exercise):
         async with semaphore:
             try:
-                return await process_exercise(exercise, config)
+                return process_exercise(exercise)
             except Exception as e:
                 logger.error("Exercise processing failed", exercise=exercise.name, error=str(e))
                 return None
@@ -184,7 +142,7 @@ def save_dataset(examples: list[GenerationExample], output_path: str):
 async def main():
     """Main function to generate the dataset."""
     examples = await generate_dataset()
-    output_path = "optimizers/datasets/generation_dataset.json"
+    output_path = "optimizers/datasets/starklings_generation_dataset.json"
     save_dataset(examples, output_path)
 
     logger.info("Dataset generation completed", count=len(examples))
