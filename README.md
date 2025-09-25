@@ -106,7 +106,7 @@ curl -X POST http://localhost:3001/v1/chat/completions \
   }'
 ```
 
-For a full list of parameters and agent-specific endpoints, see the [API Documentation](./packages/backend/API_DOCUMENTATION.md).
+For a full list of parameters and agent-specific endpoints, see the [API Documentation](./API_DOCUMENTATION.md).
 
 ## Architecture
 
@@ -119,7 +119,7 @@ The project is organized as a monorepo with multiple packages:
 - **python/**: The core RAG agent and API server implementation using DSPy and FastAPI.
 - **packages/ingester/**: (TypeScript) Data ingestion tools for Cairo documentation sources.
 - **packages/typescript-config/**: Shared TypeScript configuration.
-- **(Legacy)** `packages/agents` & `packages/backend`: The original Langchain-based TypeScript implementation.
+- **(Legacy)** `packages/agents`: The original Langchain-based TypeScript implementation.
 
 ### RAG Pipeline (Python/DSPy)
 
