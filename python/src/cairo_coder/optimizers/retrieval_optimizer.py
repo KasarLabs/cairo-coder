@@ -46,7 +46,7 @@ def _():
     )
 
     # Programs to be optimized: QueryProcessing --> OptimizedQuery --> Document retrieval
-    lm = dspy.LM("gemini/gemini-2.5-flash-lite", max_tokens=15000, cache=False)
+    lm = dspy.LM("gemini/gemini-flash-lite-latest", max_tokens=15000, cache=False)
     dspy.configure(lm=lm, adapter=XMLAdapter())
     return XMLAdapter, dspy, os, vector_db, vector_store_config
 
