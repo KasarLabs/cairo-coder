@@ -1,6 +1,6 @@
 import marimo
 
-__generated_with = "0.16.0"
+__generated_with = "0.16.2"
 app = marimo.App(width="medium")
 
 
@@ -46,7 +46,7 @@ def _():
     )
 
     # Programs to be optimized: QueryProcessing --> OptimizedQuery --> Document retrieval
-    lm = dspy.LM("gemini/gemini-2.5-flash", max_tokens=30000, cache=True)
+    lm = dspy.LM("gemini/gemini-flash-latest", max_tokens=30000, cache=False)
     dspy.configure(lm=lm, adapter=XMLAdapter())
     return XMLAdapter, dspy, os, vector_db, vector_store_config
 
@@ -80,7 +80,7 @@ def _(dspy, vector_db, vector_store_config):
             )
 
     generation_program = dspy.syncify(ProgramToOptimize())
-    return DocumentSource, ProgramToOptimize, generation_program
+    return ProgramToOptimize, generation_program
 
 
 @app.cell
@@ -185,7 +185,8 @@ def _(dspy, os):
     data = [dspy.Example(**d).with_inputs("query") for d in example_dataset]
 
     # Take maximum 300 random values from the dataset
-    random.Random(0).shuffle(data)
+    random.seed(42)
+    random.shuffle(data)
     data = data[0:300]
     # train_set = data[: int(len(data) * 0.33)]
     # val_set = data[int(len(data) * 0.33) : int(len(data) * 0.66)]
@@ -221,7 +222,7 @@ def _(data, dspy, generation_program):
 
 
 @app.cell
-def _(DocumentSource, XMLAdapter, check_compilation, dspy, extract_cairo_code):
+def _(XMLAdapter, check_compilation, dspy, extract_cairo_code):
     # Defining our metrics here.
     from typing import Optional
 
@@ -425,7 +426,6 @@ def _(ProgramToOptimize, dspy, os):
 
 @app.cell
 def _(evaluate, loading_progr):
-
     evaluate(loading_progr)
     return
 
