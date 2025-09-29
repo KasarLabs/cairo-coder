@@ -1,7 +1,7 @@
 {
   "name": "cairo-coder",
   "private": true,
-  "version": "0.2.1",
+  "version": "0.2.2",
   "scripts": {
     "build": "turbo run build",
     "lint": "turbo run lint",
