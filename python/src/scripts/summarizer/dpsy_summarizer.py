@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 
 
 # Initialize DSPy configuration
-def configure_dspy(provider: str = "gemini", model: str = "gemini/gemini-2.5-flash-lite", temperature: float = 0.50):
+def configure_dspy(provider: str = "gemini", model: str = "gemini/gemini-flash-lite-latest", temperature: float = 0.50):
     """Configure DSPy with the specified provider and model"""
     lm = dspy.LM(model, max_tokens=30000, temperature=temperature)
     dspy.settings.configure(lm=lm)

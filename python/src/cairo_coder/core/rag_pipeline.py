@@ -119,7 +119,7 @@ class RagPipeline(dspy.Module):
         )
 
         try:
-            with dspy.context(lm=dspy.LM("gemini/gemini-2.5-flash-lite", max_tokens=10000), adapter=BAMLAdapter()):
+            with dspy.context(lm=dspy.LM("gemini/gemini-flash-lite-latest", max_tokens=10000, temperature=0.5), adapter=BAMLAdapter()):
                 documents = await self.retrieval_judge.aforward(query=query, documents=documents)
         except Exception as e:
             logger.warning(
@@ -206,7 +206,7 @@ class RagPipeline(dspy.Module):
                 context = self._prepare_context(documents)
 
                 # Stream response generation. BAMLAdapter is not available for streaming, thus we swap it with the default adapter.
-                with dspy.context(lm=dspy.LM("gemini/gemini-2.5-flash-lite", max_tokens=10000), adapter=XMLAdapter()):
+                with dspy.context(lm=dspy.LM("gemini/gemini-flash-lite-latest", max_tokens=10000), adapter=XMLAdapter()):
                     async for chunk in self.generation_program.forward_streaming(
                         query=query, context=context, chat_history=chat_history_str
                     ):

@@ -188,7 +188,7 @@ def mock_agent():
         # Set up the get_lm_usage method
         mock_predict.get_lm_usage = Mock(
             return_value={
-                "gemini/gemini-2.5-flash": {
+                "gemini/gemini-flash-latest": {
                     "prompt_tokens": 100,
                     "completion_tokens": 200,
                     "total_tokens": 300,
