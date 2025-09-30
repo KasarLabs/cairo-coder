@@ -421,24 +421,29 @@ export class VectorStore {
   }
 
   /**
-   * Get hashes of stored book pages
+   * Get hashes and metadata of stored book pages
    * @param source - Source filter
-   * @returns Promise<Array<{uniqueId: string, contentHash: string}>>
+   * @returns Promise<Array<{uniqueId: string, contentHash: string, metadata: Record<string, any>}>>
    */
-  async getStoredBookPagesHashes(
-    source: DocumentSource,
-  ): Promise<Array<{ uniqueId: string; contentHash: string }>> {
+  async getStoredBookPagesHashes(source: DocumentSource): Promise<
+    Array<{
+      uniqueId: string;
+      contentHash: string;
+      metadata: Record<string, any>;
+    }>
+  > {
     try {
       const client = await this.pool.connect();
       try {
         const result = await client.query(
-          `SELECT uniqueId, contentHash FROM ${this.tableName} WHERE source = $1`,
+          `SELECT uniqueId, contentHash, metadata FROM ${this.tableName} WHERE source = $1`,
           [source],
         );
 
         return result.rows.map((row) => ({
           uniqueId: row.uniqueid,
           contentHash: row.contenthash,
+          metadata: row.metadata || {},
         }));
       } finally {
         client.release();

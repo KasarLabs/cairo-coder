@@ -1,0 +1,30 @@
+# Source: https://github.com/OpenZeppelin/docs.openzeppelin.com. I kept cairo-contracts only.
+site:
+  title: OpenZeppelin Docs
+  url: https://docs.openzeppelin.com
+  start_page: ROOT::index.adoc
+  keys:
+    google_analytics: 'UA-85043059-1'
+    gtm: 'GTM-W9X5Q6F'
+content:
+  sources:
+    - url: https://github.com/OpenZeppelin/cairo-contracts
+      branches:
+        - docs-v*
+      start_path: docs
+ui:
+  bundle:
+    # A Zip made from the docs.openzeppelin.com ui/theme.
+    url: ./oz-ui-bundle.zip
+asciidoc:
+  attributes:
+    idprefix: ''
+antora:
+  extensions:
+    - require: './lunr-tokenizer'
+    - require: '@antora/lunr-extension'
+      index_latest_only: true
+    - require: './asciidoc-output-extension.js'
+urls:
+  html_extension_style: drop
+  redirect_facility: netlify

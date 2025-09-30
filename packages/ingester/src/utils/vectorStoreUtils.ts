@@ -6,25 +6,75 @@ import { logger } from '@cairo-coder/agents/utils/index';
 import { YES_MODE } from '../generateEmbeddings';
 
 /**
- * Find chunks that need to be updated or removed based on content hashes
+ * Compare two metadata objects for equality
+ * Compares all fields except contentHash and uniqueId (which are compared separately)
+ *
+ * @param metadata1 - First metadata object
+ * @param metadata2 - Second metadata object
+ * @returns boolean - Whether the metadata objects are equal
+ */
+function areMetadataEqual(
+  metadata1: Record<string, any>,
+  metadata2: Record<string, any>,
+): boolean {
+  // Get all keys from both objects, excluding contentHash and uniqueId
+  const excludeKeys = new Set(['contentHash', 'uniqueId']);
+  const keys1 = Object.keys(metadata1).filter((k) => !excludeKeys.has(k));
+  const keys2 = Object.keys(metadata2).filter((k) => !excludeKeys.has(k));
+
+  // Check if they have the same number of keys
+  if (keys1.length !== keys2.length) {
+    return false;
+  }
+
+  // Check if all keys exist in both and have the same values
+  for (const key of keys1) {
+    if (!(key in metadata2)) {
+      return false;
+    }
+    // Deep comparison for nested objects, simple comparison for primitives
+    const val1 = metadata1[key];
+    const val2 = metadata2[key];
+
+    if (typeof val1 === 'object' && val1 !== null) {
+      if (JSON.stringify(val1) !== JSON.stringify(val2)) {
+        return false;
+      }
+    } else if (val1 !== val2) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+/**
+ * Find chunks that need to be updated or removed based on content hashes and metadata
  *
  * This function compares fresh chunks with stored chunks and determines which
- * chunks need to be updated (content has changed) and which need to be removed
+ * chunks need to be updated (content or metadata has changed) and which need to be removed
  * (no longer exist in the fresh chunks).
  *
  * @param freshChunks - Array of fresh Document objects
- * @param storedChunkHashes - Array of stored chunk hashes
+ * @param storedChunkHashes - Array of stored chunk hashes and metadata
  * @returns Object containing arrays of chunks to update and IDs of chunks to remove
  */
 export function findChunksToUpdateAndRemove(
   freshChunks: Document<Record<string, any>>[],
-  storedChunkHashes: { uniqueId: string; contentHash: string }[],
+  storedChunkHashes: {
+    uniqueId: string;
+    contentHash: string;
+    metadata: Record<string, any>;
+  }[],
 ): {
   chunksToUpdate: Document<Record<string, any>>[];
   chunksToRemove: string[];
 } {
-  const storedHashesMap = new Map(
-    storedChunkHashes.map((chunk) => [chunk.uniqueId, chunk.contentHash]),
+  const storedDataMap = new Map(
+    storedChunkHashes.map((chunk) => [
+      chunk.uniqueId,
+      { contentHash: chunk.contentHash, metadata: chunk.metadata },
+    ]),
   );
   const freshChunksMap = new Map(
     freshChunks.map((chunk) => [
@@ -33,10 +83,18 @@ export function findChunksToUpdateAndRemove(
     ]),
   );
 
-  // Find chunks that need to be updated (content has changed)
+  // Find chunks that need to be updated (content or metadata has changed)
   const chunksToUpdate = freshChunks.filter((chunk) => {
-    const storedHash = storedHashesMap.get(chunk.metadata.uniqueId);
-    return storedHash !== chunk.metadata.contentHash;
+    const storedData = storedDataMap.get(chunk.metadata.uniqueId);
+    if (!storedData) {
+      // New chunk that doesn't exist in storage
+      return true;
+    }
+    // Update if content hash changed OR metadata changed
+    return (
+      storedData.contentHash !== chunk.metadata.contentHash ||
+      !areMetadataEqual(storedData.metadata, chunk.metadata)
+    );
   });
 
   // Find chunks that need to be removed (no longer exist in fresh chunks)
