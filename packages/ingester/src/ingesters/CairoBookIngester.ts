@@ -1,20 +1,7 @@
-import { BookConfig, BookPageDto } from '../utils/types';
-import { MarkdownIngester } from './MarkdownIngester';
-import {
-  BookChunk,
-  DocumentSource,
-  ParsedSection,
-} from '@cairo-coder/agents/types/index';
-import { Document } from '@langchain/core/documents';
-import { VectorStore } from '@cairo-coder/agents/db/postgresVectorStore';
-import { logger } from '@cairo-coder/agents/utils/index';
-import * as fs from 'fs/promises';
 import * as path from 'path';
-import { calculateHash } from '../utils/contentUtils';
-import {
-  RecursiveMarkdownSplitter,
-  SplitOptions,
-} from '../utils/RecursiveMarkdownSplitter';
+import { BookConfig } from '../utils/types';
+import { MarkdownIngester } from './MarkdownIngester';
+import { DocumentSource } from '@cairo-coder/agents/types/index';
 
 /**
  * Ingester for the Cairo Book documentation
@@ -34,109 +21,11 @@ export class CairoBookIngester extends MarkdownIngester {
       fileExtension: '.md',
       chunkSize: 4096,
       chunkOverlap: 512,
+      baseUrl: 'https://book.cairo-lang.org',
+      urlSuffix: '.html',
     };
 
     super(config, DocumentSource.CAIRO_BOOK);
-  }
-
-  /**
-   * Read the pre-summarized core library documentation file
-   */
-  async readSummaryFile(): Promise<string> {
-    const summaryPath = path.join(
-      __dirname,
-      '..',
-      '..',
-      '..',
-      '..',
-      '..',
-      'python',
-      'src',
-      'scripts',
-      'summarizer',
-      'generated',
-      'cairo_book_summary.md',
-    );
-
-    logger.info(`Reading core library summary from ${summaryPath}`);
-    const text = await fs.readFile(summaryPath, 'utf-8');
-    return text;
-  }
-
-  /**
-   * Chunk the core library summary file using RecursiveMarkdownSplitter
-   *
-   * This function takes the markdown content and splits it using a recursive
-   * strategy that respects headers, code blocks, and maintains overlap between chunks.
-   *
-   * @param text - The markdown content to chunk
-   * @returns Promise<Document<BookChunk>[]> - Array of document chunks
-   */
-  async chunkSummaryFile(text: string): Promise<Document<BookChunk>[]> {
-    // Configure the splitter with appropriate settings
-    const splitOptions: SplitOptions = {
-      maxChars: 2048,
-      minChars: 500,
-      overlap: 256,
-      headerLevels: [1, 2], // Split on H1 and H2 headers
-      preserveCodeBlocks: true,
-      idPrefix: 'cairo-book',
-      trim: true,
-    };
-
-    // Create the splitter and split the content
-    const splitter = new RecursiveMarkdownSplitter(splitOptions);
-    const chunks = splitter.splitMarkdownToChunks(text);
-
-    logger.info(
-      `Created ${chunks.length} chunks using RecursiveMarkdownSplitter`,
-    );
-
-    // Convert chunks to Document<BookChunk> format
-    const localChunks: Document<BookChunk>[] = chunks.map((chunk) => {
-      const contentHash = calculateHash(chunk.content);
-
-      return new Document<BookChunk>({
-        pageContent: chunk.content,
-        metadata: {
-          name: chunk.meta.title,
-          title: chunk.meta.title,
-          chunkNumber: chunk.meta.chunkNumber, // Already 0-based
-          contentHash: contentHash,
-          uniqueId: chunk.meta.uniqueId,
-          sourceLink: '',
-          source: this.source,
-        },
-      });
-    });
-
-    return localChunks;
-  }
-
-  /**
-   * Core Library specific processing based on the pre-summarized markdown file
-   * @param vectorStore
-   */
-  public async process(vectorStore: VectorStore): Promise<void> {
-    try {
-      // 1. Read the pre-summarized documentation
-      const text = await this.readSummaryFile();
-
-      // 2. Create chunks from the documentation
-      const chunks = await this.chunkSummaryFile(text);
-
-      logger.info(
-        `Created ${chunks.length} chunks from Cairo Book documentation`,
-      );
-
-      // 3. Update the vector store with the chunks
-      await this.updateVectorStore(vectorStore, chunks);
-
-      // 4. Clean up any temporary files (no temp files in this case)
-      await this.cleanupDownloadedFiles();
-    } catch (error) {
-      this.handleError(error);
-    }
   }
 
   /**
@@ -145,14 +34,6 @@ export class CairoBookIngester extends MarkdownIngester {
    * @returns string - Path to the extract directory
    */
   protected getExtractDir(): string {
-    return path.join(__dirname, '..', '..', 'temp', 'corelib-docs');
-  }
-
-  /**
-   * Override cleanupDownloadedFiles since we don't download anything
-   */
-  protected async cleanupDownloadedFiles(): Promise<void> {
-    // No cleanup needed as we're reading from a local file
-    logger.info('No cleanup needed - using local summary file');
+    return path.join(__dirname, '..', '..', 'temp', 'cairo-book');
   }
 }

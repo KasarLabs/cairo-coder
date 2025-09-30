@@ -10,16 +10,18 @@ class TestMarkdownIngester extends MarkdownIngester {
   }
 }
 
-// Create an instance for testing
+// Create an instance for testing with baseUrl
 const markdownIngester = new TestMarkdownIngester(
   {
     repoOwner: 'test',
     repoName: 'test',
+    baseUrl: 'https://test.com',
     fileExtension: 'md',
+    urlSuffix: '.html',
     chunkSize: 1000,
     chunkOverlap: 100,
   },
-  'test_source' as DocumentSource,
+  DocumentSource.CAIRO_BOOK,
 );
 
 describe('splitMarkdownIntoSections', () => {
@@ -203,5 +205,128 @@ More regular text
 
     const result = markdownIngester['sanitizeCodeBlocks'](input);
     expect(result).toBe(expected);
+  });
+});
+
+describe('URL sourcing and generation', () => {
+  it('should generate correct sourceLinks for documentation pages', async () => {
+    const pages: BookPageDto[] = [
+      {
+        name: 'page1',
+        content: '# Title 1\nContent 1\n## Subtitle\nMore content',
+      },
+      {
+        name: 'page2',
+        content: '# Title 2\nContent 2',
+      },
+    ];
+
+    const result = await markdownIngester['createChunks'](pages);
+
+    expect(result).toHaveLength(3);
+
+    // Check first chunk from page1
+    expect(result[0].metadata.sourceLink).toBe(
+      'https://test.com/page1.html#title-1',
+    );
+    expect(result[0].metadata.name).toBe('page1');
+    expect(result[0].metadata.source).toBe(DocumentSource.CAIRO_BOOK);
+
+    // Check second chunk from page1
+    expect(result[1].metadata.sourceLink).toBe(
+      'https://test.com/page1.html#subtitle',
+    );
+
+    // Check chunk from page2
+    expect(result[2].metadata.sourceLink).toBe(
+      'https://test.com/page2.html#title-2',
+    );
+  });
+
+  it('should handle nested paths in URLs', async () => {
+    const pages: BookPageDto[] = [
+      {
+        name: 'guides/advanced/custom-accounts',
+        content: '# Custom Accounts\nContent here',
+      },
+    ];
+
+    const result = await markdownIngester['createChunks'](pages);
+
+    expect(result).toHaveLength(1);
+    expect(result[0].metadata.sourceLink).toBe(
+      'https://test.com/guides/advanced/custom-accounts.html#custom-accounts',
+    );
+  });
+
+  it('should generate empty sourceLinks when baseUrl is not provided', async () => {
+    const ingesterNoUrl = new TestMarkdownIngester(
+      {
+        repoOwner: 'test',
+        repoName: 'test',
+        fileExtension: 'md',
+        chunkSize: 1000,
+        chunkOverlap: 100,
+      },
+      DocumentSource.CAIRO_BOOK,
+    );
+
+    const pages: BookPageDto[] = [
+      {
+        name: 'page1',
+        content: '# Title 1\nContent 1',
+      },
+    ];
+
+    const result = await ingesterNoUrl['createChunks'](pages);
+
+    expect(result).toHaveLength(1);
+    expect(result[0].metadata.sourceLink).toBe('');
+  });
+
+  it('should generate unique IDs correctly', async () => {
+    const pages: BookPageDto[] = [
+      {
+        name: 'test-page',
+        content: '# Section 1\nContent\n## Section 2\nMore content',
+      },
+    ];
+
+    const result = await markdownIngester['createChunks'](pages);
+
+    expect(result).toHaveLength(2);
+    expect(result[0].metadata.uniqueId).toBe('test-page-0');
+    expect(result[1].metadata.uniqueId).toBe('test-page-1');
+  });
+
+  it('should calculate content hash for each chunk', async () => {
+    const pages: BookPageDto[] = [
+      {
+        name: 'test-page',
+        content: '# Section 1\nContent',
+      },
+    ];
+
+    const result = await markdownIngester['createChunks'](pages);
+
+    expect(result).toHaveLength(1);
+    expect(result[0].metadata.contentHash).toBeDefined();
+    expect(typeof result[0].metadata.contentHash).toBe('string');
+    expect(result[0].metadata.contentHash.length).toBeGreaterThan(0);
+  });
+
+  it('should create anchors from section titles', async () => {
+    const pages: BookPageDto[] = [
+      {
+        name: 'page',
+        content: '# Getting Started\nIntro\n## Advanced Topics\nDetails',
+      },
+    ];
+
+    const result = await markdownIngester['createChunks'](pages);
+
+    expect(result).toHaveLength(2);
+    expect(result[0].metadata.sourceLink).toContain('#getting-started');
+    expect(result[1].metadata.sourceLink).toContain('#advanced-topics');
   });
 });

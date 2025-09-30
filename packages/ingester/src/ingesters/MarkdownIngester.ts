@@ -123,6 +123,16 @@ export abstract class MarkdownIngester extends BaseIngester {
     // Create a document for each section
     sections.forEach((section: ParsedSection, index: number) => {
       const hash: string = calculateHash(section.content);
+
+      // If a baseUrl is provided in the config, build a source link.
+      // Use a best-effort anchor derived from the section title if available.
+      const hasBase = !!this.config.baseUrl;
+      const anchor = section.anchor || createAnchor(section.title);
+      const urlSuffix = this.config.urlSuffix ?? '';
+      const sourceLink = hasBase
+        ? `${this.config.baseUrl}/${page_name}${urlSuffix}${anchor ? `#${anchor}` : ''}`
+        : '';
+
       localChunks.push(
         new Document<BookChunk>({
           pageContent: section.content,
@@ -132,7 +142,7 @@ export abstract class MarkdownIngester extends BaseIngester {
             chunkNumber: index,
             contentHash: hash,
             uniqueId: `${page_name}-${index}`,
-            sourceLink: ``,
+            sourceLink,
             source: this.source,
           },
         }),

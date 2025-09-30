@@ -1,22 +1,18 @@
 import * as fs from 'fs/promises';
 import * as path from 'path';
-import { BookConfig } from '../utils/types';
+import { BookConfig, BookPageDto } from '../utils/types';
 import { MarkdownIngester } from './MarkdownIngester';
-import { BookChunk, DocumentSource } from '@cairo-coder/agents/types/index';
-import { Document } from '@langchain/core/documents';
-import { VectorStore } from '@cairo-coder/agents/db/postgresVectorStore';
+import { DocumentSource } from '@cairo-coder/agents/types/index';
+import { processDocFiles } from '../utils/fileUtils';
 import { logger } from '@cairo-coder/agents/utils/index';
-import { calculateHash } from '../utils/contentUtils';
-import {
-  RecursiveMarkdownSplitter,
-  SplitOptions,
-} from '../utils/RecursiveMarkdownSplitter';
+import { exec as execCallback } from 'child_process';
+import { promisify } from 'util';
 
 /**
  * Ingester for the Cairo Core Library documentation
  *
- * This ingester processes the pre-summarized Cairo Core Library documentation
- * from a local markdown file and creates chunks for the vector store.
+ * This ingester clones the cairo-docs repository, builds it with mdbook,
+ * and processes the generated markdown files.
  */
 export class CoreLibDocsIngester extends MarkdownIngester {
   /**
@@ -25,118 +21,16 @@ export class CoreLibDocsIngester extends MarkdownIngester {
   constructor() {
     // Define the configuration for the Cairo Core Library
     const config: BookConfig = {
-      repoOwner: 'starkware-libs',
+      repoOwner: 'enitrat',
       repoName: 'cairo-docs',
       fileExtension: '.md',
       chunkSize: 4096,
       chunkOverlap: 512,
+      baseUrl: 'https://docs.cairo-lang.org/core',
+      urlSuffix: '.html',
     };
 
     super(config, DocumentSource.CORELIB_DOCS);
-  }
-
-  /**
-   * Read the pre-summarized core library documentation file
-   */
-  async readCorelibSummaryFile(): Promise<string> {
-    const summaryPath = path.join(
-      __dirname,
-      '..',
-      '..',
-      '..',
-      '..',
-      '..',
-      'python',
-      'src',
-      'scripts',
-      'summarizer',
-      'generated',
-      'corelib_summary.md',
-    );
-
-    logger.info(`Reading core library summary from ${summaryPath}`);
-    const text = await fs.readFile(summaryPath, 'utf-8');
-    return text;
-  }
-
-  /**
-   * Chunk the core library summary file using RecursiveMarkdownSplitter
-   *
-   * This function takes the markdown content and splits it using a recursive
-   * strategy that respects headers, code blocks, and maintains overlap between chunks.
-   *
-   * @param text - The markdown content to chunk
-   * @returns Promise<Document<BookChunk>[]> - Array of document chunks
-   */
-  async chunkCorelibSummaryFile(text: string): Promise<Document<BookChunk>[]> {
-    logger.info(
-      'Using RecursiveMarkdownSplitter to chunk Core Library documentation',
-    );
-
-    // Configure the splitter with appropriate settings
-    const splitOptions: SplitOptions = {
-      maxChars: 2048,
-      minChars: 500,
-      overlap: 256,
-      headerLevels: [1, 2], // Split on H1 and H2 headers
-      preserveCodeBlocks: true,
-      idPrefix: 'corelib',
-      trim: true,
-    };
-
-    // Create the splitter and split the content
-    const splitter = new RecursiveMarkdownSplitter(splitOptions);
-    const chunks = splitter.splitMarkdownToChunks(text);
-
-    logger.info(
-      `Created ${chunks.length} chunks using RecursiveMarkdownSplitter`,
-    );
-
-    // Convert chunks to Document<BookChunk> format
-    const localChunks: Document<BookChunk>[] = chunks.map((chunk) => {
-      const contentHash = calculateHash(chunk.content);
-
-      return new Document<BookChunk>({
-        pageContent: chunk.content,
-        metadata: {
-          name: chunk.meta.title,
-          title: chunk.meta.title,
-          chunkNumber: chunk.meta.chunkNumber, // Already 0-based
-          contentHash: contentHash,
-          uniqueId: chunk.meta.uniqueId,
-          sourceLink: '',
-          source: this.source,
-        },
-      });
-    });
-
-    return localChunks;
-  }
-
-  /**
-   * Core Library specific processing based on the pre-summarized markdown file
-   * @param vectorStore
-   */
-  public async process(vectorStore: VectorStore): Promise<void> {
-    try {
-      // 1. Read the pre-summarized documentation
-      const text = await this.readCorelibSummaryFile();
-
-      // 2. Create chunks from the documentation
-      const chunks = await this.chunkCorelibSummaryFile(text);
-
-      logger.info(
-        `Created ${chunks.length} chunks from core library documentation`,
-      );
-
-      // 3. Update the vector store with the chunks
-      await this.updateVectorStore(vectorStore, chunks);
-
-      // 4. Clean up any temporary files (no temp files in this case)
-      await this.cleanupDownloadedFiles();
-    } catch (error) {
-      this.handleError(error);
-    }
   }
 
   /**
@@ -149,10 +43,69 @@ export class CoreLibDocsIngester extends MarkdownIngester {
   }
 
   /**
-   * Override cleanupDownloadedFiles since we don't download anything
+   * Download and extract the repository
+   *
+   * @returns Promise<BookPageDto[]> - Array of book pages
    */
-  protected async cleanupDownloadedFiles(): Promise<void> {
-    // No cleanup needed as we're reading from a local file
-    logger.info('No cleanup needed - using local summary file');
+  protected async downloadAndExtractDocs(): Promise<BookPageDto[]> {
+    const extractDir = this.getExtractDir();
+    const repoUrl = `https://github.com/${this.config.repoOwner}/${this.config.repoName}.git`;
+
+    logger.info(`Cloning repository from ${repoUrl}`);
+
+    // Clone the repository
+    const exec = promisify(execCallback);
+    try {
+      await exec(`git clone ${repoUrl} ${extractDir}`);
+    } catch (error) {
+      logger.error('Error cloning repository:', error);
+      throw new Error('Failed to clone repository');
+    }
+
+    // Navigate to the core directory
+    const coreDir = path.join(extractDir, 'core');
+
+    // Update book.toml configuration
+    const bookTomlPath = path.join(coreDir, 'book.toml');
+
+    try {
+      let bookToml = await fs.readFile(bookTomlPath, 'utf8');
+
+      // Add [output.markdown] if it doesn't exist
+      if (!bookToml.includes('[output.markdown]')) {
+        bookToml += '\n[output.markdown]\n';
+      }
+
+      await fs.writeFile(bookTomlPath, bookToml);
+      logger.info('Updated book.toml configuration');
+    } catch (error) {
+      logger.error('Error updating book.toml:', error);
+      throw new Error('Failed to update book.toml configuration');
+    }
+
+    // Build the mdbook
+    try {
+      logger.info('Building mdbook...');
+      try {
+        await exec('mdbook --version');
+      } catch (error) {
+        logger.error('mdbook is not installed on this system');
+        throw new Error('mdbook is required but not installed');
+      }
+
+      await exec('mdbook build', { cwd: coreDir });
+      logger.info('mdbook built successfully');
+    } catch (error) {
+      logger.error('Error building mdbook:', error);
+      throw new Error('Failed to build mdbook');
+    }
+
+    logger.info('Repository cloned and processed successfully.');
+
+    // Process the markdown files
+    const srcDir = path.join(coreDir, 'book/markdown');
+    const pages = await processDocFiles(this.config, srcDir);
+
+    return pages;
   }
 }

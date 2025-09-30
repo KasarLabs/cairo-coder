@@ -38,6 +38,12 @@ export type BookConfig = {
 
   /** The overlap between chunks in characters */
   chunkOverlap: number;
+
+  /** Optional base URL of the public docs site for link mapping */
+  baseUrl?: string;
+
+  /** Optional URL suffix (e.g., '.html') appended to page paths */
+  urlSuffix?: string;
 };
 
 /**
