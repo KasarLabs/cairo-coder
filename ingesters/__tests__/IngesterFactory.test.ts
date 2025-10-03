@@ -1,3 +1,4 @@
+import { describe, it, expect, beforeEach } from 'bun:test';
 import { IngesterFactory } from '../src/IngesterFactory';
 import { CairoBookIngester } from '../src/ingesters/CairoBookIngester';
 import { StarknetDocsIngester } from '../src/ingesters/StarknetDocsIngester';
@@ -7,18 +8,11 @@ import { OpenZeppelinDocsIngester } from '../src/ingesters/OpenZeppelinDocsInges
 import { BaseIngester } from '../src/BaseIngester';
 import { DocumentSource } from '../src/types';
 
-// Mock the ingesters
-jest.mock('../src/ingesters/CairoBookIngester');
-jest.mock('../src/ingesters/StarknetDocsIngester');
-jest.mock('../src/ingesters/StarknetFoundryIngester');
-jest.mock('../src/ingesters/CairoByExampleIngester');
-jest.mock('../src/ingesters/OpenZeppelinDocsIngester');
+// Note: Bun test doesn't support mocking constructors the same way Jest does.
+// The key behavior being tested is that the factory returns the correct instance type,
+// which is verified by toBeInstanceOf checks.
 
 describe('IngesterFactory', () => {
-  beforeEach(() => {
-    jest.clearAllMocks();
-  });
-
   describe('createIngester', () => {
     it('should create a CairoBookIngester for cairo_book source', () => {
       const ingester = IngesterFactory.createIngester(
@@ -26,7 +20,6 @@ describe('IngesterFactory', () => {
       );
 
       expect(ingester).toBeInstanceOf(CairoBookIngester);
-      expect(CairoBookIngester).toHaveBeenCalledTimes(1);
     });
 
     it('should create a StarknetDocsIngester for starknet_docs source', () => {
@@ -35,7 +28,6 @@ describe('IngesterFactory', () => {
       );
 
       expect(ingester).toBeInstanceOf(StarknetDocsIngester);
-      expect(StarknetDocsIngester).toHaveBeenCalledTimes(1);
     });
 
     it('should create a StarknetFoundryIngester for starknet_foundry source', () => {
@@ -44,7 +36,6 @@ describe('IngesterFactory', () => {
       );
 
       expect(ingester).toBeInstanceOf(StarknetFoundryIngester);
-      expect(StarknetFoundryIngester).toHaveBeenCalledTimes(1);
     });
 
     it('should create a CairoByExampleIngester for cairo_by_example source', () => {
@@ -53,7 +44,6 @@ describe('IngesterFactory', () => {
       );
 
       expect(ingester).toBeInstanceOf(CairoByExampleIngester);
-      expect(CairoByExampleIngester).toHaveBeenCalledTimes(1);
     });
 
     it('should create an OpenZeppelinDocsIngester for openzeppelin_docs source', () => {
@@ -62,7 +52,6 @@ describe('IngesterFactory', () => {
       );
 
       expect(ingester).toBeInstanceOf(OpenZeppelinDocsIngester);
-      expect(OpenZeppelinDocsIngester).toHaveBeenCalledTimes(1);
     });
 
     it('should throw an error for an unknown source', () => {

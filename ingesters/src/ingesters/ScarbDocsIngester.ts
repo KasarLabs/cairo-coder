@@ -40,7 +40,8 @@ export class ScarbDocsIngester extends MarkdownIngester {
    * @returns string - Path to the extract directory
    */
   protected getExtractDir(): string {
-    return path.join(__dirname, '..', '..', 'temp', 'scarb-docs');
+    const { getTempDir } = require('../utils/paths');
+    return getTempDir('scarb-docs');
   }
 
   /**

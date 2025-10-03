@@ -35,6 +35,7 @@ export class CairoByExampleIngester extends MarkdownIngester {
    * @returns string - Path to the extract directory
    */
   protected getExtractDir(): string {
-    return path.join(__dirname, '..', '..', 'temp', 'cairo-by-example');
+    const { getTempDir } = require('../utils/paths');
+    return getTempDir('cairo-by-example');
   }
 }

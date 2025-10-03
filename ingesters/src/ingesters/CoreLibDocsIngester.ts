@@ -1,11 +1,11 @@
-import { BookConfig, BookPageDto, ParsedSection } from '../utils/types';
+import * as fs from 'fs/promises';
+import * as path from 'path';
+import { BookConfig } from '../utils/types';
 import { MarkdownIngester } from './MarkdownIngester';
 import { BookChunk, DocumentSource } from '../types';
 import { Document } from '@langchain/core/documents';
 import { VectorStore } from '../db/postgresVectorStore';
 import { logger } from '../utils/logger';
-import * as fs from 'fs/promises';
-import * as path from 'path';
 import { calculateHash } from '../utils/contentUtils';
 import {
   RecursiveMarkdownSplitter,
@@ -13,48 +13,42 @@ import {
 } from '../utils/RecursiveMarkdownSplitter';
 
 /**
- * Ingester for the Cairo Book documentation
+ * Ingester for the Cairo Core Library documentation
  *
- * This ingester downloads the Cairo Book documentation from GitHub releases,
- * processes the markdown files, and creates chunks for the vector store.
+ * This ingester processes the pre-summarized Cairo Core Library documentation
+ * from a local markdown file and creates chunks for the vector store.
  */
-export class CairoBookIngester extends MarkdownIngester {
+export class CoreLibDocsIngester extends MarkdownIngester {
   /**
-   * Constructor for the Cairo Book ingester
+   * Constructor for the Cairo Core Library ingester
    */
   constructor() {
-    // Define the configuration for the Cairo Book
+    // Define the configuration for the Cairo Core Library
     const config: BookConfig = {
-      repoOwner: 'cairo-book',
-      repoName: 'cairo-book',
+      repoOwner: 'enitrat',
+      repoName: 'cairo-docs',
       fileExtension: '.md',
       chunkSize: 4096,
       chunkOverlap: 512,
-      baseUrl: 'https://book.cairo-lang.org',
-      urlSuffix: '.html',
+      baseUrl: 'https://docs.starknet.io/build/corelib/intro',
+      urlSuffix: '',
       useUrlMapping: false,
     };
 
-    super(config, DocumentSource.CAIRO_BOOK);
+    super(config, DocumentSource.CORELIB_DOCS);
   }
 
   /**
    * Read the pre-summarized core library documentation file
    */
-  async readSummaryFile(): Promise<string> {
-    const summaryPath = path.join(
-      __dirname,
-      '..',
-      '..',
-      '..',
-      '..',
-      '..',
-      'python',
+  async readCorelibSummaryFile(): Promise<string> {
+    const { getPythonPath } = await import('../utils/paths');
+    const summaryPath = getPythonPath(
       'src',
       'scripts',
       'summarizer',
       'generated',
-      'cairo_book_summary.md',
+      'corelib_summary.md',
     );
 
     logger.info(`Reading core library summary from ${summaryPath}`);
@@ -71,7 +65,11 @@ export class CairoBookIngester extends MarkdownIngester {
    * @param text - The markdown content to chunk
    * @returns Promise<Document<BookChunk>[]> - Array of document chunks
    */
-  async chunkSummaryFile(text: string): Promise<Document<BookChunk>[]> {
+  async chunkCorelibSummaryFile(text: string): Promise<Document<BookChunk>[]> {
+    logger.info(
+      'Using RecursiveMarkdownSplitter to chunk Core Library documentation',
+    );
+
     // Configure the splitter with appropriate settings
     const splitOptions: SplitOptions = {
       maxChars: 2048,
@@ -79,7 +77,7 @@ export class CairoBookIngester extends MarkdownIngester {
       overlap: 256,
       headerLevels: [1, 2], // Split on H1 and H2 headers
       preserveCodeBlocks: true,
-      idPrefix: 'cairo-book',
+      idPrefix: 'corelib',
       trim: true,
     };
 
@@ -119,13 +117,13 @@ export class CairoBookIngester extends MarkdownIngester {
   public async process(vectorStore: VectorStore): Promise<void> {
     try {
       // 1. Read the pre-summarized documentation
-      const text = await this.readSummaryFile();
+      const text = await this.readCorelibSummaryFile();
 
       // 2. Create chunks from the documentation
-      const chunks = await this.chunkSummaryFile(text);
+      const chunks = await this.chunkCorelibSummaryFile(text);
 
       logger.info(
-        `Created ${chunks.length} chunks from Cairo Book documentation`,
+        `Created ${chunks.length} chunks from core library documentation`,
       );
 
       // 3. Update the vector store with the chunks
@@ -144,7 +142,8 @@ export class CairoBookIngester extends MarkdownIngester {
    * @returns string - Path to the extract directory
    */
   protected getExtractDir(): string {
-    return path.join(__dirname, '..', '..', 'temp', 'corelib-docs');
+    const { getTempDir } = require('../utils/paths');
+    return getTempDir('corelib-docs');
   }
 
   /**

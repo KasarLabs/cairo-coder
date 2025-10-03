@@ -1,6 +1,14 @@
 import { DocumentSource } from './types';
 import { BaseIngester } from './BaseIngester';
 import { BookConfig } from './utils/types';
+import { CairoBookIngester } from './ingesters/CairoBookIngester';
+import { StarknetDocsIngester } from './ingesters/StarknetDocsIngester';
+import { StarknetFoundryIngester } from './ingesters/StarknetFoundryIngester';
+import { CairoByExampleIngester } from './ingesters/CairoByExampleIngester';
+import { OpenZeppelinDocsIngester } from './ingesters/OpenZeppelinDocsIngester';
+import { CoreLibDocsIngester } from './ingesters/CoreLibDocsIngester';
+import { ScarbDocsIngester } from './ingesters/ScarbDocsIngester';
+import { StarknetJSIngester } from './ingesters/StarknetJSIngester';
 
 /**
  * Factory class for creating ingesters
@@ -20,48 +28,27 @@ export class IngesterFactory {
   public static createIngester(source: DocumentSource): BaseIngester {
     switch (source) {
       case 'cairo_book':
-        // Import dynamically to avoid circular dependencies
-        const { CairoBookIngester } = require('./ingesters/CairoBookIngester');
         return new CairoBookIngester();
 
       case 'starknet_docs':
-        const {
-          StarknetDocsIngester,
-        } = require('./ingesters/StarknetDocsIngester');
         return new StarknetDocsIngester();
 
       case 'starknet_foundry':
-        const {
-          StarknetFoundryIngester,
-        } = require('./ingesters/StarknetFoundryIngester');
         return new StarknetFoundryIngester();
 
       case 'cairo_by_example':
-        const {
-          CairoByExampleIngester,
-        } = require('./ingesters/CairoByExampleIngester');
         return new CairoByExampleIngester();
 
       case 'openzeppelin_docs':
-        const {
-          OpenZeppelinDocsIngester,
-        } = require('./ingesters/OpenZeppelinDocsIngester');
         return new OpenZeppelinDocsIngester();
 
       case 'corelib_docs':
-        const {
-          CoreLibDocsIngester,
-        } = require('./ingesters/CoreLibDocsIngester');
         return new CoreLibDocsIngester();
 
       case 'scarb_docs':
-        const { ScarbDocsIngester } = require('./ingesters/ScarbDocsIngester');
         return new ScarbDocsIngester();
 
       case 'starknet_js':
-        const {
-          StarknetJSIngester,
-        } = require('./ingesters/StarknetJSIngester');
         return new StarknetJSIngester();
 
       default:

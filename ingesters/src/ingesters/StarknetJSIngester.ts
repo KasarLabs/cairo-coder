@@ -26,7 +26,8 @@ export class StarknetJSIngester extends MarkdownIngester {
   }
 
   protected getExtractDir(): string {
-    return path.join(__dirname, '..', '..', 'temp', 'starknet-js-guides');
+    const { getTempDir } = require('../utils/paths');
+    return getTempDir('starknet-js-guides');
   }
 
   protected async downloadAndExtractDocs(): Promise<BookPageDto[]> {

@@ -1,11 +1,11 @@
+import { BookConfig, BookPageDto, ParsedSection } from '../utils/types';
+import { MarkdownIngester } from './MarkdownIngester';
+import { BookChunk, DocumentSource } from '../types';
+import { Document } from '@langchain/core/documents';
+import { VectorStore } from '../db/postgresVectorStore';
+import { logger } from '../utils/logger';
 import * as fs from 'fs/promises';
 import * as path from 'path';
-import { Document } from '@langchain/core/documents';
-import { BookChunk, DocumentSource } from '../types';
-import { BookConfig } from '../utils/types';
-import { logger } from '../utils/logger';
-import { MarkdownIngester } from './MarkdownIngester';
-import { VectorStore } from '../db/postgresVectorStore';
 import { calculateHash } from '../utils/contentUtils';
 import {
   RecursiveMarkdownSplitter,
@@ -13,57 +13,51 @@ import {
 } from '../utils/RecursiveMarkdownSplitter';
 
 /**
- * Ingester for the OpenZeppelin documentation
+ * Ingester for the Cairo Book documentation
  *
- * This ingester processes the pre-crawled OpenZeppelin documentation
- * from a local markdown file and creates chunks for the vector store.
+ * This ingester downloads the Cairo Book documentation from GitHub releases,
+ * processes the markdown files, and creates chunks for the vector store.
  */
-export class OpenZeppelinDocsIngester extends MarkdownIngester {
+export class CairoBookIngester extends MarkdownIngester {
   /**
-   * Constructor for the OpenZeppelin Docs ingester
+   * Constructor for the Cairo Book ingester
    */
   constructor() {
-    // Define the configuration for OpenZeppelin Docs
+    // Define the configuration for the Cairo Book
     const config: BookConfig = {
-      repoOwner: 'OpenZeppelin',
-      repoName: 'cairo-contracts',
+      repoOwner: 'cairo-book',
+      repoName: 'cairo-book',
       fileExtension: '.md',
       chunkSize: 4096,
       chunkOverlap: 512,
-      baseUrl: 'https://docs.openzeppelin.com/contracts-cairo',
-      urlSuffix: '',
+      baseUrl: 'https://book.cairo-lang.org',
+      urlSuffix: '.html',
       useUrlMapping: false,
     };
 
-    super(config, DocumentSource.OPENZEPPELIN_DOCS);
+    super(config, DocumentSource.CAIRO_BOOK);
   }
 
   /**
-   * Read the pre-crawled OpenZeppelin documentation file
+   * Read the pre-summarized core library documentation file
    */
   async readSummaryFile(): Promise<string> {
-    const summaryPath = path.join(
-      __dirname,
-      '..',
-      '..',
-      '..',
-      '..',
-      '..',
-      'python',
+    const { getPythonPath } = await import('../utils/paths');
+    const summaryPath = getPythonPath(
       'src',
       'scripts',
       'summarizer',
       'generated',
-      'openzeppelin_docs_summary.md',
+      'cairo_book_summary.md',
     );
 
-    logger.info(`Reading OpenZeppelin documentation from ${summaryPath}`);
+    logger.info(`Reading core library summary from ${summaryPath}`);
     const text = await fs.readFile(summaryPath, 'utf-8');
     return text;
   }
 
   /**
-   * Chunk the OpenZeppelin summary file using RecursiveMarkdownSplitter
+   * Chunk the core library summary file using RecursiveMarkdownSplitter
    *
    * This function takes the markdown content and splits it using a recursive
    * strategy that respects headers, code blocks, and maintains overlap between chunks.
@@ -72,10 +66,6 @@ export class OpenZeppelinDocsIngester extends MarkdownIngester {
    * @returns Promise<Document<BookChunk>[]> - Array of document chunks
    */
   async chunkSummaryFile(text: string): Promise<Document<BookChunk>[]> {
-    logger.info(
-      'Using RecursiveMarkdownSplitter to chunk OpenZeppelin documentation',
-    );
-
     // Configure the splitter with appropriate settings
     const splitOptions: SplitOptions = {
       maxChars: 2048,
@@ -83,7 +73,7 @@ export class OpenZeppelinDocsIngester extends MarkdownIngester {
       overlap: 256,
       headerLevels: [1, 2], // Split on H1 and H2 headers
       preserveCodeBlocks: true,
-      idPrefix: 'openzeppelin-docs',
+      idPrefix: 'cairo-book',
       trim: true,
     };
 
@@ -117,19 +107,19 @@ export class OpenZeppelinDocsIngester extends MarkdownIngester {
   }
 
   /**
-   * OpenZeppelin specific processing based on the pre-crawled markdown file
+   * Core Library specific processing based on the pre-summarized markdown file
    * @param vectorStore
    */
   public async process(vectorStore: VectorStore): Promise<void> {
     try {
-      // 1. Read the pre-crawled documentation
+      // 1. Read the pre-summarized documentation
       const text = await this.readSummaryFile();
 
       // 2. Create chunks from the documentation
       const chunks = await this.chunkSummaryFile(text);
 
       logger.info(
-        `Created ${chunks.length} chunks from OpenZeppelin documentation`,
+        `Created ${chunks.length} chunks from Cairo Book documentation`,
       );
 
       // 3. Update the vector store with the chunks
@@ -148,7 +138,8 @@ export class OpenZeppelinDocsIngester extends MarkdownIngester {
    * @returns string - Path to the extract directory
    */
   protected getExtractDir(): string {
-    return path.join(__dirname, '..', '..', 'temp', 'openzeppelin-docs');
+    const { getTempDir } = require('../utils/paths');
+    return getTempDir('corelib-docs');
   }
 
   /**

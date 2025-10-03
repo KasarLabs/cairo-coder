@@ -2,108 +2,234 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-For information on how to work in the Python part of this project, see `python/CLAUDE.md`.
+For detailed Python backend information, see `python/CLAUDE.md`.
 
 ## Project Overview
 
-Cairo Coder is an open-source Cairo language code generation service using Retrieval-Augmented Generation (RAG) to transform natural language requests into functional Cairo smart contracts and programs. It was adapted from the Starknet Agent project.
+Cairo Coder is an open-source Cairo language code generation service using Retrieval-Augmented Generation (RAG) to transform natural language requests into functional Cairo smart contracts and programs.
+
+### Technology Stack
+
+- **Backend**: Python with DSPy framework for RAG pipeline (`python/`)
+- **Ingester**: TypeScript/Bun for documentation processing (`ingesters/`)
+- **Database**: PostgreSQL with pgvector extension
+- **Runtime**: Bun for ingester, uv for Python backend
 
 ## Essential Commands
 
-### Development
-
-- `pnpm install` - Install dependencies (requires Node.js 20+ and pnpm 9+)
-- `pnpm dev` - Start all services in development mode with hot reload
-- `pnpm build` - Build all packages for production
-- `pnpm clean` - Clean package build files
-- `pnpm clean:all` - Clean all build files and node_modules
-
-### Testing
-
-- `pnpm test` - Run all tests across packages
-- `pnpm --filter @cairo-coder/agents test` - Run tests for specific package
-- `pnpm --filter @cairo-coder/agents test -- -t "test name"` - Run specific test
-
 ### Documentation Ingestion
 
-- `pnpm generate-embeddings` - Interactive ingestion of documentation sources
-- `pnpm generate-embeddings:yes` - Non-interactive ingestion (for CI/CD)
+```bash
+# Install dependencies
+cd ingesters && bun install
+
+# Run interactive ingestion
+bun run generate-embeddings
+
+# Non-interactive (CI/CD)
+bun run generate-embeddings:yes
+
+# Run tests
+bun test
+```
+
+### Python Backend
+
+```bash
+cd python
+
+# Setup
+curl -LsSf https://astral.sh/uv/install.sh | sh
+uv sync
+
+# Development
+uv run cairo-coder              # Start FastAPI server
+uv run pytest                   # Run all tests
+uv run pytest -k "test_name"   # Run specific test
+```
 
 ### Docker Operations
 
-- `docker compose up postgres backend` - Start main services
-- `docker compose up ingester` - Run documentation ingestion
+```bash
+docker compose up postgres backend  # Start main services
+docker compose up ingester         # Run documentation ingestion
+```
 
-## High-Level Architecture
+## Architecture Overview
 
-### Monorepo Structure
+### Python Backend (DSPy RAG Pipeline)
 
-- **packages/agents**: Core RAG pipeline orchestrating query processing, document retrieval, and code generation
-- **packages/ingester**: Documentation processing system using template method pattern
-- **packages/typescript-config**: Shared TypeScript configuration
+The core RAG pipeline is implemented in Python using DSPy:
 
-### Key Design Patterns
+1. **Query Processing** - Extracts search terms and identifies relevant sources
+2. **Document Retrieval** - Queries pgvector for similar documentation chunks
+3. **Answer Generation** - Generates Cairo code with streaming support
 
-1. **RAG Pipeline** (packages/agents/src/core/pipeline/):
+**Key Locations:**
 
-   - `QueryProcessor`: Reformulates user queries for better retrieval
-   - `DocumentRetriever`: Searches pgvector database using similarity measures
-   - `AnswerGenerator`: Generates Cairo code from retrieved documents
-   - `McpPipeline`: Special mode returning raw documents without generation
+- Pipeline: `python/src/cairo_coder/dspy/`
+- Agents: `python/src/cairo_coder/agents/registry.py`
+- Server: `python/src/cairo_coder/server/app.py`
 
-2. **Ingester System** (packages/ingester/src/ingesters/):
+### Ingester System (TypeScript/Bun)
 
-   - `BaseIngester`: Abstract class implementing template method pattern
-   - Source-specific ingesters extend base class for each documentation source
-   - Factory pattern (`IngesterFactory`) creates appropriate ingester instances
+Documentation processing system that downloads, chunks, and embeds documentation:
 
-3. **Multi-Provider LLM Support**:
-   - Configurable providers: OpenAI, Anthropic, Google Gemini
-   - Provider abstraction in agents package handles model differences
-   - Streaming and non-streaming response modes
+**Structure:**
 
-### Configuration
+```text
+ingesters/
+├── src/
+│   ├── ingesters/        # Source-specific ingesters
+│   ├── db/              # PostgreSQL vector store
+│   ├── config/          # Settings and env management
+│   ├── types/           # TypeScript type definitions
+│   └── utils/           # Utilities including path resolution
+├── __tests__/           # Bun test suite
+└── package.json         # Bun scripts (no build step)
+```
 
-- All sensitive configuration is managed via environment variables
-- Copy `.env.example` to `.env` in the root directory
-- Required environment variables:
-  - Database credentials: POSTGRES_USER, POSTGRES_PASSWORD, POSTGRES_DB, POSTGRES_HOST, POSTGRES_PORT
-  - LLM provider API keys: OPENAI_API_KEY, ANTHROPIC_API_KEY, GEMINI_API_KEY (at least one required)
-  - Optional: LANGSMITH_API_KEY for tracing
+**Key Design Patterns:**
+
+1. **Template Method Pattern** (`BaseIngester`):
+
+   - Abstract class defining ingestion workflow
+   - Subclasses implement source-specific logic
+   - Consistent processing pipeline across all sources
+
+2. **Factory Pattern** (`IngesterFactory`):
+
+   - Creates appropriate ingester for each documentation source
+   - Uses static imports for better testability and Bun compatibility
+
+3. **Path Resolution** (`utils/paths.ts`):
+   - Automatically finds repository root via `.git` directory
+   - All paths relative to repo root (no hardcoded absolute paths)
+   - `getRepoPath()`, `getPythonPath()`, `getTempDir()` utilities
 
 ### Database Architecture
 
-- PostgreSQL with pgvector extension for vector similarity search
-- Embedding storage for documentation chunks
-- Configurable similarity measures (cosine, dot product, euclidean)
+- **PostgreSQL with pgvector**: Vector similarity search
+- **Embedding Storage**: 1536-dimensional vectors (OpenAI text-embedding-3-large)
+- **Schema**: Content, metadata, embeddings, source filtering
+- **Similarity Measures**: Cosine similarity (default)
+
+### Integration Flow
+
+```text
+Python Summarizer → Generated Markdown → Ingester → PostgreSQL → RAG Pipeline → Code Generation
+     (python/)            (python/src/scripts/         (ingesters/)     (pgvector)    (python/)
+                          summarizer/generated/)
+```
+
+## Configuration
+
+All configuration via environment variables (`.env` in root):
+
+**Required:**
+
+- `POSTGRES_*` - Database credentials
+- `OPENAI_API_KEY` - For embeddings and LLM
+
+**Optional:**
+
+- `ANTHROPIC_API_KEY`, `GEMINI_API_KEY` - Alternative LLM providers
+- `LANGSMITH_API_KEY` - Tracing/observability
 
 ## Development Guidelines
 
-### Code Organization
+### Ingester Development
 
-- Follow existing patterns in neighboring files
-- Use dependency injection for testability
-- Mock external dependencies (LLMs, databases) in tests
-- Prefer editing existing files over creating new ones
+**Code Organization:**
+
 - Follow template method pattern for new ingesters
+- Use path utilities for all file operations (`getRepoPath()`, `getTempDir()`, `getPythonPath()`)
+- Prefer editing existing files over creating new ones
+- No compilation step - Bun runs TypeScript directly
 
-### Testing Approach
+**Testing:**
 
-- Jest for all testing
-- Test files in `__tests__/` directories
-- Mock LLM calls and database operations
-- Test each ingester implementation separately
-- Use descriptive test names explaining behavior
+- Bun test framework (Jest-compatible API)
+- Tests in `__tests__/` directories
+- Focus on behavior, not implementation details
+- Run: `bun test`
 
-### Adding New Documentation Sources
+**Adding New Documentation Sources:**
 
-1. Create new ingester extending `BaseIngester` in packages/ingester/src/ingesters/
-2. Implement required abstract methods
-3. Register in `IngesterFactory`
-4. Update configuration if needed
+1. Create ingester extending `BaseIngester` in `ingesters/src/ingesters/`
+2. Implement abstract methods:
+   - `downloadAndExtractDocs()` - Fetch documentation
+   - `createChunks()` - Split into searchable chunks
+   - `getExtractDir()` - Use `getTempDir()` for temp storage
+   - `parsePage()` - Parse content into sections
+3. Register in `IngesterFactory.createIngester()`
+4. Add to `DocumentSource` enum in `types/index.ts`
 
-### MCP (Model Context Protocol) Mode
+**Example:**
 
-- Special mode activated via `x-mcp-mode: true` header
+```typescript
+export class MyDocsIngester extends BaseIngester {
+  constructor() {
+    super(config, DocumentSource.MY_DOCS);
+  }
+
+  protected getExtractDir(): string {
+    const { getTempDir } = require("../utils/paths");
+    return getTempDir("my-docs");
+  }
+
+  // Implement other abstract methods...
+}
+```
+
+### Python Backend Development
+
+See `python/CLAUDE.md` for comprehensive Python guidelines including:
+
+- DSPy module patterns
+- Agent registry system
+- Optimization workflows
+- Test suite architecture
+
+### Path Resolution
+
+**Always use path utilities** (never hardcode paths):
+
+```typescript
+import { getRepoPath, getPythonPath, getTempDir } from "../utils/paths";
+
+// ✅ Good
+const envPath = getRepoPath(".env");
+const summaryPath = getPythonPath(
+  "src",
+  "scripts",
+  "summarizer",
+  "generated",
+  "file.md",
+);
+const tempDir = getTempDir("my-ingester");
+
+// ❌ Bad
+const envPath = path.join(__dirname, "../../../.env");
+const summaryPath = "/Users/user/project/python/...";
+```
+
+## Key Documentation Sources
+
+Current ingested sources (see `DocumentSource` enum):
+
+- Cairo Book
+- Starknet Docs
+- Starknet Foundry
+- Cairo by Example
+- OpenZeppelin Contracts
+- Core Library (summarized)
+- Scarb Docs
+- Starknet.js
+
+## MCP (Model Context Protocol) Mode
+
+- Activated via `x-mcp-mode: true` HTTP header
 - Returns raw documentation chunks without LLM generation
 - Useful for integration with other tools needing Cairo documentation
+- Supported in Python backend endpoints

@@ -1,8 +1,9 @@
 import path from 'path';
 import { VectorStoreConfig } from '../types';
 import dotenv from 'dotenv';
-const dotenvPath = path.join(__dirname, '../../../../.env');
-dotenv.config({ path: dotenvPath });
+import { getRepoPath } from '../utils/paths';
+
+dotenv.config({ path: getRepoPath('.env') });
 
 // API Keys from environment variables only
 export const getOpenaiApiKey = () => process.env.OPENAI_API_KEY;

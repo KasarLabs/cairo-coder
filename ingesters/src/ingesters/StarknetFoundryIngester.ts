@@ -44,7 +44,8 @@ export class StarknetFoundryIngester extends MarkdownIngester {
    * @returns string - Path to the extract directory
    */
   protected getExtractDir(): string {
-    return path.join(__dirname, '..', '..', 'temp', 'starknet-foundry');
+    const { getTempDir } = require('../utils/paths');
+    return getTempDir('starknet-foundry');
   }
 
   /**
