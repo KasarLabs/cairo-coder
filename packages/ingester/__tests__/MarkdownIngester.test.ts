@@ -10,16 +10,19 @@ class TestMarkdownIngester extends MarkdownIngester {
   }
 }
 
-// Create an instance for testing
+// Create an instance for testing with baseUrl and useUrlMapping
 const markdownIngester = new TestMarkdownIngester(
   {
     repoOwner: 'test',
     repoName: 'test',
+    baseUrl: 'https://test.com',
     fileExtension: 'md',
+    urlSuffix: '.html',
     chunkSize: 1000,
     chunkOverlap: 100,
+    useUrlMapping: true,
   },
-  'test_source' as DocumentSource,
+  DocumentSource.CAIRO_BOOK,
 );
 
 describe('splitMarkdownIntoSections', () => {
@@ -203,5 +206,203 @@ More regular text
 
     const result = markdownIngester['sanitizeCodeBlocks'](input);
     expect(result).toBe(expected);
+  });
+});
+
+describe('URL sourcing and generation', () => {
+  it('should generate correct sourceLinks for documentation pages', async () => {
+    const pages: BookPageDto[] = [
+      {
+        name: 'page1',
+        content: '# Title 1\nContent 1\n## Subtitle\nMore content',
+      },
+      {
+        name: 'page2',
+        content: '# Title 2\nContent 2',
+      },
+    ];
+
+    const result = await markdownIngester['createChunks'](pages);
+
+    expect(result).toHaveLength(3);
+
+    // Check first chunk from page1
+    expect(result[0].metadata.sourceLink).toBe(
+      'https://test.com/page1.html#title-1',
+    );
+    expect(result[0].metadata.name).toBe('page1');
+    expect(result[0].metadata.source).toBe(DocumentSource.CAIRO_BOOK);
+
+    // Check second chunk from page1
+    expect(result[1].metadata.sourceLink).toBe(
+      'https://test.com/page1.html#subtitle',
+    );
+
+    // Check chunk from page2
+    expect(result[2].metadata.sourceLink).toBe(
+      'https://test.com/page2.html#title-2',
+    );
+  });
+
+  it('should handle nested paths in URLs', async () => {
+    const pages: BookPageDto[] = [
+      {
+        name: 'guides/advanced/custom-accounts',
+        content: '# Custom Accounts\nContent here',
+      },
+    ];
+
+    const result = await markdownIngester['createChunks'](pages);
+
+    expect(result).toHaveLength(1);
+    expect(result[0].metadata.sourceLink).toBe(
+      'https://test.com/guides/advanced/custom-accounts.html#custom-accounts',
+    );
+  });
+
+  it('should generate unique IDs correctly', async () => {
+    const pages: BookPageDto[] = [
+      {
+        name: 'test-page',
+        content: '# Section 1\nContent\n## Section 2\nMore content',
+      },
+    ];
+
+    const result = await markdownIngester['createChunks'](pages);
+
+    expect(result).toHaveLength(2);
+    expect(result[0].metadata.uniqueId).toBe('test-page-0');
+    expect(result[1].metadata.uniqueId).toBe('test-page-1');
+  });
+
+  it('should calculate content hash for each chunk', async () => {
+    const pages: BookPageDto[] = [
+      {
+        name: 'test-page',
+        content: '# Section 1\nContent',
+      },
+    ];
+
+    const result = await markdownIngester['createChunks'](pages);
+
+    expect(result).toHaveLength(1);
+    expect(result[0].metadata.contentHash).toBeDefined();
+    expect(typeof result[0].metadata.contentHash).toBe('string');
+    expect(result[0].metadata.contentHash.length).toBeGreaterThan(0);
+  });
+
+  it('should create anchors from section titles', async () => {
+    const pages: BookPageDto[] = [
+      {
+        name: 'page',
+        content: '# Getting Started\nIntro\n## Advanced Topics\nDetails',
+      },
+    ];
+
+    const result = await markdownIngester['createChunks'](pages);
+
+    expect(result).toHaveLength(2);
+    expect(result[0].metadata.sourceLink).toContain('#getting-started');
+    expect(result[1].metadata.sourceLink).toContain('#advanced-topics');
+  });
+
+  it('should only use baseUrl when useUrlMapping is false', async () => {
+    const ingesterNoMapping = new TestMarkdownIngester(
+      {
+        repoOwner: 'test',
+        repoName: 'test',
+        baseUrl: 'https://docs.example.com',
+        fileExtension: 'md',
+        urlSuffix: '.html',
+        chunkSize: 1000,
+        chunkOverlap: 100,
+        useUrlMapping: false,
+      },
+      DocumentSource.CAIRO_BOOK,
+    );
+
+    const pages: BookPageDto[] = [
+      {
+        name: 'guides/advanced/custom-accounts',
+        content:
+          '# Custom Accounts\nContent here\n## Configuration\nMore details',
+      },
+    ];
+
+    const result = await ingesterNoMapping['createChunks'](pages);
+
+    expect(result).toHaveLength(2);
+    // Both chunks should only have the baseUrl, no page path or anchor
+    expect(result[0].metadata.sourceLink).toBe('https://docs.example.com');
+    expect(result[1].metadata.sourceLink).toBe('https://docs.example.com');
+  });
+
+  it('should reconstruct full online URL when useUrlMapping is true', async () => {
+    const ingesterWithMapping = new TestMarkdownIngester(
+      {
+        repoOwner: 'test',
+        repoName: 'test',
+        baseUrl: 'https://docs.starknet.io',
+        fileExtension: 'md',
+        urlSuffix: '',
+        chunkSize: 1000,
+        chunkOverlap: 100,
+        useUrlMapping: true,
+      },
+      DocumentSource.CAIRO_BOOK,
+    );
+
+    const pages: BookPageDto[] = [
+      {
+        name: 'learn/s-two/air-development/hello-zk-world',
+        content: '# Hello ZK World\nIntroduction\n## Setup\nSetup details',
+      },
+    ];
+
+    const result = await ingesterWithMapping['createChunks'](pages);
+
+    expect(result).toHaveLength(2);
+
+    // First chunk: baseUrl + pageName + anchor from section title
+    expect(result[0].metadata.sourceLink).toBe(
+      'https://docs.starknet.io/learn/s-two/air-development/hello-zk-world#hello-zk-world',
+    );
+
+    // Second chunk: baseUrl + pageName + anchor from section title
+    expect(result[1].metadata.sourceLink).toBe(
+      'https://docs.starknet.io/learn/s-two/air-development/hello-zk-world#setup',
+    );
+  });
+
+  it('should reconstruct URL with urlSuffix when useUrlMapping is true', async () => {
+    const ingesterWithSuffix = new TestMarkdownIngester(
+      {
+        repoOwner: 'test',
+        repoName: 'test',
+        baseUrl: 'https://book.cairo-lang.org',
+        fileExtension: 'md',
+        urlSuffix: '.html',
+        chunkSize: 1000,
+        chunkOverlap: 100,
+        useUrlMapping: true,
+      },
+      DocumentSource.CAIRO_BOOK,
+    );
+
+    const pages: BookPageDto[] = [
+      {
+        name: 'ch02-01-variables-and-mutability',
+        content: '# Variables and Mutability\nContent here',
+      },
+    ];
+
+    const result = await ingesterWithSuffix['createChunks'](pages);
+
+    expect(result).toHaveLength(1);
+
+    // Should include baseUrl + pageName + urlSuffix + anchor
+    expect(result[0].metadata.sourceLink).toBe(
+      'https://book.cairo-lang.org/ch02-01-variables-and-mutability.html#variables-and-mutability',
+    );
   });
 });

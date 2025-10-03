@@ -30,6 +30,9 @@ export class StarknetFoundryIngester extends MarkdownIngester {
       fileExtension: '.md',
       chunkSize: 4096,
       chunkOverlap: 512,
+      baseUrl: 'https://foundry-rs.github.io/starknet-foundry',
+      urlSuffix: '.html',
+      useUrlMapping: true,
     };
 
     super(config, DocumentSource.STARKNET_FOUNDRY);

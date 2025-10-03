@@ -30,6 +30,9 @@ export class OpenZeppelinDocsIngester extends MarkdownIngester {
       fileExtension: '.md',
       chunkSize: 4096,
       chunkOverlap: 512,
+      baseUrl: 'https://docs.openzeppelin.com/contracts-cairo',
+      urlSuffix: '',
+      useUrlMapping: false,
     };
 
     super(config, DocumentSource.OPENZEPPELIN_DOCS);
@@ -104,7 +107,7 @@ export class OpenZeppelinDocsIngester extends MarkdownIngester {
           chunkNumber: chunk.meta.chunkNumber, // Already 0-based
           contentHash: contentHash,
           uniqueId: chunk.meta.uniqueId,
-          sourceLink: '',
+          sourceLink: this.config.baseUrl,
           source: this.source,
         },
       });

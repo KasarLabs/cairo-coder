@@ -186,5 +186,7 @@ async function main() {
   }
 }
 
-// Run the main function
-main();
+// Run the main function only when this file is executed directly
+if (require.main === module) {
+  main();
+}

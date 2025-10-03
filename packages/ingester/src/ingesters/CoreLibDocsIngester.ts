@@ -25,11 +25,14 @@ export class CoreLibDocsIngester extends MarkdownIngester {
   constructor() {
     // Define the configuration for the Cairo Core Library
     const config: BookConfig = {
-      repoOwner: 'starkware-libs',
+      repoOwner: 'enitrat',
       repoName: 'cairo-docs',
       fileExtension: '.md',
       chunkSize: 4096,
       chunkOverlap: 512,
+      baseUrl: 'https://docs.starknet.io/build/corelib/intro',
+      urlSuffix: '',
+      useUrlMapping: false,
     };
 
     super(config, DocumentSource.CORELIB_DOCS);
@@ -104,7 +107,7 @@ export class CoreLibDocsIngester extends MarkdownIngester {
           chunkNumber: chunk.meta.chunkNumber, // Already 0-based
           contentHash: contentHash,
           uniqueId: chunk.meta.uniqueId,
-          sourceLink: '',
+          sourceLink: this.config.baseUrl,
           source: this.source,
         },
       });

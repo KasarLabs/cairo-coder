@@ -26,6 +26,9 @@ export class ScarbDocsIngester extends MarkdownIngester {
       fileExtension: '.md',
       chunkSize: 4096,
       chunkOverlap: 512,
+      baseUrl: 'https://docs.swmansion.com/scarb/docs',
+      urlSuffix: '.html',
+      useUrlMapping: true,
     };
 
     super(config, DocumentSource.SCARB_DOCS);
