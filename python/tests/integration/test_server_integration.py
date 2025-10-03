@@ -138,7 +138,7 @@ class TestServerIntegration:
             if "content" in delta:
                 chunks.append(delta["content"])
 
-        assert "".join(chunks) == "Hello world"
+        assert "".join(chunks) == "Hello! I'm Cairo Coder, ready to help with Cairo programming."
 
     def test_error_handling_integration(self, client: TestClient, mock_agent_factory: Mock):
         """Test error handling in integration context."""
@@ -289,12 +289,12 @@ class TestServerIntegration:
         client: TestClient,
         patch_dspy_streaming_error,
     ):
-        """Test that streaming errors surface as an SSE error chunk using a real pipeline."""
-
         response = client.post(
             "/v1/chat/completions",
-            json={"messages": [{"role": "user", "content": "Hello"}], "stream": True},
+            json={"messages": [{"role": "user", "content": "hello"}], "stream": True},
         )
+        assert response.status_code == 200
+        assert "text/event-stream" in response.headers.get("content-type", "")
 
         assert response.status_code == 200
 
@@ -495,8 +495,8 @@ class TestOpenAICompatibility:
 
         # Verify each source has required fields
         for source in sources_event["data"]:
-            assert "title" in source
-            assert "url" in source
+            assert "title" in source['metadata']
+            assert "url" in source['metadata']
 
     def test_openai_error_response_structure(self, client: TestClient, mock_agent_factory: Mock):
         """Test that error response structure matches OpenAI API."""
