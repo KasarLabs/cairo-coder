@@ -9,7 +9,10 @@ function findRepoRoot(): string {
 
   // Walk up the directory tree looking for .env
   while (currentDir !== '/') {
-    if (existsSync(path.join(currentDir, '.env'))) {
+    if (
+      existsSync(path.join(currentDir, '.env')) ||
+      existsSync(path.join(currentDir, '.git'))
+    ) {
       return currentDir;
     }
     currentDir = path.dirname(currentDir);

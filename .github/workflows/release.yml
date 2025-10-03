@@ -33,16 +33,16 @@ jobs:
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          python-version: "3.11"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
 
       - name: Update version and create tag
         id: version
         run: |
-          # Install toml tool for version bumping
-          pip install toml-cli
-
           # Get current version from pyproject.toml
-          CURRENT_VERSION=$(toml get --toml-path python/pyproject.toml project.version)
+          CURRENT_VERSION=$(uvx --from toml-cli toml get --toml-path python/pyproject.toml project.version)
 
           # Calculate new version based on release type
           IFS='.' read -r -a version_parts <<< "$CURRENT_VERSION"
@@ -64,7 +64,12 @@ jobs:
           NEW_VERSION="${major}.${minor}.${patch}"
 
           # Update version in pyproject.toml
-          toml set --toml-path python/pyproject.toml project.version "$NEW_VERSION"
+          uvx --from toml-cli toml set --toml-path python/pyproject.toml project.version "$NEW_VERSION"
+
+          # Update version in ingesters/package.json
+          tmp_json=$(mktemp)
+          jq --arg version "$NEW_VERSION" '.version = $version' ingesters/package.json > "$tmp_json"
+          mv "$tmp_json" ingesters/package.json
 
           echo "new-version=$NEW_VERSION" >> $GITHUB_OUTPUT
           echo "new-tag=v$NEW_VERSION" >> $GITHUB_OUTPUT
@@ -75,7 +80,7 @@ jobs:
           git config --local user.email "${{ github.actor }}@users.noreply.github.com"
           git config --local user.name "${{ github.actor }}"
 
-          git add python/pyproject.toml
+          git add python/pyproject.toml ingesters/package.json
           git commit -m "release: v$NEW_VERSION"
           git tag "v$NEW_VERSION"
           git push origin HEAD --tags

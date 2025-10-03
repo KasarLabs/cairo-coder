@@ -1,6 +1,6 @@
 {
   "name": "cairo-coder-ingester",
-  "version": "1.0.0",
+  "version": "0.2.2",
   "scripts": {
     "test": "bun test",
     "generate-embeddings": "bun run src/generateEmbeddings.ts",

@@ -3,7 +3,7 @@ name: Generate Embeddings
 on:
   schedule:
     # Run once per week on Sunday at 00:00 UTC
-    - cron: '0 0 * * 0'
+    - cron: "0 0 * * 0"
 
   # Allow manual triggering of the workflow
   workflow_dispatch:

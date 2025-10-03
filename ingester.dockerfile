@@ -1,6 +1,7 @@
 FROM oven/bun:1 AS base
 
 # Install common utilities
+# hadolint ignore=DL3008
 RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     git \
