@@ -6,37 +6,50 @@ import { logger } from '@cairo-coder/agents/utils/index';
 import { YES_MODE } from '../generateEmbeddings';
 
 /**
- * Find chunks that need to be updated or removed based on content hashes
+ * Find chunks that need to be updated or removed based on content hashes and metadata
  *
  * This function compares fresh chunks with stored chunks and determines which
- * chunks need to be updated (content has changed) and which need to be removed
+ * chunks need to be updated (content or metadata has changed) and which need to be removed
  * (no longer exist in the fresh chunks).
  *
  * @param freshChunks - Array of fresh Document objects
- * @param storedChunkHashes - Array of stored chunk hashes
+ * @param storedChunkHashes - Array of stored chunk hashes and metadata
  * @returns Object containing arrays of chunks to update and IDs of chunks to remove
  */
 export function findChunksToUpdateAndRemove(
-  freshChunks: Document<Record<string, any>>[],
-  storedChunkHashes: { uniqueId: string; contentHash: string }[],
+  freshChunks: Document<BookChunk>[],
+  storedChunkHashes: {
+    uniqueId: string;
+    metadata: BookChunk;
+  }[],
 ): {
-  chunksToUpdate: Document<Record<string, any>>[];
+  chunksToUpdate: Document<BookChunk>[];
   chunksToRemove: string[];
 } {
-  const storedHashesMap = new Map(
-    storedChunkHashes.map((chunk) => [chunk.uniqueId, chunk.contentHash]),
+  const storedDataMap = new Map(
+    storedChunkHashes.map((chunk) => [chunk.uniqueId, chunk.metadata]),
   );
   const freshChunksMap = new Map(
-    freshChunks.map((chunk) => [
-      chunk.metadata.uniqueId,
-      chunk.metadata.contentHash,
-    ]),
+    freshChunks.map((chunk) => [chunk.metadata.uniqueId, chunk]),
   );
 
-  // Find chunks that need to be updated (content has changed)
+  // Find chunks that need to be updated (content or metadata has changed)
   const chunksToUpdate = freshChunks.filter((chunk) => {
-    const storedHash = storedHashesMap.get(chunk.metadata.uniqueId);
-    return storedHash !== chunk.metadata.contentHash;
+    const storedMetadata = storedDataMap.get(chunk.metadata.uniqueId);
+    if (!storedMetadata) {
+      // New chunk that doesn't exist in storage
+      return true;
+    }
+    // Update if content hash changed or any metadata field changed
+    for (const key in chunk.metadata) {
+      if (
+        storedMetadata[key as keyof BookChunk] !==
+        chunk.metadata[key as keyof BookChunk]
+      ) {
+        return true;
+      }
+    }
+    return false;
   });
 
   // Find chunks that need to be removed (no longer exist in fresh chunks)
@@ -63,7 +76,8 @@ export async function updateVectorStore(
   source: DocumentSource,
 ): Promise<void> {
   // Get stored chunk hashes for the source
-  const storedChunkHashes = await vectorStore.getStoredBookPagesHashes(source);
+  const storedChunkHashes =
+    await vectorStore.getStoredBookPagesMetadata(source);
 
   // Find chunks to update and remove
   const { chunksToUpdate, chunksToRemove } = findChunksToUpdateAndRemove(

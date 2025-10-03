@@ -5,9 +5,6 @@ import * as fs from 'fs/promises';
 import { BookConfig, BookPageDto, ParsedSection } from '../utils/types';
 import { MarkdownIngester } from './MarkdownIngester';
 import { DocumentSource, logger } from '@cairo-coder/agents';
-import { Document } from '@langchain/core/documents';
-import { BookChunk } from '@cairo-coder/agents/types/index';
-import { calculateHash } from '../utils/contentUtils';
 
 export class StarknetJSIngester extends MarkdownIngester {
   private static readonly SKIPPED_DIRECTORIES = ['pictures', 'doc_scripts'];
@@ -19,6 +16,9 @@ export class StarknetJSIngester extends MarkdownIngester {
       fileExtension: '.md',
       chunkSize: 4096,
       chunkOverlap: 512,
+      baseUrl: 'https://starknetjs.com/docs/next/guides',
+      urlSuffix: '',
+      useUrlMapping: true,
     };
 
     super(config, DocumentSource.STARKNET_JS);
@@ -110,51 +110,5 @@ export class StarknetJSIngester extends MarkdownIngester {
     return content.replace(frontmatterRegex, '').trimStart();
   }
 
-  /**
-   * Create chunks from a single page with a proper source link to GitHub
-   * This overrides the default to attach a meaningful URL for UI display.
-   */
-  protected createChunkFromPage(
-    page_name: string,
-    page_content: string,
-  ): Document<BookChunk>[] {
-    const baseUrl =
-      'https://github.com/starknet-io/starknet.js/blob/main/www/docs/guides';
-    const pageUrl = `${baseUrl}/${page_name}.md`;
-
-    const localChunks: Document<BookChunk>[] = [];
-    const sanitizedContent = this.sanitizeCodeBlocks(
-      this.stripFrontmatter(page_content),
-    );
-
-    const sections = this.parsePage(sanitizedContent, true);
-
-    sections.forEach((section: ParsedSection, index: number) => {
-      // Reuse hashing and metadata shape from parent implementation by constructing Document directly
-      // Importantly, attach a stable page-level sourceLink for the UI
-      const content = section.content;
-      const title = section.title;
-      const uniqueId = `${page_name}-${index}`;
-
-      // Lightweight hash to keep parity with other ingesters without duplicating util impl
-      const contentHash = calculateHash(content);
-
-      localChunks.push(
-        new Document<BookChunk>({
-          pageContent: content,
-          metadata: {
-            name: page_name,
-            title,
-            chunkNumber: index,
-            contentHash,
-            uniqueId,
-            sourceLink: pageUrl,
-            source: this.source,
-          },
-        }),
-      );
-    });
-
-    return localChunks;
-  }
+  // Use default chunking; baseUrl/urlSuffix in config will provide website links
 }

@@ -34,6 +34,9 @@ export class CairoBookIngester extends MarkdownIngester {
       fileExtension: '.md',
       chunkSize: 4096,
       chunkOverlap: 512,
+      baseUrl: 'https://book.cairo-lang.org',
+      urlSuffix: '.html',
+      useUrlMapping: false,
     };
 
     super(config, DocumentSource.CAIRO_BOOK);
@@ -104,7 +107,7 @@ export class CairoBookIngester extends MarkdownIngester {
           chunkNumber: chunk.meta.chunkNumber, // Already 0-based
           contentHash: contentHash,
           uniqueId: chunk.meta.uniqueId,
-          sourceLink: '',
+          sourceLink: this.config.baseUrl,
           source: this.source,
         },
       });

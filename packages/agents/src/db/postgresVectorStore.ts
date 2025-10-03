@@ -1,7 +1,7 @@
 import { Embeddings } from '@langchain/core/embeddings';
 import { DocumentInterface } from '@langchain/core/documents';
 import { logger } from '../utils';
-import { VectorStoreConfig, DocumentSource } from '../types';
+import { VectorStoreConfig, DocumentSource, BookChunk } from '../types';
 import pg, { Pool, PoolClient } from 'pg';
 import { DatabaseError as PgError } from 'pg';
 
@@ -421,30 +421,33 @@ export class VectorStore {
   }
 
   /**
-   * Get hashes of stored book pages
+   * Get hashes and metadata of stored book pages
    * @param source - Source filter
-   * @returns Promise<Array<{uniqueId: string, contentHash: string}>>
+   * @returns Promise<Array<{uniqueId: string, metadata: BookChunk}>>
    */
-  async getStoredBookPagesHashes(
-    source: DocumentSource,
-  ): Promise<Array<{ uniqueId: string; contentHash: string }>> {
+  async getStoredBookPagesMetadata(source: DocumentSource): Promise<
+    Array<{
+      uniqueId: string;
+      metadata: BookChunk;
+    }>
+  > {
     try {
       const client = await this.pool.connect();
       try {
         const result = await client.query(
-          `SELECT uniqueId, contentHash FROM ${this.tableName} WHERE source = $1`,
+          `SELECT uniqueId, metadata FROM ${this.tableName} WHERE source = $1`,
           [source],
         );
 
         return result.rows.map((row) => ({
           uniqueId: row.uniqueid,
-          contentHash: row.contenthash,
+          metadata: row.metadata || {},
         }));
       } finally {
         client.release();
       }
     } catch (error) {
-      logger.error('Error getting stored book pages hashes:', error);
+      logger.error('Error getting stored book pages metadata:', error);
       throw DatabaseError.handlePgError(error as PgError);
     }
   }

@@ -36,6 +36,9 @@ export class StarknetDocsIngester extends MarkdownIngester {
       fileExtension: '.mdx',
       chunkSize: 4096,
       chunkOverlap: 512,
+      baseUrl: 'https://docs.starknet.io',
+      urlSuffix: '',
+      useUrlMapping: true,
     };
 
     super(config, DocumentSource.STARKNET_DOCS);

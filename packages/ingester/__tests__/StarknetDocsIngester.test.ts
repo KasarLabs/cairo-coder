@@ -17,6 +17,9 @@ describe('StarknetDocsIngester', () => {
       fileExtension: '.mdx',
       chunkSize: 4096,
       chunkOverlap: 512,
+      baseUrl: 'https://docs.starknet.io',
+      urlSuffix: '',
+      useUrlMapping: true,
     });
     // @ts-ignore - accessing protected property for testing
     expect(ingester.source).toBe(DocumentSource.STARKNET_DOCS);
