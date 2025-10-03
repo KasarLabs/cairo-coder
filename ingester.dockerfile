@@ -1,36 +1,38 @@
-FROM node:20 AS base
-ENV PNPM_HOME="/pnpm"
-ENV PATH="$PNPM_HOME:$PATH"
-RUN corepack enable
+FROM oven/bun:1 AS base
+
+# Install common utilities
+# hadolint ignore=DL3008
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl \
+    git \
+    unzip \
+    ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
-# Copy root workspace files
-COPY pnpm-workspace.yaml ./
-COPY package.json ./
-COPY pnpm-lock.yaml ./
-COPY turbo.json ./
+# Copy ingester files
+COPY ingesters ./ingesters
 
-# Copy ingester & agents packages
-COPY packages/ingester ./packages/ingester
-COPY packages/agents ./packages/agents
+# Copy .env file for configuration
+COPY .env ./.env
 
 # Copy ingester files generated from python
 COPY python/src/scripts/summarizer/generated ./python/src/scripts/summarizer/generated
 
-# Copy shared TypeScript config
-COPY packages/typescript-config ./packages/typescript-config
+# Install dependencies
+WORKDIR /app/ingesters
+RUN bun install
 
-RUN pnpm install --frozen-lockfile
-RUN pnpm install -g turbo
-
-# Install Antora
-RUN pnpm install -g @antora/cli @antora/site-generator
+# Install Antora globally
+RUN bun add -g @antora/cli @antora/site-generator
 
 # Install mdbook
 RUN curl -L https://github.com/rust-lang/mdBook/releases/download/v0.4.48/mdbook-v0.4.48-x86_64-unknown-linux-gnu.tar.gz | tar xz && \
     mv mdbook /usr/local/bin/
 
-# Set the command to run your script
-# Ensure this path is correct relative to the WORKDIR after build
-CMD ["turbo", "run", "generate-embeddings:yes"]
+# Set working directory to ingesters
+WORKDIR /app/ingesters
+
+# Run the ingestion script
+CMD ["bun", "run", "generate-embeddings:yes"]

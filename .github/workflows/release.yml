@@ -30,11 +30,46 @@ jobs:
         with:
           token: ${{ secrets.ADMIN_TOKEN }}
 
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
+
       - name: Update version and create tag
         id: version
         run: |
-          npm version ${{ inputs.release-type }} --no-git-tag-version
-          NEW_VERSION=$(node -p "require('./package.json').version")
+          # Get current version from pyproject.toml
+          CURRENT_VERSION=$(uvx --from toml-cli toml get --toml-path python/pyproject.toml project.version)
+
+          # Calculate new version based on release type
+          IFS='.' read -r -a version_parts <<< "$CURRENT_VERSION"
+          major="${version_parts[0]}"
+          minor="${version_parts[1]}"
+          patch="${version_parts[2]}"
+
+          if [ "${{ inputs.release-type }}" = "major" ]; then
+            major=$((major + 1))
+            minor=0
+            patch=0
+          elif [ "${{ inputs.release-type }}" = "minor" ]; then
+            minor=$((minor + 1))
+            patch=0
+          else
+            patch=$((patch + 1))
+          fi
+
+          NEW_VERSION="${major}.${minor}.${patch}"
+
+          # Update version in pyproject.toml
+          uvx --from toml-cli toml set --toml-path python/pyproject.toml project.version "$NEW_VERSION"
+
+          # Update version in ingesters/package.json
+          tmp_json=$(mktemp)
+          jq --arg version "$NEW_VERSION" '.version = $version' ingesters/package.json > "$tmp_json"
+          mv "$tmp_json" ingesters/package.json
 
           echo "new-version=$NEW_VERSION" >> $GITHUB_OUTPUT
           echo "new-tag=v$NEW_VERSION" >> $GITHUB_OUTPUT
@@ -45,7 +80,7 @@ jobs:
           git config --local user.email "${{ github.actor }}@users.noreply.github.com"
           git config --local user.name "${{ github.actor }}"
 
-          git add package.json
+          git add python/pyproject.toml ingesters/package.json
           git commit -m "release: v$NEW_VERSION"
           git tag "v$NEW_VERSION"
           git push origin HEAD --tags
