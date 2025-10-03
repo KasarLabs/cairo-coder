@@ -20,38 +20,25 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
         with:
-          node-version: 20
+          bun-version: latest
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v3
-        with:
-          version: 9.10.0
-
-      - name: Get pnpm store directory
-        id: pnpm-cache
-        shell: bash
-        run: |
-          echo "STORE_PATH=$(pnpm store path)" >> $GITHUB_OUTPUT
-
-      - name: Setup pnpm cache
+      - name: Cache Bun dependencies
         uses: actions/cache@v4
         with:
-          path: ${{ steps.pnpm-cache.outputs.STORE_PATH }}
-          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('pnpm-lock.yaml') || github.sha }}
+          path: ~/.bun/install/cache
+          key: ${{ runner.os }}-bun-${{ hashFiles('ingesters/bun.lock') }}
           restore-keys: |
-            ${{ runner.os }}-pnpm-store-
+            ${{ runner.os }}-bun-
 
-      - name: Install dependencies
-        run: pnpm install
+      - name: Install ingester dependencies
+        run: bun install
+        working-directory: ingesters
 
-      - name: Install turbo
-        run: pnpm add turbo@latest -g
-
-      - name: Install antora
-        run: pnpm add antora@latest -g
+      - name: Install Antora globally
+        run: bun add -g @antora/cli @antora/site-generator
 
       # Required to build starknet foundry
       - name: Install mdbook
@@ -98,4 +85,5 @@ jobs:
           EOL
 
       - name: Generate embeddings
-        run: turbo generate-embeddings:yes
+        run: bun run generate-embeddings:yes
+        working-directory: ingesters
