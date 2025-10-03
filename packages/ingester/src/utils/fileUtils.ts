@@ -1,7 +1,7 @@
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import { BookConfig, BookPageDto } from './types';
-import { logger } from '@cairo-coder/agents/utils/index';
+import { logger } from './logger';
 
 /**
  * Process documentation files from a directory

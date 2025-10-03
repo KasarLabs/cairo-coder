@@ -3,7 +3,7 @@ import * as path from 'path';
 import axios from 'axios';
 import AdmZip from 'adm-zip';
 import { Document } from '@langchain/core/documents';
-import { BookChunk, DocumentSource } from '@cairo-coder/agents/types/index';
+import { BookChunk, DocumentSource } from '../types';
 import { BaseIngester } from '../BaseIngester';
 import { BookConfig, BookPageDto, ParsedSection } from '../utils/types';
 import { processDocFiles } from '../utils/fileUtils';
@@ -13,7 +13,7 @@ import {
   createAnchor,
   addSectionWithSizeLimit,
 } from '../utils/contentUtils';
-import { logger } from '@cairo-coder/agents/utils/index';
+import { logger } from '../utils/logger';
 
 /**
  * Abstract ingester for Markdown-based documentation

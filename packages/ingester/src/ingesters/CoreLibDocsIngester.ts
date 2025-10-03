@@ -2,10 +2,10 @@ import * as fs from 'fs/promises';
 import * as path from 'path';
 import { BookConfig } from '../utils/types';
 import { MarkdownIngester } from './MarkdownIngester';
-import { BookChunk, DocumentSource } from '@cairo-coder/agents/types/index';
+import { BookChunk, DocumentSource } from '../types';
 import { Document } from '@langchain/core/documents';
-import { VectorStore } from '@cairo-coder/agents/db/postgresVectorStore';
-import { logger } from '@cairo-coder/agents/utils/index';
+import { VectorStore } from '../db/postgresVectorStore';
+import { logger } from '../utils/logger';
 import { calculateHash } from '../utils/contentUtils';
 import {
   RecursiveMarkdownSplitter,

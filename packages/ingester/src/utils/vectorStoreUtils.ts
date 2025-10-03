@@ -1,8 +1,8 @@
 import { Document } from '@langchain/core/documents';
 import { createInterface } from 'readline';
-import { VectorStore } from '@cairo-coder/agents/db/postgresVectorStore';
-import { BookChunk, DocumentSource } from '@cairo-coder/agents/types/index';
-import { logger } from '@cairo-coder/agents/utils/index';
+import { VectorStore } from '../db/postgresVectorStore';
+import { BookChunk, DocumentSource } from '../types';
+import { logger } from './logger';
 import { YES_MODE } from '../generateEmbeddings';
 
 /**

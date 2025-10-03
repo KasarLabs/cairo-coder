@@ -5,7 +5,7 @@ import { StarknetFoundryIngester } from '../src/ingesters/StarknetFoundryIngeste
 import { CairoByExampleIngester } from '../src/ingesters/CairoByExampleIngester';
 import { OpenZeppelinDocsIngester } from '../src/ingesters/OpenZeppelinDocsIngester';
 import { BaseIngester } from '../src/BaseIngester';
-import { DocumentSource } from '@cairo-coder/agents/types/index';
+import { DocumentSource } from '../src/types';
 
 // Mock the ingesters
 jest.mock('../src/ingesters/CairoBookIngester');

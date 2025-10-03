@@ -1,4 +1,4 @@
-import { DocumentSource } from '@cairo-coder/agents/types/index';
+import { DocumentSource } from '../src/types';
 
 describe('StarknetDocsIngester', () => {
   it('should be refactored to use MDX format', () => {

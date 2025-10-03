@@ -1,4 +1,4 @@
-import { DocumentSource } from '@cairo-coder/agents/types/index';
+import { DocumentSource } from './types';
 import { BaseIngester } from './BaseIngester';
 import { BookConfig } from './utils/types';
 

@@ -1,13 +1,9 @@
-import { BookConfig, BookPageDto } from '../utils/types';
+import { BookConfig, BookPageDto, ParsedSection } from '../utils/types';
 import { MarkdownIngester } from './MarkdownIngester';
-import {
-  BookChunk,
-  DocumentSource,
-  ParsedSection,
-} from '@cairo-coder/agents/types/index';
+import { BookChunk, DocumentSource } from '../types';
 import { Document } from '@langchain/core/documents';
-import { VectorStore } from '@cairo-coder/agents/db/postgresVectorStore';
-import { logger } from '@cairo-coder/agents/utils/index';
+import { VectorStore } from '../db/postgresVectorStore';
+import { logger } from '../utils/logger';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import { calculateHash } from '../utils/contentUtils';

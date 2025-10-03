@@ -1,10 +1,10 @@
 import { createHash } from 'crypto';
 import { Document } from '@langchain/core/documents';
-import { logger } from '@cairo-coder/agents/utils/index';
+import { logger } from './utils/logger';
 import * as fs from 'fs/promises';
 import * as path from 'path';
-import { VectorStore } from '@cairo-coder/agents/db/postgresVectorStore';
-import { BookChunk, DocumentSource } from '@cairo-coder/agents/types/index';
+import { VectorStore } from './db/postgresVectorStore';
+import { BookChunk, DocumentSource } from './types';
 
 export const MAX_SECTION_SIZE = 20000;
 

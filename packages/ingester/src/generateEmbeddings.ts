@@ -1,11 +1,8 @@
 import { createInterface } from 'readline';
-import { logger } from '@cairo-coder/agents/utils/index';
-import { VectorStore } from '@cairo-coder/agents/db/postgresVectorStore';
-import {
-  getOpenaiApiKey,
-  getVectorDbConfig,
-} from '@cairo-coder/agents/config/settings';
-import { DocumentSource } from '@cairo-coder/agents/types/index';
+import { logger } from './utils/logger';
+import { VectorStore } from './db/postgresVectorStore';
+import { getOpenaiApiKey, getVectorDbConfig } from './config/settings';
+import { DocumentSource } from './types';
 import { IngesterFactory } from './IngesterFactory';
 import { OpenAIEmbeddings } from '@langchain/openai';
 

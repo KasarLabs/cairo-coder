@@ -1,9 +1,9 @@
 import { Document } from '@langchain/core/documents';
-import { VectorStore } from '@cairo-coder/agents/db/postgresVectorStore';
-import { DocumentSource, BookChunk } from '@cairo-coder/agents/types/index';
+import { VectorStore } from './db/postgresVectorStore';
+import { DocumentSource, BookChunk } from './types';
 import { BookConfig, BookPageDto, ParsedSection } from './utils/types';
 import { updateVectorStore as updateVectorStoreUtil } from './utils/vectorStoreUtils';
-import { logger } from '@cairo-coder/agents/utils/index';
+import { logger } from './utils/logger';
 
 /**
  * Abstract base class for all document ingesters

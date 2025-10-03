@@ -1,4 +1,4 @@
-import { logger } from '@cairo-coder/agents/utils/index';
+import { logger } from './logger';
 
 // Public API interfaces
 export interface SplitOptions {
@@ -148,10 +148,16 @@ export class RecursiveMarkdownSplitter {
     );
 
     // Remove empty chunks
-    const nonEmptyChunks = rawChunks.filter((chunk) => chunk.content.trim().length > 0);
+    const nonEmptyChunks = rawChunks.filter(
+      (chunk) => chunk.content.trim().length > 0,
+    );
 
     // Attach metadata
-    return this.attachMetadata(nonEmptyChunks, normalizedMarkdown, tokens.headers);
+    return this.attachMetadata(
+      nonEmptyChunks,
+      normalizedMarkdown,
+      tokens.headers,
+    );
   }
 
   /**

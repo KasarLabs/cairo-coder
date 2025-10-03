@@ -1,7 +1,7 @@
 import * as path from 'path';
 import { BookConfig } from '../utils/types';
 import { MarkdownIngester } from './MarkdownIngester';
-import { DocumentSource } from '@cairo-coder/agents/types/index';
+import { DocumentSource } from '../types';
 
 /**
  * Ingester for the Cairo By Example documentation

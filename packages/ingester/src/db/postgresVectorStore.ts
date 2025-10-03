@@ -1,6 +1,6 @@
 import { Embeddings } from '@langchain/core/embeddings';
 import { DocumentInterface } from '@langchain/core/documents';
-import { logger } from '../utils';
+import { logger } from '../utils/logger';
 import { VectorStoreConfig, DocumentSource, BookChunk } from '../types';
 import pg, { Pool, PoolClient } from 'pg';
 import { DatabaseError as PgError } from 'pg';

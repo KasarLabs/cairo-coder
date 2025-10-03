@@ -1,4 +1,4 @@
-import { BookChunk, DocumentSource } from '@cairo-coder/agents';
+import { BookChunk, DocumentSource } from '../src/types';
 import { findChunksToUpdateAndRemove } from '../src/utils/vectorStoreUtils';
 import { Document } from '@langchain/core/documents';
 

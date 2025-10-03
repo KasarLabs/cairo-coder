@@ -4,7 +4,8 @@ import { promisify } from 'util';
 import * as fs from 'fs/promises';
 import { BookConfig, BookPageDto, ParsedSection } from '../utils/types';
 import { MarkdownIngester } from './MarkdownIngester';
-import { DocumentSource, logger } from '@cairo-coder/agents';
+import { DocumentSource } from '../types';
+import { logger } from '../utils/logger';
 
 export class StarknetJSIngester extends MarkdownIngester {
   private static readonly SKIPPED_DIRECTORIES = ['pictures', 'doc_scripts'];

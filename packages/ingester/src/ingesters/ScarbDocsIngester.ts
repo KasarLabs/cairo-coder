@@ -1,8 +1,8 @@
 import * as path from 'path';
-import { DocumentSource } from '@cairo-coder/agents/types/index';
+import { DocumentSource } from '../types';
 import { BookConfig, BookPageDto } from '../utils/types';
 import { processDocFiles } from '../utils/fileUtils';
-import { logger } from '@cairo-coder/agents/utils/index';
+import { logger } from '../utils/logger';
 import { exec as execCallback } from 'child_process';
 import { promisify } from 'util';
 import { MarkdownIngester } from './MarkdownIngester';
