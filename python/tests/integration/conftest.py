@@ -47,8 +47,11 @@ def patch_dspy_streaming_success(monkeypatch):
 
 
 @pytest.fixture
-def patch_dspy_streaming_error(monkeypatch):
-    """Patch dspy.streamify to raise an error mid-stream and provide StreamListener."""
+def patch_dspy_streaming_error(monkeypatch, real_pipeline):
+    """Patch dspy.streamify to raise an error mid-stream and provide StreamListener.
+
+    Also patches the real_pipeline's generation_program.aforward_streaming to raise errors.
+    """
     import dspy
 
     class FakeStreamResponse:  # unused but parity if code inspects it
@@ -76,6 +79,13 @@ def patch_dspy_streaming_error(monkeypatch):
         return runner
 
     monkeypatch.setattr(dspy, "streamify", fake_streamify)
+
+    # Also patch the real_pipeline's streaming method to raise an error
+    async def _error_streaming(query: str, context: str, chat_history: str | None = None):
+        raise RuntimeError("unhandled errors in a TaskGroup (1 sub-exception)")
+        yield "unreachable"  # pragma: no cover
+
+    real_pipeline.generation_program.aforward_streaming = _error_streaming
 
 
 @pytest.fixture
@@ -126,7 +136,12 @@ def real_pipeline(mock_query_processor, mock_vector_store_config, mock_vector_db
         idx = min((len(lines)) // 2, len(responses) - 1)
         return _dspy.Prediction(answer=responses[idx])
 
+    async def _fake_gen_aforward_streaming(query: str, context: str, chat_history: str | None = None):
+        yield "Hello! I'm Cairo Coder, "
+        yield "ready to help with Cairo programming."
+
     pipeline.generation_program.aforward = AsyncMock(side_effect=_fake_gen_aforward)
+    pipeline.generation_program.aforward_streaming =_fake_gen_aforward_streaming
     pipeline.generation_program.get_lm_usage = Mock(return_value={})
 
     # Patch MCP generation to a deterministic simple string as tests expect

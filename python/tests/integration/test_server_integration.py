@@ -138,7 +138,7 @@ class TestServerIntegration:
             if "content" in delta:
                 chunks.append(delta["content"])
 
-        assert "".join(chunks) == "Hello world"
+        assert "".join(chunks) == "Hello! I'm Cairo Coder, ready to help with Cairo programming."
 
     def test_error_handling_integration(self, client: TestClient, mock_agent_factory: Mock):
         """Test error handling in integration context."""
@@ -289,12 +289,12 @@ class TestServerIntegration:
         client: TestClient,
         patch_dspy_streaming_error,
     ):
-        """Test that streaming errors surface as an SSE error chunk using a real pipeline."""
-
         response = client.post(
             "/v1/chat/completions",
-            json={"messages": [{"role": "user", "content": "Hello"}], "stream": True},
+            json={"messages": [{"role": "user", "content": "hello"}], "stream": True},
         )
+        assert response.status_code == 200
+        assert "text/event-stream" in response.headers.get("content-type", "")
 
         assert response.status_code == 200
 
@@ -307,10 +307,13 @@ class TestServerIntegration:
                 if data_str != "[DONE]":
                     chunks.append(json.loads(data_str))
 
-        # Should have error chunk
+        # Should have error chunk (filter out sources events first)
         error_found = False
         for chunk in chunks:
-            if chunk["choices"][0]["finish_reason"] == "stop":
+            # Skip sources events
+            if chunk.get("type") == "sources":
+                continue
+            if "choices" in chunk and chunk["choices"][0]["finish_reason"] == "stop":
                 content = chunk["choices"][0]["delta"].get("content", "")
                 if "Error:" in content:
                     error_found = True
@@ -452,7 +455,10 @@ class TestOpenAICompatibility:
                 if data_str != "[DONE]":
                     chunks.append(json.loads(data_str))
 
-        for chunk in chunks:
+        # Filter out sources events (custom event type for frontend)
+        openai_chunks = [chunk for chunk in chunks if chunk.get("type") != "sources"]
+
+        for chunk in openai_chunks:
             required_fields = ["id", "object", "created", "model", "choices"]
             for field in required_fields:
                 assert field in chunk
@@ -461,6 +467,36 @@ class TestOpenAICompatibility:
             choice_fields = ["index", "delta", "finish_reason"]
             for field in choice_fields:
                 assert field in choice
+
+    def test_streaming_sources_emission(self, client: TestClient):
+        """Test that sources are emitted during streaming."""
+        response = client.post(
+            "/v1/chat/completions",
+            json={"messages": [{"role": "user", "content": "Hello"}], "stream": True},
+        )
+        assert response.status_code == 200
+
+        lines = response.text.strip().split("\n")
+        chunks = []
+        for line in lines:
+            if line.startswith("data: "):
+                data_str = line[6:]
+                if data_str != "[DONE]":
+                    chunks.append(json.loads(data_str))
+
+        # Check for sources event
+        sources_events = [chunk for chunk in chunks if chunk.get("type") == "sources"]
+        assert len(sources_events) > 0, "Sources event should be emitted"
+
+        # Verify sources event structure
+        sources_event = sources_events[0]
+        assert "data" in sources_event
+        assert isinstance(sources_event["data"], list)
+
+        # Verify each source has required fields
+        for source in sources_event["data"]:
+            assert "title" in source['metadata']
+            assert "url" in source['metadata']
 
     def test_openai_error_response_structure(self, client: TestClient, mock_agent_factory: Mock):
         """Test that error response structure matches OpenAI API."""
@@ -514,7 +550,9 @@ class TestMCPModeCompatibility:
                     chunks.append(json.loads(data_str))
 
         assert len(chunks) > 0
-        content_found = any(chunk["choices"][0]["delta"].get("content") for chunk in chunks)
+        # Filter out sources events
+        openai_chunks = [chunk for chunk in chunks if chunk.get("type") != "sources"]
+        content_found = any(chunk["choices"][0]["delta"].get("content") for chunk in openai_chunks if "choices" in chunk)
         assert content_found
 
     def test_mcp_mode_header_variations(self, client: TestClient):

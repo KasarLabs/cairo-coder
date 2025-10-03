@@ -150,13 +150,8 @@ class TestMcpGenerationProgram:
         for i, doc in enumerate(sample_documents, 1):
             assert f"## {i}." in answer
 
-            # Check source display
-            source_display = doc.metadata.get("source_display", "Unknown Source")
-            assert f"**Source:** {source_display}" in answer
-
             # Check URL
-            url = doc.metadata.get("url", "#")
-            assert f"**URL:** {url}" in answer
+            assert f"**URL:** {doc.source_link}" in answer
 
             # Check content is included
             assert doc.page_content in answer
@@ -175,11 +170,8 @@ class TestMcpGenerationProgram:
 
         answer = (await mcp_program.aforward(documents)).answer
 
-        assert isinstance(answer, str)
-        assert "Some Cairo content" in answer
-        assert "Document 1" in answer  # Default title
-        assert "Unknown Source" in answer  # Default source
-        assert "**URL:** #" in answer  # Default URL
+        # 1. title (empty) 2. source (empty) 3. url (empty) 4. title (empty) 5. content
+        assert answer == """\n## 1. Some Cairo content\n\n**Source:** None\n**URL:** None\n\nSome Cairo content\n\n---\n"""
 
 
 class TestCairoCodeGeneration:

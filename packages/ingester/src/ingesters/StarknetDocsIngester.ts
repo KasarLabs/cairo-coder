@@ -36,7 +36,7 @@ export class StarknetDocsIngester extends MarkdownIngester {
       fileExtension: '.mdx',
       chunkSize: 4096,
       chunkOverlap: 512,
-      baseUrl: 'https://docs.starknet.io',
+      baseUrl: StarknetDocsIngester.BASE_URL,
       urlSuffix: '',
       useUrlMapping: true,
     };
@@ -68,7 +68,7 @@ export class StarknetDocsIngester extends MarkdownIngester {
     const exec = promisify(execCallback);
     try {
       // remove extractDir if it exists
-      await fs.rm(extractDir, { recursive: true, force: true });
+      await fs.rm(extractDir, { recursive: true, force: true }).catch(() => {});
       await exec(`git clone ${repoUrl} ${extractDir}`);
     } catch (error) {
       logger.error('Error cloning repository:', error);
@@ -83,7 +83,7 @@ export class StarknetDocsIngester extends MarkdownIngester {
     for (const folder of StarknetDocsIngester.DOCS_FOLDERS) {
       const docsDir = path.join(extractDir, folder);
       try {
-        const folderPages = await this.processDocFiles(this.config, docsDir);
+        const folderPages = await this.processDocFiles(docsDir);
         pages.push(...folderPages);
         logger.info(`Processed ${folderPages.length} pages from ${folder}/`);
       } catch (error) {
@@ -101,16 +101,13 @@ export class StarknetDocsIngester extends MarkdownIngester {
   /**
    * Process documentation files from a directory
    *
+   * @param config - The book configuration
    * @param directory - The directory to process
    * @returns Promise<BookPageDto[]> - Array of book pages
    */
-  private async processDocFiles(
-    config: BookConfig,
-    directory: string,
-  ): Promise<BookPageDto[]> {
+  private async processDocFiles(directory: string): Promise<BookPageDto[]> {
     const pages: BookPageDto[] = [];
-
-    async function processDirectory(dir: string) {
+    const processDirectory = async (dir: string) => {
       const entries = await fs.readdir(dir, { withFileTypes: true });
 
       for (const entry of entries) {
@@ -121,13 +118,13 @@ export class StarknetDocsIngester extends MarkdownIngester {
           await processDirectory(fullPath);
         } else if (
           entry.isFile() &&
-          path.extname(entry.name).toLowerCase() === config.fileExtension
+          path.extname(entry.name).toLowerCase() === this.config.fileExtension
         ) {
           // Process MDX files
           const content = await fs.readFile(fullPath, 'utf8');
 
           // Remove the repository path to get relative path
-          const relativePath = path.relative(directory, fullPath);
+          const relativePath = path.relative(this.getExtractDir(), fullPath);
           const pageName = relativePath.replace('.mdx', '');
 
           pages.push({
@@ -136,7 +133,7 @@ export class StarknetDocsIngester extends MarkdownIngester {
           });
         }
       }
-    }
+    };
 
     await processDirectory(directory);
     return pages;
@@ -280,7 +277,7 @@ export class StarknetDocsIngester extends MarkdownIngester {
     // Create a document for each section
     sections.forEach((section, index: number) => {
       logger.debug(
-        `Processed a section with title: ${section.title} and content length: ${section.content.length} from page: ${page_name}`,
+        `Processed a section with title: ${section.title} and content length: ${section.content.length} from page: ${page_name} with sourceUrl: ${sourceUrl}`,
       );
       const hash: string = calculateHash(section.content);
       localChunks.push(

@@ -263,8 +263,7 @@ def sample_documents():
                 "source": "cairo_book",
                 "score": 0.9,
                 "title": "Introduction to Cairo",
-                "url": "https://book.cairo-lang.org/ch01-00-getting-started.html",
-                "source_display": "Cairo Book",
+                "sourceLink": "https://book.cairo-lang.org/ch01-00-getting-started.html",
             },
         ),
         Document(
@@ -273,8 +272,7 @@ def sample_documents():
                 "source": "starknet_docs",
                 "score": 0.8,
                 "title": "What is Starknet",
-                "url": "https://docs.starknet.io/documentation/architecture_and_concepts/Network_Architecture/overview/",
-                "source_display": "Starknet Docs",
+                "sourceLink": "https://docs.starknet.io/documentation/architecture_and_concepts/Network_Architecture/overview/",
             },
         ),
         Document(
@@ -283,8 +281,7 @@ def sample_documents():
                 "source": "scarb_docs",
                 "score": 0.7,
                 "title": "Scarb Overview",
-                "url": "https://docs.swmansion.com/scarb/",
-                "source_display": "Scarb Docs",
+                "sourceLink": "https://docs.swmansion.com/scarb/",
             },
         ),
         Document(
@@ -293,8 +290,7 @@ def sample_documents():
                 "source": "openzeppelin_docs",
                 "score": 0.6,
                 "title": "OpenZeppelin Cairo",
-                "url": "https://docs.openzeppelin.com/contracts-cairo/",
-                "source_display": "OpenZeppelin Docs",
+                "sourceLink": "https://docs.openzeppelin.com/contracts-cairo/",
             },
         ),
     ]
@@ -376,7 +372,7 @@ def mock_generation_program():
         yield "Here's how to write "
         yield "Cairo contracts..."
 
-    program.forward_streaming = Mock(return_value=mock_streaming())
+    program.aforward_streaming = mock_streaming
     return program
 
 
@@ -428,7 +424,7 @@ def mock_retrieval_judge():
         """Filter documents based on scores."""
         filtered = []
         for doc in documents:
-            title = doc.metadata.get("title", "")
+            title = doc.title
             score = default_score_map.get(title, 0.5)
 
             # Add judge metadata

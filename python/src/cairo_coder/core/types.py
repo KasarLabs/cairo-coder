@@ -3,7 +3,7 @@
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
-from typing import Any
+from typing import Any, Optional, TypedDict
 
 from pydantic import BaseModel
 
@@ -40,6 +40,29 @@ class DocumentSource(str, Enum):
     STARKNET_JS = "starknet_js"
 
 
+class DocumentMetadata(TypedDict, total=False):
+    """
+    Metadata structure for documents, matching the TypeScript ingester format.
+
+    All fields are optional (total=False) to maintain backward compatibility
+    with existing code that may not provide all fields.
+    """
+
+    # Core identification fields
+    name: str  # Page name (e.g., "ch01-01-installation")
+    title: str  # Section title
+    uniqueId: str  # Unique identifier (format: "{page_name}-{chunkNumber}")
+    contentHash: str  # Hash of the content for change detection
+    chunkNumber: int  # Index of this chunk within the page
+
+    # Source fields
+    source: DocumentSource  # DocumentSource value (e.g., "cairo_book")
+    sourceLink: str  # Full URL to the source documentation
+
+    # Additional metadata fields that may be present
+    similarity: Optional[float]  # Similarity score from retrieval (if include_similarity=True)
+
+
 @dataclass
 class ProcessedQuery:
     """Processed query with extracted information."""
@@ -53,10 +76,15 @@ class ProcessedQuery:
 
 @dataclass(frozen=True)
 class Document:
-    """Document with content and metadata."""
+    """
+    Document with content and metadata.
+
+    The metadata field follows the DocumentMetadata structure defined by the TypeScript
+    ingester, ensuring consistency across the Python and TypeScript codebases.
+    """
 
     page_content: str
-    metadata: dict[str, Any] = field(default_factory=dict)
+    metadata: DocumentMetadata = field(default_factory=dict)  # type: ignore[assignment]
 
     @property
     def source(self) -> str | None:
@@ -66,12 +94,12 @@ class Document:
     @property
     def title(self) -> str | None:
         """Get document title from metadata."""
-        return self.metadata.get("title")
+        return self.metadata.get("title", self.page_content[:20])
 
     @property
-    def url(self) -> str | None:
-        """Get document URL from metadata."""
-        return self.metadata.get("url")
+    def source_link(self) -> str | None:
+        """Get document source link from metadata."""
+        return self.metadata.get("sourceLink")
 
     def __hash__(self) -> int:
         """Make Document hashable by using page_content and a frozen representation of metadata."""

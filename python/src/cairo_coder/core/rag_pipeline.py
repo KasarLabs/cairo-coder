@@ -13,7 +13,6 @@ from typing import Any
 import dspy
 import structlog
 from dspy.adapters import XMLAdapter
-from dspy.adapters.baml_adapter import BAMLAdapter
 from dspy.utils.callback import BaseCallback
 from langsmith import traceable
 
@@ -47,7 +46,9 @@ class AgentLoggingCallback(BaseCallback):
         logger.debug("Starting module", call_id=call_id, inputs=inputs)
 
     # 2. Implement on_module_end handler to run a custom logging code.
-    def on_module_end(self, call_id: str, outputs: dict[str, Any], exception: Exception | None) -> None:
+    def on_module_end(
+        self, call_id: str, outputs: dict[str, Any], exception: Exception | None
+    ) -> None:
         step = "Reasoning" if self._is_reasoning_output(outputs) else "Acting"
         logger.debug(f"== {step} Step ===")
         for k, v in outputs.items():
@@ -109,7 +110,9 @@ class RagPipeline(dspy.Module):
         sources: list[DocumentSource] | None = None,
     ) -> tuple[ProcessedQuery, list[Document]]:
         """Process query and retrieve documents - shared async logic."""
-        processed_query = await self.query_processor.aforward(query=query, chat_history=chat_history_str)
+        processed_query = await self.query_processor.aforward(
+            query=query, chat_history=chat_history_str
+        )
         self._current_processed_query = processed_query
 
         # Use provided sources or fall back to processed query sources
@@ -119,7 +122,10 @@ class RagPipeline(dspy.Module):
         )
 
         try:
-            with dspy.context(lm=dspy.LM("gemini/gemini-flash-lite-latest", max_tokens=10000, temperature=0.5), adapter=BAMLAdapter()):
+            with dspy.context(
+                lm=dspy.LM("gemini/gemini-flash-lite-latest", max_tokens=10000, temperature=0.5),
+                adapter=XMLAdapter(),
+            ):
                 documents = await self.retrieval_judge.aforward(query=query, documents=documents)
         except Exception as e:
             logger.warning(
@@ -146,7 +152,9 @@ class RagPipeline(dspy.Module):
         processed_query, documents = await self._aprocess_query_and_retrieve_docs(
             query, chat_history_str, sources
         )
-        logger.info(f"Processed query: {processed_query.original[:100]}... and retrieved {len(documents)} doc titles: {[doc.metadata.get('title') for doc in documents]}")
+        logger.info(
+            f"Processed query: {processed_query.original[:100]}... and retrieved {len(documents)} doc titles: {[doc.metadata.get('title') for doc in documents]}"
+        )
 
         if mcp_mode:
             return await self.mcp_generation_program.aforward(documents)
@@ -183,7 +191,9 @@ class RagPipeline(dspy.Module):
             chat_history_str = self._format_chat_history(chat_history or [])
 
             # Stage 2: Retrieve documents
-            yield StreamEvent(type=StreamEventType.PROCESSING, data="Retrieving relevant documents...")
+            yield StreamEvent(
+                type=StreamEventType.PROCESSING, data="Retrieving relevant documents..."
+            )
 
             processed_query, documents = await self._aprocess_query_and_retrieve_docs(
                 query, chat_history_str, sources
@@ -194,7 +204,9 @@ class RagPipeline(dspy.Module):
 
             if mcp_mode:
                 # MCP mode: Return raw documents
-                yield StreamEvent(type=StreamEventType.PROCESSING, data="Formatting documentation...")
+                yield StreamEvent(
+                    type=StreamEventType.PROCESSING, data="Formatting documentation..."
+                )
 
                 mcp_prediction = self.mcp_generation_program.forward(documents)
                 yield StreamEvent(type=StreamEventType.RESPONSE, data=mcp_prediction.answer)
@@ -205,9 +217,12 @@ class RagPipeline(dspy.Module):
                 # Prepare context for generation
                 context = self._prepare_context(documents)
 
-                # Stream response generation. BAMLAdapter is not available for streaming, thus we swap it with the default adapter.
-                with dspy.context(lm=dspy.LM("gemini/gemini-flash-lite-latest", max_tokens=10000), adapter=XMLAdapter()):
-                    async for chunk in self.generation_program.forward_streaming(
+                # Stream response generation. Use ChatAdapter for streaming, which performs better.
+                with dspy.context(
+                    lm=dspy.LM("gemini/gemini-flash-lite-latest", max_tokens=10000),
+                    adapter=dspy.adapters.ChatAdapter(),
+                ):
+                    async for chunk in self.generation_program.aforward_streaming(
                         query=query, context=context, chat_history=chat_history_str
                     ):
                         yield StreamEvent(type=StreamEventType.RESPONSE, data=chunk)
@@ -218,6 +233,7 @@ class RagPipeline(dspy.Module):
         except Exception as e:
             # Handle pipeline errors
             import traceback
+
             traceback.print_exc()
             logger.error("Pipeline error", error=e)
             yield StreamEvent(StreamEventType.ERROR, data=f"Pipeline error: {str(e)}")
@@ -269,24 +285,22 @@ class RagPipeline(dspy.Module):
 
     def _format_sources(self, documents: list[Document]) -> list[dict[str, Any]]:
         """
-        Format documents for sources event.
+        Format documents for the frontend-friendly sources event.
+
+        Produces a flat structure with `title` and `url` keys for each source,
+        mapping either `metadata.sourceLink` or `metadata.url` to the `url` field.
 
         Args:
             documents: List of retrieved documents
 
         Returns:
-            List of formatted source information
+            List of dicts: [{"title": str, "url": str}, ...]
         """
-        sources = []
+        sources: list[dict[str, str]] = []
         for doc in documents:
-            source_info = {
-                "title": doc.metadata.get("title", "Untitled"),
-                "url": doc.metadata.get("url", "#"),
-                "source_display": doc.metadata.get("source_display", "Unknown Source"),
-                "content_preview": doc.page_content[:SOURCE_PREVIEW_MAX_LEN]
-                + ("..." if len(doc.page_content) > SOURCE_PREVIEW_MAX_LEN else ""),
-            }
-            sources.append(source_info)
+            if doc.source_link is None:
+                continue
+            sources.append({"metadata": {"title": doc.title, "url": doc.source_link}})
 
         return sources
 

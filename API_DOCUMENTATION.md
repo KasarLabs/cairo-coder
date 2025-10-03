@@ -193,6 +193,24 @@ data: {"id":"...","object":"chat.completion.chunk","created":1718123456,"model":
 data: [DONE]
 ```
 
+#### Sources Events (streaming-only)
+
+In addition to the OpenAI-compatible chunks above, Cairo Coder emits a custom SSE frame early in the stream with the documentation sources used for the answer. This enables frontends to display sources while the model is generating the response.
+
+- The frame shape is: `data: {"type": "sources", "data": [{"title": string, "url": string}, ...]}`
+- Clients should filter out objects with `type == "sources"` from the OpenAI chunks stream if they only expect OpenAI-compatible frames.
+
+Example snippet:
+
+```json
+data: {"type":"sources","data":[{"metadata":{"title":"Introduction to Cairo","url":"https://book.cairo-lang.org/ch01-00-getting-started.html"}}]}
+```
+
+Notes:
+
+- Exactly one sources event is typically emitted per request, shortly after retrieval completes.
+- The `url` field maps to the ingester `sourceLink` when available; otherwise it may be a best-effort `url` present in metadata.
+
 ### Agent Selection
 
 `POST /v1/agents/{agent_id}/chat/completions` validates that `{agent_id}` exists. Unknown IDs return `404 Not Found` with an OpenAI-style error payload. When the `agent_id` is omitted (`/v1/chat/completions` or `/chat/completions`) the server falls back to `cairo-coder`.
@@ -203,6 +221,7 @@ Setting either `mcp` or `x-mcp-mode` headers triggers **Model Context Protocol m
 
 - Non-streaming responses still use the standard `chat.completion` envelope, but `choices[0].message.content` contains curated documentation blocks instead of prose answers.
 - Streaming responses emit the same SSE wrapper; the payloads contain the formatted documentation as incremental `delta.content` strings.
+- A streaming request in MCP mode also includes the same `{"type": "sources"}` event described above.
 - MCP mode does not consume generation tokens (`usage.completion_tokens` reflects only retrieval/query processing).
 
 Example non-streaming request:
