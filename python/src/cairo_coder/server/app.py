@@ -16,7 +16,7 @@ from contextlib import asynccontextmanager
 import dspy
 import structlog
 import uvicorn
-from dspy.adapters.baml_adapter import BAMLAdapter
+from dspy.adapters import XMLAdapter
 from fastapi import Depends, FastAPI, Header, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
@@ -171,7 +171,7 @@ class CairoCoderServer:
 
         # TODO: This is the place where we should select the proper LLM configuration.
         # TODO: For now we just Hard-code DSPY - GEMINI
-        dspy.configure(lm=dspy.LM("gemini/gemini-flash-latest", max_tokens=30000, cache=False), adapter=BAMLAdapter())
+        dspy.configure(lm=dspy.LM("gemini/gemini-flash-latest", max_tokens=30000, cache=False), adapter=XMLAdapter())
         dspy.configure(callbacks=[AgentLoggingCallback()])
         dspy.configure(track_usage=True)
 
@@ -382,8 +382,12 @@ class CairoCoderServer:
                 query=query, chat_history=history, mcp_mode=mcp_mode
             ):
                 if event.type == "sources":
-                    # Currently not surfaced in OpenAI stream format; ignore or map if needed.
-                    pass
+                    # Emit sources event for clients to display
+                    sources_chunk = {
+                        "type": "sources",
+                        "data": event.data,
+                    }
+                    yield f"data: {json.dumps(sources_chunk)}\n\n"
                 elif event.type == "response":
                     content_buffer += event.data
 

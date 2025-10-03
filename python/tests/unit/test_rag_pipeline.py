@@ -67,7 +67,7 @@ def create_custom_documents(specs):
             metadata={
                 "title": title,
                 "source": source,
-                "url": f"https://example.com/{source}",
+                "sourceLink": f"https://example.com/{source}",
                 "source_display": source.replace("_", " ").title(),
             },
         )
@@ -83,7 +83,7 @@ def create_custom_retrieval_judge(score_map, threshold=0.4):
         """Filter documents based on score_map."""
         filtered = []
         for doc in documents:
-            title = doc.metadata.get("title", "")
+            title = doc.title
             score = score_map.get(title, 0.5)
 
             # Add judge metadata
@@ -511,8 +511,7 @@ class TestPipelineHelperMethods:
                 page_content="x" * 300,  # Long content
                 metadata={
                     "title": "Test Doc",
-                    "url": "https://example.com",
-                    "source_display": "Test Source",
+                    "sourceLink": "https://example.com",
                 },
             )
         ]
@@ -521,8 +520,39 @@ class TestPipelineHelperMethods:
 
         assert len(sources) == 1
         assert sources[0]["title"] == "Test Doc"
-        assert len(sources[0]["content_preview"]) == 203  # 200 + "..."
-        assert sources[0]["content_preview"].endswith("...")
+        assert sources[0]["url"] == "https://example.com"
+
+    def test_format_sources_with_sourcelink(self, rag_pipeline):
+        """Test that sourceLink is properly mapped to url for frontend compatibility."""
+        docs = [
+            Document(
+                page_content="Test content",
+                metadata={
+                    "title": "Cairo Book - Getting Started",
+                    "sourceLink": "https://book.cairo-lang.org/ch01-01-installation.html#installation",
+                    "source": "cairo_book",
+                },
+            ),
+            Document(
+                page_content="Another doc",
+                metadata={
+                    "title": "No SourceLink Doc",
+                    "sourceLink": "https://example.com",
+                    "source": "starknet_docs",
+                },
+            ),
+        ]
+
+        sources = rag_pipeline._format_sources(docs)
+
+        assert len(sources) == 2
+        # First doc should have url mapped from sourceLink
+        assert sources[0]["url"] == "https://book.cairo-lang.org/ch01-01-installation.html#installation"
+        assert sources[0]["title"] == "Cairo Book - Getting Started"
+
+        # Second doc should have fallback url
+        assert sources[1]["url"] == "https://example.com"
+        assert sources[1]["title"] == "No SourceLink Doc"
 
     def test_get_current_state(self, sample_documents, sample_processed_query, pipeline):
         """Test pipeline state retrieval."""

@@ -117,7 +117,7 @@ class GenerationProgram(dspy.Module):
                 raise e
         return None
 
-    async def forward_streaming(
+    async def aforward_streaming(
         self, query: str, context: str, chat_history: Optional[str] = None
     ) -> AsyncGenerator[str, None]:
         """
@@ -134,22 +134,23 @@ class GenerationProgram(dspy.Module):
         if chat_history is None:
             chat_history = ""
 
+
         # Create a streamified version of the generation program
         stream_generation = dspy.streamify(
             self.generation_program,
-            stream_listeners=[dspy.streaming.StreamListener(signature_field_name="answer")],  # type: ignore
+            stream_listeners=[dspy.streaming.StreamListener(signature_field_name="answer")],
         )
 
         # Execute the streaming generation. Do not swallow exceptions here;
         # let them propagate so callers can emit structured error events.
-        output_stream = stream_generation(  # type: ignore
-            query=query, context=context, chat_history=chat_history  # type: ignore
+        output_stream = stream_generation(
+            query=query, context=context, chat_history=chat_history
         )
 
         # Process the stream and yield tokens
         is_cached = True
         async for chunk in output_stream:
-            if isinstance(chunk, dspy.streaming.StreamResponse):  # type: ignore
+            if isinstance(chunk, dspy.streaming.StreamResponse):
                 # No streaming if cached
                 is_cached = False
                 # Yield the actual token content
@@ -215,9 +216,9 @@ class McpGenerationProgram(dspy.Module):
 
         formatted_docs = []
         for i, doc in enumerate(documents, 1):
-            source = doc.metadata.get("source_display", "Unknown Source")
-            url = doc.metadata.get("url", "#")
-            title = doc.metadata.get("title", f"Document {i}")
+            source = doc.source
+            url = doc.source_link
+            title = doc.title
 
             formatted_doc = f"""
 ## {i}. {title}

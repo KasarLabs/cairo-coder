@@ -235,12 +235,12 @@ class TestDocumentRetrieverProgram:
         )
         mock_vector_db.aforward.return_value = mock_dspy_examples
 
-        result = await retriever.aforward(query)
+        result: list[Document] = await retriever.aforward(query)
 
         found_templates = {
-            doc.metadata.get("source")
+            doc.source
             for doc in result
-            if "Template" in doc.metadata.get("source", "")
+            if "Template" in doc.source
         }
         assert set(expected_templates) == found_templates
 
