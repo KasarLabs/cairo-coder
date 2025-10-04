@@ -203,7 +203,7 @@ class GenerationProgram(dspy.Module):
         """
         return self.generation_program.get_lm_usage()
 
-    @traceable(name="GenerationProgram", run_type="llm")
+    @traceable(name="GenerationProgram", run_type="llm", metadata={"llm_provider": dspy.settings.lm})
     async def aforward(self, query: str, context: str, chat_history: Optional[str] = None) -> dspy.Prediction | None :
         """
         Generate Cairo code response based on query and context - async

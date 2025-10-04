@@ -123,7 +123,7 @@ class QueryProcessorProgram(dspy.Module):
             "foundry",
         }
 
-    @traceable(name="QueryProcessorProgram", run_type="llm")
+    @traceable(name="QueryProcessorProgram", run_type="llm", metadata={"llm_provider": dspy.settings.lm})
     async def aforward(self, query: str, chat_history: Optional[str] = None) -> ProcessedQuery:
         """
         Process a user query into a structured format for document retrieval.

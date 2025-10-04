@@ -10,6 +10,7 @@ from dataclasses import dataclass
 from typing import Any
 
 import dspy
+import langsmith as ls
 import structlog
 from dspy.adapters import XMLAdapter
 from dspy.utils.callback import BaseCallback
@@ -164,6 +165,7 @@ class RagPipeline(dspy.Module):
             query=query, context=context, chat_history=chat_history_str
         )
 
+
     async def aforward_streaming(
         self,
         query: str,
@@ -218,13 +220,15 @@ class RagPipeline(dspy.Module):
 
                 # Stream response generation. Use ChatAdapter for streaming, which performs better.
                 with dspy.context(
-                    lm=dspy.LM("gemini/gemini-flash-lite-latest", max_tokens=10000),
-                    adapter=dspy.adapters.XMLAdapter(),
-                ):
-                    async for chunk in self.generation_program.aforward_streaming(
-                        query=query, context=context, chat_history=chat_history_str
-                    ):
-                        yield StreamEvent(type=StreamEventType.RESPONSE, data=chunk)
+                    adapter=dspy.adapters.ChatAdapter()
+                ), ls.trace(name="GenerationProgramStreaming", run_type="llm", inputs={"query": query, "chat_history": chat_history_str, "context": context}) as rt:
+                        chunk_accumulator = ""
+                        async for chunk in self.generation_program.aforward_streaming(
+                            query=query, context=context, chat_history=chat_history_str
+                        ):
+                            chunk_accumulator += chunk
+                            yield StreamEvent(type=StreamEventType.RESPONSE, data=chunk)
+                        rt.end(outputs={"output": chunk_accumulator})
 
             # Pipeline completed
             yield StreamEvent(type=StreamEventType.END, data=None)
