@@ -31,23 +31,21 @@ def _():
     # mlflow.set_experiment("DSPy")
     # mlflow.dspy.autolog()
 
-    ## Setup VectorDB for document retrieval
+    ## Setup embedder and LM in dspy.configure
     embedder = dspy.Embedder("gemini/gemini-embedding-001", dimensions=3072, batch_size=512)
+    lm = dspy.LM("gemini/gemini-flash-lite-latest", max_tokens=15000, cache=False)
+    dspy.configure(lm=lm, adapter=XMLAdapter(), embedder=embedder)
+
+    ## Setup VectorDB for document retrieval - will use dspy.settings.embedder
     vector_store_config = get_vector_store_config()
     vector_db = SourceFilteredPgVectorRM(
         db_url=vector_store_config.dsn,
         pg_table_name=vector_store_config.table_name,
-        embedding_func=embedder,
         content_field="content",
         fields=["id", "content", "metadata"],
         k=5,  # Default k, will be overridden by retriever
-        embedding_model="text-embedding-3-large",
         include_similarity=True,
     )
-
-    # Programs to be optimized: QueryProcessing --> OptimizedQuery --> Document retrieval
-    lm = dspy.LM("gemini/gemini-flash-lite-latest", max_tokens=15000, cache=False)
-    dspy.configure(lm=lm, adapter=XMLAdapter())
     return XMLAdapter, dspy, os, vector_db, vector_store_config
 
 

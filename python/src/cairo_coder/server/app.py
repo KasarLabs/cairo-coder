@@ -182,11 +182,14 @@ class CairoCoderServer:
         # Setup routes
         self._setup_routes()
 
-        # TODO: This is the place where we should select the proper LLM configuration.
-        # TODO: For now we just Hard-code DSPY - GEMINI
-        dspy.configure(lm=dspy.LM("gemini/gemini-flash-latest", max_tokens=30000, cache=False), adapter=XMLAdapter())
-        dspy.configure(callbacks=[AgentLoggingCallback()])
-        dspy.configure(track_usage=True)
+        embedder = dspy.Embedder("gemini/gemini-embedding-001", dimensions=3072, batch_size=512)
+        dspy.configure(
+            lm=dspy.LM("gemini/gemini-flash-latest", max_tokens=30000, cache=False),
+            adapter=XMLAdapter(),
+            embedder=embedder,
+            callbacks=[AgentLoggingCallback()],
+            track_usage=True,
+        )
 
     def _setup_routes(self):
         """Setup FastAPI routes matching TypeScript backend."""
@@ -641,17 +644,13 @@ async def lifespan(app: FastAPI):
     config = ConfigManager.load_config()
     vector_store_config = config.vector_store
 
-    # TODO: These should not be literal constants like this.
-    embedder = dspy.Embedder("gemini/gemini-embedding-001", dimensions=3072, batch_size=512)
-
+    # embedding_func will default to dspy.settings.embedder (configured in __init__)
     _vector_db = SourceFilteredPgVectorRM(
         db_url=vector_store_config.dsn,
         pg_table_name=vector_store_config.table_name,
-        embedding_func=embedder,
         content_field="content",
         fields=["id", "content", "metadata"],
         k=5,  # Default k, will be overridden by retriever
-        embedding_model='gemini-embedding-001',
         include_similarity=True,
     )
 
@@ -686,9 +685,6 @@ def main():
     parser.add_argument("--workers", type=int, default=5, help="Number of workers to run")
     args = parser.parse_args()
 
-    # TODO: configure DSPy with the proper LM.
-    # TODO: Find a proper pattern for it?
-    # TODO: multi-model management?
     uvicorn.run(
         "cairo_coder.server.app:create_app_factory",
         host="0.0.0.0",

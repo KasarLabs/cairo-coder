@@ -187,7 +187,6 @@ class QueryProcessorProgram(dspy.Module):
                 continue
 
         # Return valid resources or default fallback
-        # TODO: Upon failure, this should return an error message to the user.
         return valid_resources if valid_resources else list(DocumentSource)
 
     def _is_contract_query(self, query: str) -> bool:
