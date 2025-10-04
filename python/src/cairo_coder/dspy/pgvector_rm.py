@@ -1,4 +1,3 @@
-import warnings
 from collections.abc import Callable
 from typing import Optional
 
@@ -12,13 +11,6 @@ except ImportError as e:
     raise ImportError(
         "The 'pgvector' extra is required to use PgVectorRM. Install it with `pip install dspy-ai[pgvector]`. Also, try `pip install pgvector psycopg2`.",
     ) from e
-try:
-    import openai
-except ImportError:
-    warnings.warn(
-        "`openai` is not installed. Install it with `pip install openai` to use OpenAI embedding models.",
-        stacklevel=2, category=ImportWarning,
-    )
 
 
 class PgVectorRM(dspy.Retrieve):
@@ -33,37 +25,40 @@ class PgVectorRM(dspy.Retrieve):
     Args:
         db_url (str): A PostgreSQL database URL in psycopg2's DSN format
         pg_table_name (Optional[str]): name of the table containing passages
-        openai_client (openai.OpenAI): OpenAI client to use for computing query embeddings. Either openai_client or embedding_func must be provided.
-        embedding_func (Callable): A function to use for computing query embeddings. Either openai_client or embedding_func must be provided.
+        embedding_func (Callable): A function to use for computing query embeddings. If not provided, uses dspy.settings.embedder.
         content_field (str = "text"): Field containing the passage text. Defaults to "text"
         k (Optional[int]): Default number of top passages to retrieve. Defaults to 20
         embedding_field (str = "embedding"): Field containing passage embeddings. Defaults to "embedding"
         fields (List[str] = ['text']): Fields to retrieve from the table. Defaults to "text"
-        embedding_model (str = "text-embedding-ada-002"): Field containing the OpenAI embedding model to use. Defaults to "text-embedding-ada-002"
 
     Examples:
         Below is a code snippet that shows how to use PgVector as the default retriever
 
         ```python
         import dspy
-        import openai
-        import psycopg2
 
-        openai.api_key = os.environ.get("OPENAI_API_KEY", None)
-        openai_client = openai.OpenAI()
+        # Configure embedder at startup
+        embedder = dspy.Embedder("gemini/gemini-embedding-001", dimensions=3072)
+        dspy.configure(embedder=embedder)
 
-        llm = dspy.OpenAI(model="gpt-3.5-turbo")
+        llm = dspy.LM("gemini/gemini-flash-latest")
+        dspy.configure(lm=llm)
 
-        DATABASE_URL should be in the format postgresql://user:password@host/database
-        db_url=os.getenv("DATABASE_URL")
+        # DATABASE_URL should be in the format postgresql://user:password@host/database
+        db_url = os.getenv("DATABASE_URL")
 
-        retriever_model = PgVectorRM(conn, openai_client=openai_client, "paragraphs", fields=["text", "document_id"], k=20)
-        dspy.settings.configure(lm=llm, rm=retriever_model)
+        # embedding_func will default to dspy.settings.embedder
+        retriever_model = PgVectorRM(db_url, "paragraphs", fields=["text", "document_id"], k=20)
+        dspy.configure(rm=retriever_model)
         ```
 
-        Below is a code snippet that shows how to use PgVector in the forward() function of a module
+        Below is a code snippet that shows how to use PgVector with a custom embedding function
         ```python
-        self.retrieve = PgVectorRM(db_url, openai_client=openai_client, "paragraphs", fields=["text", "document_id"], k=20)
+        def my_embedder(text: str) -> list[float]:
+            # Your custom embedding logic
+            return embeddings
+
+        self.retrieve = PgVectorRM(db_url, "paragraphs", embedding_func=my_embedder, fields=["text", "document_id"], k=20)
         ```
     """
 
@@ -71,23 +66,26 @@ class PgVectorRM(dspy.Retrieve):
         self,
         db_url: str,
         pg_table_name: str,
-        openai_client: Optional[openai.OpenAI] = None,
         embedding_func: Optional[Callable] = None,
         k: int = 20,
         embedding_field: str = "embedding",
         fields: Optional[list[str]] = None,
         content_field: str = "text",
-        embedding_model: str = "text-embedding-ada-002",
         include_similarity: bool = False,
     ):
         """
         k = 20 is the number of paragraphs to retrieve
         """
-        assert (
-            openai_client or embedding_func
-        ), "Either openai_client or embedding_func must be provided."
-        self.openai_client = openai_client
-        self.embedding_func = embedding_func
+        # Use provided embedding_func or fall back to dspy.settings.embedder
+        if embedding_func is None:
+            if dspy.settings.embedder is None:
+                raise ValueError(
+                    "No embedding_func provided and no embedder configured in dspy.settings. "
+                    "Either pass embedding_func or configure with: dspy.configure(embedder=...)"
+                )
+            self.embedding_func = dspy.settings.embedder
+        else:
+            self.embedding_func = embedding_func
 
         self.conn = psycopg2.connect(db_url)
         register_vector(self.conn)
@@ -95,7 +93,6 @@ class PgVectorRM(dspy.Retrieve):
         self.fields = fields or ["text"]
         self.content_field = content_field
         self.embedding_field = embedding_field
-        self.embedding_model = embedding_model
         self.include_similarity = include_similarity
 
         super().__init__(k=k)
@@ -144,14 +141,5 @@ class PgVectorRM(dspy.Retrieve):
         return retrieved_docs
 
     def _get_embeddings(self, query: str) -> list[float]:
-        if self.openai_client is not None:
-            return (
-                self.openai_client.embeddings.create(
-                    model=self.embedding_model,
-                    input=query,
-                    encoding_format="float",
-                )
-                .data[0]
-                .embedding
-            )
+        """Get embeddings for a query using the configured embedding function."""
         return self.embedding_func(query)

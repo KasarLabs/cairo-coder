@@ -534,7 +534,6 @@ class DocumentRetrieverProgram(dspy.Module):
         vector_db: SourceFilteredPgVectorRM | None = None,
         max_source_count: int = 5,
         similarity_threshold: float = 0.4,
-        embedding_model: str = "gemini-embedding-001",
     ):
         """
         Initialize the DocumentRetrieverProgram.
@@ -544,12 +543,8 @@ class DocumentRetrieverProgram(dspy.Module):
             vector_db: Optional pre-initialized vector database instance
             max_source_count: Maximum number of documents to retrieve
             similarity_threshold: Minimum similarity score for document inclusion
-            embedding_model: Gemini embedding model to use for reranking
         """
         super().__init__()
-        # TODO: These should not be literal constants like this.
-        # TODO: if the vector_db is setup upon startup, then this should not be done here.
-        self.embedder = dspy.Embedder("gemini/gemini-embedding-001", dimensions=3072, batch_size=512)
 
         self.vector_store_config = vector_store_config
         if vector_db is None:
@@ -558,18 +553,15 @@ class DocumentRetrieverProgram(dspy.Module):
                 self.vector_db = SourceFilteredPgVectorRM(
                     db_url=db_url,
                     pg_table_name=pg_table_name,
-                    embedding_func=self.embedder,
                     content_field="content",
                     fields=["id", "content", "metadata"],
                     k=max_source_count,
-                    embedding_model='gemini-embedding-001',
                     include_similarity=True,
                 )
         else:
             self.vector_db = vector_db
         self.max_source_count = max_source_count
         self.similarity_threshold = similarity_threshold
-        self.embedding_model = embedding_model
 
     async def aforward(
         self, processed_query: ProcessedQuery, sources: list[DocumentSource] | None = None
@@ -621,7 +613,6 @@ class DocumentRetrieverProgram(dspy.Module):
             sync_retriever = SourceFilteredPgVectorRM(
                 db_url=db_url,
                 pg_table_name=pg_table_name,
-                embedding_func=self.embedder,
                 content_field="content",
                 fields=["id", "content", "metadata"],
                 k=self.max_source_count,
@@ -740,7 +731,6 @@ def create_document_retriever(
     vector_db: SourceFilteredPgVectorRM | None = None,
     max_source_count: int = 5,
     similarity_threshold: float = 0.4,
-    embedding_model: str = "text-embedding-3-large",
 ) -> DocumentRetrieverProgram:
     """
     Factory function to create a DocumentRetrieverProgram instance.
@@ -750,7 +740,6 @@ def create_document_retriever(
         vector_db: Optional pre-initialized vector database instance
         max_source_count: Maximum number of documents to retrieve
         similarity_threshold: Minimum similarity score for document inclusion
-        embedding_model: OpenAI embedding model to use for reranking
 
     Returns:
         Configured DocumentRetrieverProgram instance
@@ -760,5 +749,4 @@ def create_document_retriever(
         vector_db=vector_db,
         max_source_count=max_source_count,
         similarity_threshold=similarity_threshold,
-        embedding_model=embedding_model,
     )
