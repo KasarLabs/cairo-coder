@@ -583,7 +583,6 @@ class DocumentRetrieverProgram(dspy.Module):
         # Step 1: Fetch documents from vector store
         documents = await self._afetch_documents(processed_query, sources)
 
-        # TODO: No source found means no answer can be given!
         if not documents:
             return []
 
@@ -656,7 +655,6 @@ class DocumentRetrieverProgram(dspy.Module):
 
             search_queries = processed_query.search_queries
             if not search_queries or len(search_queries) == 0:
-            # TODO: revert
                 search_queries = [processed_query.original]
 
 

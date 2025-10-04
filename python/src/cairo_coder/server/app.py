@@ -182,8 +182,6 @@ class CairoCoderServer:
         # Setup routes
         self._setup_routes()
 
-        # TODO: This is the place where we should select the proper LLM configuration.
-        # TODO: For now we just Hard-code DSPY - GEMINI
         embedder = dspy.Embedder("gemini/gemini-embedding-001", dimensions=3072, batch_size=512)
         dspy.configure(
             lm=dspy.LM("gemini/gemini-flash-latest", max_tokens=30000, cache=False),
@@ -687,9 +685,6 @@ def main():
     parser.add_argument("--workers", type=int, default=5, help="Number of workers to run")
     args = parser.parse_args()
 
-    # TODO: configure DSPy with the proper LM.
-    # TODO: Find a proper pattern for it?
-    # TODO: multi-model management?
     uvicorn.run(
         "cairo_coder.server.app:create_app_factory",
         host="0.0.0.0",

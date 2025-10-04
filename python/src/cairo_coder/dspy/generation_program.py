@@ -20,7 +20,6 @@ from cairo_coder.core.types import Document, Message
 logger = structlog.get_logger(__name__)
 
 
-# TODO: Find a way to properly "erase" common mistakes like PrintTrait imports.
 class CairoCodeGeneration(Signature):
     """
     Analyze a Cairo programming query and use the context to generate a high-quality Cairo code solution and explanations.
