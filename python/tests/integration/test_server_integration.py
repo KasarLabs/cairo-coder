@@ -407,6 +407,7 @@ class TestServerStartup:
             assert "/" in routes
             assert "/v1/agents" in routes
             assert "/v1/chat/completions" in routes
+            assert "/v1/suggestions" in routes
 
 
 class TestOpenAICompatibility:
@@ -515,6 +516,59 @@ class TestOpenAICompatibility:
             assert field in error
         assert error["type"] == "invalid_request_error"
         assert error["code"] == "agent_not_found"
+
+
+class TestSuggestionEndpoint:
+    """Test suite for the suggestion generation endpoint."""
+
+    def test_suggestion_generation_success(self, client: TestClient):
+        """Test successful suggestion generation with chat history."""
+        response = client.post(
+            "/v1/suggestions",
+            json={
+                "chat_history": [
+                    {"role": "user", "content": "How do I create a Cairo contract?"},
+                    {
+                        "role": "assistant",
+                        "content": "Here's how to create a Cairo contract using the #[starknet::contract] attribute...",
+                    },
+                ]
+            },
+        )
+        assert response.status_code == 200
+        data = response.json()
+
+        # Validate response structure
+        assert "suggestions" in data
+        assert isinstance(data["suggestions"], list)
+        assert len(data["suggestions"]) >= 1  # Should have suggestions
+
+    def test_suggestion_generation_empty_history(self, client: TestClient):
+        """Test suggestion generation with empty chat history."""
+        response = client.post(
+            "/v1/suggestions",
+            json={"chat_history": []},
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert "suggestions" in data
+        assert isinstance(data["suggestions"], list)
+
+    def test_suggestion_generation_validation_error(self, client: TestClient):
+        """Test validation error when chat_history is missing."""
+        response = client.post(
+            "/v1/suggestions",
+            json={},
+        )
+        assert response.status_code == 422  # Pydantic validation error
+
+    def test_suggestion_generation_invalid_message_format(self, client: TestClient):
+        """Test error handling with invalid message format."""
+        response = client.post(
+            "/v1/suggestions",
+            json={"chat_history": [{"invalid": "format"}]},
+        )
+        assert response.status_code == 422  # Pydantic validation error
 
 
 class TestMCPModeCompatibility:
