@@ -14,9 +14,10 @@ from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 
 import dspy
+import langsmith as ls
 import structlog
 import uvicorn
-from dspy.adapters import XMLAdapter
+from dspy.adapters import ChatAdapter, XMLAdapter
 from fastapi import Depends, FastAPI, Header, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
@@ -185,7 +186,7 @@ class CairoCoderServer:
         embedder = dspy.Embedder("gemini/gemini-embedding-001", dimensions=3072, batch_size=512)
         dspy.configure(
             lm=dspy.LM("gemini/gemini-flash-latest", max_tokens=30000, cache=False),
-            adapter=XMLAdapter(),
+            adapter=ChatAdapter(),
             embedder=embedder,
             callbacks=[AgentLoggingCallback()],
             track_usage=True,
@@ -420,49 +421,51 @@ class CairoCoderServer:
         content_buffer = ""
 
         try:
-            async for event in agent.aforward_streaming(
-                query=query, chat_history=history, mcp_mode=mcp_mode
-            ):
-                if event.type == "sources":
-                    # Emit sources event for clients to display
-                    sources_chunk = {
-                        "type": "sources",
-                        "data": event.data,
-                    }
-                    yield f"data: {json.dumps(sources_chunk)}\n\n"
-                elif event.type == "response":
-                    content_buffer += event.data
+            with ls.trace(name="RagPipelineStreaming", run_type="chain", inputs={"query": query, "chat_history": history, "mcp_mode": mcp_mode}) as rt:
+                async for event in agent.aforward_streaming(
+                    query=query, chat_history=history, mcp_mode=mcp_mode
+                ):
+                    if event.type == "sources":
+                        # Emit sources event for clients to display
+                        sources_chunk = {
+                            "type": "sources",
+                            "data": event.data,
+                        }
+                        yield f"data: {json.dumps(sources_chunk)}\n\n"
+                    elif event.type == "response":
+                        content_buffer += event.data
 
-                    # Send content chunk
-                    chunk = {
-                        "id": response_id,
-                        "object": "chat.completion.chunk",
-                        "created": created,
-                        "model": "cairo-coder",
-                        "choices": [
-                            {"index": 0, "delta": {"content": event.data}, "finish_reason": None}
-                        ],
-                    }
-                    yield f"data: {json.dumps(chunk)}\n\n"
-                elif event.type == "error":
-                    # Emit an error as a final delta and stop
-                    error_chunk = {
-                        "id": response_id,
-                        "object": "chat.completion.chunk",
-                        "created": created,
-                        "model": "cairo-coder",
-                        "choices": [
-                            {
-                                "index": 0,
-                                "delta": {"content": f"\n\nError: {event.data}"},
-                                "finish_reason": "stop",
-                            }
-                        ],
-                    }
-                    yield f"data: {json.dumps(error_chunk)}\n\n"
-                    break
-                elif event.type == "end":
-                    break
+                        # Send content chunk
+                        chunk = {
+                            "id": response_id,
+                            "object": "chat.completion.chunk",
+                            "created": created,
+                            "model": "cairo-coder",
+                            "choices": [
+                                {"index": 0, "delta": {"content": event.data}, "finish_reason": None}
+                            ],
+                        }
+                        yield f"data: {json.dumps(chunk)}\n\n"
+                    elif event.type == "error":
+                        # Emit an error as a final delta and stop
+                        error_chunk = {
+                            "id": response_id,
+                            "object": "chat.completion.chunk",
+                            "created": created,
+                            "model": "cairo-coder",
+                            "choices": [
+                                {
+                                    "index": 0,
+                                    "delta": {"content": f"\n\nError: {event.data}"},
+                                    "finish_reason": "stop",
+                                }
+                            ],
+                        }
+                        yield f"data: {json.dumps(error_chunk)}\n\n"
+                        break
+                    elif event.type == "end":
+                        break
+                rt.end(outputs={"output": content_buffer})
 
         except Exception as e:
             logger.error("Error during agent streaming", error=str(e), exc_info=True)

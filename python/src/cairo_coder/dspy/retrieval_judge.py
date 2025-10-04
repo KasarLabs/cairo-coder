@@ -47,7 +47,9 @@ class RetrievalRecallPrecision(dspy.Signature):
     """
 
     query: str = dspy.InputField()
-    system_resource: str = dspy.InputField(desc="Single resource text (content + minimal metadata/title)")
+    system_resource: str = dspy.InputField(
+        desc="Single resource text (content + minimal metadata/title)"
+    )
     reasoning: str = dspy.OutputField(
         desc="A short sentence, on why a selected resource will be useful. If it's not selected, reason about why it's not going to be useful. Start by Resource <resource_title>..."
     )
@@ -55,8 +57,10 @@ class RetrievalRecallPrecision(dspy.Signature):
         desc="A note between 0 and 1.0 on how useful the resource is to directly answer the query. 0 being completely unrelated, 1.0 being very relevant, 0.5 being 'not directly related but still informative and can be useful for context'."
     )
 
+
 DEFAULT_THRESHOLD = 0.4
 DEFAULT_PARALLEL_THREADS = 5
+
 
 class RetrievalJudge(dspy.Module):
     """
@@ -88,13 +92,17 @@ class RetrievalJudge(dspy.Module):
             raise FileNotFoundError(f"{compiled_program_path} not found")
         self.rater.load(compiled_program_path)
 
-    @traceable(name="RetrievalJudge", run_type="llm")
+    @traceable(
+        name="RetrievalJudge", run_type="llm", metadata={"llm_provider": dspy.settings.lm}
+    )
     async def aforward(self, query: str, documents: list[Document]) -> list[Document]:
         """Async judge."""
         if not documents:
             return documents
 
-        keep_docs, judged_indices, judged_payloads = self._split_templates_and_prepare_docs(documents)
+        keep_docs, judged_indices, judged_payloads = self._split_templates_and_prepare_docs(
+            documents
+        )
 
         # TODO: can we use dspy.Parallel here instead of asyncio gather?
         if judged_payloads:
@@ -114,7 +122,11 @@ class RetrievalJudge(dspy.Module):
                     keep_docs=keep_docs,
                 )
             except Exception as e:
-                logger.error("Retrieval judge failed (async), returning all docs", error=str(e), exc_info=True)
+                logger.error(
+                    "Retrieval judge failed (async), returning all docs",
+                    error=str(e),
+                    exc_info=True,
+                )
                 return documents
 
         return keep_docs
@@ -155,7 +167,9 @@ class RetrievalJudge(dspy.Module):
         return keep_docs, judged_indices, judged_payloads
 
     @staticmethod
-    def _document_to_string(title: str, content: str, max_len: int = JUDGE_DOCUMENT_PREVIEW_MAX_LEN) -> str:
+    def _document_to_string(
+        title: str, content: str, max_len: int = JUDGE_DOCUMENT_PREVIEW_MAX_LEN
+    ) -> str:
         """Build the string seen by the judge for one doc."""
         preview = content[:max_len]
         if len(content) > max_len:
