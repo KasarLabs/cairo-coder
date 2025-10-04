@@ -5,7 +5,6 @@ This module implements the RagPipeline class that orchestrates the three-stage
 RAG workflow: Query Processing → Document Retrieval → Generation.
 """
 
-import os
 from collections.abc import AsyncGenerator
 from dataclasses import dataclass
 from typing import Any
@@ -419,11 +418,4 @@ class RagPipelineFactory:
             similarity_threshold=similarity_threshold,
         )
 
-        rag_program = RagPipeline(config)
-        # Load optimizer
-        compiled_program_path = "optimizers/results/optimized_rag.json"
-        if not os.path.exists(compiled_program_path):
-            raise FileNotFoundError(f"{compiled_program_path} not found")
-        rag_program.load(compiled_program_path)
-
-        return rag_program
+        return RagPipeline(config)

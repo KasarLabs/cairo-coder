@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import asyncio
 from collections.abc import Sequence
+import os
 from typing import Any
 
 import structlog
@@ -78,6 +79,14 @@ class RetrievalJudge(dspy.Module):
         self.rater = dspy.Predict(RetrievalRecallPrecision)
         self.parallel_threads = DEFAULT_PARALLEL_THREADS
         self.threshold = DEFAULT_THRESHOLD
+
+        if os.getenv("OPTIMIZER_RUN"):
+            return
+        # Load optimizer
+        compiled_program_path = "optimizers/results/optimized_rater.json"
+        if not os.path.exists(compiled_program_path):
+            raise FileNotFoundError(f"{compiled_program_path} not found")
+        self.rater.load(compiled_program_path)
 
     @traceable(name="RetrievalJudge", run_type="llm")
     async def aforward(self, query: str, documents: list[Document]) -> list[Document]:

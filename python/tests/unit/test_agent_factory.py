@@ -12,6 +12,7 @@ import pytest
 from cairo_coder.agents.registry import AgentId, get_agent_by_string_id, registry
 from cairo_coder.core.agent_factory import AgentFactory, create_agent_factory
 from cairo_coder.core.rag_pipeline import RagPipeline
+from cairo_coder.core.types import DocumentSource
 
 
 class TestAgentFactory:
@@ -83,9 +84,7 @@ class TestAgentFactory:
         """Test getting available agent IDs."""
         available_agents = agent_factory.get_available_agents()
 
-        assert "cairo-coder" in available_agents
-        assert "scarb-assistant" in available_agents
-        assert len(available_agents) == 2
+        assert available_agents == ["cairo-coder", "starknet-agent"]
 
     def test_get_agent_info(self, agent_factory):
         """Test getting agent information."""
@@ -98,16 +97,16 @@ class TestAgentFactory:
         assert info["max_source_count"] == 5
         assert info["similarity_threshold"] == 0.4
 
-    def test_get_agent_info_scarb(self, agent_factory):
+    def test_get_agent_info_starknet(self, agent_factory):
         """Test getting Scarb agent information."""
-        info = agent_factory.get_agent_info("scarb-assistant")
+        info = agent_factory.get_agent_info("starknet-agent")
 
-        assert info["id"] == "scarb-assistant"
-        assert info["name"] == "Scarb Assistant"
-        assert info["description"] == "Specialized assistant for Scarb build tool"
-        assert info["sources"] == ["scarb_docs"]
+        assert info["id"] == "starknet-agent"
+        assert info["name"] == "Starknet Agent"
+        assert info["description"] == "Assistant for the Starknet ecosystem (contracts, tools, docs)."
+        assert info["sources"] == list(DocumentSource)
         assert info["max_source_count"] == 5
-        assert info["similarity_threshold"] == 0.3
+        assert info["similarity_threshold"] == 0.4
 
     def test_get_agent_info_not_found(self, agent_factory):
         """Test getting agent information for non-existent agent."""
@@ -129,7 +128,7 @@ class TestCreateAgentFactory:
         # Check default agents are available
         available_agents = factory.get_available_agents()
         assert "cairo-coder" in available_agents
-        assert "scarb-assistant" in available_agents
+        assert "starknet-agent" in available_agents
 
 
 class TestAgentRegistry:
@@ -138,7 +137,7 @@ class TestAgentRegistry:
     def test_registry_contains_all_agents(self):
         """Test that registry contains all expected agents."""
         assert AgentId.CAIRO_CODER in registry
-        assert AgentId.SCARB in registry
+        assert AgentId.STARKNET in registry
         assert len(registry) == 2
 
     def test_get_agent_by_string_id_valid(self):
@@ -147,9 +146,9 @@ class TestAgentRegistry:
         assert enum_id == AgentId.CAIRO_CODER
         assert spec.name == "Cairo Coder"
 
-        enum_id, spec = get_agent_by_string_id("scarb-assistant")
-        assert enum_id == AgentId.SCARB
-        assert spec.name == "Scarb Assistant"
+        enum_id, spec = get_agent_by_string_id("starknet-agent")
+        assert enum_id == AgentId.STARKNET
+        assert spec.name == "Starknet Agent"
 
     def test_get_agent_by_string_id_invalid(self):
         """Test getting agent by invalid string ID."""
@@ -174,8 +173,8 @@ class TestAgentRegistry:
 
     @patch("cairo_coder.core.rag_pipeline.RagPipelineFactory.create_pipeline")
     def test_agent_spec_build_scarb(self, mock_create_scarb, mock_vector_db, mock_vector_store_config):
-        """Test building a Scarb agent from spec."""
-        spec = registry[AgentId.SCARB]
+        """Test building a Starknet agent from spec."""
+        spec = registry[AgentId.STARKNET]
         mock_pipeline = Mock(spec=RagPipeline)
         mock_create_scarb.return_value = mock_pipeline
 
@@ -184,6 +183,6 @@ class TestAgentRegistry:
         assert pipeline == mock_pipeline
         mock_create_scarb.assert_called_once()
         call_args = mock_create_scarb.call_args[1]
-        assert call_args["name"] == "Scarb Assistant"
+        assert call_args["name"] == "Starknet Agent"
         assert call_args["vector_db"] == mock_vector_db
         assert call_args["vector_store_config"] == mock_vector_store_config

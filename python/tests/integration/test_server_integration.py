@@ -14,6 +14,7 @@ from unittest.mock import Mock, patch
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
+from cairo_coder.agents.registry import AgentId
 from cairo_coder.config.manager import ConfigManager
 from cairo_coder.core.config import VectorStoreConfig
 from cairo_coder.server.app import CairoCoderServer, ChatCompletionResponse, create_app
@@ -34,9 +35,9 @@ class TestServerIntegration:
         assert response.status_code == 200
 
         data = response.json()
-        assert len(data) == 2  # cairo-coder, scarb-assistant
+        assert len(data) == 2  # cairo-coder, starknet-agent
         agent_ids = {agent["id"] for agent in data}
-        assert agent_ids == {"cairo-coder", "scarb-assistant"}
+        assert agent_ids == {"cairo-coder", "starknet-agent"}
 
     def test_list_agents_error_handling(self, client: TestClient, mock_agent_factory: Mock):
         """Test error handling in list agents endpoint."""
@@ -57,8 +58,8 @@ class TestServerIntegration:
         assert response.status_code == 200
 
         agents = response.json()
-        assert any(agent["id"] == "cairo-coder" for agent in agents)
-        assert any(agent["id"] == "scarb-assistant" for agent in agents)
+        assert any(agent["id"] == AgentId.CAIRO_CODER.value for agent in agents)
+        assert any(agent["id"] == AgentId.STARKNET.value for agent in agents)
 
         # Note: Integration client injects a real pipeline; we assert response content shape,
         # not exact LLM text.

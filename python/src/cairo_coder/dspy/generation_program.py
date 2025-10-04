@@ -5,6 +5,7 @@ This module implements the GenerationProgram that generates Cairo code responses
 based on user queries and retrieved documentation context.
 """
 
+import os
 from collections.abc import AsyncGenerator
 from typing import Optional
 
@@ -61,6 +62,41 @@ class ScarbGeneration(Signature):
     )
 
 
+class StarknetEcosystemGeneration(Signature):
+    """
+    Generate high-quality answers for Starknet/Cairo ecosystem questions using the provided context only.
+
+    Instructions:
+    - Use only the supplied context; do not rely on outside knowledge.
+    - If relevant, cite sources using bracketed numbers like [1], [2], which correspond to the numbered items in the context section.
+    - For Cairo code:
+      - Return a single code block fenced as ```cairo ... ```.
+      - Keep comments minimal; do not include citations or HTML inside the code block.
+      - After the code block, provide a short explanation that references sources (e.g., [1][3]) if applicable.
+    - If the user requests non-code explanations, answer clearly and concisely, citing sources via [i] mapping when helpful.
+    - If the topic is out of scope (not Starknet/Cairo/dev tooling), politely explain the limitation.
+    - If context is insufficient, say so and suggest clarifying information.
+
+    The current date is included in the runner; do not fabricate dates.
+    """
+
+    chat_history: Optional[str] = InputField(
+        desc="Previous conversation context for continuity and better understanding", default=""
+    )
+
+    query: str = InputField(
+        desc="User's Starknet/Cairo question or request"
+    )
+
+    context: str = InputField(
+        desc="Retrieved documentation and examples strictly used to inform the response."
+    )
+
+    answer: str = OutputField(
+        desc="Final answer. If code, wrap in ```cairo; otherwise, provide a concise, sourced explanation."
+    )
+
+
 class GenerationProgram(dspy.Module):
     """
     DSPy module for generating Cairo code responses from retrieved context.
@@ -69,25 +105,36 @@ class GenerationProgram(dspy.Module):
     and explanations based on user queries and documentation context.
     """
 
-    def __init__(self, program_type: str = "general"):
+    def __init__(self, program_type):
         """
         Initialize the GenerationProgram.
 
         Args:
-            program_type: Type of generation program ("general" or "scarb")
+            program_type: Type of generation program ("cairo-coder" or "scarb")
         """
+        from cairo_coder.agents.registry import AgentId
         super().__init__()
         self.program_type = program_type
 
         # Initialize the appropriate generation program
-        if program_type == "scarb":
+        if program_type == AgentId.STARKNET:
             self.generation_program = dspy.ChainOfThought(
-                ScarbGeneration,
+                StarknetEcosystemGeneration,
             )
-        else:
+        elif program_type == AgentId.CAIRO_CODER:
             self.generation_program = dspy.ChainOfThought(
                 CairoCodeGeneration,
             )
+        else:
+            raise ValueError(f"Invalid program type: {program_type}")
+
+        if os.getenv("OPTIMIZER_RUN"):
+            return
+        # Load optimizer
+        compiled_program_path = f"optimizers/results/optimized_generation_{program_type.value}.json"
+        if not os.path.exists(compiled_program_path):
+            raise FileNotFoundError(f"{compiled_program_path} not found")
+        self.generation_program.load(compiled_program_path)
 
     def get_lm_usage(self) -> dict[str, int]:
         """
@@ -249,12 +296,12 @@ class McpGenerationProgram(dspy.Module):
         return {}
 
 
-def create_generation_program(program_type: str = "general") -> GenerationProgram:
+def create_generation_program(program_type: str) -> GenerationProgram:
     """
     Factory function to create a GenerationProgram instance.
 
     Args:
-        program_type: Type of generation program ("general" or "scarb")
+        program_type: Type of generation program ("cairo-coder", "scarb", or "starknet")
 
     Returns:
         Configured GenerationProgram instance

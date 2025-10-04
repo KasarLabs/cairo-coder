@@ -6,6 +6,7 @@ into structured format for document retrieval, including search terms extraction
 and resource identification.
 """
 
+import os
 from typing import Optional
 
 import structlog
@@ -78,12 +79,12 @@ class QueryProcessorProgram(dspy.Module):
         super().__init__()
         self.retrieval_program = dspy.Predict(CairoQueryAnalysis)
 
-        # TODO: only the main rag pipeline should be loaded - in one shot
-        # # Validate that the file exists
-        # compiled_program_path = "optimizers/results/optimized_retrieval_program.json"
-        # if not os.path.exists(compiled_program_path):
-        #     raise FileNotFoundError(f"{compiled_program_path} not found")
-        # self.retrieval_program.load(compiled_program_path)
+        # Validate that the file exists
+        if not os.getenv("OPTIMIZER_RUN"):
+            compiled_program_path = "optimizers/results/optimized_retrieval_program.json"
+            if not os.path.exists(compiled_program_path):
+                raise FileNotFoundError(f"{compiled_program_path} not found")
+            self.retrieval_program.load(compiled_program_path)
 
         # Common keywords for query analysis
         self.contract_keywords = {

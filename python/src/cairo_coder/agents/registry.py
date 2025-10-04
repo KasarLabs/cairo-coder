@@ -19,11 +19,11 @@ from cairo_coder.dspy.generation_program import (
 from cairo_coder.dspy.query_processor import create_query_processor
 
 
-class AgentId(Enum):
+class AgentId(str, Enum):
     """Available agent identifiers."""
 
     CAIRO_CODER = "cairo-coder"
-    SCARB = "scarb-assistant"
+    STARKNET = "starknet-agent"
 
 
 @dataclass
@@ -49,13 +49,13 @@ class AgentSpec:
             Configured RagPipeline instance
         """
         match self.generation_program_type:
-            case AgentId.SCARB:
+            case AgentId.STARKNET:
                 return RagPipelineFactory.create_pipeline(
                     name=self.name,
                     vector_store_config=vector_store_config,
                     sources=self.sources,
                     query_processor=create_query_processor(),
-                    generation_program=create_generation_program("scarb"),
+                    generation_program=create_generation_program(AgentId.STARKNET),
                     mcp_generation_program=create_mcp_generation_program(),
                     max_source_count=self.max_source_count,
                     similarity_threshold=self.similarity_threshold,
@@ -67,7 +67,7 @@ class AgentSpec:
                     vector_store_config=vector_store_config,
                     sources=self.sources,
                     query_processor=create_query_processor(),
-                    generation_program=create_generation_program(),
+                    generation_program=create_generation_program(AgentId.CAIRO_CODER),
                     mcp_generation_program=create_mcp_generation_program(),
                     max_source_count=self.max_source_count,
                     similarity_threshold=self.similarity_threshold,
@@ -85,13 +85,13 @@ registry: dict[AgentId, AgentSpec] = {
         max_source_count=5,
         similarity_threshold=0.4,
     ),
-    AgentId.SCARB: AgentSpec(
-        name="Scarb Assistant",
-        description="Specialized assistant for Scarb build tool",
-        sources=[DocumentSource.SCARB_DOCS],
-        generation_program_type=AgentId.SCARB,
+    AgentId.STARKNET: AgentSpec(
+        name="Starknet Agent",
+        description="Assistant for the Starknet ecosystem (contracts, tools, docs).",
+        sources=list(DocumentSource),
+        generation_program_type=AgentId.STARKNET,
         max_source_count=5,
-        similarity_threshold=0.3,  # Lower threshold for Scarb-specific queries
+        similarity_threshold=0.4,
     ),
 }
 
