@@ -31,6 +31,7 @@ from cairo_coder.core.rag_pipeline import (
 )
 from cairo_coder.core.types import Message, Role
 from cairo_coder.dspy.document_retriever import SourceFilteredPgVectorRM
+from cairo_coder.dspy.suggestion_program import SuggestionGeneration
 from cairo_coder.utils.logging import setup_logging
 
 # Configure structured logging
@@ -127,6 +128,18 @@ class ErrorResponse(BaseModel):
     """OpenAI-compatible error response."""
 
     error: ErrorDetail = Field(..., description="Error details")
+
+
+class SuggestionRequest(BaseModel):
+    """Request model for generating conversation suggestions."""
+
+    chat_history: list[ChatMessage] = Field(..., description="Conversation history to generate suggestions from")
+
+
+class SuggestionResponse(BaseModel):
+    """Response model for conversation suggestions."""
+
+    suggestions: list[str] = Field(..., description="List of 4-5 follow-up suggestions")
 
 
 class CairoCoderServer:
@@ -291,6 +304,32 @@ class CairoCoderServer:
                 request, req, agent_factory, None, mcp_mode, vector_db
             )
 
+        @self.app.post("/v1/suggestions", response_model=SuggestionResponse)
+        async def generate_suggestions(request: SuggestionRequest):
+            """Generate follow-up conversation suggestions based on chat history."""
+            try:
+                formatted_history = self._format_chat_history_for_suggestions(request.chat_history)
+                suggestion_program = dspy.Predict(SuggestionGeneration)
+                with dspy.context(
+                    lm=dspy.LM("gemini/gemini-flash-lite-latest", max_tokens=10000), adapter=XMLAdapter()
+                ):
+                    result = await suggestion_program.aforward(chat_history=formatted_history)
+                suggestions = result.suggestions if isinstance(result.suggestions, list) else []
+                return SuggestionResponse(suggestions=suggestions)
+
+            except Exception as e:
+                logger.error("Error generating suggestions", error=str(e), exc_info=True)
+                raise HTTPException(
+                    status_code=500,
+                    detail=ErrorResponse(
+                        error=ErrorDetail(
+                            message="Failed to generate suggestions",
+                            type="server_error",
+                            code="internal_error",
+                        )
+                    ).dict(),
+                ) from e
+
     async def _handle_chat_completion(
         self,
         request: ChatCompletionRequest,
@@ -449,6 +488,26 @@ class CairoCoderServer:
         }
         yield f"data: {json.dumps(final_chunk)}\n\n"
         yield "data: [DONE]\n\n"
+
+    def _format_chat_history_for_suggestions(self, chat_history: list[ChatMessage]) -> str:
+        """
+        Format chat history for suggestion generation.
+
+        Args:
+            chat_history: List of chat messages
+
+        Returns:
+            Formatted chat history string
+        """
+        if not chat_history:
+            return ""
+
+        formatted = []
+        for msg in chat_history:
+            role = "User" if msg.role == "user" else "Assistant"
+            formatted.append(f"{role}: {msg.content}")
+
+        return "\n".join(formatted)
 
     async def _generate_chat_completion(
         self, agent: RagPipeline, query: str, history: list[Message], mcp_mode: bool

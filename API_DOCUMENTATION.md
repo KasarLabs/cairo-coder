@@ -215,6 +215,65 @@ Notes:
 
 `POST /v1/agents/{agent_id}/chat/completions` validates that `{agent_id}` exists. Unknown IDs return `404 Not Found` with an OpenAI-style error payload. When the `agent_id` is omitted (`/v1/chat/completions` or `/chat/completions`) the server falls back to `cairo-coder`.
 
+## Suggestions
+
+### `POST /v1/suggestions`
+
+Generate follow-up conversation suggestions based on chat history. This endpoint analyzes the conversation context and returns 4-5 relevant questions or topics the user might want to explore next.
+
+#### Request Schema
+
+```json
+{
+  "chat_history": [
+    { "role": "user", "content": "How do I create a Cairo contract?" },
+    {
+      "role": "assistant",
+      "content": "Here's how to create a Cairo contract using the #[starknet::contract] attribute..."
+    }
+  ]
+}
+```
+
+Field notes:
+
+- `chat_history` is an array of message objects with `role` and `content` fields.
+- Roles accepted: `user`, `assistant`, `system`.
+- Can be empty array (returns generic suggestions).
+
+#### Response
+
+`200 OK`
+
+```json
+{
+  "suggestions": [
+    "How do I deploy this contract to testnet?",
+    "What are the best practices for contract security?",
+    "Can you explain how storage works in Cairo contracts?",
+    "How do I write tests for this contract?"
+  ]
+}
+```
+
+#### Example
+
+```bash
+curl -X POST http://localhost:3001/v1/suggestions \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "chat_history": [
+      {"role": "user", "content": "How do I create a Cairo contract?"},
+      {"role": "assistant", "content": "Use #[starknet::contract] attribute..."}
+    ]
+  }'
+```
+
+#### Errors
+
+- `422 Unprocessable Entity` — validation error (missing `chat_history` or invalid message format).
+- `500 Internal Server Error` — suggestion generation failure.
+
 ## MCP Mode
 
 Setting either `mcp` or `x-mcp-mode` headers triggers **Model Context Protocol mode**, bypassing the LLM synthesiser:
