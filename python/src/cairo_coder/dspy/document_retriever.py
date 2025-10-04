@@ -534,7 +534,7 @@ class DocumentRetrieverProgram(dspy.Module):
         vector_db: SourceFilteredPgVectorRM | None = None,
         max_source_count: int = 5,
         similarity_threshold: float = 0.4,
-        embedding_model: str = "text-embedding-3-large",
+        embedding_model: str = "gemini-embedding-001",
     ):
         """
         Initialize the DocumentRetrieverProgram.
@@ -544,12 +544,12 @@ class DocumentRetrieverProgram(dspy.Module):
             vector_db: Optional pre-initialized vector database instance
             max_source_count: Maximum number of documents to retrieve
             similarity_threshold: Minimum similarity score for document inclusion
-            embedding_model: OpenAI embedding model to use for reranking
+            embedding_model: Gemini embedding model to use for reranking
         """
         super().__init__()
         # TODO: These should not be literal constants like this.
         # TODO: if the vector_db is setup upon startup, then this should not be done here.
-        self.embedder = dspy.Embedder("openai/text-embedding-3-large", dimensions=1536, batch_size=512)
+        self.embedder = dspy.Embedder("gemini/gemini-embedding-001", dimensions=3072, batch_size=512)
 
         self.vector_store_config = vector_store_config
         if vector_db is None:
@@ -562,7 +562,7 @@ class DocumentRetrieverProgram(dspy.Module):
                     content_field="content",
                     fields=["id", "content", "metadata"],
                     k=max_source_count,
-                    embedding_model='text-embedding-3-large',
+                    embedding_model='gemini-embedding-001',
                     include_similarity=True,
                 )
         else:

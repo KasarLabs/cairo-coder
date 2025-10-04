@@ -184,7 +184,7 @@ export class VectorStore {
             id SERIAL PRIMARY KEY,
             content TEXT NOT NULL,
             metadata JSONB NOT NULL,
-            embedding vector(1536) NOT NULL,
+            embedding halfvec(3072) NOT NULL,
             uniqueId VARCHAR(255),
             contentHash VARCHAR(255),
             source VARCHAR(50),
@@ -199,7 +199,7 @@ export class VectorStore {
 
         // Create vector index for similarity search
         await client.query(`
-          CREATE INDEX IF NOT EXISTS idx_${this.tableName}_embedding ON ${this.tableName} USING ivfflat (embedding vector_cosine_ops)
+          CREATE INDEX IF NOT EXISTS idx_${this.tableName}_embedding ON ${this.tableName} USING ivfflat (embedding halfvec_cosine_ops)
           WITH (lists = 100);
         `);
         logger.info('PostgreSQL database initialized');

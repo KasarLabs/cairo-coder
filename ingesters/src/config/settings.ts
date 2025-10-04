@@ -7,6 +7,8 @@ dotenv.config({ path: getRepoPath('.env') });
 // API Keys from environment variables only
 export const getOpenaiApiKey = () => process.env.OPENAI_API_KEY;
 
+export const getGeminiApiKey = () => process.env.GEMINI_API_KEY;
+
 export const getVectorDbConfig = (): VectorStoreConfig => {
   // All database configuration from environment variables
   return {
