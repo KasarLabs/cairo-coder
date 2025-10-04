@@ -11,7 +11,6 @@ describe('StarknetDocsIngester', () => {
 
     // Check that it has the correct configuration
     expect(ingester).toBeDefined();
-    // @ts-ignore - accessing protected property for testing
     expect(ingester.config).toEqual({
       repoOwner: 'starknet-io',
       repoName: 'starknet-docs',

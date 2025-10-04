@@ -5,7 +5,6 @@ import { existsSync } from 'fs';
  * Find the repository root by looking for .git directory
  */
 function findRepoRoot(): string {
-  // @ts-ignore
   let currentDir = import.meta.dir; // Bun's way to get current directory
 
   // Walk up the directory tree looking for .env
