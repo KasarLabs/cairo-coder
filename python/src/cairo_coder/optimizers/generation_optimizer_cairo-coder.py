@@ -32,7 +32,7 @@ def _():
     # mlflow.dspy.autolog()
 
     ## Setup VectorDB for document retrieval
-    embedder = dspy.Embedder("openai/text-embedding-3-large", dimensions=1536, batch_size=512)
+    embedder = dspy.Embedder("gemini/gemini-embedding-001", dimensions=3072, batch_size=512)
     vector_store_config = get_vector_store_config()
     vector_db = SourceFilteredPgVectorRM(
         db_url=vector_store_config.dsn,
@@ -41,7 +41,7 @@ def _():
         content_field="content",
         fields=["id", "content", "metadata"],
         k=5,  # Default k, will be overridden by retriever
-        embedding_model="text-embedding-3-large",
+        embedding_model="gemini-embedding-001",
         include_similarity=True,
     )
 

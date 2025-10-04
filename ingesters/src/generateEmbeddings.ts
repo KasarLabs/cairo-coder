@@ -1,11 +1,33 @@
 import { createInterface } from 'readline';
 import { logger } from './utils/logger';
 import { VectorStore } from './db/postgresVectorStore';
-import { getOpenaiApiKey, getVectorDbConfig } from './config/settings';
+import {
+  getGeminiApiKey,
+  getOpenaiApiKey,
+  getVectorDbConfig,
+} from './config/settings';
 import { DocumentSource } from './types';
 import { IngesterFactory } from './IngesterFactory';
 import { OpenAIEmbeddings } from '@langchain/openai';
 import type { Embeddings } from '@langchain/core/embeddings';
+import { GoogleGenerativeAIEmbeddings } from '@langchain/google-genai';
+import { TaskType } from '@google/generative-ai';
+
+export const loadGeminiEmbeddingsModels = async (): Promise<
+  Record<string, GoogleGenerativeAIEmbeddings>
+> => {
+  const geminiApiKey = getGeminiApiKey();
+  if (!geminiApiKey) return {};
+  const embeddings = new GoogleGenerativeAIEmbeddings({
+    model: 'gemini-embedding-001', // 3072 dimensions
+    taskType: TaskType.RETRIEVAL_DOCUMENT,
+    title: 'Document title',
+    apiKey: geminiApiKey,
+  });
+  return {
+    'Gemini embedding 001': embeddings,
+  };
+};
 
 export const loadOpenAIEmbeddingsModels = async (): Promise<
   Record<string, OpenAIEmbeddings>
@@ -63,17 +85,17 @@ async function setupVectorStore(): Promise<VectorStore> {
     // Get database configuration
     const dbConfig = getVectorDbConfig();
 
-    const embeddingModels = await loadOpenAIEmbeddingsModels();
-    const textEmbedding3Large = embeddingModels['Text embedding 3 large'];
+    const embeddingModels = await loadGeminiEmbeddingsModels();
+    const embeddingModel = embeddingModels['Gemini embedding 001'];
 
-    if (!textEmbedding3Large) {
+    if (!embeddingModel) {
       throw new Error('Text embedding 3 large model not found');
     }
 
     // Initialize vector store
     vectorStore = await VectorStore.getInstance(
       dbConfig,
-      textEmbedding3Large as unknown as Embeddings,
+      embeddingModel as unknown as Embeddings,
     );
     logger.info('VectorStore initialized successfully');
     return vectorStore;

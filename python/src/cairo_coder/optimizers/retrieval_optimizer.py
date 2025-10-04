@@ -32,7 +32,7 @@ def _():
     # mlflow.dspy.autolog()
 
     ## Setup VectorDB for document retrieval
-    embedder = dspy.Embedder("openai/text-embedding-3-large", dimensions=1536, batch_size=512)
+    embedder = dspy.Embedder("gemini/gemini-embedding-001", dimensions=3072, batch_size=512)
     vector_store_config = get_vector_store_config()
     vector_db = SourceFilteredPgVectorRM(
         db_url=vector_store_config.dsn,
@@ -171,7 +171,7 @@ def _(XMLAdapter, dspy):
         if pred.retrieved_docs is None or len(pred.retrieved_docs) == 0:
             return {"score": 0.0, "feedback": "Could not retrieve anything that would answer this query."}
         with dspy.context(
-            lm=dspy.LM("openrouter/x-ai/grok-4-fast:free", max_tokens=30000), adapter=XMLAdapter()
+            lm=dspy.LM("openrouter/x-ai/grok-4-fast", max_tokens=30000), adapter=XMLAdapter()
         ):
             response_rating = context_rater(
                 query=gold.query,
@@ -343,7 +343,7 @@ def _(RETRIEVER, os):
         raise FileNotFoundError(f"{compiled_program_path} not found")
 
     loading_progr = RETRIEVER()
-    loading_progr.load(compiled_program_path)
+    loading_progr.query_processor_program.retrieval_program.load(compiled_program_path)
     return (loading_progr,)
 
 

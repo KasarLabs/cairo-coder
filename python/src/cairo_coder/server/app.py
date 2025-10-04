@@ -642,7 +642,7 @@ async def lifespan(app: FastAPI):
     vector_store_config = config.vector_store
 
     # TODO: These should not be literal constants like this.
-    embedder = dspy.Embedder("openai/text-embedding-3-large", dimensions=1536, batch_size=512)
+    embedder = dspy.Embedder("gemini/gemini-embedding-001", dimensions=3072, batch_size=512)
 
     _vector_db = SourceFilteredPgVectorRM(
         db_url=vector_store_config.dsn,
@@ -651,7 +651,7 @@ async def lifespan(app: FastAPI):
         content_field="content",
         fields=["id", "content", "metadata"],
         k=5,  # Default k, will be overridden by retriever
-        embedding_model='text-embedding-3-large',
+        embedding_model='gemini-embedding-001',
         include_similarity=True,
     )
 
