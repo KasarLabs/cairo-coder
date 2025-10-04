@@ -5,7 +5,6 @@ This module implements the RagPipeline class that orchestrates the three-stage
 RAG workflow: Query Processing → Document Retrieval → Generation.
 """
 
-import os
 from collections.abc import AsyncGenerator
 from dataclasses import dataclass
 from typing import Any
@@ -208,7 +207,7 @@ class RagPipeline(dspy.Module):
                     type=StreamEventType.PROCESSING, data="Formatting documentation..."
                 )
 
-                mcp_prediction = self.mcp_generation_program.forward(documents)
+                mcp_prediction = self.mcp_generation_program(documents)
                 yield StreamEvent(type=StreamEventType.RESPONSE, data=mcp_prediction.answer)
             else:
                 # Normal mode: Generate response
@@ -220,7 +219,7 @@ class RagPipeline(dspy.Module):
                 # Stream response generation. Use ChatAdapter for streaming, which performs better.
                 with dspy.context(
                     lm=dspy.LM("gemini/gemini-flash-lite-latest", max_tokens=10000),
-                    adapter=dspy.adapters.ChatAdapter(),
+                    adapter=dspy.adapters.XMLAdapter(),
                 ):
                     async for chunk in self.generation_program.aforward_streaming(
                         query=query, context=context, chat_history=chat_history_str
@@ -299,8 +298,11 @@ class RagPipeline(dspy.Module):
         sources: list[dict[str, str]] = []
         for doc in documents:
             if doc.source_link is None:
-                continue
-            sources.append({"metadata": {"title": doc.title, "url": doc.source_link}})
+                logger.warning(f"Document {doc.title} has no source link")
+                to_append = ({"metadata": {"title": doc.title, "url": ""}})
+            else:
+                to_append = ({"metadata": {"title": doc.title, "url": doc.source_link}})
+            sources.append(to_append)
 
         return sources
 
@@ -419,11 +421,4 @@ class RagPipelineFactory:
             similarity_threshold=similarity_threshold,
         )
 
-        rag_program = RagPipeline(config)
-        # Load optimizer
-        compiled_program_path = "optimizers/results/optimized_rag.json"
-        if not os.path.exists(compiled_program_path):
-            raise FileNotFoundError(f"{compiled_program_path} not found")
-        rag_program.load(compiled_program_path)
-
-        return rag_program
+        return RagPipeline(config)

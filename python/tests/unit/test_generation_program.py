@@ -11,6 +11,7 @@ import dspy
 import pytest
 from dspy.adapters.chat_adapter import AdapterParseError
 
+from cairo_coder.agents.registry import AgentId
 from cairo_coder.core.types import Document, Message, Role
 from cairo_coder.dspy.generation_program import (
     CairoCodeGeneration,
@@ -25,15 +26,15 @@ from cairo_coder.dspy.generation_program import (
 @pytest.fixture(scope="function")
 def generation_program(mock_lm):
     """Create a GenerationProgram instance."""
-    return GenerationProgram(program_type="general")
+    return GenerationProgram(program_type=AgentId.CAIRO_CODER)
 
 class TestGenerationProgram:
     """Test suite for GenerationProgram."""
 
     @pytest.fixture
-    def scarb_generation_program(self, mock_lm):
-        """Create a Scarb-specific GenerationProgram instance."""
-        return GenerationProgram(program_type="scarb")
+    def starknet_generation_program(self, mock_lm):
+        """Create a Starknet-specific GenerationProgram instance."""
+        return GenerationProgram(program_type=AgentId.STARKNET)
 
     @pytest.fixture
     def mcp_generation_program(self):
@@ -78,10 +79,10 @@ class TestGenerationProgram:
         assert generation_program.generation_program.aforward.call_args[1]["chat_history"] == chat_history
 
     @pytest.mark.asyncio
-    async def test_scarb_generation_program(self, scarb_generation_program):
-        """Test Scarb-specific code generation for both sync and async."""
+    async def test_starknet_generation_program(self, starknet_generation_program):
+        """Test Starknet-specific code generation for both sync and async."""
         with patch.object(
-            scarb_generation_program, "generation_program"
+            starknet_generation_program, "generation_program"
         ) as mock_program:
             mock_program.aforward = AsyncMock(return_value=dspy.Prediction(
                 answer='Here\'s your Scarb configuration:\n\n```toml\n[package]\nname = "my-project"\nversion = "0.1.0"\n```'
@@ -89,7 +90,7 @@ class TestGenerationProgram:
             query = "How do I configure Scarb for my project?"
             context = "Scarb configuration documentation..."
 
-            result = await scarb_generation_program.aforward(query, context)
+            result = await starknet_generation_program.aforward(query, context)
 
             # Result should be a dspy.Predict object with an answer attribute
             assert hasattr(result, "answer")
@@ -251,19 +252,14 @@ class TestFactoryFunctions:
     def test_create_generation_program(self):
         """Test the generation program factory function."""
         # Test general program
-        program = create_generation_program("general")
+        program = create_generation_program(AgentId.CAIRO_CODER)
         assert isinstance(program, GenerationProgram)
-        assert program.program_type == "general"
+        assert program.program_type == AgentId.CAIRO_CODER.value
 
-        # Test scarb program
-        program = create_generation_program("scarb")
+        # Test starknet program
+        program = create_generation_program(AgentId.STARKNET)
         assert isinstance(program, GenerationProgram)
-        assert program.program_type == "scarb"
-
-        # Test default program
-        program = create_generation_program()
-        assert isinstance(program, GenerationProgram)
-        assert program.program_type == "general"
+        assert program.program_type == AgentId.STARKNET.value
 
     def test_create_mcp_generation_program(self):
         """Test the MCP generation program factory function."""

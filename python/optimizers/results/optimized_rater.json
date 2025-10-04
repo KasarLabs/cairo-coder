@@ -1,0 +1,34 @@
+{
+  "traces": [],
+  "train": [],
+  "demos": [],
+  "signature": {
+    "instructions": "Compare a system's retrieval response to the query and rate how much it can be leveraged to answer the query. When asked to reason, enumerate key ideas in each response, and whether they are present in the expected output. A document is considered useful if it is directly relevant to the query, or if it is informative and can be useful for context. For example, if the query is about creating or fixing a smart contract, then, an example of a smart contract, even if not _directly_ related, is considered useful. If the query is about a specific Cairo language feature, then a document about that feature is considered useful. Contract and test templates are always considered useful.",
+    "fields": [
+      {
+        "prefix": "Query:",
+        "description": "User's specific Cairo programming question or request for code generation"
+      },
+      {
+        "prefix": "System Resource:",
+        "description": "Single resource text (content + minimal metadata/title)"
+      },
+      {
+        "prefix": "Reasoning:",
+        "description": "A short sentence, on why a selected resource will be useful. If it's not selected, reason about why it's not going to be useful. Start by Resource <resource_title>..."
+      },
+      {
+        "prefix": "Resource Note",
+        "description": "A note between 0 and 1.0 on how useful the resource is to directly answer the query. 0 being completely unrelated, 1.0 being very relevant, 0.5 being 'not directly relatd but still informative and can be useful for context."
+      }
+    ]
+  },
+  "lm": null,
+  "metadata": {
+    "dependency_versions": {
+      "python": "3.12",
+      "dspy": "3.0.3",
+      "cloudpickle": "3.1"
+    }
+  }
+}

@@ -8,6 +8,7 @@ Integration-specific fixtures.
 import pytest
 from fastapi.testclient import TestClient
 
+from cairo_coder.agents.registry import AgentId
 from cairo_coder.server.app import get_agent_factory, get_vector_db
 
 
@@ -108,7 +109,7 @@ def real_pipeline(mock_query_processor, mock_vector_store_config, mock_vector_db
                 max_source_count=3,
                 similarity_threshold=0.1,
             ),
-            generation_program=create_generation_program(),
+            generation_program=create_generation_program(AgentId.CAIRO_CODER),
             mcp_generation_program=create_mcp_generation_program(),
             sources=list(__import__("cairo_coder.core.types", fromlist=["DocumentSource"]).DocumentSource),
             max_source_count=3,
@@ -165,10 +166,7 @@ def client(server, real_pipeline, mock_vector_db, mock_agent_factory):
     """
     # Configure the reusable mock factory to return the real pipeline
     mock_agent_factory.get_or_create_agent.return_value = real_pipeline
-    mock_agent_factory.get_available_agents.return_value = [
-        "cairo-coder",
-        "scarb-assistant",
-    ]
+    mock_agent_factory.get_available_agents.return_value = [agent_id.value for agent_id in AgentId]
 
     server.app.dependency_overrides[get_vector_db] = lambda: mock_vector_db
     server.app.dependency_overrides[get_agent_factory] = lambda: mock_agent_factory

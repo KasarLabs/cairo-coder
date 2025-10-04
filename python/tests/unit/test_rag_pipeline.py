@@ -438,7 +438,6 @@ class TestRagPipelineFactory:
     def test_create_pipeline_has_judge_enabled(self, mock_vector_store_config, mock_vector_db):
         """Test factory creates pipeline with judge parameters."""
         with (
-            patch("cairo_coder.core.rag_pipeline.os.path.exists", return_value=True),
             patch.object(RagPipeline, "load"),
             patch("cairo_coder.dspy.DocumentRetrieverProgram") as mock_retriever_class,
         ):
@@ -459,27 +458,6 @@ class TestRagPipelineFactory:
 
             assert isinstance(pipeline.retrieval_judge, RetrievalJudge)
 
-    def test_optimizer_file_missing_error(self, mock_vector_store_config, mock_vector_db):
-        """Test error when optimizer file is missing."""
-        with (
-            patch("cairo_coder.core.rag_pipeline.os.path.exists", return_value=False),
-            patch("cairo_coder.dspy.DocumentRetrieverProgram") as mock_retriever_class,
-        ):
-
-            # Mock DocumentRetrieverProgram to return a mock retriever
-            mock_retriever = Mock()
-            mock_retriever.vector_db = mock_vector_db
-            mock_retriever_class.return_value = mock_retriever
-
-            with pytest.raises(FileNotFoundError, match="optimized_rag.json not found"):
-                RagPipelineFactory.create_pipeline(
-                    name="test",
-                    vector_store_config=mock_vector_store_config,
-                    sources=list(DocumentSource),
-                    generation_program=Mock(),
-                    query_processor=Mock(),
-                    mcp_generation_program=Mock(),
-                )
 
 
 class TestPipelineHelperMethods:
