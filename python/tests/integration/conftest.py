@@ -5,6 +5,8 @@ Integration-specific fixtures.
 - An integration client that injects a real RagPipeline wired to mocks.
 """
 
+from unittest.mock import AsyncMock, Mock
+
 import pytest
 from fastapi.testclient import TestClient
 
@@ -155,9 +157,33 @@ def real_pipeline(mock_query_processor, mock_vector_store_config, mock_vector_db
 
     return pipeline
 
+@pytest.fixture
+def patch_suggestion_program(monkeypatch):
+    """Patch SuggestionGeneration to return mock suggestions."""
+    import dspy
+
+    mock_suggestion_program = Mock(spec=dspy.Predict)
+    mock_suggestion_program.aforward = AsyncMock(return_value=dspy.Prediction(suggestions=[
+        "How do I deploy this contract to testnet?",
+        "What are the best practices for contract security?",
+        "Can you explain how storage works in Cairo contracts?",
+        "How do I write tests for this contract?",
+    ]))
+
+    # Patch dspy.Predict to return our mock when called with SuggestionGeneration
+    original_predict = dspy.Predict
+
+    def mock_predict_constructor(signature):
+        from cairo_coder.dspy.suggestion_program import SuggestionGeneration
+        if signature is SuggestionGeneration or signature == SuggestionGeneration:
+            return mock_suggestion_program
+        return original_predict(signature)
+
+    monkeypatch.setattr("dspy.Predict", mock_predict_constructor)
+
 
 @pytest.fixture
-def client(server, real_pipeline, mock_vector_db, mock_agent_factory):
+def client(server, real_pipeline, mock_vector_db, mock_agent_factory, patch_suggestion_program):
     """Integration-level client with pipeline injection.
 
     Overrides FastAPI dependencies:
