@@ -612,7 +612,7 @@ class DocumentRetrieverProgram(dspy.Module):
         """
         try:
             search_queries = processed_query.search_queries
-            if len(search_queries) == 0:
+            if not search_queries or len(search_queries) == 0:
                 search_queries = [processed_query.original]
 
 
@@ -664,7 +664,7 @@ class DocumentRetrieverProgram(dspy.Module):
         try:
 
             search_queries = processed_query.search_queries
-            if len(search_queries) == 0:
+            if not search_queries or len(search_queries) == 0:
             # TODO: revert
                 search_queries = [processed_query.original]
 
@@ -712,7 +712,7 @@ class DocumentRetrieverProgram(dspy.Module):
             context.append(
                 Document(
                     page_content=CONTRACT_TEMPLATE,
-                    metadata={"title": CONTRACT_TEMPLATE_TITLE, "source": CONTRACT_TEMPLATE_TITLE},
+                    metadata={"title": CONTRACT_TEMPLATE_TITLE, "source": CONTRACT_TEMPLATE_TITLE, "sourceLink": "https://www.starknet.io/cairo-book/ch103-06-01-deploying-and-interacting-with-a-voting-contract.html"},
                 )
             )
 
@@ -721,7 +721,7 @@ class DocumentRetrieverProgram(dspy.Module):
             context.append(
                 Document(
                     page_content=TEST_TEMPLATE,
-                    metadata={"title": TEST_TEMPLATE_TITLE, "source": TEST_TEMPLATE_TITLE},
+                    metadata={"title": TEST_TEMPLATE_TITLE, "source": TEST_TEMPLATE_TITLE, "sourceLink": "https://www.starknet.io/cairo-book/ch104-02-testing-smart-contracts.html"},
                 )
             )
         return context

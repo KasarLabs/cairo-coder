@@ -207,7 +207,7 @@ class RagPipeline(dspy.Module):
                     type=StreamEventType.PROCESSING, data="Formatting documentation..."
                 )
 
-                mcp_prediction = self.mcp_generation_program.forward(documents)
+                mcp_prediction = self.mcp_generation_program(documents)
                 yield StreamEvent(type=StreamEventType.RESPONSE, data=mcp_prediction.answer)
             else:
                 # Normal mode: Generate response
@@ -219,7 +219,7 @@ class RagPipeline(dspy.Module):
                 # Stream response generation. Use ChatAdapter for streaming, which performs better.
                 with dspy.context(
                     lm=dspy.LM("gemini/gemini-flash-lite-latest", max_tokens=10000),
-                    adapter=dspy.adapters.ChatAdapter(),
+                    adapter=dspy.adapters.XMLAdapter(),
                 ):
                     async for chunk in self.generation_program.aforward_streaming(
                         query=query, context=context, chat_history=chat_history_str
@@ -298,8 +298,11 @@ class RagPipeline(dspy.Module):
         sources: list[dict[str, str]] = []
         for doc in documents:
             if doc.source_link is None:
-                continue
-            sources.append({"metadata": {"title": doc.title, "url": doc.source_link}})
+                logger.warning(f"Document {doc.title} has no source link")
+                to_append = ({"metadata": {"title": doc.title, "url": ""}})
+            else:
+                to_append = ({"metadata": {"title": doc.title, "url": doc.source_link}})
+            sources.append(to_append)
 
         return sources
 
