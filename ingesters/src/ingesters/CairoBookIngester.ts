@@ -103,7 +103,6 @@ export class CairoBookIngester extends MarkdownIngester {
       });
     });
 
-
     return localChunks;
   }
 

@@ -1,13 +1,10 @@
 ---
-
 Sources:
-
-- https://www.starknet.io/cairo-book/ch00-00-introduction.html
-- https://www.starknet.io/cairo-book/ch00-01-foreword.html
-- https://www.starknet.io/cairo-book/
-- https://www.starknet.io/cairo-book/ch100-00-introduction-to-smart-contracts.html
-- https://www.starknet.io/cairo-book/title-page.html
-
+  - https://www.starknet.io/cairo-book/ch00-00-introduction.html
+  - https://www.starknet.io/cairo-book/ch00-01-foreword.html
+  - https://www.starknet.io/cairo-book/
+  - https://www.starknet.io/cairo-book/ch100-00-introduction-to-smart-contracts.html
+  - https://www.starknet.io/cairo-book/title-page.html
 ---
 
 # Introduction to Cairo and The Cairo Book
@@ -17,41 +14,43 @@ Sources:
 This version of the text assumes you’re using Cairo version 2.12.0 and Starknet Foundry version 0.48.0. The book is open source, supported by the Cairo Community, StarkWare, and Voyager.
 
 Additional resources for mastering Cairo include:
-*   **The Cairo Playground**: A browser-based environment for writing, compiling, debugging, and proving Cairo code without setup. It shows compilation into Sierra (Intermediate Representation) and Casm (Cairo Assembly).
-*   **The Cairo Core Library Docs**: Documentation for the standard set of types, traits, and utilities built into the language.
-*   **The Cairo Package Registry**: Hosts reusable libraries like Alexandria and Open Zeppelin Contracts for Cairo, integrated via Scarb.
-*   **The Scarb documentation**: Official documentation for Cairo’s package manager and build tool.
-*   **The Cairo whitepaper**: Explains Cairo as a language for writing provable programs and its architecture for scalable, verifiable computation.
+
+- **The Cairo Playground**: A browser-based environment for writing, compiling, debugging, and proving Cairo code without setup. It shows compilation into Sierra (Intermediate Representation) and Casm (Cairo Assembly).
+- **The Cairo Core Library Docs**: Documentation for the standard set of types, traits, and utilities built into the language.
+- **The Cairo Package Registry**: Hosts reusable libraries like Alexandria and Open Zeppelin Contracts for Cairo, integrated via Scarb.
+- **The Scarb documentation**: Official documentation for Cairo’s package manager and build tool.
+- **The Cairo whitepaper**: Explains Cairo as a language for writing provable programs and its architecture for scalable, verifiable computation.
 
 ## What is Cairo?
 
 Cairo is a programming language designed specifically to leverage mathematical proofs for computational integrity, allowing programs to prove they executed correctly, even on untrusted machines.
 
-*   **Foundation**: The language is built on STARK technology, a modern evolution of Probabilistically Checkable Proofs (PCPs), which transforms computational claims into verifiable constraint systems.
-*   **Design**: Strongly inspired by Rust, Cairo abstracts away deep cryptographic complexities, allowing developers to focus on program logic while maintaining the full power of STARKs.
-*   **Performance**: Powered by a Rust VM and a next-generation prover, Cairo execution and proof generation are very fast.
+- **Foundation**: The language is built on STARK technology, a modern evolution of Probabilistically Checkable Proofs (PCPs), which transforms computational claims into verifiable constraint systems.
+- **Design**: Strongly inspired by Rust, Cairo abstracts away deep cryptographic complexities, allowing developers to focus on program logic while maintaining the full power of STARKs.
+- **Performance**: Powered by a Rust VM and a next-generation prover, Cairo execution and proof generation are very fast.
 
 ## Applications and Context
 
 Cairo's primary application today is **Starknet**, a Layer 2 scaling solution for Ethereum.
 
-*   **Scalability**: Starknet addresses the Blockchain Trilemma by offloading complex computations from Ethereum L1. It uses Cairo's proof system where computations are executed off-chain, and a STARK proof is generated. This proof is then verified on L1 using significantly less power than re-executing the computation, enabling massive scalability while maintaining security.
-*   **General Purpose**: Beyond blockchain, Cairo can be used for any scenario where computational integrity needs efficient verification across different machines.
+- **Scalability**: Starknet addresses the Blockchain Trilemma by offloading complex computations from Ethereum L1. It uses Cairo's proof system where computations are executed off-chain, and a STARK proof is generated. This proof is then verified on L1 using significantly less power than re-executing the computation, enabling massive scalability while maintaining security.
+- **General Purpose**: Beyond blockchain, Cairo can be used for any scenario where computational integrity needs efficient verification across different machines.
 
 ## Audience and Prerequisites
 
 This book assumes basic programming knowledge (variables, functions, data structures). Prior Rust experience is helpful but not required.
 
 The book caters to three main audiences with recommended reading paths:
+
 1.  **General-Purpose Developers**: Focus on chapters 1-12 for core language features, avoiding deep smart contract specifics.
 2.  **New Smart Contract Developers**: Read the book front to back for a solid foundation in both language and contract development.
 3.  **Experienced Smart Contract Developers**: Focus on Cairo basics (Chapters 1-3), the trait/generics system (Chapter 8), and then smart contract development (Chapter 15+).
 
 ## References
 
-*   Cairo CPU Architecture: https://eprint.iacr.org/2021/1063
-*   Cairo, Sierra and Casm: https://medium.com/nethermind-eth/under-the-hood-of-cairo-1-0-exploring-sierra-7f32808421f5
-*   State of non determinism: https://twitter.com/PapiniShahar/status/1638203716535713798
+- Cairo CPU Architecture: https://eprint.iacr.org/2021/1063
+- Cairo, Sierra and Casm: https://medium.com/nethermind-eth/under-the-hood-of-cairo-1-0-exploring-sierra-7f32808421f5
+- State of non determinism: https://twitter.com/PapiniShahar/status/1638203716535713798
 
 ---
 
@@ -79,6 +78,7 @@ curl --proto '=https' --tlsv1.2 -sSf https://sh.starkup.dev | sh
 ```
 
 If successful, the output will show:
+
 ```
 starkup: Installation complete.
 ```
@@ -101,8 +101,8 @@ snforge 0.48.0
 
 Cairo provides a VSCode extension offering syntax highlighting and code completion. Install it from the VSCode Marketplace. After installation, navigate to the extension settings and ensure the following options are ticked:
 
-*   `Enable Language Server`
-*   `Enable Scarb`
+- `Enable Language Server`
+- `Enable Scarb`
 
 ---
 
@@ -117,7 +117,7 @@ Sources:
 
 ### Creating a Project Directory
 
-You should start by making a directory for your Cairo code. For the examples in this book, making a *cairo_projects* directory in your home directory is suggested.
+You should start by making a directory for your Cairo code. For the examples in this book, making a _cairo_projects_ directory in your home directory is suggested.
 
 For Linux, macOS, and PowerShell on Windows, use:
 
@@ -143,15 +143,15 @@ scarb new hello_world
 
 Scarb will prompt for a test runner setup; `❯ Starknet Foundry (default)` is generally preferred.
 
-This command creates a directory named *hello_world* containing configuration files and source directories.
+This command creates a directory named _hello_world_ containing configuration files and source directories.
 
 ### Project Structure and Configuration
 
-After running `scarb new hello_world`, navigate into the directory (`cd hello_world`). Scarb generates a *Scarb.toml* file, a *src* directory with *lib.cairo*, and a *tests* directory (which can be removed for simple executable programs). A Git repository is also initialized.
+After running `scarb new hello_world`, navigate into the directory (`cd hello_world`). Scarb generates a _Scarb.toml_ file, a _src_ directory with _lib.cairo_, and a _tests_ directory (which can be removed for simple executable programs). A Git repository is also initialized.
 
 #### Scarb.toml Manifest
 
-The *Scarb.toml* file uses TOML format for configuration. The initial structure for a Starknet contract project looks like this:
+The _Scarb.toml_ file uses TOML format for configuration. The initial structure for a Starknet contract project looks like this:
 
 Filename: Scarb.toml
 
@@ -179,7 +179,7 @@ test = "snforge test"
 # ...
 ```
 
-For a basic Cairo executable program instead of a contract, you can modify *Scarb.toml* to resemble the following:
+For a basic Cairo executable program instead of a contract, you can modify _Scarb.toml_ to resemble the following:
 
 Filename: Scarb.toml
 
@@ -202,15 +202,15 @@ function = "hello_world::hello_world::main"
 
 #### Source File Organization
 
-Scarb reserves the top-level directory for non-code content. Source files must reside in the *src* directory.
+Scarb reserves the top-level directory for non-code content. Source files must reside in the _src_ directory.
 
-1.  Delete the content of *src/lib.cairo* and replace it with a module declaration:
+1.  Delete the content of _src/lib.cairo_ and replace it with a module declaration:
 
 ```rust
 mod hello_world;
 ```
 
-2.  Create a new file named *src/hello_world.cairo* with the following code:
+2.  Create a new file named _src/hello_world.cairo_ with the following code:
 
 Filename: src/hello_world.cairo
 
@@ -232,7 +232,7 @@ The resulting structure is:
 
 ### Building and Executing the Project
 
-From the *hello_world* directory, build the project using:
+From the _hello_world_ directory, build the project using:
 
 ```bash
 $ scarb build
@@ -252,10 +252,10 @@ Hello, World!
 
 ### Summary of Scarb Commands
 
-*   Install Scarb versions using `asdf`.
-*   Create a project using `scarb new`.
-*   Build a project using `scarb build` to generate compiled Sierra code.
-*   Execute a Cairo program using the `scarb execute` command.
+- Install Scarb versions using `asdf`.
+- Create a project using `scarb new`.
+- Build a project using `scarb build` to generate compiled Sierra code.
+- Execute a Cairo program using the `scarb execute` command.
 
 Scarb commands are consistent across different operating systems.
 
@@ -371,7 +371,7 @@ fn main(input: u32) -> bool {
 
 The `is_prime` function handles edge cases (numbers $\le 1$, 2, and even numbers) and then iterates through odd divisors up to $\sqrt{n}$. The `main` function, marked with `#[executable]`, serves as the entry point, taking a `u32` input and returning the boolean result of `is_prime`.
 
-*Note: Later modifications might change `u32` to `u128` for a larger range and add panicking behavior for inputs exceeding a certain limit (e.g., 1,000,000), which prevents proof generation if the program panics.*
+_Note: Later modifications might change `u32` to `u128` for a larger range and add panicking behavior for inputs exceeding a certain limit (e.g., 1,000,000), which prevents proof generation if the program panics._
 
 ### Executing the Program
 
@@ -397,10 +397,11 @@ The output `1` indicates `true` (17 is prime). If the input was 4, the output wo
 ### Summary
 
 This guided project demonstrated:
-*   Defining executable targets in `Scarb.toml`.
-*   Writing functions and control flow in Cairo.
-*   Using `scarb execute` to run programs and generate execution traces.
-*   The overall workflow for proving and verifying computations using `scarb prove` and `scarb verify` (though the latter commands are not explicitly run here, they are the next logical step).
+
+- Defining executable targets in `Scarb.toml`.
+- Writing functions and control flow in Cairo.
+- Using `scarb execute` to run programs and generate execution traces.
+- The overall workflow for proving and verifying computations using `scarb prove` and `scarb verify` (though the latter commands are not explicitly run here, they are the next logical step).
 
 ---
 
@@ -414,18 +415,19 @@ Sources:
 
 ### Dependency Management in Scarb
 
-If you want to import multiple packages, create only one `[dependencies]` section in *Scarb.toml* and list all desired packages beneath it. Development dependencies are declared in a `[dev-dependencies]` section.
+If you want to import multiple packages, create only one `[dependencies]` section in _Scarb.toml_ and list all desired packages beneath it. Development dependencies are declared in a `[dev-dependencies]` section.
 
 Run `scarb build` to fetch all external dependencies and compile your package.
 
 Dependencies can also be managed via the command line:
-*   Use `scarb add` to add a dependency, which automatically edits *Scarb.toml*.
-*   Use `scarb add --dev` for development dependencies.
-*   To remove a dependency, edit *Scarb.toml* or use the `scarb rm` command.
+
+- Use `scarb add` to add a dependency, which automatically edits _Scarb.toml_.
+- Use `scarb add --dev` for development dependencies.
+- To remove a dependency, edit _Scarb.toml_ or use the `scarb rm` command.
 
 ### The Glob Operator
 
-To bring *all* public items defined in a path into scope, specify that path followed by the `*` glob operator in a `use` statement:
+To bring _all_ public items defined in a path into scope, specify that path followed by the `*` glob operator in a `use` statement:
 
 ```rust
 #![allow(unused)]
@@ -458,10 +460,11 @@ The language varies by blockchain; Solidity is common for EVM, while Cairo is us
 ### Smart Contract Use Cases
 
 Smart contracts facilitate various applications:
-*   **Tokenization:** Tokenizing real-world assets (real estate, art) to increase liquidity and enable fractional ownership.
-*   **Voting:** Creating secure, transparent voting systems where results are tallied automatically.
-*   **Royalties:** Automating royalty payments to creators upon content consumption or sale.
-*   **Decentralized Identities (DIDs):** Managing digital identities, allowing users control over personal information sharing and access verification.
+
+- **Tokenization:** Tokenizing real-world assets (real estate, art) to increase liquidity and enable fractional ownership.
+- **Voting:** Creating secure, transparent voting systems where results are tallied automatically.
+- **Royalties:** Automating royalty payments to creators upon content consumption or sale.
+- **Decentralized Identities (DIDs):** Managing digital identities, allowing users control over personal information sharing and access verification.
 
 ## The Rise of Starknet and Cairo
 
@@ -549,37 +552,44 @@ Sources:
 Every executable Cairo program begins execution in the `main` function.
 
 The `main` function declaration:
+
 ```rust
 fn main() {
 
 }
 ```
-*   The `main` function takes no parameters (if it did, they would be inside `()`).
-*   The function body is enclosed in curly brackets `{}`.
-*   It is standard style to place the opening curly bracket on the same line as the function declaration, separated by one space.
-*   Cairo style dictates using four spaces for indentation.
+
+- The `main` function takes no parameters (if it did, they would be inside `()`).
+- The function body is enclosed in curly brackets `{}`.
+- It is standard style to place the opening curly bracket on the same line as the function declaration, separated by one space.
+- Cairo style dictates using four spaces for indentation.
 
 The body of `main` often contains code that performs actions, such as printing to the terminal:
+
 ```rust
     println!("Hello, World!");
 ```
+
 The `println!` syntax calls a Cairo macro; calling a function would omit the exclamation mark (e.g., `println`).
 
 ### Statements and Expressions
 
 Cairo is an expression-based language, distinguishing between statements and expressions:
 
-*   **Statements** are instructions that perform an action but do not return a value.
-*   **Expressions** evaluate to a resultant value.
+- **Statements** are instructions that perform an action but do not return a value.
+- **Expressions** evaluate to a resultant value.
 
 Function definitions are statements. Creating a variable assignment using `let` is also a statement, as shown in Listing 2-1:
+
 ```rust
 #[executable]
 fn main() {
     let y = 6;
 }
 ```
+
 Since statements do not return values, attempting to assign a `let` statement to another variable results in an error:
+
 ```rust
 #[executable]
 fn main() {
@@ -593,12 +603,15 @@ Comments are ignored by the compiler but aid human readers.
 
 **Standard Comments:**
 Idiomatic comments start with two slashes (`//`) and continue until the end of the line. For multi-line comments, `//` must prefix every line:
+
 ```rust
 // So we’re doing something complicated here, long enough that we need
 // multiple lines of comments to do it! Whew! Hopefully, this comment will
 // explain what’s going on.
 ```
+
 Comments can also appear at the end of lines containing code:
+
 ```rust
 #[executable]
 fn main() -> felt252 {
@@ -608,7 +621,8 @@ fn main() -> felt252 {
 
 **Item-level Documentation:**
 These comments refer to specific items (functions, traits, etc.) and are prefixed with three slashes (`///`). They provide detailed descriptions, usage examples, and panic conditions.
-```rust
+
+````rust
 /// Returns the sum of `arg1` and `arg2`.
 /// `arg1` cannot be zero.
 ///
@@ -628,7 +642,7 @@ fn add(arg1: felt252, arg2: felt252) -> felt252 {
     assert!(arg1 != 0, "Cannot be zero");
     arg1 + arg2
 }
-```
+````
 
 ---
 
@@ -706,10 +720,11 @@ The value of x is: 6
 
 #### Constants
 
-*Constants* are similar to immutable variables but have key differences:
+_Constants_ are similar to immutable variables but have key differences:
+
 1.  They cannot be declared mutable (`mut` is disallowed).
 2.  They are declared using the `const` keyword instead of `let`.
-3.  The type of the value *must* always be annotated.
+3.  The type of the value _must_ always be annotated.
 4.  They can only be declared in the global scope.
 5.  They can only be set to a constant expression, not a value computed at runtime.
 
@@ -807,7 +822,7 @@ error: `scarb` command exited with error
 
 #### Variable Scope
 
-A *scope* is the range within a program for which an item is valid. A variable is valid from the point it is declared until it goes out of scope.
+A _scope_ is the range within a program for which an item is valid. A variable is valid from the point it is declared until it goes out of scope.
 
 ```rust
 //TAG: ignore_fmt
@@ -824,7 +839,7 @@ Listing 4-1: A variable and the scope in which it is valid
 
 ##### Moving Values
 
-*Moving* a value means passing it to another function. When this happens, the variable referring to that value in the original scope is destroyed and can no longer be used; a new variable is created to hold the value. Complex types, like Arrays, are moved when passed to another function.
+_Moving_ a value means passing it to another function. When this happens, the variable referring to that value in the original scope is destroyed and can no longer be used; a new variable is created to hold the value. Complex types, like Arrays, are moved when passed to another function.
 
 Array example:
 
@@ -846,19 +861,24 @@ Sources:
 ---
 
 # Data Types: Scalars and Primitives
+
 ...
+
 ## Felt Type
+
 ...
+
 ### Unsigned Integers
+
 ...
 This seems the safest interpretation of the conflicting requirements (explicit syntax vs relative depth based on ToC context).
 
 The chunks start with `## Data Types - The Cairo Programming Language\n\n# Data Types\n\n...`. I must ignore this initial context and start with the required heading derived from the TOC path.
 
-```markdown
+````markdown
 # Data Types: Scalars and Primitives
 
-Cairo is a *statically typed* language, which means that it must know the types of all variables at compile time. The compiler can usually infer the desired type based on the value and its usage. In cases when many types are possible, a conversion method can specify the desired output type:
+Cairo is a _statically typed_ language, which means that it must know the types of all variables at compile time. The compiler can usually infer the desired type based on the value and its usage. In cases when many types are possible, a conversion method can specify the desired output type:
 
 ```rust
 #[executable]
@@ -867,6 +887,7 @@ fn main() {
     let y: u32 = x.try_into().unwrap();
 }
 ```
+````
 
 Scalar types represent a single value. Cairo has three primary scalar types: felts, integers, and booleans.
 
@@ -884,15 +905,15 @@ It is highly recommended to use integer types over `felt252` due to added securi
 
 Built-in unsigned integer types:
 
-| Length | Unsigned |
-| :--- | :--- |
-| 8-bit | `u8` |
-| 16-bit | `u16` |
-| 32-bit | `u32` |
-| 64-bit | `u64` |
-| 128-bit | `u128` |
-| 256-bit | `u256` |
-| 32-bit | `usize` |
+| Length  | Unsigned |
+| :------ | :------- |
+| 8-bit   | `u8`     |
+| 16-bit  | `u16`    |
+| 32-bit  | `u32`    |
+| 64-bit  | `u64`    |
+| 128-bit | `u128`   |
+| 256-bit | `u256`   |
+| 32-bit  | `usize`  |
 
 `usize` is currently an alias for `u32`. Since variables are unsigned, attempting to create a negative result causes a panic:
 
@@ -961,8 +982,8 @@ Cairo handles strings using short strings (simple quotes) or `ByteArray` (double
 
 Short strings are ASCII strings encoded on one byte per character, stored in a `felt252`. A short string is limited to 31 characters.
 
-*   `'a'` is equivalent to `0x61`.
-*   `0x616263` is equivalent to `'abc'`.
+- `'a'` is equivalent to `0x61`.
+- `0x616263` is equivalent to `'abc'`.
 
 Examples of declaration:
 
@@ -978,6 +999,7 @@ fn main() {
     let long_string: ByteArray = "this is a string which has more than 31 characters";
 }
 ```
+
 This covers all points concisely using H2/H3 subheadings relative to the H1 section start.
 
 ---
@@ -1012,9 +1034,9 @@ fn main() {
 
 ## The Tuple Type
 
-A *tuple* groups together values of potentially varying types into one compound type. Tuples have a fixed length.
+A _tuple_ groups together values of potentially varying types into one compound type. Tuples have a fixed length.
 
-Tuples are created using a comma-separated list of values inside parentheses. Individual values can be accessed by *destructuring* the tuple using a pattern with `let`:
+Tuples are created using a comma-separated list of values inside parentheses. Individual values can be accessed by _destructuring_ the tuple using a pattern with `let`:
 
 ```cairo
 #[executable]
@@ -1047,7 +1069,7 @@ fn main() {
 
 ### The Unit Type ()
 
-A *unit type* has only one value `()`, represented by an empty tuple. It has zero size and is guaranteed not to exist in compiled code. It is the implicit return value for expressions that return nothing.
+A _unit type_ has only one value `()`, represented by an empty tuple. It has zero size and is guaranteed not to exist in compiled code. It is the implicit return value for expressions that return nothing.
 
 ## The Fixed Size Array Type
 
@@ -1200,6 +1222,7 @@ Sources:
 The `Copy` trait allows for the duplication of values. It can be derived on any type whose parts all implement `Copy`.
 
 Example:
+
 ```rust
 #[derive(Copy, Drop)]
 struct A {
@@ -1221,6 +1244,7 @@ fn main() {
 The `Debug` trait enables debug formatting in format strings, indicated by adding `:?` within `{}` placeholders. It allows printing instances for inspection. The `Debug` trait is required when using `assert_xx!` macros in tests to print failing values.
 
 Example:
+
 ```rust
 #[derive(Copy, Drop, Debug)]
 struct Point {
@@ -1234,7 +1258,9 @@ fn main() {
     println!("{:?}", p);
 }
 ```
+
 Output from running this example:
+
 ```
 scarb execute
 Point { x: 1, y: 3 }
@@ -1245,6 +1271,7 @@ Point { x: 1, y: 3 }
 The `Default` trait allows creation of a default value of a type, most commonly zero for primitive types. If deriving `Default` on a composite type, all its elements must implement `Default`. For an `enum`, the default value must be declared using the `#[default]` attribute on one of its variants.
 
 Example:
+
 ```rust
 #[derive(Default, Drop)]
 struct A {
@@ -1276,6 +1303,7 @@ fn main() {
 The `PartialEq` trait allows comparison between instances using `==` and `!=`. When derived, two instances are equal only if all their fields are equal (for structs), or if they are the same variant (for enums). It is required for the `assert_eq!` macro in tests. Custom implementations are possible; for instance, two rectangles can be considered equal if they have the same area.
 
 Example of custom implementation:
+
 ```rust
 #[derive(Copy, Drop)]
 struct Rectangle {
@@ -1303,6 +1331,7 @@ fn main() {
 ```
 
 Example of derived usage:
+
 ```rust
 #[derive(PartialEq, Drop)]
 struct A {
@@ -1326,6 +1355,7 @@ Cairo uses the `TryInto` and `Into` traits for type conversion.
 The `Into` trait is used for infallible conversions, typically when the source type is smaller than the destination type. Conversion is done via `var.into()`, and the new variable's type must be explicitly defined.
 
 Example with built-in types:
+
 ```rust
 #[executable]
 fn main() {
@@ -1344,6 +1374,7 @@ fn main() {
 ```
 
 Implementing `Into` for custom types:
+
 ```rust
 #[derive(Drop, PartialEq)]
 struct Rectangle {
@@ -1380,6 +1411,7 @@ fn main() {
 The `TryInto` trait is used for fallible conversions (e.g., when the target type might not fit the source value), returning `Option<T>`. Conversion is performed via `var.try_into()`.
 
 Example with built-in types:
+
 ```rust
 #[executable]
 fn main() {
@@ -1399,6 +1431,7 @@ fn main() {
 ```
 
 Implementing `TryInto` for custom types:
+
 ```rust
 #[derive(Drop)]
 struct Rectangle {
@@ -1452,7 +1485,7 @@ Sources:
 
 ## Functions: Definition and Execution
 
-Cairo code conventionally uses *snake case* for function and variable names (lowercase with underscores separating words).
+Cairo code conventionally uses _snake case_ for function and variable names (lowercase with underscores separating words).
 
 ### Function Definition and Execution
 
@@ -1474,7 +1507,7 @@ Functions are called by their name followed by parentheses. The definition order
 
 ### Parameters
 
-Functions can accept *parameters*, which are variables in the function signature. The concrete values passed are called *arguments*. Parameter types must be declared in the signature.
+Functions can accept _parameters_, which are variables in the function signature. The concrete values passed are called _arguments_. Parameter types must be declared in the signature.
 
 Example with a single parameter:
 
@@ -1579,7 +1612,7 @@ fn main() {
 
 #### Returning Multiple Values
 
-Cairo supports returning multiple values using a tuple. However, to avoid moving values passed into a function when they are needed afterwards, Cairo offers *references* and *snapshots*.
+Cairo supports returning multiple values using a tuple. However, to avoid moving values passed into a function when they are needed afterwards, Cairo offers _references_ and _snapshots_.
 
 Example returning multiple values via a tuple:
 
@@ -1662,6 +1695,7 @@ fn main() {
 ```
 
 Running with `number = 3` yields:
+
 ```
 $ scarb execute
    Compiling no_listing_24_if v0.1.0 (listings/ch02-common-programming-concepts/no_listing_27_if/Scarb.toml)
@@ -1722,6 +1756,7 @@ fn main() {
 ```
 
 Output when `number = 3`:
+
 ```
 $ scarb execute
    Compiling no_listing_25_else_if v0.1.0 (listings/ch02-common-programming-concepts/no_listing_30_else_if/Scarb.toml)
@@ -1772,6 +1807,7 @@ Infinite loops are prevented by a gas meter. If gas runs out, the program stops.
 The `break` keyword exits the loop. The `continue` keyword skips the rest of the current iteration and proceeds to the next one.
 
 Example using `break` and `continue`:
+
 ```rust
 #[executable]
 fn main() {
@@ -1789,6 +1825,7 @@ fn main() {
     }
 }
 ```
+
 Executing this program skips printing when `i` equals 5.
 
 ### Returning Values from Loops
@@ -1810,6 +1847,7 @@ fn main() {
     println!("The result is {}", result);
 }
 ```
+
 This prints: `The result is 20`.
 
 ### Conditional Loops with `while`
@@ -1864,6 +1902,7 @@ fn main() {
 Loops and recursive functions are conceptually equivalent and compile down to similar low-level representations in Sierra.
 
 The following `loop` example:
+
 ```rust
 #[executable]
 fn main() -> felt252 {
@@ -1878,7 +1917,9 @@ fn main() -> felt252 {
     x
 }
 ```
+
 Is equivalent to this recursive function:
+
 ```rust
 #[executable]
 fn main() -> felt252 {
@@ -1893,6 +1934,7 @@ fn recursive_function(mut x: felt252) -> felt252 {
     }
 }
 ```
+
 Both run until `x == 2` is met.
 
 ## Concise Control Flow with `if let` and `while let`
@@ -1982,8 +2024,9 @@ fn main() {
 ## Practice Summary
 
 To practice these concepts, try building programs to:
-*   Generate the $n$-th Fibonacci number.
-*   Compute the factorial of a number $n$.
+
+- Generate the $n$-th Fibonacci number.
+- Compute the factorial of a number $n$.
 
 ---
 
@@ -2058,6 +2101,7 @@ struct User {
     sign_in_count: u64,
 }
 ```
+
 You can derive multiple traits on structs, such as `Drop`, `PartialEq` for comparison, and `Debug` for debug-printing.
 
 #### Instance Creation
@@ -2120,6 +2164,7 @@ fn build_user_short(email: ByteArray, username: ByteArray) -> User {
     User { active: true, username, email, sign_in_count: 1 }
 }
 ```
+
 A new instance can be constructed as the last expression in a function body to implicitly return it.
 
 ### Struct Construction Shorthands
@@ -2133,6 +2178,7 @@ fn build_user_short(email: ByteArray, username: ByteArray) -> User {
     User { active: true, username, email, sign_in_count: 1 }
 }
 ```
+
 This is equivalent to `username: username` and `email: email`.
 
 #### Struct Update Syntax
@@ -2162,6 +2208,7 @@ fn main() {
     let user2 = User { email: "[email protected]", ..user1 };
 }
 ```
+
 This syntax uses `=` like an assignment because it moves data. If a field contains a non-`Copy` type (like `ByteArray`), the data for that field is moved from the original instance (`user1`) into the new instance (`user2`), invalidating `user1` for that field. If fields implement `Copy` (like `u64` or `bool`), the values are copied instead.
 
 ---
@@ -2321,6 +2368,7 @@ fn main() {
 Variants can be associated with specific data types, which can be the same type for all variants or different types for different variants.
 
 Example associating a `u128` value:
+
 ```rust
 #[derive(Drop)]
 enum Direction {
@@ -2346,6 +2394,7 @@ enum Message {
     Move: (u128, u128),
 }
 ```
+
 Here, `Quit` has no associated value, `Echo` holds a `felt252`, and `Move` holds a tuple of two `u128` values.
 
 ### Trait Implementations for Enums
@@ -2410,6 +2459,7 @@ The `match` expression compares a value against a series of patterns and execute
 An arm consists of a pattern, the `=>` operator, and the code to run. The result of the expression in the matching arm is the result of the entire `match` expression.
 
 Example using a simple `Coin` enum:
+
 ```rust
 enum Coin {
     Penny,
@@ -2475,6 +2525,7 @@ fn value_in_cents(coin: Coin) -> felt252 {
     }
 }
 ```
+
 When `Coin::Quarter(state)` matches, `state` binds to the inner `UsState` value.
 
 ### Matching with `Option<T>`
@@ -2520,6 +2571,7 @@ fn vending_machine_accept(coin: Coin) -> bool {
     }
 }
 ```
+
 Note: There is no catch-all pattern in Cairo that allows you to use the value of the pattern.
 
 ### Multiple Patterns with the `|` Operator
@@ -2555,11 +2607,13 @@ fn vending_machine_accept(c: (DayType, Coin)) -> bool {
     }
 }
 ```
+
 The `_` can be used within tuple matching to ignore parts of the tuple.
 
 ### Matching `felt252` and Integer Variables
 
 Integers fitting into a single `felt252` can be matched, but restrictions apply:
+
 1. The first arm must start at 0.
 2. Each arm must cover a sequential segment contiguously.
 
@@ -2825,6 +2879,7 @@ fn main() {
 The closure's arguments are placed between pipes (`|`). Types for arguments and the return value are usually inferred from usage, unlike named functions where types form an explicit interface. The body is an expression, optionally enclosed in curly braces `{}` if it spans multiple lines.
 
 Type annotations can be added for clarity:
+
 ```cairo
 fn  add_one_v1   (x: u32) -> u32 { x + 1 }
 let add_one_v2 = |x: u32| -> u32 { x + 1 };
@@ -2844,6 +2899,7 @@ fn main() {
     let n = example_closure(5_u32);
 }
 ```
+
 The compiler infers `u64` from the first call (`s`), and the second call (`n`) fails because the closure implementation is locked to the `Fn` trait for `u64` arguments.
 
 ## Capturing the Environment
@@ -2887,6 +2943,7 @@ fn main() {
     panic(output_array);
 }
 ```
+
 Running this results in `Run panicked with [2, 99 ('c'), ]`. Deserialization can convert the array back into the struct using `Serde::<A>::deserialize(ref span_array).unwrap()`.
 
 ## Serialization Details for Complex Types
@@ -2894,25 +2951,27 @@ Running this results in `Run panicked with [2, 99 ('c'), ]`. Deserialization can
 ### Types with Non-Trivial Serialization
 
 Data types using more than 252 bits require special serialization handling:
-*   Unsigned integers larger than 252 bits: `u256` and `u512`.
-*   Arrays and spans.
-*   Enums.
-*   Structs and tuples.
-*   Byte arrays (strings).
+
+- Unsigned integers larger than 252 bits: `u256` and `u512`.
+- Arrays and spans.
+- Enums.
+- Structs and tuples.
+- Byte arrays (strings).
 
 Basic types are serialized as a single-member list containing one `felt252` value.
 
 ### Serialization of `u256`
 
 A `u256` value is represented by two `felt252` values:
+
 1.  The 128 least significant bits (low part).
 2.  The 128 most significant bits (high part).
 
-| Decimal Value | Binary Split (High | Low) | Serialized Array |
-| :--- | :--- | :--- | :--- |
-| 2 | 0...0 | 0...10 | `[2, 0]` |
-| $2^{128}$ | 0...01 | 0...0 | `[0, 1]` |
-| $2^{129}+2^{128}+20$ | 0...011 | 0...10100 | `[20, 3]` |
+| Decimal Value        | Binary Split (High | Low)      | Serialized Array |
+| :------------------- | :----------------- | :-------- | :--------------- |
+| 2                    | 0...0              | 0...10    | `[2, 0]`         |
+| $2^{128}$            | 0...01             | 0...0     | `[0, 1]`         |
+| $2^{129}+2^{128}+20$ | 0...011            | 0...10100 | `[20, 3]`        |
 
 ### Serialization of `u512`
 
@@ -2934,11 +2993,13 @@ Total serialization: `[2,0,5,3,1,2,3]`.
 ### Serialization of Byte Arrays
 
 A `ByteArray` (string) is serialized via a struct containing:
-*   `data: Array<felt252>`: Contains 31-byte chunks, where each `felt252` holds 31 bytes.
-*   `pending_word: felt252`: Remaining bytes (at most 30).
-*   `pending_word_len: usize`: Length of `pending_word` in bytes.
+
+- `data: Array<felt252>`: Contains 31-byte chunks, where each `felt252` holds 31 bytes.
+- `pending_word: felt252`: Remaining bytes (at most 30).
+- `pending_word_len: usize`: Length of `pending_word` in bytes.
 
 **Example (`hello`, 5 bytes: `0x68656c6c6f`):**
+
 ```
 0, // Number of 31-byte words in the data array.
 0x68656c6c6f, // Pending word
@@ -2953,8 +3014,8 @@ Hashing converts input data (message) of any length into a fixed-size hash value
 
 The Cairo core library provides two native hash functions:
 
-*   **Pedersen**: A cryptographic algorithm based on elliptic curve cryptography and the Elliptic Curve Discrete Logarithm Problem (ECDLP), ensuring one-way security.
-*   **Poseidon**: Designed for efficiency in algebraic circuits, particularly for Zero-Knowledge proof systems like STARKs. It uses a sponge construction with a three-element state permutation.
+- **Pedersen**: A cryptographic algorithm based on elliptic curve cryptography and the Elliptic Curve Discrete Logarithm Problem (ECDLP), ensuring one-way security.
+- **Poseidon**: Designed for efficiency in algebraic circuits, particularly for Zero-Knowledge proof systems like STARKs. It uses a sponge construction with a three-element state permutation.
 
 ### Using Hash Functions
 
@@ -3062,8 +3123,8 @@ Sources:
 
 Cairo uses two macros for printing standard data types:
 
-*   `println!`: prints on a new line.
-*   `print!`: prints inline.
+- `println!`: prints on a new line.
+- `print!`: prints inline.
 
 Both take a `ByteArray` string as the first parameter, which can contain placeholders `{}` for values given as subsequent parameters, or named placeholders `{variable_name}`.
 
@@ -3172,9 +3233,9 @@ Integer values can be printed in hexadecimal format using the `{:x}` notation, w
 
 The `Debug` trait allows printing complex data types, especially useful for debugging. It is used by adding `:?` within placeholders (e.g., `println!("{:?}", my_struct)`).
 
-*   It is implemented by default for basic data types.
-*   For complex data types, it can be derived using `#[derive(Debug)]`, provided all contained types also implement `Debug`.
-*   `assert_xx!` macros in tests require implemented `Debug` traits for provided values.
+- It is implemented by default for basic data types.
+- For complex data types, it can be derived using `#[derive(Debug)]`, provided all contained types also implement `Debug`.
+- `assert_xx!` macros in tests require implemented `Debug` traits for provided values.
 
 ---
 
@@ -3223,10 +3284,13 @@ fn main() {
 ```
 
 Type specification examples:
+
 ```rust
 let mut arr = ArrayTrait::<u128>::new();
 ```
+
 or
+
 ```rust
 let mut arr:Array<u128> = ArrayTrait::new();
 ```
@@ -3273,18 +3337,21 @@ For an array of `u256` values like `array![10, 20, POW_2_128]`, where each `u256
 An enum is serialized as: `<index_of_enum_variant>,<serialized_variant>`. Enum variant indices are 0-based.
 
 **Example 1 (`Week` enum):**
+
 ```rust
 enum Week {
     Sunday: (), // Index=0.
     Monday: u256, // Index=1.
 }
 ```
-| Instance | Index | Type | Serialization |
-| --- | --- | --- | --- |
-| `Week::Sunday` | `0` | unit | `[0]` |
-| `Week::Monday(5)` | `1` | `u256` | `[1,5,0]` |
+
+| Instance          | Index | Type   | Serialization |
+| ----------------- | ----- | ------ | ------------- |
+| `Week::Sunday`    | `0`   | unit   | `[0]`         |
+| `Week::Monday(5)` | `1`   | `u256` | `[1,5,0]`     |
 
 **Example 2 (`MessageType` enum):**
+
 ```rust
 enum MessageType {
     A,
@@ -3293,17 +3360,19 @@ enum MessageType {
     C
 }
 ```
-| Instance | Index | Type | Serialization |
-| --- | --- | --- | --- |
-| `MessageType::A` | `0` | unit | `[0]` |
-| `MessageType::B(6)` | `1` | `u128` | `[1,6]` |
-| `MessageType::C` | `2` | unit | `[2]` |
+
+| Instance            | Index | Type   | Serialization |
+| ------------------- | ----- | ------ | ------------- |
+| `MessageType::A`    | `0`   | unit   | `[0]`         |
+| `MessageType::B(6)` | `1`   | `u128` | `[1,6]`       |
+| `MessageType::C`    | `2`   | unit   | `[2]`         |
 
 ### String Serialization (Long Strings)
 
 For strings longer than 31 bytes, serialization involves 31-byte words, followed by a pending word and its length:
 
 For the string `Long string, more than 31 characters.`:
+
 ```
 1, // Number of 31-byte words in the array construct.
 0x4c6f6e6720737472696e672c206d6f7265207468616e203331206368617261, // 31-byte word.
@@ -3373,17 +3442,18 @@ struct Entry<T> {
 ```
 
 Every interaction generates a new `Entry<T>`:
-*   `get`: Registers an entry where `previous_value` equals `new_value`.
-*   `insert`: Registers an entry where `new_value` is the inserted element, and `previous_value` is the last value associated with the key (or zero if it's the first entry).
+
+- `get`: Registers an entry where `previous_value` equals `new_value`.
+- `insert`: Registers an entry where `new_value` is the inserted element, and `previous_value` is the last value associated with the key (or zero if it's the first entry).
 
 This approach avoids rewriting memory cells, instead creating new entries for every access. For example, sequential operations on 'Alex' (insert 100, insert 200) and 'Maria' (insert 50, then read) yield entries like:
 
-| key | previous | new |
-| --- | --- | --- |
-| Alex | 0 | 100 |
-| Maria | 0 | 50 |
-| Alex | 100 | 200 |
-| Maria | 50 | 50 |
+| key   | previous | new |
+| ----- | -------- | --- |
+| Alex  | 0        | 100 |
+| Maria | 0        | 50  |
+| Alex  | 100      | 200 |
+| Maria | 50       | 50  |
 
 ### Dictionary Destruction and Squashing
 
@@ -3462,15 +3532,17 @@ Sources:
 
 # Ownership Model and Type Traits
 
-Cairo utilizes a linear type system where every value must be used exactly once, either by being *destroyed* or *moved*. This system statically ensures that operations that could cause runtime errors, such as writing twice to the same memory cell, are caught at compile time.
+Cairo utilizes a linear type system where every value must be used exactly once, either by being _destroyed_ or _moved_. This system statically ensures that operations that could cause runtime errors, such as writing twice to the same memory cell, are caught at compile time.
 
 ## Linear Type System and Usage
 
 In a linear type system, any value must be used once. "Used" means the value is either destroyed or moved:
-*   **Destruction** occurs when a variable goes out of scope, is destructured, or explicitly destroyed via `destruct()`.
-*   **Moving** a value means passing it to another function.
 
-Cairo's ownership model focuses on *variables*, not values, because the underlying memory is immutable. A value can be safely referred to by many variables, but variables themselves follow strict ownership rules:
+- **Destruction** occurs when a variable goes out of scope, is destructured, or explicitly destroyed via `destruct()`.
+- **Moving** a value means passing it to another function.
+
+Cairo's ownership model focuses on _variables_, not values, because the underlying memory is immutable. A value can be safely referred to by many variables, but variables themselves follow strict ownership rules:
+
 1.  Each variable has exactly one owner at any time.
 2.  When the owner goes out of scope, the variable is destroyed.
 
@@ -3493,9 +3565,9 @@ fn main() {
 
 The `Copy` trait allows simple types to be duplicated by copying felts without allocating new memory segments, bypassing default move semantics.
 
-*   Basic types implement `Copy` by default.
-*   Types like `Array` and `Felt252Dict` cannot implement `Copy` because manipulating them across different scopes is forbidden by the type system.
-*   Custom types that do not contain non-Copy components can implement `Copy` using `#[derive(Copy)]`.
+- Basic types implement `Copy` by default.
+- Types like `Array` and `Felt252Dict` cannot implement `Copy` because manipulating them across different scopes is forbidden by the type system.
+- Custom types that do not contain non-Copy components can implement `Copy` using `#[derive(Copy)]`.
 
 If a type implements `Copy`, passing the variable transfers a copy, and the original variable remains valid, retaining ownership. For example, with a `Point` struct implementing `Copy`:
 
@@ -3516,6 +3588,7 @@ fn main() {
 fn foo(p: Point) { // do something with p
 }
 ```
+
 If `Copy` is not derived, attempting to pass `p1` twice results in a compile-time error.
 
 ## Cloning and Return Values
@@ -3530,7 +3603,7 @@ fn main() {
 }
 ```
 
-Returning a value from a function is equivalent to *moving* it to the caller. The following example illustrates scope and moves:
+Returning a value from a function is equivalent to _moving_ it to the caller. The following example illustrates scope and moves:
 
 ```cairo
 #[derive(Drop)]
@@ -3573,9 +3646,10 @@ fn takes_and_gives_back(some_a: A) -> A { // some_a comes into scope
 ## Passing Variables to Functions
 
 When passing a variable to a function, ownership rules dictate how the variable can be used afterward:
-*   **Pass-by-value**: Ownership of the variable is transferred to the function.
-*   **Snapshot (`@`)**: Ownership is retained by the caller, and the function receives an immutable view.
-*   **Mutable Reference (`ref`)**: Ownership is retained by the caller, and the function receives a mutable view.
+
+- **Pass-by-value**: Ownership of the variable is transferred to the function.
+- **Snapshot (`@`)**: Ownership is retained by the caller, and the function receives an immutable view.
+- **Mutable Reference (`ref`)**: Ownership is retained by the caller, and the function receives a mutable view.
 
 ---
 
@@ -3598,7 +3672,7 @@ The `get` function returns an `Option<Box<@T>>`. This returns a snapshot of the 
 
 Here is an example with the `get()` method:
 
-```\n#[executable]\nfn main() -> u128 {\n    let mut arr = ArrayTrait::<u128>::new();\n    arr.append(100);\n    let index_to_access =\n        1; // Change this value to see different results, what would happen if the index doesn't exist?\n    match arr.get(index_to_access) {\n        Some(x) => {\n            *x\n                .unbox() // Don't worry about * for now, if you are curious see Chapter 4.2 #desnap operator\n            // It basically means "transform what get(idx) returned into a real value"\n        },\n        None => { panic!("out of bounds") },\n    }\n}\n```
+`\n#[executable]\nfn main() -> u128 {\n    let mut arr = ArrayTrait::<u128>::new();\n    arr.append(100);\n    let index_to_access =\n        1; // Change this value to see different results, what would happen if the index doesn't exist?\n    match arr.get(index_to_access) {\n        Some(x) => {\n            *x\n                .unbox() // Don't worry about * for now, if you are curious see Chapter 4.2 #desnap operator\n            // It basically means "transform what get(idx) returned into a real value"\n        },\n        None => { panic!("out of bounds") },\n    }\n}\n`
 
 ### Snapshots
 
@@ -3608,19 +3682,21 @@ Accessing fields of a snapshot yields snapshots of those fields, which must be d
 
 Attempting to modify values associated with snapshots results in a compiler error:
 
-```\n#[derive(Copy, Drop)]\nstruct Rectangle {\n    height: u64,\n    width: u64,\n}\n\n#[executable]\nfn main() {\n    let rec = Rectangle { height: 3, width: 10 };\n    flip(@rec);\n}\n\nfn flip(rec: @Rectangle) {\n    let temp = rec.height;\n    rec.height = rec.width;\n    rec.width = temp;\n}\n```\n
+`\n#[derive(Copy, Drop)]\nstruct Rectangle {\n    height: u64,\n    width: u64,\n}\n\n#[executable]\nfn main() {\n    let rec = Rectangle { height: 3, width: 10 };\n    flip(@rec);\n}\n\nfn flip(rec: @Rectangle) {\n    let temp = rec.height;\n    rec.height = rec.width;\n    rec.width = temp;\n}\n`\n
+
 #### Desnap Operator
 
 The desnap operator `*` is the opposite of the `@` operator, used to convert a snapshot back into a regular variable. This is only possible for `Copy` types, and it is a completely free operation.
 
-```\n#[derive(Drop)]\nstruct Rectangle {\n    height: u64,\n    width: u64,\n}\n\n#[executable]\nfn main() {\n    let rec = Rectangle { height: 3, width: 10 };\n    let area = calculate_area(@rec);\n    println!("Area: {}", area);\n}\n\nfn calculate_area(rec: @Rectangle) -> u64 {\n    // As rec is a snapshot to a Rectangle, its fields are also snapshots of the fields types.\n    // We need to transform the snapshots back into values using the desnap operator `*`.\n    // This is only possible if the type is copyable, which is the case for u64.\n    // Here, `*` is used for both multiplying the height and width and for desnapping the snapshots.\n    *rec.height * *rec.width\n}\n```\n
+``\n#[derive(Drop)]\nstruct Rectangle {\n    height: u64,\n    width: u64,\n}\n\n#[executable]\nfn main() {\n    let rec = Rectangle { height: 3, width: 10 };\n    let area = calculate_area(@rec);\n    println!("Area: {}", area);\n}\n\nfn calculate_area(rec: @Rectangle) -> u64 {\n    // As rec is a snapshot to a Rectangle, its fields are also snapshots of the fields types.\n    // We need to transform the snapshots back into values using the desnap operator `*`.\n    // This is only possible if the type is copyable, which is the case for u64.\n    // Here, `*` is used for both multiplying the height and width and for desnapping the snapshots.\n    *rec.height * *rec.width\n}\n``\n
+
 ### Mutable References
 
-To allow mutation while keeping ownership in the calling context, a *mutable reference* is used with the `ref` modifier. The variable must be declared mutable (`mut`) in the caller. Like snapshots, `ref` arguments are passed by value (copied) to the function, ensuring the function operates on a local version which is implicitly returned at the end of execution.
+To allow mutation while keeping ownership in the calling context, a _mutable reference_ is used with the `ref` modifier. The variable must be declared mutable (`mut`) in the caller. Like snapshots, `ref` arguments are passed by value (copied) to the function, ensuring the function operates on a local version which is implicitly returned at the end of execution.
 
 In Listing 4-5, a mutable reference swaps fields:
 
-```\n#[derive(Drop)]\nstruct Rectangle {\n    height: u64,\n    width: u64,\n}\n\n#[executable]\nfn main() {\n    let mut rec = Rectangle { height: 3, width: 10 };\n    flip(ref rec);\n    println!("height: {}, width: {}", rec.height, rec.width);\n}\n\nfn flip(ref rec: Rectangle) {\n    let temp = rec.height;\n    rec.height = rec.width;\n    rec.width = temp;\n}\n```
+`\n#[derive(Drop)]\nstruct Rectangle {\n    height: u64,\n    width: u64,\n}\n\n#[executable]\nfn main() {\n    let mut rec = Rectangle { height: 3, width: 10 };\n    flip(ref rec);\n    println!("height: {}, width: {}", rec.height, rec.width);\n}\n\nfn flip(ref rec: Rectangle) {\n    let temp = rec.height;\n    rec.height = rec.width;\n    rec.width = temp;\n}\n`
 
 ---
 
@@ -3787,15 +3863,16 @@ Sources:
 
 ## Smart Pointers Overview
 
-A pointer is a variable holding a memory address. To prevent bugs and security vulnerabilities associated with unsafe memory access, Cairo uses *Smart Pointers*. These act like pointers but include extra metadata and capabilities, ensuring memory is accessed safely via strict type checking and ownership rules. Types like `Felt252Dict<T>` and `Array<T>` are examples of smart pointers, as they own a memory segment and manage access (e.g., arrays track their length). When an array is created, a new segment is allocated for its elements, and the array itself holds a pointer to that segment.
+A pointer is a variable holding a memory address. To prevent bugs and security vulnerabilities associated with unsafe memory access, Cairo uses _Smart Pointers_. These act like pointers but include extra metadata and capabilities, ensuring memory is accessed safely via strict type checking and ownership rules. Types like `Felt252Dict<T>` and `Array<T>` are examples of smart pointers, as they own a memory segment and manage access (e.g., arrays track their length). When an array is created, a new segment is allocated for its elements, and the array itself holds a pointer to that segment.
 
 ## The `Box<T>` Type
 
-The principal smart pointer in Cairo is `Box<T>`. Instantiating `Box<T>` stores the data of type `T` in a dedicated memory area called the *boxed segment*. The execution segment only holds a pointer to this boxed data.
+The principal smart pointer in Cairo is `Box<T>`. Instantiating `Box<T>` stores the data of type `T` in a dedicated memory area called the _boxed segment_. The execution segment only holds a pointer to this boxed data.
 
 ### Storing Data in the Boxed Segment
 
 Boxes have minimal performance overhead but are useful when:
+
 1.  The size of a type is unknown at compile time, and a fixed size is required.
 2.  Transferring ownership of large data volumes, where copying the data is slow. Storing large data in a box means only the small pointer is copied during ownership transfer.
 
@@ -3808,6 +3885,7 @@ fn main() {
     println!("b = {}", b.unbox())
 }
 ```
+
 Listing 12-1: Storing a `u128` value in the boxed segment using a box
 
 When instantiated, the value is stored in the boxed segment, and `b.unbox()` accesses it.
@@ -3858,6 +3936,7 @@ fn main() {
     println!("{:?}", root);
 }
 ```
+
 Listing 12-3: Defining a recursive Binary Tree using Boxes
 
 The `Node` variant now holds `(u32, Box<BinaryTree>, Box<BinaryTree>)`, allowing the compiler to calculate the size.
@@ -3892,6 +3971,7 @@ fn main() {
     pass_pointer(new_box);
 }
 ```
+
 Listing 12-4: Storing large amounts of data in a box for performance.
 
 When calling `pass_data`, the entire `Cart` struct is copied. When calling `pass_pointer`, only the pointer stored in `new_box` is copied. If the data in the box is mutated, a new `Box<T>` will be created, requiring the data to be copied into the new box.
@@ -3921,6 +4001,7 @@ fn main() {
 
 //...
 ```
+
 This approach is necessary because `Array<T>` does not implement the `Copy<T>` trait required for reading from a dictionary, whereas `Span<T>` does.
 
 ---
@@ -3974,10 +4055,10 @@ As programs grow, organizing code by grouping related functionality into modules
 
 Cairo uses several concepts to manage large codebases:
 
-*   **Packages:** A Scarb feature enabling building, testing, and sharing crates.
-*   **Crates:** A tree of modules forming a single compilation unit. A crate has a root directory and a root module defined in `lib.cairo` within that directory.
-*   **Modules and `use`:** Control the organization and scope of items.
-*   **Paths:** Name items within the module tree.
+- **Packages:** A Scarb feature enabling building, testing, and sharing crates.
+- **Crates:** A tree of modules forming a single compilation unit. A crate has a root directory and a root module defined in `lib.cairo` within that directory.
+- **Modules and `use`:** Control the organization and scope of items.
+- **Paths:** Name items within the module tree.
 
 A related concept is **scope**, the context where code is written, which defines which names are available. You cannot have two items with the same name in the same scope.
 
@@ -3989,7 +4070,7 @@ Modules let us organize code within a crate for readability and control privacy.
 
 Module documentation comments provide an overview of the entire module, prefixed with `//!`, and are placed above the module they describe.
 
-```cairo
+````cairo
 //! # my_module and implementation
 //!
 //! This is an example description of my_module and some of its features.
@@ -4007,7 +4088,7 @@ Module documentation comments provide an overview of the entire module, prefixed
 //! ```
 mod my_module { // rest of implementation...
 }
-```
+````
 
 ### Modules Cheat Sheet (Rules for Organization)
 
@@ -4015,11 +4096,11 @@ When organizing code, the compiler follows these rules:
 
 1.  **Start from the crate root:** Compilation begins in the crate root file (`src/lib.cairo`).
 2.  **Declaring modules (in crate root):** Use `mod garden;`. The compiler looks:
-    *   Inline, within curly brackets replacing the semicolon.
-    *   In the file `src/garden.cairo`.
+    - Inline, within curly brackets replacing the semicolon.
+    - In the file `src/garden.cairo`.
 3.  **Declaring submodules (in files other than crate root):** Use `mod vegetables;` in `src/garden.cairo`. The compiler looks:
-    *   Inline, directly following `mod vegetables`, within curly brackets.
-    *   In the file `src/garden/vegetables.cairo`.
+    - Inline, directly following `mod vegetables`, within curly brackets.
+    - In the file `src/garden/vegetables.cairo`.
 4.  **Paths to code in modules:** Items are referenced using paths, e.g., `crate::garden::vegetables::Asparagus`.
 5.  **Private vs public:** Code is private by default. Use `pub mod` to make a module public. Use `pub` before item declarations to make them public. `pub(crate)` restricts visibility to within the defining crate.
 6.  **The `use` keyword:** Creates shortcuts to paths within a scope.
@@ -4030,8 +4111,8 @@ The module tree structure mirrors the filesystem directory tree. The crate root 
 
 When modules grow, their definitions can be moved to separate files.
 
-*   If `mod front_of_house;` is declared in the crate root (`src/lib.cairo`), the compiler looks for its content in `src/front_of_house.cairo`.
-*   For a submodule like `pub mod hosting;` declared in `src/front_of_house.cairo`, the compiler looks for its content in a directory named after the parent, i.e., `src/front_of_house/hosting.cairo`.
+- If `mod front_of_house;` is declared in the crate root (`src/lib.cairo`), the compiler looks for its content in `src/front_of_house.cairo`.
+- For a submodule like `pub mod hosting;` declared in `src/front_of_house.cairo`, the compiler looks for its content in a directory named after the parent, i.e., `src/front_of_house/hosting.cairo`.
 
 The `mod` keyword declares modules and tells Cairo where to look; it is not an "include" operation.
 
@@ -4040,8 +4121,9 @@ The `mod` keyword declares modules and tells Cairo where to look; it is not an "
 Paths name items in the module tree, similar to filesystem navigation.
 
 A path can be:
-*   **Absolute path:** Starts from the crate root, beginning with the crate name.
-*   **Relative path:** Starts from the current module.
+
+- **Absolute path:** Starts from the crate root, beginning with the crate name.
+- **Relative path:** Starts from the current module.
 
 Both forms use double colons (`::`) as separators.
 
@@ -4096,12 +4178,13 @@ By default, code within a module is private to its parent modules. Items in chil
 
 To expose items:
 
-*   Mark the module declaration with `pub`. Making a module public only allows access to the module itself, not its contents.
-*   Mark items within the module with `pub`.
+- Mark the module declaration with `pub`. Making a module public only allows access to the module itself, not its contents.
+- Mark items within the module with `pub`.
 
 For structs and enums:
-*   `pub struct` makes the struct public, but its fields remain private unless explicitly marked `pub`.
-*   `pub enum` makes the enum and all its variants public.
+
+- `pub struct` makes the struct public, but its fields remain private unless explicitly marked `pub`.
+- `pub enum` makes the enum and all its variants public.
 
 To allow an item to be visible only within the defining crate, use `pub(crate)`.
 
@@ -4212,6 +4295,7 @@ fn eat_at_restaurant() {
     hosting::add_to_waitlist();
 }
 ```
+
 This allows external code to use `crate::hosting::add_to_waitlist()` instead of the longer internal path.
 
 ---
@@ -4236,8 +4320,8 @@ Generics in Cairo provide tools to handle the duplication of concepts by using a
 
 Generics are defined using angle brackets `<...>` in various declarations:
 
-*   **Definition**: `fn ident<...> ...`, `struct ident<...> ...`, `enum ident<...> ...`, `impl<...> ...`
-*   **Specification**: `path::<...>` or `method::<...>` (turbofish) is used to specify parameters in an expression.
+- **Definition**: `fn ident<...> ...`, `struct ident<...> ...`, `enum ident<...> ...`, `impl<...> ...`
+- **Specification**: `path::<...>` or `method::<...>` (turbofish) is used to specify parameters in an expression.
 
 ### Generic Functions
 
@@ -4434,6 +4518,7 @@ A trait defines a set of methods that can be implemented by a type, grouping met
 To declare a trait, use the `trait` keyword followed by the name. If it needs to be accessible by other crates, declare it as `pub`. Inside, declare method signatures ending with a semicolon. If the trait is generic, it includes a generic type parameter, like `pub trait Summary<T> { ... }`.
 
 **Example of a non-generic trait definition:**
+
 ```cairo
 #[derive(Drop, Clone)]
 struct NewsArticle {
@@ -4459,6 +4544,7 @@ impl NewsArticleSummary of Summary {
 Implementing a trait on a type involves using `impl ImplementationName of TraitName` followed by the type parameter in angle brackets (if generic). Within the block, method signatures are provided with their concrete implementation bodies.
 
 **Example of implementing a generic trait:**
+
 ```cairo
 mod aggregator {
     pub trait Summary<T> {
@@ -4530,6 +4616,7 @@ Methods are defined within `impl` blocks, which organize capabilities associated
 To avoid manually defining a trait when it's only intended for implementation on a specific type, Cairo provides the `#[generate_trait]` attribute above the implementation block. This tells the compiler to generate the corresponding trait definition automatically.
 
 **Example using `#[generate_trait]`:**
+
 ```cairo
 #[derive(Copy, Drop)]
 struct Rectangle {
@@ -4556,6 +4643,7 @@ fn main() {
 Traits can provide default behavior for methods. Implementors can either use the default by providing an empty `impl` block or override it by providing a custom implementation for that method signature.
 
 **Example with default implementation:**
+
 ```cairo
 mod aggregator {
     pub trait Summary<T> {
@@ -4594,6 +4682,7 @@ fn main() {
     println!("1 new tweet: {}", tweet.summarize());
 }
 ```
+
 In this case, `summarize` uses its default implementation because only `summarize_author` was implemented.
 
 ### Derivable Traits
@@ -4601,6 +4690,7 @@ In this case, `summarize` uses its default implementation because only `summariz
 The `derive` attribute generates code to implement a default trait on a type. Traits compatible with `derive` in the standard library include `Clone` (for deep copying) and `Drop` (for automatic resource cleanup like squashing Dictionaries via the `Destruct` trait).
 
 **Example deriving `Clone` and `Drop`:**
+
 ```cairo
 #[derive(Clone, Drop)]
 struct A {
@@ -4847,16 +4937,18 @@ When called as `make_array![1, 2, 3]`, the `$x` pattern matches `1`, `2`, and `3
 #### Macro Pattern Syntax
 
 Macro patterns are matched against Cairo source code structure. Key components include:
-*   Parentheses enclose the whole matcher pattern.
-*   `$dollar_sign` introduces a macro variable that captures matching code. `$x:expr` matches any Cairo expression and names it `$x`.
-*   A comma following `$()` requires literal commas between matched expressions.
-*   The `*` quantifier specifies the subpattern can repeat zero or more times.
+
+- Parentheses enclose the whole matcher pattern.
+- `$dollar_sign` introduces a macro variable that captures matching code. `$x:expr` matches any Cairo expression and names it `$x`.
+- A comma following `$()` requires literal commas between matched expressions.
+- The `*` quantifier specifies the subpattern can repeat zero or more times.
 
 #### Hygiene: `$defsite`, `$callsite`, and `expose!`
 
 Cairo’s inline macros are hygienic, meaning names introduced in the definition do not leak into the call site unless explicitly exposed. Name resolution references the definition site or call site using `$defsite::` and `$callsite::`.
 
 To use user-defined inline macros, you must enable the experimental feature in `Scarb.toml`:
+
 ```toml
 # [package]
 # name = "listing_inline_macros"
@@ -4880,6 +4972,7 @@ experimental-features = ["user_defined_inline_macros"]
 # [tool.scarb]
 # allow-prebuilt-plugins = ["snforge_std"]
 ```
+
 Macros are expected to expand to a single expression; wrapping multiple statements in `{}` achieves this.
 
 The following example demonstrates hygiene and name resolution:
@@ -4968,10 +5061,12 @@ fn test_hygiene_e2e() {
     assert_eq!(w, 8);
 }
 ```
+
 This demonstrates:
-*   `$defsite::...` resolves to items next to the macro definition.
-*   `$callsite::...` resolves to items visible where the macro is invoked.
-*   `expose!` deliberately introduces new items into the call site, accessible via `$callsite::name`.
+
+- `$defsite::...` resolves to items next to the macro definition.
+- `$callsite::...` resolves to items visible where the macro is invoked.
+- `expose!` deliberately introduces new items into the call site, accessible via `$callsite::name`.
 
 ### Procedural Macros
 
@@ -4980,27 +5075,29 @@ Procedural macros are Rust functions that transform Cairo code. They are preferr
 #### Procedural Macro Types and Signatures
 
 Macros are defined using one of three attributes:
-*   `#[inline_macro]`: For function-like calls (e.g., `println!()`).
-    ```c
-    #[inline_macro]
-    pub fn inline(code: TokenStream) -> ProcMacroResult {}
-    ```
-*   `#[attribute_macro]`: For custom attributes.
-    ```c
-    #[attribute_macro]
-    pub fn attribute(attr: TokenStream, code: TokenStream) -> ProcMacroResult {}
-    ```
-*   `#[derive_macro]`: For automatic trait implementations.
-    ```c
-    #[derive_macro]
-    pub fn derive(code: TokenStream) -> ProcMacroResult {}
-    ```
+
+- `#[inline_macro]`: For function-like calls (e.g., `println!()`).
+  ```c
+  #[inline_macro]
+  pub fn inline(code: TokenStream) -> ProcMacroResult {}
+  ```
+- `#[attribute_macro]`: For custom attributes.
+  ```c
+  #[attribute_macro]
+  pub fn attribute(attr: TokenStream, code: TokenStream) -> ProcMacroResult {}
+  ```
+- `#[derive_macro]`: For automatic trait implementations.
+  ```c
+  #[derive_macro]
+  pub fn derive(code: TokenStream) -> ProcMacroResult {}
+  ```
 
 #### Project Setup and Dependencies
 
 Creating a procedural macro requires a Rust project structure with `Cargo.toml` (defining `crate-type = ["cdylib"]` and `cairo-lang-macro` dependency) and a Cairo project structure with `Scarb.toml` marking the package as a plugin:
 
 `Cargo.toml` example:
+
 ```toml
 [package]
 name = "pow"
@@ -5021,6 +5118,7 @@ cairo-lang-syntax = "2.12.0"
 ```
 
 `Scarb.toml` example for the macro package:
+
 ```toml
 [package]
 name = "pow"
@@ -5068,6 +5166,7 @@ pub fn hello_macro(token_stream: TokenStream) -> ProcMacroResult {
         "#, struct_name}))
 }
 ```
+
 The trait `Hello` must be defined or imported in the consuming code.
 
 #### Attribute Macros
@@ -5089,7 +5188,9 @@ pub fn rename(_attr: TokenStream, token_stream: TokenStream) -> ProcMacroResult 
     ))
 }
 ```
+
 Usage example in a Cairo file:
+
 ```c
 #[executable]
 fn main() {
@@ -5430,6 +5531,7 @@ Components provide powerful modularity to Starknet contracts. This section dives
 An impl of a Starknet interface trait (marked with `#[starknet::interface]`) can be made embeddable. Embeddable impls can be injected into any contract, adding new entry points and modifying the ABI of the contract.
 
 Example demonstrating embeddable impls:
+
 ```rust
 #[starknet::interface]
 trait SimpleTrait<TContractState> {
@@ -5452,6 +5554,7 @@ mod simple_contract {
     impl MySimpleImpl = super::SimpleImpl<ContractState>;
 }
 ```
+
 By embedding `SimpleImpl`, we externally expose `ret4` in the contract's ABI.
 
 ### Inside Components: Generic Impls
@@ -5466,9 +5569,10 @@ Components build upon this embedding mechanism using generic impls, as seen in t
 ```
 
 The key points are:
-*   The generic impl `Ownable` requires the implementation of the `HasComponent<TContractState>` trait by the underlying contract.
-*   This trait is automatically generated with the `component!()` macro when using a component inside a contract.
-*   The compiler will generate an embeddable impl that wraps any function in `Ownable`.
+
+- The generic impl `Ownable` requires the implementation of the `HasComponent<TContractState>` trait by the underlying contract.
+- This trait is automatically generated with the `component!()` macro when using a component inside a contract.
+- The compiler will generate an embeddable impl that wraps any function in `Ownable`.
 
 ---
 
@@ -5487,9 +5591,10 @@ Inlining replaces a function call with the body of the called function at the ca
 In Cairo, the `inline` attribute suggests whether the Sierra code should be injected directly into the caller's context instead of using a `function_call` libfunc.
 
 The variants are:
-*   `#[inline]`: Suggests performing an inline expansion.
-*   `#[inline(always)]`: Suggests an inline expansion should always be performed.
-*   `#[inline(never)]`: Suggests that an inline expansion should never be performed.
+
+- `#[inline]`: Suggests performing an inline expansion.
+- `#[inline(always)]`: Suggests an inline expansion should always be performed.
+- `#[inline(never)]`: Suggests that an inline expansion should never be performed.
 
 Note that the attribute is only a hint and may be ignored by the compiler, although `#[inline(always)]` is rarely ignored. Annotating functions with `#[inline(always)]` reduces the total number of steps required by avoiding the step-cost associated with function calls and argument handling.
 
@@ -5500,24 +5605,27 @@ For functions without explicit inline directives, the compiler uses a heuristic 
 The compiler calculates a function's complexity using the `ApproxCasmInlineWeight` struct, which estimates the generated Cairo Assembly (CASM) statements. If this weight falls below the threshold, the function is inlined. The raw statement count is also considered.
 
 Special cases are handled:
-*   Very simple functions (e.g., returning a constant or calling another function) are always inlined.
-*   Functions with complex control flow (like `Match`) or those ending with `Panic` are generally not inlined.
+
+- Very simple functions (e.g., returning a constant or calling another function) are always inlined.
+- Functions with complex control flow (like `Match`) or those ending with `Panic` are generally not inlined.
 
 ### Performance Tradeoffs and Code Size
 
 Inlining presents a trade-off between the number of execution steps and code length.
-*   **Benefit:** More frequent calls benefit more from inlining as the step count decreases.
-*   **Drawback:** Inlining large functions or using `#[inline]` or `#[inline(always)]` indiscriminately increases compile time and code length due to duplication of Sierra code at every call site.
+
+- **Benefit:** More frequent calls benefit more from inlining as the step count decreases.
+- **Drawback:** Inlining large functions or using `#[inline]` or `#[inline(always)]` indiscriminately increases compile time and code length due to duplication of Sierra code at every call site.
 
 Inlining is particularly useful for small functions, ideally those with many arguments. In cases where the return value of an inlined function is unused, the compiler may further optimize by omitting the inlined code entirely, reducing both code length and steps, as demonstrated in Listing 12-6.
 
 ### Inlining Mechanics Illustrated (Sierra and Casm)
 
-When a function is *not* inlined (e.g., `not_inlined`), the Sierra code uses the `function_call` libfunc. When it *is* inlined (e.g., `inlined`), its Sierra statements are injected directly into the caller's sequence of statements, using different variable IDs to avoid conflicts.
+When a function is _not_ inlined (e.g., `not_inlined`), the Sierra code uses the `function_call` libfunc. When it _is_ inlined (e.g., `inlined`), its Sierra statements are injected directly into the caller's sequence of statements, using different variable IDs to avoid conflicts.
 
 In the Casm example (Listing 12-5), the non-inlined function involves `call rel X` and `ret` instructions to manage the function stack. The inlined function body, however, appears directly in the sequence without any `call` instruction, leading to fewer total instructions executed for that part of the logic.
 
 **Example Code (Listing 12-5):**
+
 ```rust
 #[executable]
 fn main() -> felt252 {
@@ -5536,6 +5644,7 @@ fn not_inlined() -> felt252 {
 ```
 
 **Example Code (Listing 12-6):**
+
 ```rust
 #[executable]
 fn main() {
@@ -5572,10 +5681,10 @@ Arithmetic circuits in Cairo, particularly when emulating zk-SNARKs features, in
 
 Circuit elements can be combined using arithmetic operations. For instance, combining `CircuitElement<a>` and `CircuitElement<b>` with an addition gate results in `CircuitElement<AddModGate<a, b>>`. Direct combination functions are available:
 
-*   `circuit_add`
-*   `circuit_sub`
-*   `circuit_mul`
-*   `circuit_inverse`
+- `circuit_add`
+- `circuit_sub`
+- `circuit_mul`
+- `circuit_inverse`
 
 Note that `CircuitElement<T>` where $T$ is an input or gate type, represents the circuit description, while `CircuitElement<{}>` (empty struct) represents a signal or intermediate element.
 
@@ -5685,9 +5794,10 @@ Sources:
 ### Macro Implementation Details
 
 The core code for macro implementation is written in Rust and relies on three primary Rust crates:
-*   `cairo_lang_macro`: Specific to macro implementation.
-*   `cairo_lang_parser`: Used for compiler parser functions.
-*   `cairo_lang_syntax`: Related to the compiler syntax.
+
+- `cairo_lang_macro`: Specific to macro implementation.
+- `cairo_lang_parser`: Used for compiler parser functions.
+- `cairo_lang_syntax`: Related to the compiler syntax.
 
 Since macro functions operate at the Cairo syntax level, logic from the syntax functions created for the Cairo compiler can be reused directly. For deeper understanding of concepts like the Cairo parser or syntax, consulting the Cairo compiler workshop is recommended.
 
@@ -5780,23 +5890,29 @@ Sources:
 ### Introduction to Cairo and Starknet Architecture
 
 #### Smart Contract Fundamentals
-Smart contracts are characterized as **permissionless** and **transparent**, allowing for **composability** where contracts interact with one another. They are restricted to accessing data only from their deployment blockchain, requiring external software called *oracles* to fetch external data (e.g., token prices). Common development standards include `ERC20` (for tokens like USDC) and `ERC721` (for NFTs like CryptoPunks). Primary use cases currently center around DeFi (decentralized finance applications like lending/DEXs) and Tokenization.
+
+Smart contracts are characterized as **permissionless** and **transparent**, allowing for **composability** where contracts interact with one another. They are restricted to accessing data only from their deployment blockchain, requiring external software called _oracles_ to fetch external data (e.g., token prices). Common development standards include `ERC20` (for tokens like USDC) and `ERC721` (for NFTs like CryptoPunks). Primary use cases currently center around DeFi (decentralized finance applications like lending/DEXs) and Tokenization.
 
 #### Cairo and Starknet Architecture
+
 Cairo is a language developed specifically for STARKs, enabling the writing of **provable code** to verify computation correctness between states. Starknet utilizes its own Virtual Machine (VM) instead of the EVM, which offers benefits like decreased transaction costs, native account abstraction ("Smart Accounts"), and support for emerging use cases such as **transparent AI** and fully **on-chain blockchain games**.
 
 #### Cairo Programs vs. Starknet Smart Contracts
+
 Starknet contracts are a superset of Cairo programs. A standard Cairo program requires a `main` function as its entry point. In contrast, contracts deployed on Starknet lack a `main` function but possess one or multiple entry points. For the compiler to recognize a module as a Starknet contract, it must be annotated with the `#[starknet::contract]` attribute.
 
 #### Contract Address and State
+
 A contract instance maintains a **nonce**, representing the number of transactions originating from that address plus one. The **Contract Address** is a unique identifier calculated as a chain hash (using `pedersen`) of several components:
-*   `prefix`: ASCII encoding of the constant string `STARKNET_CONTRACT_ADDRESS`.
-*   `deployer_address`: Determined by the deployment transaction type (e.g., 0 for `DEPLOY_ACCOUNT`).
-*   `salt`: A value ensuring unique addresses and thwarting replay attacks.
-*   `class_hash`.
-*   `constructor_calldata_hash`: Array hash of constructor inputs.
+
+- `prefix`: ASCII encoding of the constant string `STARKNET_CONTRACT_ADDRESS`.
+- `deployer_address`: Determined by the deployment transaction type (e.g., 0 for `DEPLOY_ACCOUNT`).
+- `salt`: A value ensuring unique addresses and thwarting replay attacks.
+- `class_hash`.
+- `constructor_calldata_hash`: Array hash of constructor inputs.
 
 The computation follows:
+
 ```
 contract_address = pedersen(
     “STARKNET_CONTRACT_ADDRESS”,
@@ -5807,6 +5923,7 @@ contract_address = pedersen(
 ```
 
 #### Starknet Types: ContractAddress
+
 The `ContractAddress` type represents the unique address of a deployed contract on Starknet, essential for cross-contract calls and access control checks.
 
 ```rust
@@ -5873,19 +5990,21 @@ Contract classes are identified uniquely by their **class hash**. To introduce n
 
 A contract class is defined by several components whose hashes contribute to the final class hash:
 
-| Name | Notes |
-| :--- | :--- |
-| Contract class version | Currently supported version is 0.1.0. |
-| Array of external functions entry points | Defined by `(_selector_, _function_idx_)`. Selector is `starknet_keccak` hash of the function name. |
-| Array of L1 handlers entry points | - |
-| Array of constructors entry points | The compiler currently allows only one constructor. |
-| ABI | A string supplied by the user declaring the class. The ABI hash is `starknet_keccak(bytes(ABI, "UTF-8"))`. |
-| Sierra program | An array of field elements representing the Sierra instructions. |
+| Name                                     | Notes                                                                                                      |
+| :--------------------------------------- | :--------------------------------------------------------------------------------------------------------- |
+| Contract class version                   | Currently supported version is 0.1.0.                                                                      |
+| Array of external functions entry points | Defined by `(_selector_, _function_idx_)`. Selector is `starknet_keccak` hash of the function name.        |
+| Array of L1 handlers entry points        | -                                                                                                          |
+| Array of constructors entry points       | The compiler currently allows only one constructor.                                                        |
+| ABI                                      | A string supplied by the user declaring the class. The ABI hash is `starknet_keccak(bytes(ABI, "UTF-8"))`. |
+| Sierra program                           | An array of field elements representing the Sierra instructions.                                           |
 
 The **class hash** is computed using the Poseidon hash function ($h$):
+
 $$
 \text{class\_hash} = h(\text{contract\_class\_version}, \text{external\_entry\_points}, \text{l1\_handler\_entry\_points}, \text{constructor\_entry\_points}, \text{abi\_hash}, \text{sierra\_program\_hash})
 $$
+
 The hash of an entry point array is $h(\text{selector}_1,\text{index}_1,...,\text{selector}_n,\text{index}_n)$. The version hash uses the ASCII encoding of the string `CONTRACT_V0.1.0`.
 
 #### Contract Interfaces
@@ -5893,21 +6012,23 @@ The hash of an entry point array is $h(\text{selector}_1,\text{index}_1,...,\tex
 Interfaces define the blueprint of a contract, specifying exposed functions without bodies. They are defined by annotating a trait with `#[starknet::interface]`. All functions in the trait are public.
 
 The `self` parameter in function signatures determines state access:
-*   `ref self: TContractState`: Allows modification of the contract's storage variables.
-*   `self: @TContractState`: Takes a snapshot, preventing state modification (the compiler enforces this).
+
+- `ref self: TContractState`: Allows modification of the contract's storage variables.
+- `self: @TContractState`: Takes a snapshot, preventing state modification (the compiler enforces this).
 
 The implementation must conform to the interface, or a compilation error results.
 
 #### Constructors and Public Functions
 
 1.  **Constructors**: Run once upon deployment to initialize state.
-    *   Must be named `constructor` and annotated with `#[constructor]`.
-    *   Must take `self` as the first argument, usually with the `ref` keyword to allow state modification.
-    *   A contract can have only one constructor.
+
+    - Must be named `constructor` and annotated with `#[constructor]`.
+    - Must take `self` as the first argument, usually with the `ref` keyword to allow state modification.
+    - A contract can have only one constructor.
 
 2.  **Public Functions**: Accessible from outside the contract.
-    *   Defined inside an implementation block annotated with `#[abi(embed_v0)]`, which embeds the functions as implementations of the Starknet interface and potential entry points.
-    *   Alternatively, they can be defined independently using the `#[external(v0)]` attribute.
+    - Defined inside an implementation block annotated with `#[abi(embed_v0)]`, which embeds the functions as implementations of the Starknet interface and potential entry points.
+    - Alternatively, they can be defined independently using the `#[external(v0)]` attribute.
 
 #### Upgradeability
 
@@ -5982,18 +6103,21 @@ Contracts use interfaces, defined with `#[starknet::interface]`, as blueprints f
 Functions can be classified based on their visibility and how they handle the contract state (`ContractState`):
 
 ##### External Functions (State Modifying)
+
 External functions are public functions exposed to the outside world that can mutate state. They must take `self` as the first argument, passed by reference using the `ref` keyword, granting read and write access to storage variables.
 
 ##### View Functions (Read-Only by Convention)
+
 View functions are public, typically read-only functions. They must take `self` as the first argument, passed as a snapshot using the `@` modifier. This restricts storage write access via `self` at compile time.
 
 ##### State Mutability Warning
-The read-only property of view functions is enforced only by the compiler. Starknet does not enforce this limitation; a transaction targeting a view function *can* change the state via direct system calls or calls to other contracts. Developers must not assume view functions are side-effect free.
+
+The read-only property of view functions is enforced only by the compiler. Starknet does not enforce this limitation; a transaction targeting a view function _can_ change the state via direct system calls or calls to other contracts. Developers must not assume view functions are side-effect free.
 
 ##### Other Function Types
 
-*   **Standalone Public Functions**: Public functions defined outside an implementation block using the `#[external(v0)]` attribute. They must take `self` as the first parameter.
-*   **Private (Internal) Functions**: Functions not exposed externally. They can only be called from within the contract. They can be grouped using `#[generate_trait]` or defined as free functions within the module. Private functions do not require `self` as the first argument.
+- **Standalone Public Functions**: Public functions defined outside an implementation block using the `#[external(v0)]` attribute. They must take `self` as the first parameter.
+- **Private (Internal) Functions**: Functions not exposed externally. They can only be called from within the contract. They can be grouped using `#[generate_trait]` or defined as free functions within the module. Private functions do not require `self` as the first argument.
 
 The `NameRegistry` contract demonstrates these patterns, including using `Map` storage types, constructor logic, public functions within an `impl` block, a standalone public function (`get_contract_name`), and internal functions grouped via `#[generate_trait]`.
 
@@ -6086,6 +6210,7 @@ Sources:
 Events inform the outside world of changes during execution and are stored in transaction receipts.
 
 #### Defining Events
+
 Events are defined in an enum annotated with `#[event]`, which must be named `Event`. Each variant represents an event, and its data structure must derive `starknet::Event`.
 
 ```rust
@@ -6116,9 +6241,11 @@ mod EventExample {
 ```
 
 #### Event Data Fields and Keys
+
 Each event data field can be annotated with `#[key]`. Key fields are stored separately for efficient filtering by external tools. The variant name is used internally as the first event key.
 
 #### Flattening Nested Events with `#[flat]`
+
 The `#[flat]` attribute can be used on an enum variant to flatten serialization. If `FieldUpdated` is annotated with `#[flat]`, emitting `FieldUpdated::Title(...)` results in the event name being `Title` instead of `FieldUpdated`.
 
 ```rust
@@ -6131,6 +6258,7 @@ pub enum FieldUpdated {
 ```
 
 #### Emitting Events
+
 Events are emitted by calling `self.emit()` with an event data structure.
 
 ```rust
@@ -6138,34 +6266,40 @@ self.emit(BookAdded { id, title, author });
 ```
 
 #### Contract Attributes Related to Events
-| Attribute | Defines |
-| :--- | :--- |
-| `#[event]` | Defines an event in a smart contract |
-| `#[key]` | Defines an indexed `Event` enum field |
-| `#[flat]` | Defines an enum variant of the `Event` enum that is not nested, ignoring the variant name in serialization |
+
+| Attribute  | Defines                                                                                                    |
+| :--------- | :--------------------------------------------------------------------------------------------------------- |
+| `#[event]` | Defines an event in a smart contract                                                                       |
+| `#[key]`   | Defines an indexed `Event` enum field                                                                      |
+| `#[flat]`  | Defines an enum variant of the `Event` enum that is not nested, ignoring the variant name in serialization |
 
 ### Contract ABI and Entrypoints
 
 The Contract Class ABI is the high-level specification describing callable functions, parameters, and return values, used for external interaction (via JSON representation) or contract-to-contract calls (via dispatcher pattern).
 
 #### Entrypoints
+
 Entrypoints are functions callable from outside the contract class:
+
 1.  **Public functions**: Most common, exposed as `view` or `external`.
 2.  **Constructor**: Called only once during deployment.
 3.  **L1-Handlers**: Triggered by the sequencer after receiving a message from L1.
 
 #### Function Selector
-Entrypoints are identified by a *selector*, computed as `sn_keccak(function_name)`.
+
+Entrypoints are identified by a _selector_, computed as `sn_keccak(function_name)`.
 
 #### Encoding
+
 All data must be serialized into `felt252` before execution at the CASM level, as specified by the ABI.
 
 #### ABI Definition Attributes
-| Attribute | Explanation |
-| :--- | :--- |
-| `#[abi(embed_v0)]` | Defines an implementation of a trait, exposing its functions as contract entrypoints. |
-| `#[abi(per_item)]` | Allows individual definition of the entrypoint type of functions inside an impl. |
-| `#[external(v0)]` | Defines an external function when `#[abi(per_item)]` is used. |
+
+| Attribute           | Explanation                                                                                                         |
+| :------------------ | :------------------------------------------------------------------------------------------------------------------ |
+| `#[abi(embed_v0)]`  | Defines an implementation of a trait, exposing its functions as contract entrypoints.                               |
+| `#[abi(per_item)]`  | Allows individual definition of the entrypoint type of functions inside an impl.                                    |
+| `#[external(v0)]`   | Defines an external function when `#[abi(per_item)]` is used.                                                       |
 | `#[generate_trait]` | Generates a trait definition for the implementation block, often used for private impls or with `#[abi(per_item)]`. |
 
 When using `#[abi(per_item)]`, public functions must be annotated with `#[external(v0)]` to be exposed; otherwise, they are considered private.
@@ -6200,9 +6334,11 @@ mod ContractExample {
 ### System Interaction and Context Access
 
 #### Class Hashes
+
 Class hashes have the same value range as addresses `[0, 2^251)`. They uniquely identify a specific version of contract code and are used in deployment, proxy patterns, and upgrades.
 
 #### Working with Block and Transaction Information
+
 Starknet provides functions to access the current execution context:
 
 ```rust
@@ -6239,6 +6375,7 @@ mod BlockInfoExample {
     }
 }
 ```
+
 `get_block_info()` returns `BlockInfo` (block number, timestamp), and `get_tx_info()` returns `TxInfo` (sender address, transaction hash, fee details).
 
 ---
@@ -6304,8 +6441,8 @@ When implementing a contract interface defined by a trait, the public functions 
 
 The `self` parameter in the trait methods **must** be of type `ContractState`, which is generated by the compiler and grants access to storage variables and allows event emission.
 
-*   If `self` is passed by reference (`ref self: ContractState`), state modification is allowed.
-*   If `self` is passed as a snapshot (`self: @ContractState`), only read access is permitted, and attempts to modify state will result in a compilation error.
+- If `self` is passed by reference (`ref self: ContractState`), state modification is allowed.
+- If `self` is passed as a snapshot (`self: @ContractState`), only read access is permitted, and attempts to modify state will result in a compilation error.
 
 For example, in the implementation of `ISimpleStorage`:
 
@@ -6351,9 +6488,9 @@ On Starknet, structs are stored in storage as a sequence of primitive types, sto
 
 For example, for a `Person` struct with `name` and `address`:
 
-| Fields | Address |
-| --- | --- |
-| name | `owner.__base_address__` |
+| Fields  | Address                      |
+| ------- | ---------------------------- |
+| name    | `owner.__base_address__`     |
 | address | `owner.__base_address__ + 1` |
 
 ### Enums Storage Layout
@@ -6364,15 +6501,15 @@ For an enum `Expiration` with `Finite: u64` (index 0) and `Infinite` (index 1):
 
 If `Finite` is stored:
 
-| Element | Address |
-| --- | --- |
-| Variant index (0 for Finite) | `expiration.__base_address__` |
-| Associated limit date | `expiration.__base_address__ + 1` |
+| Element                      | Address                           |
+| ---------------------------- | --------------------------------- |
+| Variant index (0 for Finite) | `expiration.__base_address__`     |
+| Associated limit date        | `expiration.__base_address__ + 1` |
 
 If `Infinite` is stored:
 
-| Element | Address |
-| --- | --- |
+| Element                        | Address                       |
+| ------------------------------ | ----------------------------- |
 | Variant index (1 for Infinite) | `expiration.__base_address__` |
 
 Enums used in contract storage **must** define a default variant (using `#[default]`), which is returned when reading an uninitialized storage slot, preventing runtime errors.
@@ -6464,8 +6601,9 @@ The calculation mechanism for storage addresses is modeled using `StoragePointer
 Storage variables in Cairo are not stored contiguously. To manage retrieval, the core library models the contract storage using a system of `StoragePointers` and `StoragePaths`.
 
 Each storage variable can be converted into a `StoragePointer`. This pointer comprises two primary fields:
-*   The base address of the storage variable in the contract's storage.
-*   The offset, relative to the base address, of the specific storage slot being pointed to.
+
+- The base address of the storage variable in the contract's storage.
+- The offset, relative to the base address, of the specific storage slot being pointed to.
 
 #### Example of Storage Access
 
@@ -6631,9 +6769,9 @@ fn get_item_quantity(self: @ContractState, address: ContractAddress, item_id: u6
 
 The storage address for a value associated with key(s) in a mapping is computed based on the mapping variable's name and the key(s):
 
-*   **Single Key ($k$):** The address is calculated as $h(\text{sn\_keccak}(\text{variable\_name}), k)$, where $h$ is the Pedersen hash. The result is taken modulo $2^{251} - 256$.
-*   **Multiple Keys ($k_1, k_2, \dots, k_n$):** The address is computed iteratively: $h(\dots h(h(\text{sn\_keccak}(\text{variable\_name}), k_1), k_2), \dots, k_n)$.
-*   If a key is a struct, each element of the struct is treated as a sequential key, provided the struct implements the `Hash` trait.
+- **Single Key ($k$):** The address is calculated as $h(\text{sn\_keccak}(\text{variable\_name}), k)$, where $h$ is the Pedersen hash. The result is taken modulo $2^{251} - 256$.
+- **Multiple Keys ($k_1, k_2, \dots, k_n$):** The address is computed iteratively: $h(\dots h(h(\text{sn\_keccak}(\text{variable\_name}), k_1), k_2), \dots, k_n)$.
+- If a key is a struct, each element of the struct is treated as a sequential key, provided the struct implements the `Hash` trait.
 
 The base address of the storage variable can be accessed via the `__base_address__` attribute.
 
@@ -6665,8 +6803,9 @@ self.addresses.push(caller);
 ```
 
 **Retrieving Elements:**
-*   Use indexing (`vec[index]`) or `get(index)` to obtain a storage pointer to the element. Call `.read()` on the pointer to get the value.
-*   `get(index)` returns `Option<ContractAddress>`, returning `None` if the index is out of bounds. Indexing/`at` panics if out of bounds.
+
+- Use indexing (`vec[index]`) or `get(index)` to obtain a storage pointer to the element. Call `.read()` on the pointer to get the value.
+- `get(index)` returns `Option<ContractAddress>`, returning `None` if the index is out of bounds. Indexing/`at` panics if out of bounds.
 
 ```rust
 // Example of getting the n-th element safely
@@ -6698,10 +6837,10 @@ The storage address for elements in a `Vec` is computed as follows:
 
 ### Summary of Storage Vec Operations
 
-*   Use the `Vec<T>` type for collections in storage.
-*   Use `push` to add, `pop` to remove the last element, and `get`/indexing to read elements.
-*   Use `[index].write(value)` to modify an element in place.
-*   Address calculation involves `sn_keccak` for the base length address and Pedersen hashing for element addresses.
+- Use the `Vec<T>` type for collections in storage.
+- Use `push` to add, `pop` to remove the last element, and `get`/indexing to read elements.
+- Use `[index].write(value)` to modify an element in place.
+- Address calculation involves `sn_keccak` for the base length address and Pedersen hashing for element addresses.
 
 ---
 
@@ -6722,16 +6861,16 @@ This structure is necessary because Cairo proofs require "dictionary squashing" 
 
 Example entry list progression for squashing:
 
-| key | previous | new |
-| --- | --- | --- |
-| Alex | 0 | 150 |
-| Maria | 0 | 100 |
-| Charles | 0 | 70 |
-| Maria | 100 | 250 |
-| Alex | 150 | 40 |
-| Alex | 40 | 300 |
-| Maria | 250 | 190 |
-| Alex | 300 | 90 |
+| key     | previous | new |
+| ------- | -------- | --- |
+| Alex    | 0        | 150 |
+| Maria   | 0        | 100 |
+| Charles | 0        | 70  |
+| Maria   | 100      | 250 |
+| Alex    | 150      | 40  |
+| Alex    | 40       | 300 |
+| Maria   | 250      | 190 |
+| Alex    | 300      | 90  |
 
 After squashing, the entry list would be reduced to:
 
@@ -6745,9 +6884,9 @@ The storage in a Starknet smart contract consists of a map with $2^{251}$ slots,
 
 Packing combines several integers into a single larger integer if the container size accommodates the sum of the required bits (e.g., two `u8` and one `u16` into one `u32`). This requires bitwise operators:
 
-*   **Shifting:** Multiplying or dividing an integer by a power of 2 shifts the value left or right, respectively.
-*   **Masking (AND):** Applying an `AND` operator isolates specific bits.
-*   **Combining (OR):** Adding (using `OR`) two integers combines their values.
+- **Shifting:** Multiplying or dividing an integer by a power of 2 shifts the value left or right, respectively.
+- **Masking (AND):** Applying an `AND` operator isolates specific bits.
+- **Combining (OR):** Adding (using `OR`) two integers combines their values.
 
 Example of combining two `u8` into a `u16` (packing) and reversing it (unpacking):
 
@@ -6758,9 +6897,10 @@ Packing and unpacking integer values
 Storage optimization can be achieved by implementing the `StorePacking` trait. The compiler uses the `StoreUsingPacking` implementation of the `Store` trait to automatically pack data before writing to storage and unpack it after reading.
 
 In this implementation:
-*   `TWO_POW_8` and `TWO_POW_40` are used for left shifting in `pack` and right shifting in `unpack`.
-*   `MASK_8` and `MASK_32` are used to isolate variables during `unpack`.
-*   Variables are converted to `u128` to enable bitwise operations.
+
+- `TWO_POW_8` and `TWO_POW_40` are used for left shifting in `pack` and right shifting in `unpack`.
+- `MASK_8` and `MASK_32` are used to isolate variables during `unpack`.
+- Variables are converted to `u128` to enable bitwise operations.
 
 This technique applies to any group of fields whose total bit size fits within the packed storage type (e.g., packing fields summing to 256 bits into a `u256`). A crucial requirement is that the type produced by `StorePacking::pack` must also implement the `Store` trait for `StoreUsingPacking` to function correctly.
 
@@ -6780,9 +6920,9 @@ When an `Event` enum variant (like `FieldUpdated`) is annotated with `#[flat]`, 
 
 The resulting log structure for such an event is defined as follows:
 
-*   **First Key:** Calculated using `selector!("Author")`.
-*   **Second Key:** The value of the field annotated with `#[key]` (e.g., the `id` field).
-*   **Data Field:** The serialized data of the remaining fields. For the example provided: `0x5374657068656e204b696e67` (representing 'Stephen King').
+- **First Key:** Calculated using `selector!("Author")`.
+- **Second Key:** The value of the field annotated with `#[key]` (e.g., the `id` field).
+- **Data Field:** The serialized data of the remaining fields. For the example provided: `0x5374657068656e204b696e67` (representing 'Stephen King').
 
 ---
 
@@ -6890,14 +7030,14 @@ The field element (`felt252`), containing 252 bits, is the sole type in the Cair
 
 The following Cairo data types fit within 252 bits and are represented by a single felt:
 
-*   `ContractAddress`
-*   `EthAddress`
-*   `StorageAddress`
-*   `ClassHash`
-*   Unsigned integers: `u8`, `u16`, `u32`, `u64`, `u128`, and `usize`
-*   `bytes31`
-*   `felt252`
-*   Signed integers: `i8`, `i16`, `i32`, `i64`, and `i128`
+- `ContractAddress`
+- `EthAddress`
+- `StorageAddress`
+- `ClassHash`
+- Unsigned integers: `u8`, `u16`, `u32`, `u64`, `u128`, and `usize`
+- `bytes31`
+- `felt252`
+- Signed integers: `i8`, `i16`, `i32`, `i64`, and `i128`
 
 Note that a negative value, $(-x)$, is serialized as $(P-x)$, where $P = 2^{251} + 17 \cdot 2^{192} + 1$.
 
@@ -6913,16 +7053,21 @@ Sources:
 ### Fundamentals of Contract Interaction
 
 #### Necessity and Scope of Contract Interaction
+
 A smart contract requires an external trigger from an entity (user or another contract) to execute. The ability for contracts to interact facilitates the creation of complex applications where individual contracts handle specific functionalities. Key aspects of interaction include understanding the Application Binary Interface (ABI), how to call contracts, enabling inter-contract communication, and proper usage of classes as libraries.
 
 #### Deploying and Interacting via `katana`
+
 Interaction with Starknet contracts begins after deployment. For local development and testing, the `katana` local Starknet node is recommended over using testnets like Goerli.
 
 To start the local node:
+
 ```bash
 katana
 ```
+
 This command starts the node with predeployed accounts, which are listed in the output, providing necessary addresses and private keys for testing interactions:
+
 ```
 ...
 PREFUNDED ACCOUNTS
@@ -6943,21 +7088,28 @@ PREFUNDED ACCOUNTS
 ```
 
 #### Differentiating Call and Invoke Operations
+
 Interacting with external functions is categorized based on state modification:
-*   **Calling Contracts:** Used for external functions that only read from the state. These operations do not alter the network state, thus requiring no fees or signing.
-*   **Invoking Contracts:** Used for external functions that write to the state. These operations alter the network state and mandate fees and signing.
+
+- **Calling Contracts:** Used for external functions that only read from the state. These operations do not alter the network state, thus requiring no fees or signing.
+- **Invoking Contracts:** Used for external functions that write to the state. These operations alter the network state and mandate fees and signing.
 
 #### Reading State with `starkli call`
+
 Read functions are executed using the `starkli call` command. The general structure is: `starkli call [contract_address] [function] [input] --rpc [url]`.
 
 The function `voter_can_vote` checks eligibility. If the input address corresponds to a registered voter who hasn't voted, the result is 1 (true):
+
 ```bash
 starkli call 0x05ea3a690be71c7fcd83945517f82e8861a97d42fca8ec9a2c46831d11f33349 voter_can_vote 0x03ee9e18edc71a6df30ac3aca2e0b02a198fbce19b7480a63a0d71cbd76652e0 --rpc http://0.0.0.0:5050
 ```
+
 Checking an unregistered account with `is_voter_registered` yields 0 (false):
+
 ```bash
 starkli call 0x05ea3a690be71c7fcd83945517f82e8861a97d42fca8ec9a2c46831d11f33349 is_voter_registered 0x44444444444444444 --rpc http://0.0.0.0:5050
 ```
+
 Functions that modify state, such as casting a vote via the `vote` function, necessitate the use of the `starknet invoke` command.
 
 ---
@@ -6976,9 +7128,9 @@ The dispatcher pattern enables calling functions on another contract by utilizin
 
 When a contract interface is defined, the compiler automatically generates several dispatchers. Using `IERC20` as an example:
 
-*   **Contract Dispatchers** (e.g., `IERC20Dispatcher`): Wrap a contract address and are used to call functions on other contracts.
-*   **Library Dispatchers** (e.g., `IERC20LibraryDispatcher`): Wrap a class hash and are used to call functions on classes.
-*   **'Safe' Dispatchers** (e.g., `IERC20SafeDispatcher`): Allow the caller to handle potential execution errors.
+- **Contract Dispatchers** (e.g., `IERC20Dispatcher`): Wrap a contract address and are used to call functions on other contracts.
+- **Library Dispatchers** (e.g., `IERC20LibraryDispatcher`): Wrap a class hash and are used to call functions on classes.
+- **'Safe' Dispatchers** (e.g., `IERC20SafeDispatcher`): Allow the caller to handle potential execution errors.
 
 ### The Dispatcher Pattern Implementation Details
 
@@ -7155,12 +7307,12 @@ While safe dispatchers return a `Result<u32, Array<felt252>>` allowing for error
 
 The following cases are expected to be handled in future Starknet versions:
 
-*   Failure in a Cairo Zero contract call.
-*   Library call with a non-existent class hash.
-*   Contract call to a non-existent contract address.
-*   Failure within the `deploy` syscall (e.g., panic in the constructor, deploying to an existing address).
-*   Using the `deploy` syscall with a non-existent class hash.
-*   Using the `replace_class` syscall with a non-existent class hash.
+- Failure in a Cairo Zero contract call.
+- Library call with a non-existent class hash.
+- Contract call to a non-existent contract address.
+- Failure within the `deploy` syscall (e.g., panic in the constructor, deploying to an existing address).
+- Using the `deploy` syscall with a non-existent class hash.
+- Using the `replace_class` syscall with a non-existent class hash.
 
 #### Using `call_contract_syscall`
 
@@ -7230,12 +7382,12 @@ Library calls allow a contract to execute the logic of another class within its 
 
 #### Key Differences Between Contract Calls and Library Calls
 
-| Feature | Contract Call (to deployed **contract**) | Library Call (to **class**)
-| :--- | :--- |
-| Execution Context | That of the called contract (B) | That of the caller (A)
-| `get_caller_address()` in called logic | Address of A | Address of A's caller
-| `get_contract_address()` in called logic | Address of B | Address of A
-| Storage Updates | Update storage of B | Update storage of A
+| Feature                                  | Contract Call (to deployed **contract**) | Library Call (to **class**) |
+| :--------------------------------------- | :--------------------------------------- | --------------------------- |
+| Execution Context                        | That of the called contract (B)          | That of the caller (A)      |
+| `get_caller_address()` in called logic   | Address of A                             | Address of A's caller       |
+| `get_contract_address()` in called logic | Address of B                             | Address of A                |
+| Storage Updates                          | Update storage of B                      | Update storage of A         |
 
 Library calls are performed using a class hash instead of a contract address when using the dispatcher pattern.
 
@@ -7274,8 +7426,8 @@ To use library calls via the dispatcher, an instance of the library dispatcher (
 
 In the example using `ValueStoreExecutor` calling `ValueStoreLogic`:
 
-*   Calling `set_value` updates `ValueStoreExecutor`'s storage variable `value`.
-*   Calling `get_value` reads `ValueStoreExecutor`'s storage variable `value`.
+- Calling `set_value` updates `ValueStoreExecutor`'s storage variable `value`.
+- Calling `get_value` reads `ValueStoreExecutor`'s storage variable `value`.
 
 ```
 #[starknet::interface]
@@ -7384,6 +7536,7 @@ mod ValueStore {
     }
 }
 ```
+
 The call returns serialized values that must be deserialized manually.
 
 ---
@@ -7402,10 +7555,10 @@ Starknet utilizes an **L1-L2 messaging system** to enable interaction between sm
 
 The messaging system is characterized by two key properties:
 
-*   **Asynchronous**: Contract code (Solidity or Cairo) cannot await the result of a message sent on the other chain during its execution.
-*   **Asymmetric**:
-    *   `L1->L2`: Messages are automatically delivered to the target L2 contract by the Starknet sequencer.
-    *   `L2->L1`: Only the hash of the message is sent to L1 by the sequencer; consumption must be done manually via a transaction on L1.
+- **Asynchronous**: Contract code (Solidity or Cairo) cannot await the result of a message sent on the other chain during its execution.
+- **Asymmetric**:
+  - `L1->L2`: Messages are automatically delivered to the target L2 contract by the Starknet sequencer.
+  - `L2->L1`: Only the hash of the message is sent to L1 by the sequencer; consumption must be done manually via a transaction on L1.
 
 #### The StarknetMessaging Contract
 
@@ -7525,6 +7678,7 @@ function consumeMessageFelt(
     require(my_felt > 0, "Invalid value");
 }
 ```
+
 The `consumeMessageFromL2` call validates the inputs (L2 contract address and payload) against the recorded message hash.
 
 #### Cairo Serialization Considerations (Serde)
@@ -7588,11 +7742,13 @@ The contract includes external read functions to check eligibility without alter
 The `invoke` command is used for state-changing operations, such as voting. Voting requires signing the transaction and incurs a fee. The input for the `vote` function is `1` (Yes) or `0` (No).
 
 Voting Yes:
+
 ```bash
 starkli invoke 0x05ea3a690be71c7fcd83945517f82e8861a97d42fca8ec9a2c46831d11f33349 vote 1 --rpc http://0.0.0.0:5050 --account katana-0
 ```
 
 Voting No:
+
 ```bash
 starkli invoke 0x05ea3a690be71c7fcd83945517f82e8861a97d42fca8ec9a2c46831d11f33349 vote 0 --rpc http://0.0.0.0:5050 --account katana-0
 ```
@@ -7608,9 +7764,11 @@ The output provides details like transaction hash, max fee, and signature.
 #### Error Handling
 
 Attempting to vote twice with the same signer results in a generic error:
+
 ```
 Error: code=ContractError, message="Contract error"
 ```
+
 More detailed error reasons, such as `"USER_ALREADY_VOTED"`, can be found by inspecting the output logs of the running `katana` node.
 
 ---
@@ -7630,6 +7788,7 @@ To understand what happens internally, transaction receipts show emitted events.
 When invoking `add_book` (e.g., id=42, title='Misery', author='S. King'), the transaction receipt's "events" section contains serialized event data.
 
 The structure observed in the receipt is:
+
 ```json
 "events": [
     {
@@ -7647,17 +7806,18 @@ The structure observed in the receipt is:
 ```
 
 Interpretation of the receipt fields for this event:
-*   `from_address`: The smart contract's address.
-*   `keys`: Contains serialized `felt252` key fields.
-    *   The first key is the event selector, `selector!("BookAdded")`.
-    *   The second key, `0x532e204b696e67` ('S. King'), corresponds to the `author` field defined with `#[key]`.
-*   `data`: Contains serialized `felt252` data fields.
-    *   `0x2a` (42) is the `id` data field.
-    *   `0x4d6973657279` ('Misery') is the `title` data field.
+
+- `from_address`: The smart contract's address.
+- `keys`: Contains serialized `felt252` key fields.
+  - The first key is the event selector, `selector!("BookAdded")`.
+  - The second key, `0x532e204b696e67` ('S. King'), corresponds to the `author` field defined with `#[key]`.
+- `data`: Contains serialized `felt252` data fields.
+  - `0x2a` (42) is the `id` data field.
+  - `0x4d6973657279` ('Misery') is the `title` data field.
 
 #### Example 2: Update a book author
 
-Invoking `change_book_author` (id=42, new\_author='Stephen King') emits a `FieldUpdated` event. The receipt structure reflects this:
+Invoking `change_book_author` (id=42, new_author='Stephen King') emits a `FieldUpdated` event. The receipt structure reflects this:
 
 ```json
 "events": [
@@ -7673,6 +7833,7 @@ Invoking `change_book_author` (id=42, new\_author='Stephen King') emits a `Field
     }
   ]
 ```
+
 This event structure corresponds to `FieldUpdated::Author(UpdatedAuthorData { id: 42, title: author: 'Stephen King' })`. The key includes the selector and the book ID (0x2a), while the data contains the new author name serialized.
 
 ---
@@ -7717,9 +7878,9 @@ Unlike a contract, a component cannot be deployed on its own; its logic becomes 
 
 A component is similar to a contract and can contain:
 
-*   Storage variables
-*   Events
-*   External and internal functions
+- Storage variables
+- Events
+- External and internal functions
 
 ## Creating Components
 
@@ -7828,10 +7989,10 @@ pub mod OwnableComponent {
 
 Migration requires minimal changes:
 
-*   Add `#[starknet::component]` attribute to the module.
-*   Add `#[embeddable_as(name)]` attribute to the `impl` block to be embedded.
-*   Add generic parameters to the `impl` block: `TContractState` and the restriction `+HasComponent<TContractState>`.
-*   Change the `self` argument type in functions from `ContractState` to `ComponentState<TContractState>`.
+- Add `#[starknet::component]` attribute to the module.
+- Add `#[embeddable_as(name)]` attribute to the `impl` block to be embedded.
+- Add generic parameters to the `impl` block: `TContractState` and the restriction `+HasComponent<TContractState>`.
+- Change the `self` argument type in functions from `ContractState` to `ComponentState<TContractState>`.
 
 For traits generated via `#[generate_trait]`, the trait is generic over `TContractState` instead of `ComponentState<TContractState>`.
 
@@ -7840,9 +8001,9 @@ For traits generated via `#[generate_trait]`, the trait is generic over `TContra
 To integrate a component, you must:
 
 1.  Declare it using the `component!()` macro, specifying:
-    *   The path to the component (`path::to::component`).
-    *   The name of the storage variable (`ownable`).
-    *   The name of the event enum variant (`OwnableEvent`).
+    - The path to the component (`path::to::component`).
+    - The name of the storage variable (`ownable`).
+    - The name of the event enum variant (`OwnableEvent`).
 2.  Add the path to the component's storage and events to the contract's storage and event definitions.
 
 ### Example: Basic ERC20 Contract Using Components
@@ -7904,8 +8065,8 @@ Sources:
 
 Cairo compiler provides helpful diagnostics when integrating components:
 
-*   `Plugin diagnostic: name is not a substorage member in the contract's Storage. Consider adding to Storage: (...)`: Indicates that the component's storage was forgotten in the contract's `Storage`. Solution: Add the component's storage path annotated with `#[substorage(v0)]`.
-*   `Plugin diagnostic: name is not a nested event in the contract's Event enum. Consider adding to the Event enum:`: Suggests missing component events. Solution: Add the path to the component's events in the contract's `Event` enum.
+- `Plugin diagnostic: name is not a substorage member in the contract's Storage. Consider adding to Storage: (...)`: Indicates that the component's storage was forgotten in the contract's `Storage`. Solution: Add the component's storage path annotated with `#[substorage(v0)]`.
+- `Plugin diagnostic: name is not a nested event in the contract's Event enum. Consider adding to the Event enum:`: Suggests missing component events. Solution: Add the path to the component's events in the contract's `Event` enum.
 
 ## Component Impl Structure and State Access
 
@@ -8111,12 +8272,12 @@ Pragma provides VRF solutions on Starknet. The process involves:
 
 Key inputs for `request_randomness_from_pragma` include:
 
-*   `seed`: Unique value to initialize generation.
-*   `callback_address`: Address of the contract implementing `receive_random_words`.
-*   `callback_fee_limit`: Max gas willing to spend on the callback execution.
-*   `publish_delay`: Minimum block delay before fulfillment.
-*   `num_words`: Number of random `felt252` values requested.
-*   `calldata`: Additional data passed to the callback.
+- `seed`: Unique value to initialize generation.
+- `callback_address`: Address of the contract implementing `receive_random_words`.
+- `callback_fee_limit`: Max gas willing to spend on the callback execution.
+- `publish_delay`: Minimum block delay before fulfillment.
+- `num_words`: Number of random `felt252` values requested.
+- `calldata`: Additional data passed to the callback.
 
 **Dice Game Example using Pragma VRF**
 
@@ -8124,8 +8285,8 @@ This contract uses VRF to determine game winners. It requires defining interface
 
 Key entrypoints in `IPragmaVRF`:
 
-*   `request_randomness_from_pragma`: Owner calls this to initiate the request.
-*   `receive_random_words`: Called by the oracle to submit the results, which are stored in `last_random_number`.
+- `request_randomness_from_pragma`: Owner calls this to initiate the request.
+- `receive_random_words`: Called by the oracle to submit the results, which are stored in `last_random_number`.
 
 The full contract implementation (`DiceGame`) demonstrates handling the request, approval of callback fees, and processing the result in `process_game_winners`:
 
@@ -8334,7 +8495,9 @@ Sources:
 ---
 
 ## System-Level Patterns and Messaging
+
 ### Local Messaging System Testing
+
 You can also find a detailed guide here to test the messaging system locally.
 
 ---
@@ -8398,6 +8561,7 @@ fn main() {
 ```
 
 Executing this produces output like:
+
 ```
 $ scarb execute
    Compiling no_listing_01_panic v0.1.0 (listings/ch09-error-handling/no_listing_01_panic/Scarb.toml)
@@ -8442,6 +8606,7 @@ fn function_never_panic() -> felt252 nopanic {
 ```
 
 If a function declared as `nopanic` calls a function that may panic (like `assert!`), compilation will fail:
+
 ```
 error: Function is declared as nopanic but calls a function that may panic.
 ```
@@ -8486,14 +8651,14 @@ enum Result<T, E> {
 
 The `ResultTrait` provides methods for working with `Result<T, E>`:
 
-| Method | Behavior on `Ok(x)` | Behavior on `Err(e)` |
-| :--- | :--- | :--- |
-| `unwrap()` | Returns `x` (panics with default message otherwise) | Panics |
-| `expect(err)` | Returns `x` | Panics with custom message `err` |
-| `unwrap_err()` | Panics | Returns `e` |
-| `expect_err(err)` | Panics with custom message `err` | Returns `e` |
-| `is_ok()` | Returns `true` | Returns `false` |
-| `is_err()` | Returns `false` | Returns `true` |
+| Method            | Behavior on `Ok(x)`                                 | Behavior on `Err(e)`             |
+| :---------------- | :-------------------------------------------------- | :------------------------------- |
+| `unwrap()`        | Returns `x` (panics with default message otherwise) | Panics                           |
+| `expect(err)`     | Returns `x`                                         | Panics with custom message `err` |
+| `unwrap_err()`    | Panics                                              | Returns `e`                      |
+| `expect_err(err)` | Panics with custom message `err`                    | Returns `e`                      |
+| `is_ok()`         | Returns `true`                                      | Returns `false`                  |
+| `is_err()`        | Returns `false`                                     | Returns `true`                   |
 
 These methods require generic type constraints, such as `<+Drop<E>>` for `unwrap`.
 
@@ -8524,6 +8689,7 @@ fn mutate_byte(input: felt252) -> Result<u8, felt252> {
 ```
 
 If used incorrectly (e.g., in a function returning `()`), it results in:
+
 ```
 error: `?` can only be used in a function with `Option` or `Result` return type.
 ```
@@ -8532,18 +8698,19 @@ error: `?` can only be used in a function with `Option` or `Result` return type.
 
 Encountering specific error messages can be resolved by checking the following:
 
-*   **`Variable not dropped.`**: A variable of a non-`Drop`/non-`Destruct` type is going out of scope without being destroyed.
-*   **`Variable was previously moved.`**: Attempting to use a variable whose ownership was transferred (if it doesn't implement `Copy`). Use `.clone()` to avoid this.
-*   **`error: Trait has no implementation in context: core::fmt::Display...`**: Occurs when using `{}` for custom types in `print!`. Implement `Display` or use `derive(Debug)` and print with `{:?}`.
-*   **`Got an exception while executing a hint: Hint Error: Failed to deserialize param #x.`**: An entrypoint was called without expected arguments. For `u256` (a struct of two `u128`), two values must be passed.
-*   **`Item path::item is not visible in this context.`**: Visibility issue. Declare modules and items using `pub(crate)` or `pub`.
-*   **`Identifier not found.`**: May mean a variable is used before declaration (`let`) or the path to an item is incorrect.
+- **`Variable not dropped.`**: A variable of a non-`Drop`/non-`Destruct` type is going out of scope without being destroyed.
+- **`Variable was previously moved.`**: Attempting to use a variable whose ownership was transferred (if it doesn't implement `Copy`). Use `.clone()` to avoid this.
+- **`error: Trait has no implementation in context: core::fmt::Display...`**: Occurs when using `{}` for custom types in `print!`. Implement `Display` or use `derive(Debug)` and print with `{:?}`.
+- **`Got an exception while executing a hint: Hint Error: Failed to deserialize param #x.`**: An entrypoint was called without expected arguments. For `u256` (a struct of two `u128`), two values must be passed.
+- **`Item path::item is not visible in this context.`**: Visibility issue. Declare modules and items using `pub(crate)` or `pub`.
+- **`Identifier not found.`**: May mean a variable is used before declaration (`let`) or the path to an item is incorrect.
 
 ## Robustness and Security Considerations
 
 Certain programming patterns can lead to vulnerabilities if not handled carefully:
 
 ### Operator Precedence
+
 `&&` has higher precedence than `||`. Parentheses must be used to enforce correct precedence in combined boolean expressions:
 
 ```cairo
@@ -8561,6 +8728,7 @@ assert!(
 ```
 
 ### Unsigned Loop Underflow
+
 Using an unsigned integer (`u32`) for a loop counter that is decremented past zero causes an underflow panic. Use signed integers (`i32`) for counters that might go below zero:
 
 ```cairo
@@ -8573,6 +8741,7 @@ while i >= 0 { // This would never trigger if `i` was a u32.
 ```
 
 ### Bit-Packing into `felt252`
+
 Packing fields into a single `felt252` requires strict bounds checking. The sum of the sizes of packed values should not exceed 251 bits.
 
 ```cairo
@@ -8616,9 +8785,9 @@ When running tests with `scarb test`, Scarb executes Starknet Foundry's test run
 
 Cairo features available for writing tests include:
 
-*   `#[test]` attribute: Marks a function as a test.
-*   Assertion macros: `assert!`, `assert_eq!`, `assert_ne!`, `assert_lt!`, `assert_le!`, `assert_gt!`, and `assert_ge!`.
-*   `#[should_panic]` attribute: Marks a test that is expected to panic.
+- `#[test]` attribute: Marks a function as a test.
+- Assertion macros: `assert!`, `assert_eq!`, `assert_ne!`, `assert_lt!`, `assert_le!`, `assert_gt!`, and `assert_ge!`.
+- `#[should_panic]` attribute: Marks a test that is expected to panic.
 
 ### The `tests` Module and Configuration
 
@@ -8645,9 +8814,9 @@ mod tests {
 
 Tests fail when code inside the function panics. Assertions are used to check conditions:
 
-*   `assert!(condition, message)`: Fails if the condition evaluates to `false`.
-*   `assert_eq!(left, right)` and `assert_ne!(left, right)`: Compare two arguments for equality or inequality, printing the values upon failure.
-*   Comparison macros: `assert_lt!`, `assert_le!`, `assert_gt!`, and `assert_ge!` check relative ordering.
+- `assert!(condition, message)`: Fails if the condition evaluates to `false`.
+- `assert_eq!(left, right)` and `assert_ne!(left, right)`: Compare two arguments for equality or inequality, printing the values upon failure.
+- Comparison macros: `assert_lt!`, `assert_le!`, `assert_gt!`, and `assert_ge!` check relative ordering.
 
 When assertions fail, custom failure messages can be added as optional arguments to these macros, which are passed to the `format!` macro.
 
@@ -8665,9 +8834,9 @@ Integration tests verify that multiple parts of the library work together correc
 
 ### Controlling Test Execution
 
-*   **Filtering:** Running `scarb test <name>` runs only tests whose names match the provided string (or substring).
-*   **Ignoring:** The `#[ignore]` attribute excludes a test from standard runs. It can be included later using `scarb test --include-ignored`.
-*   **Gas Limits:** For recursive functions or loops, the execution gas can be overridden using `#[available_gas(<Number>)]` on the test function.
+- **Filtering:** Running `scarb test <name>` runs only tests whose names match the provided string (or substring).
+- **Ignoring:** The `#[ignore]` attribute excludes a test from standard runs. It can be included later using `scarb test --include-ignored`.
+- **Gas Limits:** For recursive functions or loops, the execution gas can be overridden using `#[available_gas(<Number>)]` on the test function.
 
 ### Benchmarking
 
@@ -8686,17 +8855,21 @@ Sources:
 ### Security Best Practices and Contract Testing
 
 #### General Recommendations and Focus Areas
+
 Writing secure code is crucial. Focus areas derived from audits include:
-*   Access control and upgrades.
-*   Safe ERC20 token integrations.
-*   Cairo-specific pitfalls.
-*   Cross-domain/bridging safety.
-*   Economic/Denial of Service (DoS) considerations.
+
+- Access control and upgrades.
+- Safe ERC20 token integrations.
+- Cairo-specific pitfalls.
+- Cross-domain/bridging safety.
+- Economic/Denial of Service (DoS) considerations.
 
 #### Access Control, Upgrades & Initializers
+
 The most common critical issues involve access control ("who can call this?") and re-initialization.
 
 ##### Own Your Privileged Paths
+
 Ensure upgrades, pause/resume, bridge handling, and meta-execution are guarded, typically using `OwnableComponent`.
 
 ```cairo
@@ -8719,6 +8892,7 @@ fn upgrade(ref self: ContractState, new_class_hash: ClassHash) {
 ```
 
 ##### Initializers Must Be Idempotent
+
 A publicly exposed initializer called post-deploy can lead to vulnerabilities if it can be called multiple times. Ensure initialization logic is idempotent by checking a flag first.
 
 ```cairo
@@ -8735,29 +8909,39 @@ fn initializer(ref self: ContractState, owner: ContractAddress) {
     // init the rest…
 }
 ```
+
 Rule: If a function must be external during deployment, ensure it can only be called once; otherwise, keep it internal.
 
 ##### Emit Events
+
 Emit events for upgrades, configuration changes, pausing, liquidations, and any privileged action to aid incident response and indexers. Include addresses (e.g., token) to remove ambiguity.
 
 #### Safe Token Integrations
+
 ##### Always Check Boolean Returns
+
 Not all ERC20 implementations revert on failure; some return `false`. Verify the boolean flags returned by `transfer` and `transfer_from` to confirm success.
 
 ##### Naming Conventions
+
 Most Starknet ERC20 tokens use `snake_case`. Be aware that legacy tokens might use `camelCase` entrypoints, requiring adaptation if interacting with them.
 
 #### Cairo-Specific Pitfalls
+
 ##### `deploy_syscall(deploy_from_zero=true)` Collisions
+
 Setting `deploy_from_zero` to `true` enables deterministic deployment, which can cause collisions if two contracts attempt deployment with the same calldata. Set this to `false` unless this behavior is explicitly desired.
 
 ##### Useless Zero-Address Checks
+
 Checks like `get_caller_address().is_zero()` are inherited from Solidity but are useless on Starknet, as `get_caller_address()` is never the zero address.
 
 #### Cross-Domain / Bridging Safety
+
 L1-L2 interactions require specific validation.
 
 ##### L1 Handler Caller Validation
+
 Entrypoints marked with `#[l1_handler]` must validate that the caller address originates from a trusted L1 contract.
 
 ```cairo
@@ -8776,14 +8960,18 @@ fn handle_deposit(
 ```
 
 #### Economic/DoS & Griefing
+
 ##### Unbounded Loops
+
 User-controlled iterations (e.g., batch withdrawals, order sweeps) can exceed Starknet's execution step limit if the list size is unbounded. Cap the number of iterations or implement a pagination pattern to split work across multiple transactions.
 
 #### Static Analysis Tools (Contract Testing)
+
 Static analysis examines code structure, syntax, and properties without execution to identify vulnerabilities or rule violations. Developers should use these tools to automatically check code against defined security guidelines.
 Reference tools include:
-*   Semgrep Cairo 1.0 support
-*   Caracal, a Starknet static analyzer
+
+- Semgrep Cairo 1.0 support
+- Caracal, a Starknet static analyzer
 
 ---
 
@@ -8811,16 +8999,19 @@ Sources:
 ### Reference Material Overview
 
 #### Appendix (Cairo)
+
 The Cairo Programming Language appendix includes:
-* Light
-* Rust
-* Coal
-* Navy
-* Ayu
+
+- Light
+- Rust
+- Coal
+- Navy
+- Ayu
 
 The following sections contain reference material you may find useful in your Cairo journey.
 
 #### Appendix (Starknet)
+
 The following sections contain reference material you may find useful in your Starknet journey.
 ]]
 
@@ -8844,69 +9035,69 @@ Keywords fall into three categories: strict, loose, and reserved. A fourth categ
 
 These keywords must only be used in their correct contexts and cannot serve as item names.
 
-*   `as` - Rename import
-*   `break` - Exit a loop immediately
-*   `const` - Define constant items
-*   `continue` - Continue to the next loop iteration
-*   `else` - Fallback for `if` and `if let` control flow constructs
-*   `enum` - Define an enumeration
-*   `extern` - Function defined at the compiler level that can be compiled to CASM
-*   `false` - Boolean false literal
-*   `fn` - Define a function
-*   `if` - Branch based on the result of a conditional expression
-*   `impl` - Implement inherent or trait functionality
-*   `implicits` - Special kind of function parameters that are required to perform certain actions
-*   `let` - Bind a variable
-*   `loop` - Loop unconditionally
-*   `match` - Match a value to patterns
-*   `mod` - Define a module
-*   `mut` - Denote variable mutability
-*   `nopanic` - Functions marked with this notation mean that the function will never panic.
-*   `of` - Implement a trait
-*   `pub` - Denote public visibility in items, such as struct and struct fields, enums, consts, traits and impl blocks, or modules
-*   `ref` - Parameter passed implicitly returned at the end of a function
-*   `return` - Return from function
-*   `struct` - Define a structure
-*   `trait` - Define a trait
-*   `true` - Boolean true literal
-*   `type` - Define a type alias
-*   `use` - Bring symbols into scope
-*   `while` - loop conditionally based on the result of an expression
+- `as` - Rename import
+- `break` - Exit a loop immediately
+- `const` - Define constant items
+- `continue` - Continue to the next loop iteration
+- `else` - Fallback for `if` and `if let` control flow constructs
+- `enum` - Define an enumeration
+- `extern` - Function defined at the compiler level that can be compiled to CASM
+- `false` - Boolean false literal
+- `fn` - Define a function
+- `if` - Branch based on the result of a conditional expression
+- `impl` - Implement inherent or trait functionality
+- `implicits` - Special kind of function parameters that are required to perform certain actions
+- `let` - Bind a variable
+- `loop` - Loop unconditionally
+- `match` - Match a value to patterns
+- `mod` - Define a module
+- `mut` - Denote variable mutability
+- `nopanic` - Functions marked with this notation mean that the function will never panic.
+- `of` - Implement a trait
+- `pub` - Denote public visibility in items, such as struct and struct fields, enums, consts, traits and impl blocks, or modules
+- `ref` - Parameter passed implicitly returned at the end of a function
+- `return` - Return from function
+- `struct` - Define a structure
+- `trait` - Define a trait
+- `true` - Boolean true literal
+- `type` - Define a type alias
+- `use` - Bring symbols into scope
+- `while` - loop conditionally based on the result of an expression
 
 #### Loose Keywords
 
 These keywords are associated with specific behavior but can also be used to define items.
 
-*   `self` - Method subject
-*   `super` - Parent module of the current module
+- `self` - Method subject
+- `super` - Parent module of the current module
 
 #### Reserved Keywords
 
 These keywords are reserved for future use. While it is currently possible to use them to define items, doing so is highly discouraged to ensure forward compatibility.
 
-*   `Self`
-*   `do`
-*   `dyn`
-*   `for`
-*   `hint`
-*   `in`
-*   `macro`
-*   `move`
-*   `static_assert`
-*   `static`
-*   `try`
-*   `typeof`
-*   `unsafe`
-*   `where`
-*   `with`
-*   `yield`
+- `Self`
+- `do`
+- `dyn`
+- `for`
+- `hint`
+- `in`
+- `macro`
+- `move`
+- `static_assert`
+- `static`
+- `try`
+- `typeof`
+- `unsafe`
+- `where`
+- `with`
+- `yield`
 
 #### Built-in Functions
 
 These functions serve a special purpose in Cairo. Using their names for other items is not recommended.
 
-*   `assert` - This function checks a boolean expression, and if it evaluates to false, it triggers the panic function.
-*   `panic` - This function acknowledges the occurrence of an error and terminates the program.
+- `assert` - This function checks a boolean expression, and if it evaluates to false, it triggers the panic function.
+- `panic` - This function acknowledges the occurrence of an error and terminates the program.
 
 ---
 
@@ -8924,43 +9115,43 @@ This section provides a glossary of Cairo's syntax, including operators and othe
 
 Table B-1 lists Cairo operators, their context, explanation, and overloadability details.
 
-| Operator | Example | Explanation | Overloadable? |
-| --- | --- | --- | --- |
-| `!` | `!expr` | Logical complement | `Not` |
-| `~` | `~expr` | Bitwise NOT | `BitNot` |
-| `!=` | `expr != expr` | Non-equality comparison | `PartialEq` |
-| `%` | `expr % expr` | Arithmetic remainder | `Rem` |
-| `%=` | `var %= expr` | Arithmetic remainder and assignment | `RemEq` |
-| `&` | `expr & expr` | Bitwise AND | `BitAnd` |
-| `&&` | `expr && expr` | Short-circuiting logical AND |  |
-| `*` | `expr * expr` | Arithmetic multiplication | `Mul` |
-| `*=` | `var *= expr` | Arithmetic multiplication and assignment | `MulEq` |
-| `@` | `@var` | Snapshot |  |
-| `*` | `*var` | Desnap |  |
-| `+` | `expr + expr` | Arithmetic addition | `Add` |
-| `+=` | `var += expr` | Arithmetic addition and assignment | `AddEq` |
-| `,` | `expr, expr` | Argument and element separator |  |
-| `-` | `-expr` | Arithmetic negation | `Neg` |
-| `-` | `expr - expr` | Arithmetic subtraction | `Sub` |
-| `-=` | `var -= expr` | Arithmetic subtraction and assignment | `SubEq` |
-| `->` | `fn(...) -> type`, `|...| -> type` | Function and closure return type |  |
-| `.` | `expr.ident` | Member access |  |
-| `/` | `expr / expr` | Arithmetic division | `Div` |
-| `/=` | `var /= expr` | Arithmetic division and assignment | `DivEq` |
-| `:` | `pat: type`, `ident: type` | Constraints |  |
-| `:` | `ident: expr` | Struct field initializer |  |
-| `;` | `expr;` | Statement and item terminator |  |
-| `<` | `expr < expr` | Less than comparison | `PartialOrd` |
-| `<=` | `expr <= expr` | Less than or equal to comparison | `PartialOrd` |
-| `=` | `var = expr` | Assignment |  |
-| `==` | `expr == expr` | Equality comparison | `PartialEq` |
-| `=>` | `pat => expr` | Part of match arm syntax |  |
-| `>` | `expr > expr` | Greater than comparison | `PartialOrd` |
-| `>=` | `expr >= expr` | Greater than or equal to comparison | `PartialOrd` |
-| `^` | `expr ^ expr` | Bitwise exclusive OR | `BitXor` |
-| `|` | `expr | expr` | Bitwise OR | `BitOr` |
-| `||` | `expr || expr` | Short-circuiting logical OR |  |
-| `?` | `expr?` | Error propagation |  |
+| Operator | Example                    | Explanation                              | Overloadable? |
+| -------- | -------------------------- | ---------------------------------------- | ------------- | -------------------------------- | ------- | --------------------------- | --- |
+| `!`      | `!expr`                    | Logical complement                       | `Not`         |
+| `~`      | `~expr`                    | Bitwise NOT                              | `BitNot`      |
+| `!=`     | `expr != expr`             | Non-equality comparison                  | `PartialEq`   |
+| `%`      | `expr % expr`              | Arithmetic remainder                     | `Rem`         |
+| `%=`     | `var %= expr`              | Arithmetic remainder and assignment      | `RemEq`       |
+| `&`      | `expr & expr`              | Bitwise AND                              | `BitAnd`      |
+| `&&`     | `expr && expr`             | Short-circuiting logical AND             |               |
+| `*`      | `expr * expr`              | Arithmetic multiplication                | `Mul`         |
+| `*=`     | `var *= expr`              | Arithmetic multiplication and assignment | `MulEq`       |
+| `@`      | `@var`                     | Snapshot                                 |               |
+| `*`      | `*var`                     | Desnap                                   |               |
+| `+`      | `expr + expr`              | Arithmetic addition                      | `Add`         |
+| `+=`     | `var += expr`              | Arithmetic addition and assignment       | `AddEq`       |
+| `,`      | `expr, expr`               | Argument and element separator           |               |
+| `-`      | `-expr`                    | Arithmetic negation                      | `Neg`         |
+| `-`      | `expr - expr`              | Arithmetic subtraction                   | `Sub`         |
+| `-=`     | `var -= expr`              | Arithmetic subtraction and assignment    | `SubEq`       |
+| `->`     | `fn(...) -> type`, `       | ...                                      | -> type`      | Function and closure return type |         |
+| `.`      | `expr.ident`               | Member access                            |               |
+| `/`      | `expr / expr`              | Arithmetic division                      | `Div`         |
+| `/=`     | `var /= expr`              | Arithmetic division and assignment       | `DivEq`       |
+| `:`      | `pat: type`, `ident: type` | Constraints                              |               |
+| `:`      | `ident: expr`              | Struct field initializer                 |               |
+| `;`      | `expr;`                    | Statement and item terminator            |               |
+| `<`      | `expr < expr`              | Less than comparison                     | `PartialOrd`  |
+| `<=`     | `expr <= expr`             | Less than or equal to comparison         | `PartialOrd`  |
+| `=`      | `var = expr`               | Assignment                               |               |
+| `==`     | `expr == expr`             | Equality comparison                      | `PartialEq`   |
+| `=>`     | `pat => expr`              | Part of match arm syntax                 |               |
+| `>`      | `expr > expr`              | Greater than comparison                  | `PartialOrd`  |
+| `>=`     | `expr >= expr`             | Greater than or equal to comparison      | `PartialOrd`  |
+| `^`      | `expr ^ expr`              | Bitwise exclusive OR                     | `BitXor`      |
+| `        | `                          | `expr                                    | expr`         | Bitwise OR                       | `BitOr` |
+| `        |                            | `                                        | `expr         |                                  | expr`   | Short-circuiting logical OR |     |
+| `?`      | `expr?`                    | Error propagation                        |               |
 
 ## Non-Operator Symbols
 
@@ -8968,67 +9159,67 @@ These symbols do not behave like a function or method call.
 
 ### Stand-Alone Syntax
 
-| Symbol | Explanation |
-| --- | --- |
-| `..._u8`, `..._usize`, `..._bool`, etc. | Numeric literal of specific type |
-| `\"...\"` | String literal |
-| `'...'` | Short string, 31 ASCII characters maximum |
-| `_` | “Ignored” pattern binding |
+| Symbol                                  | Explanation                               |
+| --------------------------------------- | ----------------------------------------- |
+| `..._u8`, `..._usize`, `..._bool`, etc. | Numeric literal of specific type          |
+| `\"...\"`                               | String literal                            |
+| `'...'`                                 | Short string, 31 ASCII characters maximum |
+| `_`                                     | “Ignored” pattern binding                 |
 
 ### Path-Related Syntax
 
 Symbols used within the context of a module hierarchy path to access an item.
 
-| Symbol | Explanation |
-| --- | --- |
-| `ident::ident` | Namespace path |
-| `super::path` | Path relative to the parent of the current module |
+| Symbol               | Explanation                                                      |
+| -------------------- | ---------------------------------------------------------------- |
+| `ident::ident`       | Namespace path                                                   |
+| `super::path`        | Path relative to the parent of the current module                |
 | `trait::method(...)` | Disambiguating a method call by naming the trait that defines it |
 
 ### Generic Type Parameters
 
 Symbols appearing in the context of using generic type parameters.
 
-| Symbol | Explanation |
-| --- | --- |
+| Symbol      | Explanation                                                        |
+| ----------- | ------------------------------------------------------------------ |
 | `path<...>` | Specifies parameters to generic type in a type (e.g., `Array<u8>`) |
 
 ### Macros
 
-| Symbol | Explanation |
-| :--- | :--- |
+| Symbol                   | Explanation                                                                            |
+| :----------------------- | :------------------------------------------------------------------------------------- |
 | `get_dep_component_mut!` | Returns the requested component state from a reference of the state inside a component |
-| `component!` | Macro used in Starknet contracts to embed a component inside a contract |
+| `component!`             | Macro used in Starknet contracts to embed a component inside a contract                |
 
 ### Comments
 
 Symbols that create comments.
 
-| Symbol | Explanation |
-| --- | --- |
-| `//` | Line comment |
+| Symbol | Explanation  |
+| ------ | ------------ |
+| `//`   | Line comment |
 
 ### Tuples
 
 Symbols appearing in the context of using tuples.
 
-| Symbol | Explanation |
-| --- | --- |
-| `()` | Empty tuple (aka unit), both literal and type |
-| `(expr)` | Parenthesized expression |
-| `(expr,)` | Single-element tuple expression |
-| `(type,)` | Single-element tuple type |
-| `(expr, ...)` | Tuple expression |
-| `(type, ...)` | Tuple type |
+| Symbol            | Explanation                                                                                 |
+| ----------------- | ------------------------------------------------------------------------------------------- |
+| `()`              | Empty tuple (aka unit), both literal and type                                               |
+| `(expr)`          | Parenthesized expression                                                                    |
+| `(expr,)`         | Single-element tuple expression                                                             |
+| `(type,)`         | Single-element tuple type                                                                   |
+| `(expr, ...)`     | Tuple expression                                                                            |
+| `(type, ...)`     | Tuple type                                                                                  |
 | `expr(expr, ...)` | Function call expression; also used to initialize tuple `struct`s and tuple `enum` variants |
 
 ### Curly Braces
 
 Contexts in which curly braces are used.
 
-| Context | Explanation |
-| --- | --- |
-| `{...}` | Block expression |
+| Context      | Explanation      |
+| ------------ | ---------------- |
+| `{...}`      | Block expression |
 | `Type {...}` | `struct` literal |
 
 ---
@@ -9045,24 +9236,25 @@ Sources:
 
 The Cairo prelude is a collection of commonly used modules, functions, data types, and traits that are automatically brought into scope of every module in a Cairo crate without needing explicit import statements. It provides the basic building blocks for starting Cairo programs and writing smart contracts.
 
-The core library prelude is defined in the *lib.cairo* file of the corelib crate and contains:
-*   Data types: integers, bools, arrays, dicts, etc.
-*   Traits: behaviors for arithmetic, comparison, and serialization operations.
-*   Operators: arithmetic, logical, bitwise.
-*   Utility functions - helpers for arrays, maps, boxing, etc.
+The core library prelude is defined in the _lib.cairo_ file of the corelib crate and contains:
+
+- Data types: integers, bools, arrays, dicts, etc.
+- Traits: behaviors for arithmetic, comparison, and serialization operations.
+- Operators: arithmetic, logical, bitwise.
+- Utility functions - helpers for arrays, maps, boxing, etc.
 
 Since the core library prelude is automatically imported, its contents are available for use in any Cairo crate without explicit imports. This allows usage like `ArrayTrait::append()` or the `Default` trait without explicit scoping.
 
 ### Cairo Editions
 
-You can choose which prelude version to use by specifying the edition in the *Scarb.toml* configuration file. For example, adding `edition = "2024_07"` loads the prelude from July 2024. New projects created via `scarb new` automatically include `edition = "2024_07"`. Different prelude versions expose different functions and traits, making the specification of the correct edition important. Generally, new projects should start with the latest edition.
+You can choose which prelude version to use by specifying the edition in the _Scarb.toml_ configuration file. For example, adding `edition = "2024_07"` loads the prelude from July 2024. New projects created via `scarb new` automatically include `edition = "2024_07"`. Different prelude versions expose different functions and traits, making the specification of the correct edition important. Generally, new projects should start with the latest edition.
 
 Here is the list of available Cairo editions (i.e prelude versions) with their details:
 
-| Version | Details |
-| --- | --- |
-| `2024-07` | details for 2024-07 |
-| `2023-11` | details for 2023-11 |
+| Version              | Details             |
+| -------------------- | ------------------- |
+| `2024-07`            | details for 2024-07 |
+| `2023-11`            | details for 2023-11 |
 | `2023-10` / `2023-1` | details for 2023-10 |
 
 ---
@@ -9085,11 +9277,13 @@ This section covers useful development tools provided by the Cairo project, incl
 Scarb projects can be formatted using the `scarb fmt` command. If using Cairo binaries directly, run `cairo-format`. This tool ensures consistent style across collaborative projects.
 
 To format any Cairo project, run the following inside the project directory:
+
 ```
 scarb fmt
 ```
 
 To skip formatting for specific code sections, use `#[cairofmt::skip]`:
+
 ```
 #[cairofmt::skip]
 let table: Array<ByteArray> = array![

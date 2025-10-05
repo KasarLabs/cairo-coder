@@ -102,10 +102,7 @@ export async function updateVectorStore(
 
   // Find chunks to update and remove
   const { contentChanged, metadataOnlyChanged, chunksToRemove } =
-    findChunksToUpdateAndRemove(
-      chunks,
-      storedChunkHashes,
-    );
+    findChunksToUpdateAndRemove(chunks, storedChunkHashes);
 
   logger.info(
     `Found ${storedChunkHashes.length} stored chunks for source: ${source}. ${contentChanged.length} content changes, ${metadataOnlyChanged.length} metadata-only changes, and ${chunksToRemove.length} removals`,
