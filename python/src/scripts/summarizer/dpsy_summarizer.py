@@ -1,6 +1,8 @@
 import logging
 import os
 import re
+from collections import Counter
+from typing import Optional
 
 import dotenv
 import dspy
@@ -46,7 +48,7 @@ class WriteSection(dspy.Signature):
     section_content: str = dspy.OutputField()
 
 def produce_gist(toc_path, chunks):
-    parallelizer = DSPyParallel(num_threads=5)
+    parallelizer = DSPyParallel(num_threads=12)
     produce_gist = dspy.ChainOfThought(ProduceGist)
     chunk_summaries = parallelizer([(produce_gist, {"toc_path": toc_path, "chunk": chunk}) for chunk in chunks])
     return [summary.gist for summary in chunk_summaries]
@@ -56,7 +58,7 @@ def produce_headers(toc_path, chunk_summaries):
     return produce_headers(toc_path=toc_path, chunk_summaries=chunk_summaries).headers
 
 def classify_chunks(toc_path, chunks, headers):
-    parallelizer = DSPyParallel(num_threads=5)
+    parallelizer = DSPyParallel(num_threads=12)
     classify = dspy.ChainOfThought(make_signature(f"toc_path: list[str], chunk -> topic: Literal{headers}"))
     return parallelizer([(classify, {"toc_path": toc_path, "chunk": chunk}) for chunk in chunks])
 
@@ -66,33 +68,88 @@ def group_sections(topics, chunks, headers):
         sections[topic.topic].append(chunk)
     return sections
 
-def summarize_sections(toc_path, sections):
-    parallelizer = DSPyParallel(num_threads=5)
-    return parallelizer([
-        (massively_summarize, {"toc_path": toc_path + [topic], "chunks": section_chunks})
-        for topic, section_chunks in sections.items()
-    ])
+def summarize_sections(toc_path, sections: dict[str, list[str]], sections_metas: Optional[dict[str, list[Optional[dict]]]] = None):
+    parallelizer = DSPyParallel(num_threads=12)
+    tasks = []
+    for topic, section_chunks in sections.items():
+        metas = sections_metas.get(topic) if sections_metas else None
+        tasks.append((massively_summarize, {"toc_path": toc_path + [topic], "chunks": section_chunks, "metas": metas}))
+    return parallelizer(tasks)
+
+def _aggregate_source_urls(metas: Optional[list[Optional[dict]]]) -> list[str]:
+    """Aggregate and order source URLs by frequency (descending)."""
+    if not metas:
+        return []
+    counter: Counter[str] = Counter()
+    for m in metas:
+        if not m:
+            continue
+        url = m.get("source_url")
+        if url:
+            counter[url] += 1
+    # Sort by count desc, then by URL for stability
+    ordered = sorted(counter.items(), key=lambda kv: (-kv[1], kv[0]))
+    return [url for url, _ in ordered]
+
+
+def _format_sources_block(urls: list[str]) -> str:
+    if not urls:
+        return ""
+    bullets = "\n".join(f"- {u}" for u in urls)
+    return f"---\n\nSources:\n\n{bullets}\n\n---\n\n"
+
+
+def _group_sections_with_metas(topics, chunks: list[str], headers: list[str], metas: Optional[list[Optional[dict]]]):
+    """Return (sections, sections_metas) grouped by topic."""
+    sections: dict[str, list[str]] = {topic: [] for topic in headers}
+    sections_metas: dict[str, list[Optional[dict]]] = {topic: [] for topic in headers}
+    for topic, chunk, meta in zip(topics, chunks, metas or [None] * len(chunks), strict=False):
+        sections[topic.topic].append(chunk)
+        sections_metas[topic.topic].append(meta)
+    return sections, sections_metas
+
 
 def massively_summarize(
     toc_path: list | str,
     chunks: list[str],
+    metas: Optional[list[Optional[dict]]] = None,
 ):
+    # Normalize metas length
+    if metas is None:
+        metas = [None] * len(chunks)
+
+    title = toc_path[-1]
+
+    # Base case: small batch or deep depth → write a single section
     if len(chunks) < 5 or len(toc_path) >= 3:
         content = dspy.ChainOfThought(WriteSection)(toc_path=toc_path, content_chunks=chunks).section_content
         if content is None:
-            return f"{toc_path[-1]}\n\nNo content generated for this section."
-        return f"{toc_path[-1]}\n\n{content}"
+            # section = f"{title}\n\nNo content generated for this section."
+            logger.warning(f"No content generated for this section: {title}")
+            return ""
+        section = f"{content}"
+        urls = _aggregate_source_urls(metas)
+        sources_block = _format_sources_block(urls)
+        header = (sources_block if sources_block else "")
+        return header + section
 
+    # Recursive case: organize into headers and summarize subsections
     chunk_summaries = produce_gist(toc_path, chunks)
     headers = produce_headers(toc_path, chunk_summaries)
     topics = classify_chunks(toc_path, chunks, headers)
-    sections = group_sections(topics, chunks, headers)
-    summarized_sections = summarize_sections(toc_path, sections)
+    sections, sections_metas = _group_sections_with_metas(topics, chunks, headers, metas)
+
+    summarized_sections = summarize_sections(toc_path, sections, sections_metas)
     valid_sections = [section for section in summarized_sections if section is not None]
     if not valid_sections:
-        return f"{toc_path[-1]}\n\nNo content generated for this section."
+        logger.warning(f"No content generated for this section: {title}")
+        return ""
 
-    return toc_path[-1] + "\n\n" + "\n\n".join(valid_sections)
+    # Add a sources block for this ToC header (aggregate of all descendant chunks)
+    urls = _aggregate_source_urls(metas)
+    sources_block = _format_sources_block(urls)
+    header = (sources_block if sources_block else "")
+    return header + "\n\n".join(valid_sections)
 
 def read_markdown_file(file_path: str) -> str:
     with open(file_path) as f:
@@ -114,7 +171,7 @@ def generate_markdown_toc(markdown_text: str, toc_path: list | None = None, max_
     current_path = []
     toc_path = toc_path or []
     for line in markdown_text.splitlines():
-        match = re.match(r'^(#{1,%d})\s+(.*)', line)
+        match = re.match(fr'^(#{{1,{max_level}}})\s+(.*)', line)
         if match:
             level = len(match.group(1))
             title = match.group(2).strip()
@@ -134,7 +191,7 @@ def extract_headings(markdown_text: str, max_level: int = 3) -> list:
     """Extract headings up to max_level as a list of strings for LLM sidebar TOC."""
     headings = []
     for line in markdown_text.splitlines():
-        match = re.match(r'^(#{1,%d})\s+(.*)', line)
+        match = re.match(fr'^(#{{1,{max_level}}})\s+(.*)', line)
         if match:
             title = match.group(2).strip()
             headings.append(title)
