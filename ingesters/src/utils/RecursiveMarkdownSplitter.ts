@@ -9,9 +9,13 @@ export interface SplitOptions {
   /** Characters of backward overlap between consecutive chunks. Default: 256 */
   overlap?: number;
   /** Which header levels are allowed as primary split points. Default: [1, 2] */
-  headerLevels?: (1 | 2)[];
+  headerLevels?: (1 | 2 | 3)[];
   /** If true, do not split inside fenced code blocks. Default: true */
   preserveCodeBlocks?: boolean;
+  /** If a fenced code block exceeds this size, allow splitting inside it (fallback). Default: 2x maxChars */
+  codeBlockMaxChars?: number;
+  /** If a new opening fence appears while one is open, fallback-close the previous block. Default: true */
+  fallbackCloseOnNestedOpen?: boolean;
   /** Optional prefix for generated unique IDs */
   idPrefix?: string;
   /** Whether to trim whitespace around chunks. Default: true */
@@ -30,6 +34,8 @@ export interface ChunkMeta {
   endChar: number;
   /** Full header path stack (e.g., ["Intro", "Goals"]) */
   headerPath: string[];
+  /** Optional source URL inferred from special "Sources" blocks */
+  sourceLink?: string;
 }
 
 export interface Chunk {
@@ -48,7 +54,10 @@ interface HeaderToken {
 interface CodeBlockToken {
   start: number;
   end: number;
-  fence: '```' | '~~~';
+  fenceChar: '`' | '~';
+  fenceLen: number;
+  closed: boolean;
+  breakable: boolean;
   infoString?: string; // e.g. "ts", "python"
 }
 
@@ -60,6 +69,7 @@ interface Segment {
 interface Tokens {
   headers: HeaderToken[];
   codeBlocks: CodeBlockToken[];
+  sourceRanges: Array<{ start: number; end: number; url: string }>;
 }
 
 export class RecursiveMarkdownSplitter {
@@ -72,6 +82,9 @@ export class RecursiveMarkdownSplitter {
       overlap: options.overlap ?? 256,
       headerLevels: options.headerLevels ?? [1, 2],
       preserveCodeBlocks: options.preserveCodeBlocks ?? true,
+      codeBlockMaxChars:
+        options.codeBlockMaxChars ?? (options.maxChars ?? 2048) * 2,
+      fallbackCloseOnNestedOpen: options.fallbackCloseOnNestedOpen ?? true,
       idPrefix: options.idPrefix ?? '',
       trim: options.trim ?? true,
     };
@@ -157,6 +170,7 @@ export class RecursiveMarkdownSplitter {
       nonEmptyChunks,
       normalizedMarkdown,
       tokens.headers,
+      tokens.sourceRanges,
     );
   }
 
@@ -166,6 +180,7 @@ export class RecursiveMarkdownSplitter {
   private tokenize(markdown: string): Tokens {
     const headers: HeaderToken[] = [];
     const codeBlocks: CodeBlockToken[] = [];
+    const sourceRanges = this.parseSourceRanges(markdown);
 
     // Find all headers
     const headerRegex = /^(#{1,6})\s+(.+?)(?:\s*#*)?$/gm;
@@ -190,7 +205,90 @@ export class RecursiveMarkdownSplitter {
       );
     });
 
-    return { headers: filteredHeaders, codeBlocks };
+    return { headers: filteredHeaders, codeBlocks, sourceRanges };
+  }
+
+  /**
+   * Parse special formatted Sources blocks and compute active source ranges
+   * A block looks like:
+   * ---\n
+   * Sources:\n
+   * - https://example.com/a\n
+   * - https://example.com/b\n
+   * ---
+   * Active source becomes the first URL and applies from the end of the block
+   * until the start of the next Sources block (or end of document).
+   */
+  private parseSourceRanges(markdown: string): Array<{ start: number; end: number; url: string }> {
+    const lines = markdown.split('\n');
+    const ranges: Array<{ start: number; end: number; url: string }> = [];
+
+    // Build cumulative char index per line start
+    const lineStartIdx: number[] = new Array(lines.length);
+    let acc = 0;
+    for (let i = 0; i < lines.length; i++) {
+      lineStartIdx[i] = acc;
+      acc += lines[i]!.length + 1; // +1 for \n
+    }
+
+    const isDashLine = (s: string) => /^\s*---\s*$/.test(s);
+    const isSourcesHeader = (s: string) => /^\s*Sources:\s*$/i.test(s);
+    const firstUrlInList = (startLine: number): string | undefined => {
+      for (let j = startLine; j < lines.length; j++) {
+        const l = lines[j]!;
+        if (isDashLine(l)) break; // stop at closing ---
+        const m = l.match(/^\s*[-*]\s+(\S+)/);
+        if (m) {
+          const url = m[1]!;
+          if (/^https?:\/\//i.test(url)) return url;
+        }
+      }
+      return undefined;
+    };
+
+    // Locate all source blocks (start/end + first URL)
+    const blocks: Array<{ blockStartLine: number; blockEndLine: number; firstUrl?: string }> = [];
+    for (let i = 0; i < lines.length; i++) {
+      if (!isDashLine(lines[i]!)) continue;
+      // Scan ahead for Sources: header within the dashed block
+      let j = i + 1;
+      // Skip blank lines
+      while (j < lines.length && /^\s*$/.test(lines[j]!)) j++;
+      if (j < lines.length && isSourcesHeader(lines[j]!)) {
+        // Find closing ---
+        let k = j + 1;
+        while (k < lines.length && !isDashLine(lines[k]!)) k++;
+        if (k < lines.length && isDashLine(lines[k]!)) {
+          const firstUrl = firstUrlInList(j + 1);
+          blocks.push({ blockStartLine: i, blockEndLine: k, firstUrl });
+          i = k; // advance to end of block
+        }
+      }
+    }
+
+    // Build ranges from blocks
+    if (blocks.length === 0) return ranges;
+    const docLen = markdown.length;
+    for (let b = 0; b < blocks.length; b++) {
+      const block = blocks[b]!;
+      const nextBlock = blocks[b + 1];
+
+      const blockEndLineIdx = block.blockEndLine;
+      const blockEndAbs = lineStartIdx[blockEndLineIdx] ?? 0;
+      const blockEndLineStr = lines[blockEndLineIdx] ?? '';
+      const start = blockEndAbs + blockEndLineStr.length + 1; // after closing --- newline
+
+      const nextStart = nextBlock
+        ? (lineStartIdx[nextBlock.blockStartLine] ?? docLen)
+        : docLen;
+
+      const url = block.firstUrl || '';
+      if (url && start < nextStart) {
+        ranges.push({ start, end: nextStart, url });
+      }
+    }
+
+    return ranges;
   }
 
   /**
@@ -199,41 +297,104 @@ export class RecursiveMarkdownSplitter {
   private findCodeBlocks(markdown: string, codeBlocks: CodeBlockToken[]): void {
     const lines = markdown.split('\n');
     let inCodeBlock = false;
-    let currentBlock: Partial<CodeBlockToken> | null = null;
+    let currentBlock:
+      | (Partial<CodeBlockToken> & { fenceChar: '`' | '~'; fenceLen: number })
+      | null = null;
     let charIndex = 0;
 
+    const openRe = /^\s{0,3}([`~]{3,})(.*)$/; // allow up to 3 leading spaces
+    const makeCloseRe = (ch: '`' | '~', n: number) =>
+      new RegExp(`^\\s{0,3}(${ch === '`' ? '\\`' : '~'}{${n},})\\s*$`);
+
     for (let i = 0; i < lines.length; i++) {
-      const line = lines[i];
-      const fenceMatch = line!.match(/^(```+|~~~+)(.*)$/);
+      const line = lines[i] as string;
+      const open = line.match(openRe);
 
-      if (fenceMatch) {
-        const fence = fenceMatch[1]!.substring(0, 3) as '```' | '~~~';
-
-        if (!inCodeBlock) {
-          // Starting a code block
+      if (!inCodeBlock) {
+        if (open) {
+          const fenceStr = open[1] as string;
+          const ch = (fenceStr[0] === '`' ? '`' : '~') as '`' | '~';
+          const len = fenceStr.length;
+          const info = (open[2] || '').trim() || undefined;
           inCodeBlock = true;
           currentBlock = {
             start: charIndex,
-            fence,
-            infoString: fenceMatch[2]!.trim() || undefined,
+            fenceChar: ch,
+            fenceLen: len,
+            infoString: info,
           };
-        } else if (currentBlock && line!.startsWith(currentBlock.fence!)) {
-          // Ending a code block
-          currentBlock.end = charIndex + line!.length;
-          codeBlocks.push(currentBlock as CodeBlockToken);
+        }
+      } else {
+        const ch = currentBlock!.fenceChar;
+        const n = currentBlock!.fenceLen;
+        const closeRe = makeCloseRe(ch, n);
+        if (closeRe.test(line)) {
+          const end = charIndex + line.length;
+          const token: CodeBlockToken = {
+            start: currentBlock!.start!,
+            end,
+            fenceChar: ch,
+            fenceLen: n,
+            closed: true,
+            breakable: false,
+            infoString: currentBlock!.infoString,
+          };
+          codeBlocks.push(token);
           inCodeBlock = false;
           currentBlock = null;
+        } else if (this.options.fallbackCloseOnNestedOpen && open) {
+          // Nested opening while open: fallback-close previous as malformed
+          const end = Math.max(0, charIndex - 1);
+          const malformed: CodeBlockToken = {
+            start: currentBlock!.start!,
+            end,
+            fenceChar: currentBlock!.fenceChar,
+            fenceLen: currentBlock!.fenceLen,
+            closed: false,
+            breakable: true,
+            infoString: currentBlock!.infoString,
+          };
+          codeBlocks.push(malformed);
+
+          // Start new block at current line
+          const fenceStr = open[1] as string;
+          const ch2 = (fenceStr[0] === '`' ? '`' : '~') as '`' | '~';
+          const len2 = fenceStr.length;
+          const info2 = (open[2] || '').trim() || undefined;
+          currentBlock = {
+            start: charIndex,
+            fenceChar: ch2,
+            fenceLen: len2,
+            infoString: info2,
+          };
+          inCodeBlock = true;
         }
       }
 
-      charIndex += line!.length + 1; // +1 for newline
+      charIndex += line.length + 1;
     }
 
-    // Handle unclosed code block
     if (currentBlock && inCodeBlock) {
-      logger.warn(
-        'Unclosed code block detected, treating remaining content as plain text',
-      );
+      logger.warn('Unclosed code block detected (EOF). Marking as breakable');
+      const token: CodeBlockToken = {
+        start: currentBlock.start!,
+        end: markdown.length,
+        fenceChar: currentBlock.fenceChar,
+        fenceLen: currentBlock.fenceLen,
+        closed: false,
+        breakable: true,
+        infoString: currentBlock.infoString,
+      };
+      codeBlocks.push(token);
+    }
+
+    // Set breakable on large closed blocks
+    const maxSize = this.options.codeBlockMaxChars ?? this.options.maxChars * 2;
+    for (const b of codeBlocks) {
+      if (b.closed) {
+        const size = b.end - b.start;
+        if (size > maxSize) b.breakable = true;
+      }
     }
   }
 
@@ -313,7 +474,7 @@ export class RecursiveMarkdownSplitter {
       (h) =>
         h.start >= segment.start &&
         h.end <= segment.end &&
-        this.options.headerLevels.includes(h.level as 1 | 2),
+        this.options.headerLevels.includes(h.level as 1 | 2 | 3),
     );
 
     if (segmentHeaders.length === 0) {
@@ -391,9 +552,9 @@ export class RecursiveMarkdownSplitter {
 
     // Collect all valid split points
     while ((match = paragraphRegex.exec(segmentText)) !== null) {
-      const splitPoint = segment.start + match.index + match[0].length;
-      // Check if split point is inside a code block
-      if (!this.isInsideCodeBlock(splitPoint, codeBlocks)) {
+      const splitPointAbs = segment.start + match.index + match[0].length;
+      const enclosing = this.getEnclosingCodeBlock(splitPointAbs, codeBlocks);
+      if (!enclosing || enclosing.breakable) {
         splitPoints.push(match.index + match[0].length);
       }
     }
@@ -442,7 +603,8 @@ export class RecursiveMarkdownSplitter {
         currentLength > 0
       ) {
         // Check if we can split here
-        if (!this.isInsideCodeBlock(lineStart, codeBlocks)) {
+        const enclosing = this.getEnclosingCodeBlock(lineStart, codeBlocks);
+        if (!enclosing || enclosing.breakable) {
           segments.push({
             start: currentStart,
             end: lineStart,
@@ -477,9 +639,17 @@ export class RecursiveMarkdownSplitter {
     position: number,
     codeBlocks: CodeBlockToken[],
   ): boolean {
-    return codeBlocks.some(
-      (block) => position >= block.start && position < block.end,
-    );
+    return this.getEnclosingCodeBlock(position, codeBlocks) !== null;
+  }
+
+  private getEnclosingCodeBlock(
+    position: number,
+    codeBlocks: CodeBlockToken[],
+  ): CodeBlockToken | null {
+    for (const block of codeBlocks) {
+      if (position > block.start && position < block.end) return block;
+    }
+    return null;
   }
 
   /**
@@ -550,24 +720,40 @@ export class RecursiveMarkdownSplitter {
       }
     }
 
-    // Final pass: ensure no segment ends in the middle of a code block
+    // Final pass: adjust boundaries so that no segment starts or ends inside a non-breakable code block,
+    // and ensure segments are non-overlapping and ordered.
     const finalSegments: Segment[] = [];
-    for (const segment of mergedSegments) {
-      let adjustedEnd = segment.end;
+    let prevEnd: number | null = null;
 
-      // Check if segment end is inside a code block
+    for (const segment of mergedSegments) {
+      let start = segment.start;
+      let end = segment.end;
+
+      // If end falls inside a non-breakable code block, advance it to the block end
       for (const block of codeBlocks) {
-        if (segment.end > block.start && segment.end < block.end) {
-          // Extend to include the entire code block
-          adjustedEnd = block.end;
+        if (end > block.start && end < block.end && !block.breakable) {
+          end = block.end;
           break;
         }
       }
 
-      finalSegments.push({
-        start: segment.start,
-        end: adjustedEnd,
-      });
+      // If start falls inside a non-breakable code block, move start to the block end
+      for (const block of codeBlocks) {
+        if (start > block.start && start < block.end && !block.breakable) {
+          start = block.end;
+          break;
+        }
+      }
+
+      // Ensure monotonic, non-overlapping segments
+      if (prevEnd !== null && start < prevEnd) {
+        start = prevEnd;
+      }
+
+      if (start < end) {
+        finalSegments.push({ start, end });
+        prevEnd = end;
+      }
     }
 
     return finalSegments;
@@ -597,56 +783,31 @@ export class RecursiveMarkdownSplitter {
 
     for (let i = 0; i < segments.length; i++) {
       const segment = segments[i]!;
-      let content = markdown.slice(segment.start, segment.end);
-      let chunkStart = segment.start;
 
-      // For chunks after the first, prepend overlap from previous segment
+      // Compute absolute start with overlap, but never start inside a non-breakable code block
+      let chunkStartAbs = segment.start;
       if (i > 0 && this.options.overlap > 0) {
         const prevSegment = segments[i - 1]!;
-        const prevContent = markdown.slice(prevSegment.start, prevSegment.end);
-
-        // Calculate how much overlap to take from the previous segment
-        const overlapLength = Math.min(
-          this.options.overlap,
-          prevContent.length,
+        const desired = Math.max(
+          prevSegment.end - Math.min(this.options.overlap, prevSegment.end - prevSegment.start),
+          prevSegment.start,
         );
-        let overlapStart = prevContent.length - overlapLength;
-
-        // Check if the overlap would start in the middle of a code block
-        const overlapAbsoluteStart = prevSegment.start + overlapStart;
-        for (const block of codeBlocks) {
-          if (
-            overlapAbsoluteStart > block.start &&
-            overlapAbsoluteStart < block.end
-          ) {
-            // Overlap would start inside a code block
-            if (block.end <= prevSegment.end) {
-              // The code block ends within the previous segment
-              // Start overlap after the code block to avoid duplication
-              const blockEndInSegment = block.end - prevSegment.start;
-              if (blockEndInSegment < prevContent.length) {
-                overlapStart = blockEndInSegment;
-              }
-            }
-            break;
-          }
+        chunkStartAbs = desired;
+        const enclosing = this.getEnclosingCodeBlock(chunkStartAbs, codeBlocks);
+        if (enclosing && !enclosing.breakable) {
+          // Move start to end of the enclosing non-breakable block
+          chunkStartAbs = enclosing.end;
         }
-
-        // Extract overlap text from the adjusted position
-        const overlapText = prevContent.slice(overlapStart);
-
-        // Prepend overlap to current content
-        content = overlapText + content;
-
-        // Track where the actual content starts (including overlap)
-        chunkStart = prevSegment.start + overlapStart;
       }
+
+      // Extract content from chunkStartAbs to segment.end
+      let content = markdown.slice(chunkStartAbs, segment.end);
 
       chunks.push({
         content: this.options.trim ? content.trim() : content,
-        start: chunkStart, // Now reflects the actual start including overlap
+        start: chunkStartAbs,
         end: segment.end,
-        overlapStart: i > 0 ? segment.start : undefined, // Original segment start for reference
+        overlapStart: i > 0 ? segment.start : undefined,
       });
     }
 
@@ -660,6 +821,7 @@ export class RecursiveMarkdownSplitter {
     rawChunks: Array<{ content: string; start: number; end: number }>,
     markdown: string,
     headers: HeaderToken[],
+    sourceRanges?: Array<{ start: number; end: number; url: string }>,
   ): Chunk[] {
     const chunks: Chunk[] = [];
     const titleCounts = new Map<string, number>();
@@ -686,22 +848,16 @@ export class RecursiveMarkdownSplitter {
 
       headerPath = headerStack.map((h) => h.text);
 
-      // Find title from configured levels - check headers within the chunk first
-      const headersInChunk = headers.filter(
-        (h) =>
-          h.start >= rawChunk.start &&
-          h.start < rawChunk.end &&
-          this.options.headerLevels.includes(h.level as 1 | 2),
-      );
-
-      if (headersInChunk.length > 0) {
-        // Use the first configured header within the chunk
-        title = headersInChunk[0]!.text;
+      // Prefer the deepest header in the path (e.g., H3) for specificity
+      if (headerPath.length > 0) {
+        title = headerPath[headerPath.length - 1]!;
       } else {
-        // Otherwise, use the last configured header before the chunk
+        // Fallback: use last configured header before the chunk if any
         for (let i = headerStack.length - 1; i >= 0; i--) {
           if (
-            this.options.headerLevels.includes(headerStack[i]!.level as 1 | 2)
+            this.options.headerLevels.includes(
+              headerStack[i]!.level as 1 | 2 | 3,
+            )
           ) {
             title = headerStack[i]!.text;
             break;
@@ -719,6 +875,21 @@ export class RecursiveMarkdownSplitter {
         ? `${this.options.idPrefix}-${slug}-${count}`
         : `${slug}-${count}`;
 
+      // Determine sourceLink based on active source ranges: prefer segment start (no overlap)
+      let sourceLink: string | undefined = undefined;
+      const anchorPos = (rawChunk as any).overlapStart ?? rawChunk.start;
+      if (sourceRanges && sourceRanges.length > 0) {
+        const s = anchorPos as number;
+        for (const r of sourceRanges) {
+          if (s >= r.start && s < r.end) {
+            sourceLink = r.url;
+            break;
+          }
+        }
+      }
+
+      console.log(`Chunk Title: ${title}, Source link: ${sourceLink}`);
+
       chunks.push({
         content: rawChunk.content,
         meta: {
@@ -728,6 +899,7 @@ export class RecursiveMarkdownSplitter {
           startChar: rawChunk.start,
           endChar: rawChunk.end,
           headerPath,
+          sourceLink,
         },
       });
     }

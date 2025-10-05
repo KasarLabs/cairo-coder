@@ -123,6 +123,26 @@ More content.`;
 
       expect(chunks[0]!.meta.title).toBe('Header with trailing hashes');
     });
+
+    it('should prefer deepest header (e.g., H3) for title', () => {
+      const splitter = new RecursiveMarkdownSplitter({
+        maxChars: 80,
+        minChars: 0,
+        overlap: 0,
+        headerLevels: [1, 2], // split only on H1/H2, but titles should use deepest header in path
+      });
+
+      const text = `# Chapter
+Intro
+
+### Specific Topic
+Detailed text that should belong to the H3.`;
+
+      const chunks = splitter.splitMarkdownToChunks(text);
+      expect(chunks.length).toBeGreaterThan(0);
+      // Title should be the deepest header in headerPath -> H3
+      expect(chunks[0]!.meta.title).toBe('Specific Topic');
+    });
   });
 
   describe('Code block handling', () => {
