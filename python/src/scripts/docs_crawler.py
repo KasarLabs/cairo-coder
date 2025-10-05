@@ -266,9 +266,24 @@ class DocsCrawler:
         title_tag = soup.find('title')
         title = title_tag.get_text(strip=True) if title_tag else urlparse(url).path
 
-        # Remove boilerplate elements
+        # Remove boilerplate elements by tag name
         for tag in soup.find_all(['script', 'style', 'noscript', 'nav',
                                  'header', 'footer', 'aside', 'img', 'svg', 'iframe']):
+            tag.decompose()
+
+        # Remove elements with IDs or classes containing boilerplate keywords
+        boilerplate_keywords = ['navbar', 'sidebar', 'nav-bar', 'side-bar', 'menu', 'toc', 'breadcrumb']
+        # Collect tags to remove first, then decompose them
+        tags_to_remove = []
+        for tag in soup.find_all(True):  # Find all tags
+            tag_id = tag.get('id', '').lower()
+            tag_classes = ' '.join(tag.get('class', [])).lower()
+
+            if any(keyword in tag_id or keyword in tag_classes for keyword in boilerplate_keywords):
+                tags_to_remove.append(tag)
+
+        # Now decompose all collected tags
+        for tag in tags_to_remove:
             tag.decompose()
 
         # Try to find main content
@@ -332,7 +347,6 @@ class DocsCrawler:
         lines = [
             f"# {self.domain} — Snapshot ({date_str})",
             "",
-            "Clean documentation content extracted from sitemap.",
             "",
             "---",
             ""

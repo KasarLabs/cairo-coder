@@ -1,6 +1,10 @@
-import { type BookChunk, DocumentSource } from '../src/types';
-import { findChunksToUpdateAndRemove } from '../src/utils/vectorStoreUtils';
 import { Document } from '@langchain/core/documents';
+import { describe, expect, it, vi } from 'bun:test';
+import { type BookChunk, DocumentSource } from '../src/types';
+import {
+  findChunksToUpdateAndRemove,
+  updateVectorStore,
+} from '../src/utils/vectorStoreUtils';
 
 describe('findChunksToUpdateAndRemove', () => {
   it('should correctly identify chunks to update and remove', () => {
@@ -236,5 +240,69 @@ describe('findChunksToUpdateAndRemove', () => {
     ]);
     expect(result.contentChanged).toEqual([]);
     expect(result.chunksToRemove).toEqual([]);
+  });
+});
+
+describe('updateVectorStore', () => {
+  const chunk = new Document<BookChunk>({
+    pageContent: 'content',
+    metadata: {
+      name: 'page',
+      title: 'Title',
+      chunkNumber: 0,
+      contentHash: 'hash',
+      uniqueId: 'page-0',
+      sourceLink: 'https://example.com/page',
+      source: DocumentSource.CAIRO_BOOK,
+    },
+  });
+
+  const makeVectorStore = () => {
+    const getStoredBookPagesMetadata = vi.fn().mockResolvedValue([]);
+    const removeBookPages = vi.fn().mockResolvedValue(undefined);
+    const addDocuments = vi.fn().mockResolvedValue(undefined);
+    const updateDocumentsMetadata = vi.fn().mockResolvedValue(undefined);
+
+    return {
+      store: {
+        getStoredBookPagesMetadata,
+        removeBookPages,
+        addDocuments,
+        updateDocumentsMetadata,
+      } as unknown,
+      spies: {
+        getStoredBookPagesMetadata,
+        removeBookPages,
+        addDocuments,
+        updateDocumentsMetadata,
+      },
+    };
+  };
+
+  it('skips confirmation when autoConfirm is true', async () => {
+    const { store, spies } = makeVectorStore();
+
+    await updateVectorStore(store as any, [chunk], DocumentSource.CAIRO_BOOK, {
+      autoConfirm: true,
+    });
+
+    expect(spies.getStoredBookPagesMetadata).toHaveBeenCalledTimes(1);
+    expect(spies.addDocuments).toHaveBeenCalledWith([chunk], {
+      ids: ['page-0'],
+    });
+    expect(spies.removeBookPages).not.toHaveBeenCalled();
+  });
+
+  it('aborts when confirmation handler returns false', async () => {
+    const confirmFn = vi.fn().mockResolvedValue(false);
+    const { store, spies } = makeVectorStore();
+
+    await updateVectorStore(store as any, [chunk], DocumentSource.CAIRO_BOOK, {
+      confirmFn,
+    });
+
+    expect(confirmFn).toHaveBeenCalledTimes(1);
+    expect(spies.addDocuments).not.toHaveBeenCalled();
+    expect(spies.removeBookPages).not.toHaveBeenCalled();
   });
 });

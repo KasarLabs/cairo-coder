@@ -171,7 +171,7 @@ async function ingestSource(source: DocumentSource): Promise<void> {
     const ingester = IngesterFactory.createIngester(source);
 
     // Run ingestion using the process method
-    await ingester.process(store);
+    await ingester.process(store, { autoConfirm: YES_MODE });
 
     logger.info(`${source} ingestion completed successfully.`);
   } catch (error) {

@@ -33,7 +33,7 @@ export class CoreLibDocsIngester extends MarkdownIngester {
       chunkOverlap: 512,
       baseUrl: 'https://docs.starknet.io/build/corelib/intro',
       urlSuffix: '',
-      useUrlMapping: false,
+      useUrlMapping: true,
     };
 
     super(config, DocumentSource.CORELIB_DOCS);

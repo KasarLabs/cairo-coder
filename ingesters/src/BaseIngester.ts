@@ -6,7 +6,10 @@ import {
   type BookPageDto,
   type ParsedSection,
 } from './utils/types';
-import { updateVectorStore as updateVectorStoreUtil } from './utils/vectorStoreUtils';
+import {
+  updateVectorStore as updateVectorStoreUtil,
+  type VectorStoreUpdateOptions,
+} from './utils/vectorStoreUtils';
 import { logger } from './utils/logger';
 
 /**
@@ -36,7 +39,10 @@ export abstract class BaseIngester {
    *
    * @param vectorStore - The vector store to add documents to
    */
-  public async process(vectorStore: VectorStore): Promise<void> {
+  public async process(
+    vectorStore: VectorStore,
+    options?: VectorStoreUpdateOptions,
+  ): Promise<void> {
     try {
       // 1. Download and extract documentation
       const pages = await this.downloadAndExtractDocs();
@@ -45,7 +51,7 @@ export abstract class BaseIngester {
       const chunks = await this.createChunks(pages);
 
       // 3. Update the vector store with the chunks
-      await this.updateVectorStore(vectorStore, chunks);
+      await this.updateVectorStore(vectorStore, chunks, options);
 
       // 4. Clean up any temporary files
       await this.cleanupDownloadedFiles();
@@ -76,9 +82,10 @@ export abstract class BaseIngester {
   protected async updateVectorStore(
     vectorStore: VectorStore,
     chunks: Document<BookChunk>[],
+    options?: VectorStoreUpdateOptions,
   ): Promise<void> {
     // Default implementation uses the shared updateVectorStore function
-    await updateVectorStoreUtil(vectorStore, chunks, this.source);
+    await updateVectorStoreUtil(vectorStore, chunks, this.source, options);
   }
 
   /**

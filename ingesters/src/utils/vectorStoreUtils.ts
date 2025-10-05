@@ -3,7 +3,32 @@ import { createInterface } from 'readline';
 import { VectorStore } from '../db/postgresVectorStore';
 import { type BookChunk, DocumentSource } from '../types';
 import { logger } from './logger';
-import { YES_MODE } from '../generateEmbeddings';
+
+export interface VectorStoreUpdateOptions {
+  /** Skip the confirmation prompt when updating the vector store. */
+  autoConfirm?: boolean;
+  /** Inject a custom confirmation handler (handy for tests/CLIs). */
+  confirmFn?: (question: string) => Promise<boolean>;
+}
+
+const CONFIRMATION_PROMPT =
+  'Are you sure you want to update the vector store? (y/n)';
+
+const defaultConfirmFn = async (question: string): Promise<boolean> => {
+  const rl = createInterface({
+    input: process.stdin,
+    output: process.stdout,
+  });
+
+  const answer = await new Promise<string>((resolve) => {
+    rl.question(question, (response: string) => {
+      rl.close();
+      resolve(response.trim().toLowerCase());
+    });
+  });
+
+  return answer === 'y';
+};
 
 /**
  * Find chunks that need to be updated or removed based on content hashes and metadata
@@ -90,11 +115,13 @@ export function findChunksToUpdateAndRemove(
  * @param vectorStore - The vector store to update
  * @param chunks - Array of fresh Document objects
  * @param source - The document source identifier
+ * @param options - Behavioural overrides (e.g., auto-confirm updates)
  */
 export async function updateVectorStore(
   vectorStore: VectorStore,
   chunks: Document<BookChunk>[],
   source: DocumentSource,
+  options?: VectorStoreUpdateOptions,
 ): Promise<void> {
   // Get stored chunk hashes for the source
   const storedChunkHashes =
@@ -117,31 +144,16 @@ export async function updateVectorStore(
     return;
   }
 
-  // Skip prompt if YES_MODE is enabled
-  let confirm = 'n';
-  if (YES_MODE) {
-    logger.info(
-      'Yes mode enabled, automatically confirming vector store update',
-    );
-    confirm = 'y';
+  let confirmed = false;
+  if (options?.autoConfirm) {
+    logger.info('Auto-confirm enabled, skipping vector store prompt');
+    confirmed = true;
   } else {
-    // prompt user to confirm
-    const rl = createInterface({
-      input: process.stdin,
-      output: process.stdout,
-    });
-    confirm = await new Promise<string>((resolve) => {
-      rl.question(
-        'Are you sure you want to update the vector store? (y/n)',
-        (answer: string) => {
-          rl.close();
-          resolve(answer.trim().toLowerCase());
-        },
-      );
-    });
+    const confirmFn = options?.confirmFn ?? defaultConfirmFn;
+    confirmed = await confirmFn(CONFIRMATION_PROMPT);
   }
 
-  if (confirm !== 'y') {
+  if (!confirmed) {
     logger.info('Update cancelled');
     return;
   }

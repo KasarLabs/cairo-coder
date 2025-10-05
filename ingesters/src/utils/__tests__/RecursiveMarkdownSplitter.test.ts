@@ -124,7 +124,7 @@ More content.`;
       expect(chunks[0]!.meta.title).toBe('Header with trailing hashes');
     });
 
-    it('should prefer deepest header (e.g., H3) for title', () => {
+    it('should prefer deepest header of configured levels (e.g., H2) for title', () => {
       const splitter = new RecursiveMarkdownSplitter({
         maxChars: 80,
         minChars: 0,
@@ -134,14 +134,23 @@ More content.`;
 
       const text = `# Chapter
 Intro
-
+## Some H2 Title
+Some text in the H2
 ### Specific Topic
 Detailed text that should belong to the H3.`;
 
       const chunks = splitter.splitMarkdownToChunks(text);
       expect(chunks.length).toBeGreaterThan(0);
-      // Title should be the deepest header in headerPath -> H3
-      expect(chunks[0]!.meta.title).toBe('Specific Topic');
+      // Find a chunk that belongs to the H2 section
+      const h2Chunk = chunks.find(
+        (c) =>
+          c.content.includes('Some text in the H2') ||
+          c.content.includes('Specific Topic') ||
+          c.content.includes('Detailed text'),
+      );
+      expect(h2Chunk).toBeDefined();
+      // Title should be the deepest header among configured levels -> H2
+      expect(h2Chunk!.meta.title).toBe('Some H2 Title');
     });
   });
 
