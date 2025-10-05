@@ -75,7 +75,7 @@ export class CoreLibDocsIngester extends MarkdownIngester {
       maxChars: 2048,
       minChars: 500,
       overlap: 256,
-      headerLevels: [1, 2], // Split on H1 and H2 headers
+      headerLevels: [1, 2, 3], // Split on H1/H2/H3 (title uses deepest)
       preserveCodeBlocks: true,
       idPrefix: 'corelib',
       trim: true,
@@ -101,7 +101,7 @@ export class CoreLibDocsIngester extends MarkdownIngester {
           chunkNumber: chunk.meta.chunkNumber, // Already 0-based
           contentHash: contentHash,
           uniqueId: chunk.meta.uniqueId,
-          sourceLink: this.config.baseUrl,
+          sourceLink: chunk.meta.sourceLink || this.config.baseUrl,
           source: this.source,
         },
       });

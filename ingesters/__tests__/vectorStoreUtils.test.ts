@@ -87,7 +87,7 @@ describe('findChunksToUpdateAndRemove', () => {
 
     const result = findChunksToUpdateAndRemove(freshChunks, storedChunkHashes);
 
-    expect(result.chunksToUpdate).toEqual([
+    expect(result.contentChanged).toEqual([
       {
         metadata: {
           name: '2',
@@ -113,6 +113,7 @@ describe('findChunksToUpdateAndRemove', () => {
         pageContent: 'Some Content 3',
       },
     ]);
+    expect(result.metadataOnlyChanged).toEqual([]);
     expect(result.chunksToRemove).toEqual(['3']);
   });
 
@@ -173,14 +174,15 @@ describe('findChunksToUpdateAndRemove', () => {
 
     const result = findChunksToUpdateAndRemove(freshChunks, storedChunkHashes);
 
-    expect(result.chunksToUpdate).toEqual([]);
+    expect(result.contentChanged).toEqual([]);
+    expect(result.metadataOnlyChanged).toEqual([]);
     expect(result.chunksToRemove).toEqual([]);
   });
 
   it('should handle empty inputs correctly', () => {
     const result = findChunksToUpdateAndRemove([], []);
-
-    expect(result.chunksToUpdate).toEqual([]);
+    expect(result.contentChanged).toEqual([]);
+    expect(result.metadataOnlyChanged).toEqual([]);
     expect(result.chunksToRemove).toEqual([]);
   });
 
@@ -217,8 +219,8 @@ describe('findChunksToUpdateAndRemove', () => {
 
     const result = findChunksToUpdateAndRemove(freshChunks, storedChunkHashes);
 
-    // Should update because metadata changed (sourceLink and title)
-    expect(result.chunksToUpdate).toEqual([
+    // Should update metadata-only because metadata changed (sourceLink and title)
+    expect(result.metadataOnlyChanged).toEqual([
       {
         metadata: {
           name: '1',
@@ -232,6 +234,7 @@ describe('findChunksToUpdateAndRemove', () => {
         pageContent: 'Some Content 1',
       },
     ]);
+    expect(result.contentChanged).toEqual([]);
     expect(result.chunksToRemove).toEqual([]);
   });
 });

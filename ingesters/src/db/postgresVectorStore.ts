@@ -358,6 +358,53 @@ export class VectorStore {
   }
 
   /**
+   * Update only the metadata (and source column for consistency) for existing documents.
+   * Does NOT modify content, embedding, or contentHash.
+   */
+  async updateDocumentsMetadata(
+    documents: DocumentInterface[],
+    options?: { ids?: string[] },
+  ): Promise<void> {
+    if (documents.length === 0) return;
+
+    logger.info(`Updating metadata for ${documents.length} documents`);
+
+    try {
+      const client = await this.pool.connect();
+      try {
+        await client.query('BEGIN');
+
+        const updates = documents.map((doc, i) => {
+          const uniqueId = options?.ids?.[i] || doc.metadata.uniqueId || null;
+          const source = doc.metadata.source || null;
+          const query = `
+            UPDATE ${this.tableName}
+            SET metadata = $2,
+                source = $3
+            WHERE uniqueId = $1
+          `;
+          return client.query(query, [
+            uniqueId,
+            JSON.stringify(doc.metadata),
+            source,
+          ]);
+        });
+
+        await Promise.all(updates);
+        await client.query('COMMIT');
+      } catch (error) {
+        await client.query('ROLLBACK');
+        throw error;
+      } finally {
+        client.release();
+      }
+    } catch (error) {
+      logger.error('Error updating document metadata:', error);
+      throw DatabaseError.handlePgError(error as PgError);
+    }
+  }
+
+  /**
    * Find a specific book chunk by name
    * @param name - Name of the book chunk
    * @returns Promise<Document | null>

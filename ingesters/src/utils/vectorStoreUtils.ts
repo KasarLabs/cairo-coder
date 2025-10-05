@@ -23,7 +23,8 @@ export function findChunksToUpdateAndRemove(
     metadata: BookChunk;
   }[],
 ): {
-  chunksToUpdate: Document<BookChunk>[];
+  contentChanged: Document<BookChunk>[];
+  metadataOnlyChanged: Document<BookChunk>[];
   chunksToRemove: string[];
 } {
   const storedDataMap = new Map(
@@ -33,31 +34,51 @@ export function findChunksToUpdateAndRemove(
     freshChunks.map((chunk) => [chunk.metadata.uniqueId, chunk]),
   );
 
-  // Find chunks that need to be updated (content or metadata has changed)
-  const chunksToUpdate = freshChunks.filter((chunk) => {
-    const storedMetadata = storedDataMap.get(chunk.metadata.uniqueId);
-    if (!storedMetadata) {
-      // New chunk that doesn't exist in storage
-      return true;
+  const contentChanged: Document<BookChunk>[] = [];
+  const metadataOnlyChanged: Document<BookChunk>[] = [];
+
+  for (const fresh of freshChunks) {
+    const stored = storedDataMap.get(fresh.metadata.uniqueId);
+    if (!stored) {
+      // New doc: requires full insert + embedding
+      contentChanged.push(fresh);
+      continue;
     }
-    // Update if content hash changed or any metadata field changed
-    for (const key in chunk.metadata) {
-      if (
-        storedMetadata[key as keyof BookChunk] !==
-        chunk.metadata[key as keyof BookChunk]
-      ) {
-        return true;
+
+    const storedHash = stored.contentHash;
+    const freshHash = fresh.metadata.contentHash;
+    if (storedHash !== freshHash) {
+      // Content changed: re-embed and upsert fully
+      contentChanged.push(fresh);
+      continue;
+    }
+
+    // Content same, check if any metadata field differs
+    const keys = new Set<keyof BookChunk>([
+      ...(Object.keys(stored) as (keyof BookChunk)[]),
+      ...(Object.keys(fresh.metadata) as (keyof BookChunk)[]),
+    ]);
+
+    let metaDiffers = false;
+    for (const key of keys) {
+      // Ignore contentHash here since we already know it's equal
+      if (key === 'contentHash') continue;
+      if (stored[key] !== fresh.metadata[key]) {
+        metaDiffers = true;
+        break;
       }
     }
-    return false;
-  });
+    if (metaDiffers) {
+      metadataOnlyChanged.push(fresh);
+    }
+  }
 
   // Find chunks that need to be removed (no longer exist in fresh chunks)
   const chunksToRemove = storedChunkHashes
     .filter((stored) => !freshChunksMap.has(stored.uniqueId))
     .map((stored) => stored.uniqueId);
 
-  return { chunksToUpdate, chunksToRemove };
+  return { contentChanged, metadataOnlyChanged, chunksToRemove };
 }
 
 /**
@@ -80,16 +101,18 @@ export async function updateVectorStore(
     await vectorStore.getStoredBookPagesMetadata(source);
 
   // Find chunks to update and remove
-  const { chunksToUpdate, chunksToRemove } = findChunksToUpdateAndRemove(
-    chunks,
-    storedChunkHashes,
-  );
+  const { contentChanged, metadataOnlyChanged, chunksToRemove } =
+    findChunksToUpdateAndRemove(chunks, storedChunkHashes);
 
   logger.info(
-    `Found ${storedChunkHashes.length} stored chunks for source: ${source}. ${chunksToUpdate.length} chunks to update and ${chunksToRemove.length} chunks to remove`,
+    `Found ${storedChunkHashes.length} stored chunks for source: ${source}. ${contentChanged.length} content changes, ${metadataOnlyChanged.length} metadata-only changes, and ${chunksToRemove.length} removals`,
   );
 
-  if (chunksToUpdate.length === 0 && chunksToRemove.length === 0) {
+  if (
+    contentChanged.length === 0 &&
+    metadataOnlyChanged.length === 0 &&
+    chunksToRemove.length === 0
+  ) {
     logger.info('No changes to update or remove');
     return;
   }
@@ -129,13 +152,19 @@ export async function updateVectorStore(
   }
 
   // Update chunks that have changed
-  if (chunksToUpdate.length > 0) {
-    await vectorStore.addDocuments(chunksToUpdate, {
-      ids: chunksToUpdate.map((chunk) => chunk.metadata.uniqueId),
+  if (contentChanged.length > 0) {
+    await vectorStore.addDocuments(contentChanged, {
+      ids: contentChanged.map((chunk) => chunk.metadata.uniqueId),
+    });
+  }
+
+  if (metadataOnlyChanged.length > 0) {
+    await vectorStore.updateDocumentsMetadata(metadataOnlyChanged, {
+      ids: metadataOnlyChanged.map((chunk) => chunk.metadata.uniqueId),
     });
   }
 
   logger.info(
-    `Updated ${chunksToUpdate.length} chunks and removed ${chunksToRemove.length} chunks for source: ${source}.`,
+    `Updated ${contentChanged.length} content chunks, ${metadataOnlyChanged.length} metadata-only chunks, and removed ${chunksToRemove.length} chunks for source: ${source}.`,
   );
 }
