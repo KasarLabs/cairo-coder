@@ -39,7 +39,9 @@ More details here.`;
 
     // Find chunk under the first H1
     const introChunk = chunks.find((c) =>
-      c.content.includes('# The Cairo Book: Introduction and Learning Resources'),
+      c.content.includes(
+        '# The Cairo Book: Introduction and Learning Resources',
+      ),
     );
     expect(introChunk).toBeDefined();
     expect(introChunk!.meta.sourceLink).toBe(

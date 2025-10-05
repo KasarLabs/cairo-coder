@@ -1,6 +1,8 @@
 import { RecursiveMarkdownSplitter } from '../RecursiveMarkdownSplitter';
 
-function getCodeBlockRanges(text: string): Array<{ start: number; end: number }> {
+function getCodeBlockRanges(
+  text: string,
+): Array<{ start: number; end: number }> {
   const ranges: Array<{ start: number; end: number }> = [];
   const re = /```[\s\S]*?```/g;
   let m: RegExpExecArray | null;
@@ -10,13 +12,19 @@ function getCodeBlockRanges(text: string): Array<{ start: number; end: number }>
   return ranges;
 }
 
-function isInside(pos: number, ranges: Array<{ start: number; end: number }>): boolean {
+function isInside(
+  pos: number,
+  ranges: Array<{ start: number; end: number }>,
+): boolean {
   return ranges.some((r) => pos > r.start && pos < r.end);
 }
 
 describe('RecursiveMarkdownSplitter - No chunk starts inside code block', () => {
   it('ensures chunk starts are never within fenced code blocks even with overlap', () => {
-    const longCode = Array.from({ length: 60 }, (_, i) => `line ${i} of code`).join('\n');
+    const longCode = Array.from(
+      { length: 60 },
+      (_, i) => `line ${i} of code`,
+    ).join('\n');
     const md = `# Section One\n\nIntro paragraph text that will be part of the first section.\n\n\n## Subsection\n\nSome text before a large code block.\n\n
 \`\`\`cairo
 fn initializer(ref self: ContractState, owner: ContractAddress) {

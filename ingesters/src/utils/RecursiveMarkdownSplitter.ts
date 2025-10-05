@@ -219,7 +219,9 @@ export class RecursiveMarkdownSplitter {
    * Active source becomes the first URL and applies from the end of the block
    * until the start of the next Sources block (or end of document).
    */
-  private parseSourceRanges(markdown: string): Array<{ start: number; end: number; url: string }> {
+  private parseSourceRanges(
+    markdown: string,
+  ): Array<{ start: number; end: number; url: string }> {
     const lines = markdown.split('\n');
     const ranges: Array<{ start: number; end: number; url: string }> = [];
 
@@ -247,7 +249,11 @@ export class RecursiveMarkdownSplitter {
     };
 
     // Locate all source blocks (start/end + first URL)
-    const blocks: Array<{ blockStartLine: number; blockEndLine: number; firstUrl?: string }> = [];
+    const blocks: Array<{
+      blockStartLine: number;
+      blockEndLine: number;
+      firstUrl?: string;
+    }> = [];
     for (let i = 0; i < lines.length; i++) {
       if (!isDashLine(lines[i]!)) continue;
       // Scan ahead for Sources: header within the dashed block
@@ -789,7 +795,8 @@ export class RecursiveMarkdownSplitter {
       if (i > 0 && this.options.overlap > 0) {
         const prevSegment = segments[i - 1]!;
         const desired = Math.max(
-          prevSegment.end - Math.min(this.options.overlap, prevSegment.end - prevSegment.start),
+          prevSegment.end -
+            Math.min(this.options.overlap, prevSegment.end - prevSegment.start),
           prevSegment.start,
         );
         chunkStartAbs = desired;
