@@ -51,6 +51,7 @@ dependencies = [
   "tenacity>=8.0.0",
   "toml>=0.10.2",
   "tqdm>=4.66.0",
+  "typer>=0.19.2",
 ]
 
 [project.optional-dependencies]

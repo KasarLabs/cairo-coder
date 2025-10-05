@@ -2,11 +2,13 @@ from enum import Enum
 
 from .base_summarizer import BaseSummarizer, SummarizerConfig
 from .mdbook_summarizer import MdbookSummarizer
+from .doc_dump_summarizer import DocDumpSummarizer
 
 
 class DocumentationType(Enum):
     """Supported documentation types"""
     MDBOOK = "mdbook"
+    DOCDUMP = "docdump"
     # Future types can be added here
     # SPHINX = "sphinx"
     # DOCUSAURUS = "docusaurus"
@@ -17,6 +19,7 @@ class SummarizerFactory:
     
     _summarizers: dict[DocumentationType, type[BaseSummarizer]] = {
         DocumentationType.MDBOOK: MdbookSummarizer,
+        DocumentationType.DOCDUMP: DocDumpSummarizer,
     }
     
     @classmethod

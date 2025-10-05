@@ -20,8 +20,8 @@ from tqdm.asyncio import tqdm
 # Configuration
 UA = "NotebookLM-prep-crawler/1.1 (+contact: you@example.com)"
 OUT_FILE = Path("doc_dump")
-CONCURRENCY = 6
-MAX_RETRIES = 3
+CONCURRENCY = 4  # Reduced from 6 to avoid rate limits
+MAX_RETRIES = 5
 TIMEOUT = 30
 MAX_CRAWL_PAGES = 100
 
@@ -31,7 +31,7 @@ EXCLUDE_PATTERNS = [
     r'/author/', r'/user/', r'/wp-admin', r'/wp-content', r'/wp-includes',
     r'/_next/', r'/static/', r'/assets/', r'/js/', r'/css/', r'/images/',
     r'/feed', r'/rss', r'/atom', r'/sitemap', r'/robots\.txt',
-    r'mailto:', r'tel:', r'/#'
+    r'mailto:', r'tel:', r'/#', r'\.css$'
 ]
 
 # Common documentation content selectors
@@ -359,17 +359,9 @@ class DocsCrawler:
                     ""
                 ])
             else:
+                # Skip pages that failed to fetch or returned non-HTML content
                 error = page_data.get('error', 'Unknown error')
-                lines.extend([
-                    f"**Source URL:** {url}",
-                    "",
-                    f"## {url}",
-                    "",
-                    f"*Failed to fetch: {error}*",
-                    "",
-                    "---",
-                    ""
-                ])
+                logger.info(f"Skipping {url}: {error}")
 
         return '\n'.join(lines)
 
