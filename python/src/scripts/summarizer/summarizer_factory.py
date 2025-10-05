@@ -1,8 +1,8 @@
 from enum import Enum
 
 from .base_summarizer import BaseSummarizer, SummarizerConfig
-from .mdbook_summarizer import MdbookSummarizer
 from .doc_dump_summarizer import DocDumpSummarizer
+from .mdbook_summarizer import MdbookSummarizer
 
 
 class DocumentationType(Enum):

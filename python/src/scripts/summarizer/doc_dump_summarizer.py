@@ -3,18 +3,16 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 from pathlib import Path
-from typing import List, Optional, Tuple
 
 import structlog
 
 from .base_summarizer import BaseSummarizer
 from .dpsy_summarizer import (
     configure_dspy,
+    generate_markdown_toc,
     make_chunks,
     massively_summarize,
-    generate_markdown_toc,
 )
-
 
 logger = structlog.get_logger(__name__)
 
@@ -32,7 +30,7 @@ class DocDumpSummarizer(BaseSummarizer):
 
     def __init__(self, config):
         super().__init__(config)
-        self._pages: List[_DocPage] = []
+        self._pages: list[_DocPage] = []
 
     def clone_repository(self) -> Path:
         """No-op clone for local files: return CWD as a base path."""
@@ -63,8 +61,8 @@ class DocDumpSummarizer(BaseSummarizer):
         configure_dspy()
 
         # Build chunks and parallel metadata
-        chunks: List[str] = []
-        metas: List[dict] = []
+        chunks: list[str] = []
+        metas: list[dict] = []
         for page in self._pages:
             page_chunks = make_chunks(page.content, target_chunk_size=2000)
             chunks.extend(page_chunks)
@@ -91,11 +89,11 @@ class DocDumpSummarizer(BaseSummarizer):
 
     # Helpers
     @staticmethod
-    def _parse_doc_dump(text: str) -> List[_DocPage]:
+    def _parse_doc_dump(text: str) -> list[_DocPage]:
         """Split the doc dump by '**Source URL:**' markers and return pages."""
         # Find all '**Source URL:** <url>' markers
         pattern = re.compile(r"^\*\*Source URL:\*\*\s+(\S+)", re.MULTILINE)
-        pages: List[_DocPage] = []
+        pages: list[_DocPage] = []
         matches = list(pattern.finditer(text))
         for i, m in enumerate(matches):
             url = m.group(1)
@@ -109,7 +107,7 @@ class DocDumpSummarizer(BaseSummarizer):
 
     @staticmethod
     def _strip_leading_trailing_separators(s: str) -> str:
-        lines = [ln for ln in s.splitlines()]
+        lines = list(s.splitlines())
         # remove leading/trailing lines that are just '---'
         while lines and lines[0].strip() == '---':
             lines.pop(0)
@@ -118,7 +116,7 @@ class DocDumpSummarizer(BaseSummarizer):
         return "\n".join(lines).strip()
 
     @staticmethod
-    def _infer_title(pages: List[_DocPage]) -> str:
+    def _infer_title(pages: list[_DocPage]) -> str:
         if not pages:
             return "# Documentation Summary"
         first = pages[0].url.rstrip('/')

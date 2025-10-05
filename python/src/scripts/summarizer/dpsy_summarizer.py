@@ -2,7 +2,7 @@ import logging
 import os
 import re
 from collections import Counter
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Optional
 
 import dotenv
 import dspy
@@ -68,7 +68,7 @@ def group_sections(topics, chunks, headers):
         sections[topic.topic].append(chunk)
     return sections
 
-def summarize_sections(toc_path, sections: Dict[str, List[str]], sections_metas: Optional[Dict[str, List[Optional[dict]]]] = None):
+def summarize_sections(toc_path, sections: dict[str, list[str]], sections_metas: Optional[dict[str, list[Optional[dict]]]] = None):
     parallelizer = DSPyParallel(num_threads=12)
     tasks = []
     for topic, section_chunks in sections.items():
@@ -76,7 +76,7 @@ def summarize_sections(toc_path, sections: Dict[str, List[str]], sections_metas:
         tasks.append((massively_summarize, {"toc_path": toc_path + [topic], "chunks": section_chunks, "metas": metas}))
     return parallelizer(tasks)
 
-def _aggregate_source_urls(metas: Optional[List[Optional[dict]]]) -> List[str]:
+def _aggregate_source_urls(metas: Optional[list[Optional[dict]]]) -> list[str]:
     """Aggregate and order source URLs by frequency (descending)."""
     if not metas:
         return []
@@ -92,17 +92,17 @@ def _aggregate_source_urls(metas: Optional[List[Optional[dict]]]) -> List[str]:
     return [url for url, _ in ordered]
 
 
-def _format_sources_block(urls: List[str]) -> str:
+def _format_sources_block(urls: list[str]) -> str:
     if not urls:
         return ""
     bullets = "\n".join(f"- {u}" for u in urls)
     return f"---\n\nSources:\n\n{bullets}\n\n---\n\n"
 
 
-def _group_sections_with_metas(topics, chunks: List[str], headers: List[str], metas: Optional[List[Optional[dict]]]):
+def _group_sections_with_metas(topics, chunks: list[str], headers: list[str], metas: Optional[list[Optional[dict]]]):
     """Return (sections, sections_metas) grouped by topic."""
-    sections: Dict[str, List[str]] = {topic: [] for topic in headers}
-    sections_metas: Dict[str, List[Optional[dict]]] = {topic: [] for topic in headers}
+    sections: dict[str, list[str]] = {topic: [] for topic in headers}
+    sections_metas: dict[str, list[Optional[dict]]] = {topic: [] for topic in headers}
     for topic, chunk, meta in zip(topics, chunks, metas or [None] * len(chunks), strict=False):
         sections[topic.topic].append(chunk)
         sections_metas[topic.topic].append(meta)
@@ -111,8 +111,8 @@ def _group_sections_with_metas(topics, chunks: List[str], headers: List[str], me
 
 def massively_summarize(
     toc_path: list | str,
-    chunks: List[str],
-    metas: Optional[List[Optional[dict]]] = None,
+    chunks: list[str],
+    metas: Optional[list[Optional[dict]]] = None,
 ):
     # Normalize metas length
     if metas is None:
@@ -127,8 +127,7 @@ def massively_summarize(
             # section = f"{title}\n\nNo content generated for this section."
             logger.warning(f"No content generated for this section: {title}")
             return ""
-        else:
-            section = f"{content}"
+        section = f"{content}"
         urls = _aggregate_source_urls(metas)
         sources_block = _format_sources_block(urls)
         header = (sources_block if sources_block else "")
