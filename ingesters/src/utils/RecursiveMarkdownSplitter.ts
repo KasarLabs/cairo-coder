@@ -834,15 +834,18 @@ export class RecursiveMarkdownSplitter {
     const titleCounts = new Map<string, number>();
 
     for (const rawChunk of rawChunks) {
-      // Find the last header before or within this chunk that's in our configured levels
+      // Determine title from the deepest configured header level that applies
       let title = 'ROOT';
       let headerPath: string[] = [];
 
-      // Build full header path from all headers up to the end of this chunk
-      const allHeadersBeforeEnd = headers.filter((h) => h.start < rawChunk.end);
+      // Build full header path from all headers strictly before the end of this chunk
+      // Do not include a header that starts exactly at the end boundary; it belongs to the next segment.
+      const allHeadersBeforeOrAtEnd = headers.filter(
+        (h) => h.start < rawChunk.end,
+      );
       const headerStack: { level: number; text: string }[] = [];
 
-      for (const header of allHeadersBeforeEnd) {
+      for (const header of allHeadersBeforeOrAtEnd) {
         // Pop headers from stack that are same or lower level
         while (
           headerStack.length > 0 &&
@@ -855,21 +858,21 @@ export class RecursiveMarkdownSplitter {
 
       headerPath = headerStack.map((h) => h.text);
 
-      // Prefer the deepest header in the path (e.g., H3) for specificity
-      if (headerPath.length > 0) {
-        title = headerPath[headerPath.length - 1]!;
-      } else {
-        // Fallback: use last configured header before the chunk if any
-        for (let i = headerStack.length - 1; i >= 0; i--) {
-          if (
-            this.options.headerLevels.includes(
-              headerStack[i]!.level as 1 | 2 | 3,
-            )
-          ) {
-            title = headerStack[i]!.text;
-            break;
-          }
+      // Prefer the deepest header among the configured levels (e.g., H2 if [1,2])
+      let preferredTitle: string | undefined;
+      for (let i = headerStack.length - 1; i >= 0; i--) {
+        const lvl = headerStack[i]!.level as 1 | 2 | 3;
+        if (this.options.headerLevels.includes(lvl)) {
+          preferredTitle = headerStack[i]!.text;
+          break;
         }
+      }
+
+      if (preferredTitle) {
+        title = preferredTitle;
+      } else if (headerStack.length > 0) {
+        // Fallback to the deepest header regardless of level if none match configured levels
+        title = headerStack[headerStack.length - 1]!.text;
       }
 
       // Track chunk numbers per title (0-based)
@@ -882,16 +885,49 @@ export class RecursiveMarkdownSplitter {
         ? `${this.options.idPrefix}-${slug}-${count}`
         : `${slug}-${count}`;
 
-      // Determine sourceLink based on active source ranges: prefer segment start (no overlap)
+      // Determine sourceLink based on active source ranges.
+      // Strategy:
+      // 1) Prefer a range that contains the anchor position (segment start if available, else chunk start)
+      // 2) Otherwise, if any range starts within this chunk, select the last one (closest to chunk end)
+      // 3) Otherwise, if any range overlaps this chunk at all, select the one with the latest start
       let sourceLink: string | undefined = undefined;
-      const anchorPos = (rawChunk as any).overlapStart ?? rawChunk.start;
       if (sourceRanges && sourceRanges.length > 0) {
-        const s = anchorPos as number;
-        for (const r of sourceRanges) {
-          if (s >= r.start && s < r.end) {
-            sourceLink = r.url;
-            break;
+        const anchorPos = (rawChunk as any).overlapStart ?? rawChunk.start;
+
+        // Step 1: range that contains anchor
+        let active = sourceRanges.find(
+          (r) => anchorPos >= r.start && anchorPos < r.end,
+        );
+
+        // Step 2: range that starts within the chunk [start, end)
+        if (!active) {
+          let candidate:
+            | { start: number; end: number; url: string }
+            | undefined;
+          for (const r of sourceRanges) {
+            if (r.start >= rawChunk.start && r.start < rawChunk.end) {
+              if (!candidate || r.start > candidate.start) candidate = r;
+            }
           }
+          if (candidate) active = candidate;
+        }
+
+        // Step 3: any overlapping range; choose the one with the latest start
+        if (!active) {
+          let candidate:
+            | { start: number; end: number; url: string }
+            | undefined;
+          for (const r of sourceRanges) {
+            const overlaps = r.start < rawChunk.end && r.end > rawChunk.start;
+            if (overlaps) {
+              if (!candidate || r.start > candidate.start) candidate = r;
+            }
+          }
+          if (candidate) active = candidate;
+        }
+
+        if (active) {
+          sourceLink = active.url;
         }
       }
 

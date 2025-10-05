@@ -1,16 +1,14 @@
+import { StarknetDocsIngester } from '../src/ingesters/StarknetDocsIngester';
 import { DocumentSource, type BookChunk } from '../src/types';
 import { type Document } from '@langchain/core/documents';
 
 describe('StarknetDocsIngester', () => {
   it('should be refactored to use MDX format', () => {
-    const {
-      StarknetDocsIngester,
-    } = require('../src/ingesters/StarknetDocsIngester');
-
     const ingester = new StarknetDocsIngester();
 
     // Check that it has the correct configuration
     expect(ingester).toBeDefined();
+    // @ts-ignore - accessing config for testing purposes
     expect(ingester.config).toEqual({
       repoOwner: 'starknet-io',
       repoName: 'starknet-docs',
@@ -21,14 +19,11 @@ describe('StarknetDocsIngester', () => {
       urlSuffix: '',
       useUrlMapping: true,
     });
+    // @ts-ignore - accessing source for testing purposes
     expect(ingester.source).toBe(DocumentSource.STARKNET_DOCS);
   });
 
   it('should extract title from frontmatter', () => {
-    const {
-      StarknetDocsIngester,
-    } = require('../src/ingesters/StarknetDocsIngester');
-
     const ingester = new StarknetDocsIngester();
 
     // Test MDX content with frontmatter title
@@ -59,10 +54,6 @@ Some configuration details here.
   });
 
   it('should use frontmatter title for chunks without headers', () => {
-    const {
-      StarknetDocsIngester,
-    } = require('../src/ingesters/StarknetDocsIngester');
-
     const ingester = new StarknetDocsIngester();
 
     // Test content with frontmatter but no markdown headers
@@ -86,17 +77,13 @@ We need to specify the nightly Rust compiler.`;
     expect(chunks.length).toBeGreaterThanOrEqual(1);
 
     // The first chunk should have the frontmatter title
-    expect(chunks[0].metadata.title).toBe('Setting up your environment');
-    expect(chunks[0].pageContent).toContain(
+    expect(chunks[0]!.metadata.title).toBe('Setting up your environment');
+    expect(chunks[0]!.pageContent).toContain(
       "Let's first set up a Rust project",
     );
   });
 
   it('should combine frontmatter title with section headers', () => {
-    const {
-      StarknetDocsIngester,
-    } = require('../src/ingesters/StarknetDocsIngester');
-
     const ingester = new StarknetDocsIngester();
 
     // Test content with both frontmatter title and section headers
