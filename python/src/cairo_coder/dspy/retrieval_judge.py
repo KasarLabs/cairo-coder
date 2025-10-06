@@ -29,21 +29,61 @@ LLM_JUDGE_REASON_KEY = "llm_judge_reason"
 
 # Note: examples here should be auto-generated from using an optimizer.
 class RetrievalRecallPrecision(dspy.Signature):
-    """Compare a system's retrieval response to the query and rate how much it can be leveraged to answer the query.
+    """
+    Goal
+    ----
+    Given a user query and a single technical resource (content + minimal metadata),
+    judge how useful the resource is for answering the query.
 
-    When asked to reason, enumerate key ideas in each response, and whether they are present in the expected output.
-    A document is considered useful if it is directly relevant to the query, or if it is informative and can be useful for context.
+    How to read inputs
+    ------------------
+    - query: what the user needs. Extract the main intent (task / concept / error) and key entities
+      (e.g., Cairo, Starknet, snforge/sncast/scarb tools, contracts, paymaster, fees, S-Two, STARK Proofs, etc.).
+    - system_resource: the resource text.
 
-    For example, if the query is about creating or fixing a smart contract, then, an example of a smart contract, even if not _directly_ related, is considered useful. If the query is about a specific Cairo language feature, then a document about that feature is considered useful.
+    Definitions
+    -----------
+    DIRECTLY RELEVANT: Explains or solves the exact thing asked (same feature/API/version/tool/error/code/concept),
+    or provides working code/templates/tests that can be applied immediately.
+    CONTEXTUALLY USEFUL: Not a direct answer but gives correct background, patterns, or adjacent
+    details that help (e.g., components used by ERC-20/721, Cairo syntax needed for the task,
+    Starknet lifecycle when the query is about confirmations, etc.).
+    NOT USEFUL:stale/obsolete, unrelated topic, not related to the query.
 
-    If the query is about learning about a concept, like cryptography, STARKs, AIRs, and the document is related to that concept, then it can be considered useful.
+    Decision rubric (apply in order)
+    --------------------------------
+    1) Match: Does the resource target the same task/concept/error/tool? (yes/no/partial)
+    2) Specificity: Does it include concrete API names, code, commands, flags, fields, or examples that can be used?
+    3) Coverage: Does it cover key sub-questions implied by the query (e.g., security, fees, lifecycle, types)?
 
-    Contract and test templates are always considered useful.
+    Scoring anchors (pick the closest; interpolate if needed)
+    ---------------------------------------------------------
+    1.00  Exact how-to / spec / error-fix / code sample for this query & correct version Can be directly leveraged to answer the query.
+    0.75  Mostly on-point with usable details; may miss a minor part or be slightly tangent but still useful.
+    0.50  Indirect context that helps learning or setup, not a direct answer.
+    0.25  Weakly related mention(s); very little actionable value.
+    0.00  Unrelated or misleading.
 
-    Examples:
-    - The query asks about writing an AIR with STWO. The provided document is titled 'Basic building blocks' and covers the basic building blocks used to build the Cairo AIR. While it mentions Cairo AIR, it does not specifically address how to write an AIR with STWO but could be useful for context. Therefore, it is indirectly relevant to the user's query about STWO and AIRs.
-    - The query asks about writing an AIR with STWO. The provided document discusses writing a spreadsheet and mentions STWO in the context of SIMD operations and prover speed-up. While it touches upon STWO, it does not explain how to write an AIR with it. The document focuses on creating tables for proofs, which is a related but distinct topic. Therefore, the document is not indirectly relevant to answering the query about writing an AIR and can be kept.
-    - The query asks about writing an ERC20 contract. The provided document is called 'Components in Cairo' and covers the syntax of composable components in Cairo. While it does not directly address the ERC20 contract, it provides valuable context about including components in contracts, which can be useful to integrate the ERC20 Openzeppelin component. Therefore, it is relevant to the user's query about writing an ERC20 contract.
+    Cairo/Starknet notes (apply silently)
+    -------------------------------------
+    - Code/templates/tests are always useful if they can be adapted (even if not the exact contract).
+    - Prefer resources mentioning: snforge, sncast, scarb, Starknet tx structure/lifecycle, paymaster,
+      account abstraction, fees, ABI/Sierra/Casm, common components (ERC20/721), and Cairo core libs.
+
+    Examples (style only; do not copy text)
+    ---------------------------------------
+    - Query: “explain paymaster on Starknet tx”
+      Good reasoning: “Resource <Paymaster spec 0.14>: details the paymaster flow and required fields in the
+      tx payload with examples, matching Starknet ≥0.14 — directly answers.” → 0.90–1.00
+    - Query: “Explain saturating_sub”
+      Good reasoning: “Resource <Cairo core arithmetic>: documents `saturating_sub` with examples; directly answers.” → 1.00
+    - Query: “ERC721 policy token on Starknet”
+      Context reasoning: “Resource <Components in Cairo>: explains components/modularity used when composing
+      ERC721; helpful context but not full implementation.” → ~0.50
+    - Query: “fees structure in Starknet”
+      Not useful: “Resource <General L1 gas primer>: EVM-only overview; no Starknet specifics.” → 0.00–0.25
+    - QUERY: "How to write a S-Two AIR"
+      Context reasoning: "Resource <Mersenne Prime>: explains what the Mersenne Prime is and how it's used in S-Two” → ~0.50
     """
 
     query: str = dspy.InputField()
@@ -54,7 +94,7 @@ class RetrievalRecallPrecision(dspy.Signature):
         desc="A short sentence, on why a selected resource will be useful. If it's not selected, reason about why it's not going to be useful. Start by Resource <resource_title>..."
     )
     resource_note: float = dspy.OutputField(
-        desc="A note between 0 and 1.0 on how useful the resource is to directly answer the query. 0 being completely unrelated, 1.0 being very relevant, 0.5 being 'not directly related but still informative and can be useful for context'."
+        desc="Float in [0.0, 1.0] per the scoring anchors."
     )
 
 
