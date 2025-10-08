@@ -7,46 +7,12 @@ Integration-specific fixtures.
 
 from unittest.mock import AsyncMock, Mock
 
+import dspy
 import pytest
 from fastapi.testclient import TestClient
 
 from cairo_coder.agents.registry import AgentId
 from cairo_coder.server.app import get_agent_factory, get_vector_db
-
-
-@pytest.fixture
-def patch_dspy_streaming_success(monkeypatch):
-    """Patch dspy.streamify to emit token-like chunks and provide StreamListener.
-
-    Yields two chunks: "Hello " and "world".
-    """
-    import dspy
-
-    class FakeStreamResponse:
-        def __init__(self, chunk: str):
-            self.chunk = chunk
-
-    class FakeStreamListener:
-        def __init__(self, signature_field_name: str):  # noqa: ARG002
-            pass
-
-    monkeypatch.setattr(
-        dspy,
-        "streaming",
-        type("S", (), {"StreamResponse": FakeStreamResponse, "StreamListener": FakeStreamListener}),
-    )
-
-    def fake_streamify(_program, stream_listeners=None):  # noqa: ARG001
-        def runner(**kwargs):  # noqa: ARG001
-            async def gen():
-                yield FakeStreamResponse("Hello ")
-                yield FakeStreamResponse("world")
-
-            return gen()
-
-        return runner
-
-    monkeypatch.setattr(dspy, "streamify", fake_streamify)
 
 
 @pytest.fixture
@@ -140,8 +106,9 @@ def real_pipeline(mock_query_processor, mock_vector_store_config, mock_vector_db
         return _dspy.Prediction(answer=responses[idx])
 
     async def _fake_gen_aforward_streaming(query: str, context: str, chat_history: str | None = None):
-        yield "Hello! I'm Cairo Coder, "
-        yield "ready to help with Cairo programming."
+        yield dspy.streaming.StreamResponse(predict_name="GenerationProgram", signature_field_name="answer", chunk="Hello! I'm Cairo Coder, ", is_last_chunk=False)
+        yield dspy.streaming.StreamResponse(predict_name="GenerationProgram", signature_field_name="answer", chunk="ready to help with Cairo programming.", is_last_chunk=True)
+        yield dspy.Prediction(answer="Hello! I'm Cairo Coder, ready to help with Cairo programming.")
 
     pipeline.generation_program.aforward = AsyncMock(side_effect=_fake_gen_aforward)
     pipeline.generation_program.aforward_streaming =_fake_gen_aforward_streaming

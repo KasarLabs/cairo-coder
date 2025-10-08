@@ -168,10 +168,12 @@ def mock_agent():
                 ],
             )
             yield StreamEvent(type=StreamEventType.RESPONSE, data="Cairo is a programming language")
+            yield StreamEvent(type=StreamEventType.FINAL_RESPONSE, data="Cairo is a programming language")
         else:
             # Normal mode returns response
             yield StreamEvent(type=StreamEventType.RESPONSE, data="Hello! I'm Cairo Coder.")
             yield StreamEvent(type=StreamEventType.RESPONSE, data=" How can I help you?")
+            yield StreamEvent(type=StreamEventType.FINAL_RESPONSE, data="Hello! I'm Cairo Coder. How can I help you?")
         yield StreamEvent(type=StreamEventType.END, data="")
 
     def mock_forward(query: str, chat_history: list[Message] | None = None, mcp_mode: bool = False):
@@ -369,8 +371,9 @@ def mock_generation_program():
     program.get_lm_usage = Mock(return_value={})
 
     async def mock_streaming(*args, **kwargs):
-        yield "Here's how to write "
-        yield "Cairo contracts..."
+        yield dspy.streaming.StreamResponse(predict_name="GenerationProgram", signature_field_name="answer", chunk="Here's how to write ", is_last_chunk=False)
+        yield dspy.streaming.StreamResponse(predict_name="GenerationProgram", signature_field_name="answer", chunk="Cairo contracts...", is_last_chunk=True)
+        yield dspy.Prediction(answer=answer)
 
     program.aforward_streaming = mock_streaming
     return program

@@ -227,7 +227,7 @@ class GenerationProgram(dspy.Module):
 
     async def aforward_streaming(
         self, query: str, context: str, chat_history: Optional[str] = None
-    ) -> AsyncGenerator[str, None]:
+    ) -> AsyncGenerator[object, None]:
         """
         Generate Cairo code response with streaming support using DSPy's native streaming.
 
@@ -255,18 +255,8 @@ class GenerationProgram(dspy.Module):
             query=query, context=context, chat_history=chat_history
         )
 
-        # Process the stream and yield tokens
-        is_cached = True
         async for chunk in output_stream:
-            if isinstance(chunk, dspy.streaming.StreamResponse):
-                # No streaming if cached
-                is_cached = False
-                # Yield the actual token content
-                yield chunk.chunk
-            elif isinstance(chunk, dspy.Prediction):
-                if is_cached:
-                    yield chunk.answer
-                # Final output received - streaming is complete
+            yield chunk
 
     def _format_chat_history(self, chat_history: list[Message]) -> str:
         """

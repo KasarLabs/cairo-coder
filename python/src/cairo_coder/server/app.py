@@ -30,7 +30,7 @@ from cairo_coder.core.rag_pipeline import (
     AgentLoggingCallback,
     RagPipeline,
 )
-from cairo_coder.core.types import Message, Role
+from cairo_coder.core.types import Message, Role, StreamEventType
 from cairo_coder.dspy.document_retriever import SourceFilteredPgVectorRM
 from cairo_coder.dspy.suggestion_program import SuggestionGeneration
 from cairo_coder.utils.logging import setup_logging
@@ -401,7 +401,7 @@ class CairoCoderServer:
             ) from e
 
     async def _stream_chat_completion(
-        self, agent, query: str, history: list[Message], mcp_mode: bool
+        self, agent: RagPipeline, query: str, history: list[Message], mcp_mode: bool
     ) -> AsyncGenerator[str, None]:
         """Stream chat completion response - replicates TypeScript streaming."""
         response_id = str(uuid.uuid4())
@@ -425,14 +425,14 @@ class CairoCoderServer:
                 async for event in agent.aforward_streaming(
                     query=query, chat_history=history, mcp_mode=mcp_mode
                 ):
-                    if event.type == "sources":
+                    if event.type == StreamEventType.SOURCES:
                         # Emit sources event for clients to display
                         sources_chunk = {
                             "type": "sources",
                             "data": event.data,
                         }
                         yield f"data: {json.dumps(sources_chunk)}\n\n"
-                    elif event.type == "response":
+                    elif event.type == StreamEventType.RESPONSE:
                         content_buffer += event.data
 
                         # Send content chunk
@@ -446,7 +446,14 @@ class CairoCoderServer:
                             ],
                         }
                         yield f"data: {json.dumps(chunk)}\n\n"
-                    elif event.type == "error":
+                    elif event.type == StreamEventType.FINAL_RESPONSE:
+                        # Emit an explicit final response event for clients
+                        final_event = {
+                            "type": "final_response",
+                            "data": event.data,
+                        }
+                        yield f"data: {json.dumps(final_event)}\n\n"
+                    elif event.type == StreamEventType.ERROR:
                         # Emit an error as a final delta and stop
                         error_chunk = {
                             "id": response_id,
@@ -463,7 +470,7 @@ class CairoCoderServer:
                         }
                         yield f"data: {json.dumps(error_chunk)}\n\n"
                         break
-                    elif event.type == "end":
+                    elif event.type == StreamEventType.END:
                         break
                 rt.end(outputs={"output": content_buffer})
 

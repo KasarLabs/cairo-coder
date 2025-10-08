@@ -113,6 +113,7 @@ class StreamEventType(str, Enum):
     SOURCES = "sources"
     PROCESSING = "processing"
     RESPONSE = "response"
+    FINAL_RESPONSE = "final_response"
     END = "end"
     ERROR = "error"
 
