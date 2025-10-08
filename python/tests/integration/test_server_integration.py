@@ -115,7 +115,6 @@ class TestServerIntegration:
     def test_streaming_integration(
         self,
         client: TestClient,
-        patch_dspy_streaming_success,
     ):
         """Test streaming response end-to-end using a real pipeline with low-level patches."""
 
@@ -457,8 +456,10 @@ class TestOpenAICompatibility:
                 if data_str != "[DONE]":
                     chunks.append(json.loads(data_str))
 
-        # Filter out sources events (custom event type for frontend)
-        openai_chunks = [chunk for chunk in chunks if chunk.get("type") != "sources"]
+        # Filter out custom frontend events (sources, final_response)
+        openai_chunks = [
+            chunk for chunk in chunks if chunk.get("type") not in ("sources", "final_response")
+        ]
 
         for chunk in openai_chunks:
             required_fields = ["id", "object", "created", "model", "choices"]

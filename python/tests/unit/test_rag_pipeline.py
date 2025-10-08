@@ -14,7 +14,7 @@ from cairo_coder.core.rag_pipeline import (
     RagPipelineConfig,
     RagPipelineFactory,
 )
-from cairo_coder.core.types import Document, DocumentSource, Message, Role
+from cairo_coder.core.types import Document, DocumentSource, Message, Role, StreamEventType
 from cairo_coder.dspy.retrieval_judge import RetrievalJudge
 
 
@@ -148,10 +148,11 @@ class TestRagPipeline:
 
         # Verify event sequence
         event_types = [e.type for e in events]
-        assert "processing" in event_types
-        assert "sources" in event_types
-        assert "response" in event_types
-        assert "end" in event_types
+        assert StreamEventType.PROCESSING in event_types
+        assert StreamEventType.SOURCES in event_types
+        assert StreamEventType.RESPONSE in event_types
+        assert StreamEventType.FINAL_RESPONSE in event_types
+        assert StreamEventType.END in event_types
 
     @pytest.mark.asyncio
     async def test_mcp_mode_execution(self, pipeline):

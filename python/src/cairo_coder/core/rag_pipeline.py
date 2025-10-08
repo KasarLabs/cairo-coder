@@ -210,7 +210,9 @@ class RagPipeline(dspy.Module):
                 )
 
                 mcp_prediction = self.mcp_generation_program(documents)
+                # Emit single response plus a final response event for clients that rely on it
                 yield StreamEvent(type=StreamEventType.RESPONSE, data=mcp_prediction.answer)
+                yield StreamEvent(type=StreamEventType.FINAL_RESPONSE, data=mcp_prediction.answer)
             else:
                 # Normal mode: Generate response
                 yield StreamEvent(type=StreamEventType.PROCESSING, data="Generating response...")
@@ -223,12 +225,19 @@ class RagPipeline(dspy.Module):
                     adapter=dspy.adapters.ChatAdapter()
                 ), ls.trace(name="GenerationProgramStreaming", run_type="llm", inputs={"query": query, "chat_history": chat_history_str, "context": context}) as rt:
                         chunk_accumulator = ""
+                        final_text: str | None = None
                         async for chunk in self.generation_program.aforward_streaming(
                             query=query, context=context, chat_history=chat_history_str
                         ):
-                            chunk_accumulator += chunk
-                            yield StreamEvent(type=StreamEventType.RESPONSE, data=chunk)
-                        rt.end(outputs={"output": chunk_accumulator})
+                            if isinstance(chunk, dspy.streaming.StreamResponse):
+                                # Incremental token
+                                chunk_accumulator += chunk.chunk
+                                yield StreamEvent(type=StreamEventType.RESPONSE, data=chunk.chunk)
+                            elif isinstance(chunk, dspy.Prediction):
+                                # Final complete answer
+                                final_text = getattr(chunk, "answer", None) or chunk_accumulator
+                                yield StreamEvent(type=StreamEventType.FINAL_RESPONSE, data=final_text)
+                                rt.end(outputs={"output": final_text})
 
             # Pipeline completed
             yield StreamEvent(type=StreamEventType.END, data=None)
