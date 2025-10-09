@@ -86,6 +86,30 @@ The package includes several utility modules:
 - **vectorStoreUtils.ts**: Functions for vector store operations
 - **types.ts**: Common types and interfaces
 
+### Chunking: RecursiveMarkdownSplitter
+
+The `RecursiveMarkdownSplitter` splits markdown content into semantic chunks with metadata (title, unique ID, character offsets, source link). It supports two modes:
+
+- Default mode (size-aware):
+  - Recursively splits by headers (configurable levels), paragraphs, and lines to target `maxChars`.
+  - Merges tiny segments when below `minChars` and applies backward `overlap` between chunks.
+  - Respects fenced code blocks and avoids splitting inside non-breakable blocks when possible.
+
+Example usage:
+
+```ts
+import { RecursiveMarkdownSplitter } from './src/utils/RecursiveMarkdownSplitter';
+
+// Default mode
+const splitter = new RecursiveMarkdownSplitter({
+  maxChars: 2048,
+  minChars: 500,
+  overlap: 256,
+  headerLevels: [1, 2, 3],
+});
+const chunks = splitter.splitMarkdownToChunks(markdown);
+```
+
 ## Usage
 
 To use the ingester package, run the `generateEmbeddings.ts` script:

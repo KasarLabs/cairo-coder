@@ -1,6 +1,15 @@
 import { logger } from './logger';
 
 // Public API interfaces
+/**
+ * Options controlling how markdown is split into chunks. Two high-level modes exist:
+ *
+ * - Default mode (splitFullPage: false):
+ *   Recursively splits by headers (per headerLevels), paragraphs, and lines to respect
+ *   maxChars. Applies minChars-based merging and backward overlap. Avoids splitting
+ *   inside non-breakable code fences when possible.
+ *
+ */
 export interface SplitOptions {
   /** Maximum characters per chunk (UTF-16 .length), not counting overlap. Default: 2048 */
   maxChars?: number;
@@ -72,6 +81,13 @@ interface Tokens {
   sourceRanges: Array<{ start: number; end: number; url: string }>;
 }
 
+/**
+ * Splits markdown into semantic chunks with metadata.
+ *
+ * Modes
+ * - Default: recursive splitting by headers/paragraphs/lines to satisfy maxChars, with overlap and
+ *   minChars-based merging, while respecting code blocks.
+ */
 export class RecursiveMarkdownSplitter {
   private readonly options: Required<SplitOptions>;
 
@@ -124,7 +140,7 @@ export class RecursiveMarkdownSplitter {
   }
 
   /**
-   * Main entry point to split markdown into chunks
+   * Split markdown into chunks
    */
   public splitMarkdownToChunks(markdown: string): Chunk[] {
     // Handle empty input
@@ -209,15 +225,18 @@ export class RecursiveMarkdownSplitter {
   }
 
   /**
-   * Parse special formatted Sources blocks and compute active source ranges
-   * A block looks like:
+   * Parse Sources blocks and compute active source ranges used for meta.sourceLink.
+   *
+   * Format:
    * ---\n
    * Sources:\n
    * - https://example.com/a\n
    * - https://example.com/b\n
    * ---
-   * Active source becomes the first URL and applies from the end of the block
-   * until the start of the next Sources block (or end of document).
+   *
+   * The active source becomes the first URL in the list and applies from the end of the closing
+   * '---' until the start of the next Sources block (or EOF). This mapping is used during metadata
+   * attachment to set the chunk's sourceLink.
    */
   private parseSourceRanges(
     markdown: string,

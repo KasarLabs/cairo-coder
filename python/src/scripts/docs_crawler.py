@@ -282,10 +282,6 @@ class DocsCrawler:
             if any(keyword in tag_id or keyword in tag_classes for keyword in boilerplate_keywords):
                 tags_to_remove.append(tag)
 
-        # Now decompose all collected tags
-        for tag in tags_to_remove:
-            tag.decompose()
-
         # Try to find main content
         main_content = None
 
@@ -347,8 +343,6 @@ class DocsCrawler:
         lines = [
             f"# {self.domain} — Snapshot ({date_str})",
             "",
-            "",
-            "---",
             ""
         ]
 
@@ -362,15 +356,17 @@ class DocsCrawler:
                 if not markdown or len(markdown.strip()) < 50:
                     markdown = "*No content extracted.*"
 
+                # Add individual Sources block for this page
                 lines.extend([
-                    f"**Source URL:** {url}",
+                    "---",
+                    "Sources:",
+                    f"  - {url}",
+                    "---",
                     "",
                     f"## {title}",
                     "",
                     markdown,
                     "",
-                    "---",
-                    ""
                 ])
             else:
                 # Skip pages that failed to fetch or returned non-HTML content

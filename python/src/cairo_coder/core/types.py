@@ -38,6 +38,7 @@ class DocumentSource(str, Enum):
     CORELIB_DOCS = "corelib_docs"
     SCARB_DOCS = "scarb_docs"
     STARKNET_JS = "starknet_js"
+    STARKNET_BLOG = "starknet_blog"
 
 
 class DocumentMetadata(TypedDict, total=False):
