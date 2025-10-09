@@ -8,6 +8,7 @@ import { OpenZeppelinDocsIngester } from './ingesters/OpenZeppelinDocsIngester';
 import { CoreLibDocsIngester } from './ingesters/CoreLibDocsIngester';
 import { ScarbDocsIngester } from './ingesters/ScarbDocsIngester';
 import { StarknetJSIngester } from './ingesters/StarknetJSIngester';
+import { StarknetBlogIngester } from './ingesters/StarknetBlogIngester';
 
 /**
  * Factory class for creating ingesters
@@ -49,6 +50,9 @@ export class IngesterFactory {
 
       case 'starknet_js':
         return new StarknetJSIngester();
+
+      case 'starknet_blog':
+        return new StarknetBlogIngester();
 
       default:
         throw new Error(`Unsupported source: ${source}`);

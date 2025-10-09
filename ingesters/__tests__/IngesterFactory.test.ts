@@ -75,6 +75,7 @@ describe('IngesterFactory', () => {
         DocumentSource.CORELIB_DOCS,
         DocumentSource.SCARB_DOCS,
         DocumentSource.STARKNET_JS,
+        DocumentSource.STARKNET_BLOG,
       ]);
     });
   });

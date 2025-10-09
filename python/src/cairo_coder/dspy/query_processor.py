@@ -26,6 +26,7 @@ RESOURCE_DESCRIPTIONS = {
     DocumentSource.CORELIB_DOCS: "Cairo Core Library Documentation. For using the Cairo core library: basic types, stdlib functions, stdlib structs, macros, and other core concepts. Essential for Cairo programming questions.",
     DocumentSource.SCARB_DOCS: "Scarb Documentation. For using the Scarb package manager: building, compiling, generating compilation artifacts, managing dependencies, configuration of Scarb.toml.",
     DocumentSource.STARKNET_JS: "StarknetJS Documentation. For using the StarknetJS library: interacting with Starknet contracts, (calls and transactions), deploying Starknet contracts, front-end APIs, javascript integration examples, guides, tutorials and general JS/TS documentation for starknet.",
+    DocumentSource.STARKNET_BLOG: "Starknet Blog Documentation. For latest Starknet updates, announcements, feature releases, ecosystem developments, integration guides, and community updates. Useful for understanding recent Starknet innovations, new tools, partnerships, and protocol enhancements.",
 }
 
 # Ensure all DocumentSource variants are covered

@@ -90,8 +90,29 @@ class DocDumpSummarizer(BaseSummarizer):
     # Helpers
     @staticmethod
     def _parse_doc_dump(text: str) -> list[_DocPage]:
-        """Split the doc dump by '**Source URL:**' markers and return pages."""
-        # Find all '**Source URL:** <url>' markers
+        """Parse doc dump - supports old format (with '**Source URL:**') and new format (individual Sources blocks)."""
+        # Try new format first (individual Sources blocks before each section)
+        # Pattern: ---\nSources:\n  - <url>\n---\n\n## <title>...
+        page_pattern = re.compile(
+            r'---\s*\nSources:\s*\n\s*-\s*(\S+)\s*\n---\s*\n+(##[^#].*?)(?=\n---\s*\nSources:|\Z)',
+            re.DOTALL | re.MULTILINE
+        )
+
+        matches = list(page_pattern.finditer(text))
+
+        if matches:
+            # New format: individual Sources blocks
+            pages: list[_DocPage] = []
+            for match in matches:
+                url = match.group(1)
+                content = match.group(2).strip()
+                pages.append(_DocPage(url=url, content=content))
+
+            if pages:
+                logger.info(f"Parsed {len(pages)} pages using new individual Sources block format")
+                return pages
+
+        # Fall back to old format (with '**Source URL:**' markers)
         pattern = re.compile(r"^\*\*Source URL:\*\*\s+(\S+)", re.MULTILINE)
         pages: list[_DocPage] = []
         matches = list(pattern.finditer(text))
@@ -103,6 +124,10 @@ class DocDumpSummarizer(BaseSummarizer):
             content = text[start:end].strip()
             content = DocDumpSummarizer._strip_leading_trailing_separators(content)
             pages.append(_DocPage(url=url, content=content))
+
+        if pages:
+            logger.info(f"Parsed {len(pages)} pages using old **Source URL:** format")
+
         return pages
 
     @staticmethod
@@ -124,4 +149,3 @@ class DocDumpSummarizer(BaseSummarizer):
         seg = first.split('/')[-1] or "documentation"
         name = seg.replace('-', ' ').title()
         return f"# {name} Documentation Summary"
-
