@@ -85,17 +85,24 @@ async function setupVectorStore(): Promise<VectorStore> {
     // Get database configuration
     const dbConfig = getVectorDbConfig();
 
-    const embeddingModels = await loadGeminiEmbeddingsModels();
-    const embeddingModel = embeddingModels['Gemini embedding 001'];
+    // Try Gemini first, then OpenAI as fallback
+    const geminiModels = await loadGeminiEmbeddingsModels();
+    const openaiModels = await loadOpenAIEmbeddingsModels();
+    const embeddingModel: Embeddings | undefined =
+      (geminiModels['Gemini embedding 001'] as unknown as Embeddings) ||
+      (openaiModels['Text embedding 3 large'] as unknown as Embeddings) ||
+      (openaiModels['Text embedding 3 small'] as unknown as Embeddings);
 
     if (!embeddingModel) {
-      throw new Error('Text embedding 3 large model not found');
+      throw new Error(
+        'No embedding model configured. Set GEMINI_API_KEY or OPENAI_API_KEY.',
+      );
     }
 
     // Initialize vector store
     vectorStore = await VectorStore.getInstance(
       dbConfig,
-      embeddingModel as unknown as Embeddings,
+      embeddingModel,
     );
     logger.info('VectorStore initialized successfully');
     return vectorStore;
@@ -184,6 +191,7 @@ async function ingestSource(source: DocumentSource): Promise<void> {
  * Main function to run the ingestion process
  */
 async function main() {
+  let exitCode = 0;
   try {
     // Prompt user for target
     const target = await promptForTarget();
@@ -201,12 +209,18 @@ async function main() {
 
     logger.info('All specified ingestion processes completed successfully.');
   } catch (error) {
+    exitCode = 1;
     logger.error('An error occurred during the ingestion process:', error);
   } finally {
-    // Clean up resources
-    if (vectorStore) {
-      await vectorStore.close();
-      process.exit(0);
+    // Clean up resources and exit deterministically
+    try {
+      if (vectorStore) {
+        await vectorStore.close();
+      }
+    } catch (cleanupError) {
+      logger.warn('Error while cleaning up resources:', cleanupError);
+    } finally {
+      process.exit(exitCode);
     }
   }
 }
