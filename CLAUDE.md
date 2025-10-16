@@ -52,12 +52,7 @@ uv run pytest -k "test_name"   # Run specific test
 
 ```bash
 docker compose up postgres backend  # Start main services
-
-# Recommended: run ingester so compose exits when done
-docker compose up --abort-on-container-exit --exit-code-from ingester ingester
-
-# Alternative: run Postgres in background, then run a one-shot ingester container
-docker compose up -d postgres && docker compose run --rm ingester
+docker compose up ingester         # Run documentation ingestion
 ```
 
 ## Architecture Overview

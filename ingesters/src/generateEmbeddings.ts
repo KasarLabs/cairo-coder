@@ -85,24 +85,17 @@ async function setupVectorStore(): Promise<VectorStore> {
     // Get database configuration
     const dbConfig = getVectorDbConfig();
 
-    // Try Gemini first, then OpenAI as fallback
-    const geminiModels = await loadGeminiEmbeddingsModels();
-    const openaiModels = await loadOpenAIEmbeddingsModels();
-    const embeddingModel: Embeddings | undefined =
-      (geminiModels['Gemini embedding 001'] as unknown as Embeddings) ||
-      (openaiModels['Text embedding 3 large'] as unknown as Embeddings) ||
-      (openaiModels['Text embedding 3 small'] as unknown as Embeddings);
+    const embeddingModels = await loadGeminiEmbeddingsModels();
+    const embeddingModel = embeddingModels['Gemini embedding 001'];
 
     if (!embeddingModel) {
-      throw new Error(
-        'No embedding model configured. Set GEMINI_API_KEY or OPENAI_API_KEY.',
-      );
+      throw new Error('Text embedding 3 large model not found');
     }
 
     // Initialize vector store
     vectorStore = await VectorStore.getInstance(
       dbConfig,
-      embeddingModel,
+      embeddingModel as unknown as Embeddings,
     );
     logger.info('VectorStore initialized successfully');
     return vectorStore;
