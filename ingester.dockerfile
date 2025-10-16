@@ -14,8 +14,6 @@ WORKDIR /app
 # Copy ingester files
 COPY ingesters ./ingesters
 
-# Copy .env file for configuration
-COPY .env ./.env
 
 # Copy ingester files generated from python
 COPY python/src/scripts/summarizer/generated ./python/src/scripts/summarizer/generated
