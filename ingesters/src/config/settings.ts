@@ -1,8 +1,15 @@
 import { type VectorStoreConfig } from '../types';
 import dotenv from 'dotenv';
 import { getRepoPath } from '../utils/paths';
+import { existsSync } from 'fs';
 
-dotenv.config({ path: getRepoPath('.env') });
+// Load .env from repo root if present; otherwise rely on runtime env vars.
+const envPath = getRepoPath('.env');
+if (existsSync(envPath)) {
+  dotenv.config({ path: envPath });
+} else {
+  dotenv.config();
+}
 
 // API Keys from environment variables only
 export const getOpenaiApiKey = () => process.env.OPENAI_API_KEY;

@@ -2,18 +2,16 @@ import path from 'path';
 import { existsSync } from 'fs';
 
 /**
- * Find the repository root by looking for .git directory
+ * Find the repository root by looking for package.json and going up the directory tree
  */
 function findRepoRoot(): string {
   let currentDir = import.meta.dir; // Bun's way to get current directory
 
-  // Walk up the directory tree looking for .env
+  // Walk up the directory tree looking for package.json
   while (currentDir !== '/') {
-    if (
-      existsSync(path.join(currentDir, '.env')) ||
-      existsSync(path.join(currentDir, '.git'))
-    ) {
-      return currentDir;
+    if (existsSync(path.join(currentDir, 'package.json'))) {
+      // Go one level up from the package.json location
+      return path.dirname(currentDir);
     }
     currentDir = path.dirname(currentDir);
   }
