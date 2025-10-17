@@ -950,7 +950,7 @@ export class RecursiveMarkdownSplitter {
         }
       }
 
-      console.log(`Chunk Title: ${title}, Source link: ${sourceLink}`);
+      console.debug(`Chunk Title: ${title}, Source link: ${sourceLink}`);
 
       chunks.push({
         content: rawChunk.content,
