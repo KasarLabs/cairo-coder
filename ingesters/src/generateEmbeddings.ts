@@ -184,6 +184,7 @@ async function ingestSource(source: DocumentSource): Promise<void> {
  * Main function to run the ingestion process
  */
 async function main() {
+  let errorCode = 0;
   try {
     // Prompt user for target
     const target = await promptForTarget();
@@ -202,11 +203,12 @@ async function main() {
     logger.info('All specified ingestion processes completed successfully.');
   } catch (error) {
     logger.error('An error occurred during the ingestion process:', error);
+    errorCode = 1;
   } finally {
     // Clean up resources
     if (vectorStore) {
       await vectorStore.close();
-      process.exit(0);
+      process.exit(errorCode);
     }
   }
 }

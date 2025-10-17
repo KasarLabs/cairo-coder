@@ -3,6 +3,7 @@ import { MarkdownIngester } from './MarkdownIngester';
 import { type BookChunk, DocumentSource } from '../types';
 import { Document } from '@langchain/core/documents';
 import { VectorStore } from '../db/postgresVectorStore';
+import { type VectorStoreUpdateOptions } from '../utils/vectorStoreUtils';
 import { logger } from '../utils/logger';
 import * as fs from 'fs/promises';
 import * as path from 'path';
@@ -110,7 +111,10 @@ export class CairoBookIngester extends MarkdownIngester {
    * Core Library specific processing based on the pre-summarized markdown file
    * @param vectorStore
    */
-  public override async process(vectorStore: VectorStore): Promise<void> {
+  public override async process(
+    vectorStore: VectorStore,
+    options?: VectorStoreUpdateOptions,
+  ): Promise<void> {
     try {
       // 1. Read the pre-summarized documentation
       const text = await this.readSummaryFile();
@@ -123,7 +127,7 @@ export class CairoBookIngester extends MarkdownIngester {
       );
 
       // 3. Update the vector store with the chunks
-      await this.updateVectorStore(vectorStore, chunks);
+      await this.updateVectorStore(vectorStore, chunks, options);
 
       // 4. Clean up any temporary files (no temp files in this case)
       await this.cleanupDownloadedFiles();
