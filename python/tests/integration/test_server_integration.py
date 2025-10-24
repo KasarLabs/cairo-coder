@@ -458,7 +458,7 @@ class TestOpenAICompatibility:
 
         # Filter out custom frontend events (sources, final_response)
         openai_chunks = [
-            chunk for chunk in chunks if chunk.get("type") not in ("sources", "final_response")
+            chunk for chunk in chunks if chunk.get("type") not in ("sources", "final_response", "processing", "reasoning")
         ]
 
         for chunk in openai_chunks:
@@ -470,6 +470,66 @@ class TestOpenAICompatibility:
             choice_fields = ["index", "delta", "finish_reason"]
             for field in choice_fields:
                 assert field in choice
+
+    def test_streaming_emits_processing_events(self, client: TestClient):
+        """Ensure at least one processing event is emitted during streaming."""
+        response = client.post(
+            "/v1/chat/completions",
+            json={"messages": [{"role": "user", "content": "Hello"}], "stream": True},
+        )
+        assert response.status_code == 200
+
+        lines = response.text.strip().split("\n")
+        processing_events = []
+        for line in lines:
+            if not line.startswith("data: "):
+                continue
+            data_str = line[6:]
+            if data_str == "[DONE]":
+                continue
+            try:
+                obj = json.loads(data_str)
+            except Exception:
+                continue
+            if obj.get("type") == "processing":
+                processing_events.append(obj)
+
+        assert len(processing_events) >= 1
+        # Check the emitted messages are strings
+        assert all(isinstance(evt.get("data"), str) for evt in processing_events)
+
+    def test_streaming_emits_final_response_event(self, client: TestClient):
+        """Ensure final_response custom event is emitted with full answer."""
+        response = client.post(
+            "/v1/chat/completions",
+            json={"messages": [{"role": "user", "content": "Hello"}], "stream": True},
+        )
+        assert response.status_code == 200
+
+        # Collect custom final_response frame and accumulate OpenAI deltas
+        lines = response.text.strip().split("\n")
+        final_event = None
+        accumulated = []
+        for line in lines:
+            if not line.startswith("data: "):
+                continue
+            data_str = line[6:]
+            if data_str == "[DONE]":
+                continue
+            obj = json.loads(data_str)
+            if obj.get("type") == "final_response":
+                final_event = obj
+            elif "choices" in obj:
+                delta = obj["choices"][0].get("delta", {})
+                if "content" in delta:
+                    accumulated.append(delta["content"])
+
+        assert final_event is not None
+        assert isinstance(final_event.get("data"), str)
+        # Sanity: final text should include accumulated content
+        acc = "".join(accumulated)
+        assert acc == "Hello! I'm Cairo Coder, ready to help with Cairo programming."
+        assert final_event["data"]
 
     def test_streaming_sources_emission(self, client: TestClient):
         """Test that sources are emitted during streaming."""
@@ -610,6 +670,35 @@ class TestMCPModeCompatibility:
         openai_chunks = [chunk for chunk in chunks if chunk.get("type") != "sources"]
         content_found = any(chunk["choices"][0]["delta"].get("content") for chunk in openai_chunks if "choices" in chunk)
         assert content_found
+
+    def test_mcp_streaming_emits_final_response_and_processing(self, client: TestClient):
+        """MCP streaming should emit final_response and processing frames."""
+        response = client.post(
+            "/v1/chat/completions",
+            json={"messages": [{"role": "user", "content": "Test"}], "stream": True},
+            headers={"x-mcp-mode": "true"},
+        )
+        assert response.status_code == 200
+
+        lines = response.text.strip().split("\n")
+        final_event = None
+        processing_events = []
+        for line in lines:
+            if not line.startswith("data: "):
+                continue
+            data_str = line[6:]
+            if data_str == "[DONE]":
+                continue
+            obj = json.loads(data_str)
+            t = obj.get("type")
+            if t == "final_response":
+                final_event = obj
+            elif t == "processing":
+                processing_events.append(obj)
+
+        assert final_event is not None
+        assert isinstance(final_event.get("data"), str)
+        assert len(processing_events) >= 1
 
     def test_mcp_mode_header_variations(self, client: TestClient):
         """Test different MCP mode header variations."""
