@@ -13,7 +13,6 @@ import dspy
 import langsmith as ls
 import structlog
 from dspy.adapters import XMLAdapter
-from dspy.utils.callback import BaseCallback
 from langsmith import traceable
 
 from cairo_coder.core.config import VectorStoreConfig
@@ -33,30 +32,6 @@ from cairo_coder.dspy.retrieval_judge import RetrievalJudge
 logger = structlog.get_logger(__name__)
 
 SOURCE_PREVIEW_MAX_LEN = 200
-
-
-# 1. Define a custom callback class that extends BaseCallback class
-class AgentLoggingCallback(BaseCallback):
-    def on_module_start(
-        self,
-        call_id: str,
-        instance: Any,
-        inputs: dict[str, Any],
-    ) -> None:
-        logger.debug("Starting module", call_id=call_id, inputs=inputs)
-
-    # 2. Implement on_module_end handler to run a custom logging code.
-    def on_module_end(
-        self, call_id: str, outputs: dict[str, Any], exception: Exception | None
-    ) -> None:
-        step = "Reasoning" if self._is_reasoning_output(outputs) else "Acting"
-        logger.debug(f"== {step} Step ===")
-        for k, v in outputs.items():
-            logger.debug(f"  {k}: {v}")
-        logger.debug("\n")
-
-    def _is_reasoning_output(self, outputs: dict[str, Any]) -> bool:
-        return any(k.startswith("Thought") for k in outputs if isinstance(k, str))
 
 
 @dataclass

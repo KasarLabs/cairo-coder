@@ -14,6 +14,7 @@ The most powerful open-source [CairoLang](https://www.cairo-lang.org/) generator
 
 ## Table of Contents <!-- omit in toc -->
 
+- [Use Cairo Coder for Free](#use-cairo-coder-for-free)
 - [Credits](#credits)
 - [Overview](#overview)
 - [Features](#features)
@@ -22,6 +23,10 @@ The most powerful open-source [CairoLang](https://www.cairo-lang.org/) generator
 - [Architecture](#architecture)
 - [Development](#development)
 - [Contribution](#contribution)
+
+## Use Cairo Coder for Free
+
+Cairo Coder is free to use up to a certain limit, hosted by Kasar Labs. You can use it either as an MCP that enhances your agentic tools, or as a standalone API. [Get an API Key now](https://www.cairo-coder.com/).
 
 ## Credits
 
@@ -38,6 +43,7 @@ Cairo Coder is an intelligent code generation service that makes writing Cairo s
 - **OpenAI Compatible API**: Interface compatible with the OpenAI API format for easy integration.
 - **Multi-LLM Support**: Works with OpenAI, Anthropic, Google Gemini, and other providers.
 - **Source-Informed Generation**: Code is generated based on up-to-date Cairo documentation, ensuring correctness.
+- **MCP Support**: Supports the MCP protocol for easy integration with Agentic tools. See [cairo-coder-mcp](https://github.com/KasarLabs/cairo-coder-mcp) for more information.
 
 ## Installation
 
