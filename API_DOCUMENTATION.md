@@ -166,7 +166,12 @@ curl -X POST http://localhost:3001/v1/agents/cairo-coder/chat/completions \
 
 ### Streaming Response
 
-Set `"stream": true` to receive SSE chunks that match OpenAI's `chat.completion.chunk` format. Each SSE frame is emitted as `data: {JSON}\n\n`, ending with `data: [DONE]\n\n`.
+Set `"stream": true` to receive Server‑Sent Events (SSE). The stream contains:
+
+- OpenAI‑compatible `chat.completion.chunk` frames for assistant text deltas
+- Cairo Coder custom event frames with a top‑level `type` and `data` field
+
+Each frame is sent as `data: {JSON}\n\n`, and the stream ends with `data: [DONE]\n\n`.
 
 **Request**
 
@@ -193,23 +198,45 @@ data: {"id":"...","object":"chat.completion.chunk","created":1718123456,"model":
 data: [DONE]
 ```
 
-#### Sources Events (streaming-only)
+#### Custom Stream Events
 
-In addition to the OpenAI-compatible chunks above, Cairo Coder emits a custom SSE frame early in the stream with the documentation sources used for the answer. This enables frontends to display sources while the model is generating the response.
+In addition to OpenAI‑compatible chunks, Cairo Coder emits custom events to expose retrieval context, progress, and optional reasoning. These frames have the shape `{"type": string, "data": any}` and can appear interleaved with standard chunks.
 
-- The frame shape is: `data: {"type": "sources", "data": [{"title": string, "url": string}, ...]}`
-- Clients should filter out objects with `type == "sources"` from the OpenAI chunks stream if they only expect OpenAI-compatible frames.
+- `type: "processing"` — High‑level progress updates.
 
-Example snippet:
+  - Example frames:
+    - `data: {"type":"processing","data":"Processing query..."}`
+    - `data: {"type":"processing","data":"Retrieving relevant documents..."}`
+    - `data: {"type":"processing","data":"Generating response..."}` (or `"Formatting documentation..."` in MCP mode)
 
-```json
-data: {"type":"sources","data":[{"metadata":{"title":"Introduction to Cairo","url":"https://book.cairo-lang.org/ch01-00-getting-started.html"}}]}
-```
+- `type: "sources"` — Sources used to answer the query (emitted after retrieval).
 
-Notes:
+  - Shape: `data: {"type":"sources","data":[{"metadata":{"title": string, "url": string}}, ...]}`
+  - Example:
+    - `data: {"type":"sources","data":[{"metadata":{"title":"Introduction to Cairo","url":"https://book.cairo-lang.org/ch01-00-getting-started.html"}}]}`
+  - Notes:
+    - Typically one `sources` frame per request, shortly after retrieval completes.
+    - `url` maps to `metadata.sourceLink` when available.
 
-- Exactly one sources event is typically emitted per request, shortly after retrieval completes.
-- The `url` field maps to the ingester `sourceLink` when available; otherwise it may be a best-effort `url` present in metadata.
+- `type: "reasoning"` — Optional model reasoning stream (token‑level), when available.
+
+  - Example frames:
+    - `data: {"type":"reasoning","data":"Thinking about storage layout..."}`
+  - Notes:
+    - Emitted incrementally and may appear multiple times.
+    - Not all models or modes include reasoning; absence is expected.
+
+- `type: "final_response"` — Full, final answer text.
+  - Example:
+    - `data: {"type":"final_response","data":"<complete answer text>"}`
+  - Notes:
+    - Mirrors the final accumulated assistant content sent via OpenAI‑compatible chunks.
+
+Client guidance:
+
+- If you only want OpenAI‑compatible frames, ignore objects that include a top‑level `type` field.
+- To build richer UIs, render `processing` as status badges, `sources` as link previews, and `reasoning` in a collapsible area.
+- Streaming errors surface as OpenAI‑compatible chunks that contain `"delta": {"content": "\n\nError: ..."}` followed by a terminating chunk and `[DONE]`.
 
 ### Agent Selection
 
@@ -280,7 +307,7 @@ Setting either `mcp` or `x-mcp-mode` headers triggers **Model Context Protocol m
 
 - Non-streaming responses still use the standard `chat.completion` envelope, but `choices[0].message.content` contains curated documentation blocks instead of prose answers.
 - Streaming responses emit the same SSE wrapper; the payloads contain the formatted documentation as incremental `delta.content` strings.
-- A streaming request in MCP mode also includes the same `{"type": "sources"}` event described above.
+- Streaming also includes custom events: `processing` (e.g., "Formatting documentation...") and `sources` as described in Custom Stream Events. A `final_response` frame mirrors the full final text.
 - MCP mode does not consume generation tokens (`usage.completion_tokens` reflects only retrieval/query processing).
 
 Example non-streaming request:

@@ -428,6 +428,20 @@ class CairoCoderServer:
                             "data": event.data,
                         }
                         yield f"data: {json.dumps(sources_chunk)}\n\n"
+                    elif event.type == StreamEventType.REASONING:
+                        # Emit thinking event for clients to display
+                        reasoning_chunk = {
+                            "type": "reasoning",
+                            "data": event.data,
+                        }
+                        yield f"data: {json.dumps(reasoning_chunk)}\n\n"
+                    elif event.type == StreamEventType.PROCESSING:
+                        # Emit processing event for clients to display
+                        processing_chunk = {
+                            "type": "processing",
+                            "data": event.data,
+                        }
+                        yield f"data: {json.dumps(processing_chunk)}\n\n"
                     elif event.type == StreamEventType.RESPONSE:
                         content_buffer += event.data
 

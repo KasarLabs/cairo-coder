@@ -206,8 +206,14 @@ class RagPipeline(dspy.Module):
                         ):
                             if isinstance(chunk, dspy.streaming.StreamResponse):
                                 # Incremental token
-                                chunk_accumulator += chunk.chunk
-                                yield StreamEvent(type=StreamEventType.RESPONSE, data=chunk.chunk)
+                                # Emit thinking events for reasoning field, response events for answer field
+                                if chunk.signature_field_name == "reasoning":
+                                    yield StreamEvent(type=StreamEventType.REASONING, data=chunk.chunk)
+                                elif chunk.signature_field_name == "answer":
+                                    chunk_accumulator += chunk.chunk
+                                    yield StreamEvent(type=StreamEventType.RESPONSE, data=chunk.chunk)
+                                else:
+                                    logger.warning(f"Unknown signature field name: {chunk.signature_field_name}")
                             elif isinstance(chunk, dspy.Prediction):
                                 # Final complete answer
                                 final_text = getattr(chunk, "answer", None) or chunk_accumulator
