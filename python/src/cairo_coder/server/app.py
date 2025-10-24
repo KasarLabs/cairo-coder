@@ -26,10 +26,7 @@ from pydantic import BaseModel, Field, field_validator
 from cairo_coder.config.manager import ConfigManager
 from cairo_coder.core.agent_factory import AgentFactory, create_agent_factory
 from cairo_coder.core.config import VectorStoreConfig
-from cairo_coder.core.rag_pipeline import (
-    AgentLoggingCallback,
-    RagPipeline,
-)
+from cairo_coder.core.rag_pipeline import RagPipeline
 from cairo_coder.core.types import Message, Role, StreamEventType
 from cairo_coder.dspy.document_retriever import SourceFilteredPgVectorRM
 from cairo_coder.dspy.suggestion_program import SuggestionGeneration
@@ -188,7 +185,6 @@ class CairoCoderServer:
             lm=dspy.LM("gemini/gemini-flash-latest", max_tokens=30000, cache=False),
             adapter=ChatAdapter(),
             embedder=embedder,
-            callbacks=[AgentLoggingCallback()],
             track_usage=True,
         )
 
