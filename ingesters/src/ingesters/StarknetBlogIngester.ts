@@ -47,8 +47,8 @@ export class StarknetBlogIngester extends MarkdownIngester {
   async readSummaryFile(): Promise<string> {
     const summaryPath = getPythonPath(
       'src',
-      'scripts',
-      'summarizer',
+      'cairo_coder_tools',
+      'ingestion',
       'generated',
       'blog_summary.md',
     );

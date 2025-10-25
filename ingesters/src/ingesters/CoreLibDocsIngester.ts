@@ -46,8 +46,8 @@ export class CoreLibDocsIngester extends MarkdownIngester {
   async readCorelibSummaryFile(): Promise<string> {
     const summaryPath = getPythonPath(
       'src',
-      'scripts',
-      'summarizer',
+      'cairo_coder_tools',
+      'ingestion',
       'generated',
       'corelib_summary.md',
     );

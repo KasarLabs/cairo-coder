@@ -71,14 +71,18 @@ dev = [
 ]
 
 [project.scripts]
+# Main server
 cairo-coder = "cairo_coder.server.app:main"
 cairo-coder-api = "cairo_coder.api.server:run"
+
+# Optimization tools
 generate_starklings_dataset = "cairo_coder.optimizers.generation.generate_starklings_dataset:cli_main"
 optimize_generation = "cairo_coder.optimizers.generation.optimize_generation:main"
-starklings_evaluate = "scripts.starklings_evaluate:main"
-cairo-coder-summarize = "scripts.summarizer.cli:app"
-docs-crawler = "scripts.docs_crawler:main"
-cairo-coder-datasets = "scripts.datasets.cli:app"
+
+# Other scripts
+eval = "scripts.eval:main"
+ingest = "scripts.ingest:app"
+dataset = "scripts.dataset:app"
 
 [project.urls]
 "Homepage" = "https://github.com/cairo-coder/cairo-coder"
@@ -86,7 +90,7 @@ cairo-coder-datasets = "scripts.datasets.cli:app"
 
 [tool.uv.build-backend]
 module-root = "src"
-module-name = ["cairo_coder", "scripts"]
+module-name = ["cairo_coder", "cairo_coder_tools", "scripts"]
 
 [tool.ruff]
 line-length = 100

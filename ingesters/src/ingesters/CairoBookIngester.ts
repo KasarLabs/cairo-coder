@@ -46,8 +46,8 @@ export class CairoBookIngester extends MarkdownIngester {
   async readSummaryFile(): Promise<string> {
     const summaryPath = getPythonPath(
       'src',
-      'scripts',
-      'summarizer',
+      'cairo_coder_tools',
+      'ingestion',
       'generated',
       'cairo_book_summary.md',
     );

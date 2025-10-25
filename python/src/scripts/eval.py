@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Starklings evaluation script for testing Cairo code generation.
+"""Evaluation CLI for Cairo Coder.
 
-This script evaluates the Cairo Coder's ability to solve Starklings exercises
-by generating solutions and testing if they compile successfully.
+This module provides commands for evaluating Cairo Coder's performance
+using various test suites and datasets.
 """
 
 import asyncio
@@ -14,12 +14,11 @@ from pathlib import Path
 import click
 import structlog
 
-# Add parent directory to path for imports
-sys.path.insert(0, str(Path(__file__).parent.parent))
-
-from scripts.starklings_evaluation.evaluator import StarklingsEvaluator
-from scripts.starklings_evaluation.models import ConsolidatedReport
-from scripts.starklings_evaluation.report_generator import ReportGenerator
+from cairo_coder_tools.evals.starklings import (
+    ConsolidatedReport,
+    ReportGenerator,
+    StarklingsEvaluator,
+)
 
 # Configure structured logging
 structlog.configure(
@@ -79,7 +78,7 @@ def main(
     max_concurrent: int,
     timeout: int,
     verbose: bool,
-):
+) -> None:
     """Evaluate Cairo Coder on Starklings exercises."""
     logger.info(
         "Starting Starklings evaluation",
@@ -135,7 +134,7 @@ async def run_evaluation(
     starklings_path: Path,
     max_concurrent: int,
     timeout: int,
-):
+) -> None:
     """Run the evaluation process."""
 
     # Create output directory
