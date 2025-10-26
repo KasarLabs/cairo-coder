@@ -32,6 +32,7 @@ The ingester currently supports the following documentation sources:
 6. **Core Library Docs** (`corelib_docs`): Cairo core library documentation
 7. **Scarb Docs** (`scarb_docs`): Scarb package manager documentation
 8. **StarknetJS Guides** (`starknet_js`): StarknetJS guides and tutorials
+9. **Starknet Blog** (`starknet_blog`): Starknet blog posts and announcements
 
 ## Architecture
 
@@ -112,17 +113,16 @@ const chunks = splitter.splitMarkdownToChunks(markdown);
 
 ## Usage
 
-To use the ingester package, run the `generateEmbeddings.ts` script:
+To use the ingester package, run the embeddings generator script:
 
 ```bash
-# From the root of the package
-pnpm run generate-embeddings
-
-# From the root of the project
-turbo run generate-embeddings
+# Preferred (direct bun):
+bun run src/generateEmbeddings.ts
+# Non-interactive (yes to prompts):
+bun run src/generateEmbeddings.ts -y
 ```
 
-This will prompt you to select a documentation source to ingest. You can also select "Everything" to ingest all sources.
+This will prompt you to select a documentation source to ingest (or use `-y` for all). You can also select "Everything" to ingest all sources.
 
 ## Adding a New Documentation Source
 

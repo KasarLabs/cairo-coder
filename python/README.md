@@ -82,7 +82,6 @@ docker compose up postgres backend --build
 ```bash
  curl -X POST "http://localhost:3001/v1/chat/completions" \
   -H "Content-Type: application/json" \
-  -H "x-api-key: YOUR_API_KEY" \
   -d '{
     "messages": [
       {
