@@ -17,7 +17,7 @@ class SummarizerConfig:
     repo_url: str
     branch: Optional[str]
     subdirectory: Optional[str]
-    output_path: Path = Path("scripts/summarizer/generated/summary.md")
+    output_path: Path = Path("cairo_coder_tools/ingestion/generated/summary.md")
 
 
 class BaseSummarizer(ABC):

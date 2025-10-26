@@ -199,7 +199,8 @@ export class RecursiveMarkdownSplitter {
     const sourceRanges = this.parseSourceRanges(markdown);
 
     // Find all headers
-    const headerRegex = /^(#{1,6})\s+(.+?)(?:\s*#*)?$/gm;
+    // Allow up to 3 leading spaces before ATX headers per CommonMark
+    const headerRegex = /^\s{0,3}(#{1,6})\s+(.+?)(?:\s*#*)?$/gm;
     let match: RegExpExecArray | null;
 
     while ((match = headerRegex.exec(markdown)) !== null) {
@@ -214,10 +215,14 @@ export class RecursiveMarkdownSplitter {
     // Find all code blocks
     this.findCodeBlocks(markdown, codeBlocks);
 
-    // Filter out headers that are inside code blocks
+    // Filter out headers that are inside non-breakable code blocks
+    // Allow headers inside oversized or malformed (breakable) code blocks
     const filteredHeaders = headers.filter((header) => {
       return !codeBlocks.some(
-        (block) => header.start >= block.start && header.end <= block.end,
+        (block) =>
+          header.start >= block.start &&
+          header.end <= block.end &&
+          !block.breakable,
       );
     });
 
@@ -950,7 +955,7 @@ export class RecursiveMarkdownSplitter {
         }
       }
 
-      console.debug(`Chunk Title: ${title}, Source link: ${sourceLink}`);
+      logger.debug(`Chunk Title: ${title}, Source link: ${sourceLink}`);
 
       chunks.push({
         content: rawChunk.content,

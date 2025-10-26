@@ -58,14 +58,25 @@ Lists every agent registered in Cairo Coder.
       "openzeppelin_docs",
       "corelib_docs",
       "scarb_docs",
-      "starknet_js"
+      "starknet_js",
+      "starknet_blog"
     ]
   },
   {
-    "id": "scarb-assistant",
-    "name": "Scarb Assistant",
-    "description": "Specialized assistant for Scarb build tool",
-    "sources": ["scarb_docs"]
+    "id": "starknet-agent",
+    "name": "Starknet Agent",
+    "description": "Assistant for the Starknet ecosystem (contracts, tools, docs).",
+    "sources": [
+      "cairo_book",
+      "starknet_docs",
+      "starknet_foundry",
+      "cairo_by_example",
+      "openzeppelin_docs",
+      "corelib_docs",
+      "scarb_docs",
+      "starknet_js",
+      "starknet_blog"
+    ]
   }
 ]
 ```
@@ -82,6 +93,7 @@ Lists every agent registered in Cairo Coder.
 | `corelib_docs`      | Cairo core library docs                    |
 | `scarb_docs`        | Scarb package manager documentation        |
 | `starknet_js`       | StarknetJS guides and SDK documentation    |
+| `starknet_blog`     | Starknet blog posts and announcements      |
 
 ## Chat Completions
 

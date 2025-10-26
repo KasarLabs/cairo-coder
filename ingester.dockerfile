@@ -16,7 +16,7 @@ COPY ingesters ./ingesters
 
 
 # Copy ingester files generated from python
-COPY python/src/scripts/summarizer/generated ./python/src/scripts/summarizer/generated
+COPY python/src/cairo_coder_tools/ingestion/generated ./python/src/cairo_coder_tools/ingestion/generated
 
 # Install dependencies
 WORKDIR /app/ingesters

@@ -6,23 +6,24 @@ This file documents conventions and checklists for making changes that affect th
 
 When adding a new documentation source (e.g., a new docs site or SDK) make sure to complete all of the following steps:
 
-1. TypeScript ingestion (packages/ingester)
+1. TypeScript ingestion (ingesters)
 
-   - Create an ingester class extending `BaseIngester` or `MarkdownIngester` under `packages/ingester/src/ingesters/`.
-   - Register it in `packages/ingester/src/IngesterFactory.ts`.
+   - Create an ingester class extending `BaseIngester` or `MarkdownIngester` under `ingesters/src/ingesters/`.
+   - Register it in `ingesters/src/IngesterFactory.ts`.
    - Ensure chunks carry correct metadata: `uniqueId`, `contentHash`, `sourceLink`, and `source`.
-   - Run `pnpm generate-embeddings` (or `generate-embeddings:yes`) to populate/update the vector store.
+   - Run the embeddings generator to populate/update the vector store:
+     - Prefer: `bun run src/generateEmbeddings.ts` (or `bun run src/generateEmbeddings.ts -y`)
+     - If you have scripts wired: `bun run generate-embeddings` (or `generate-embeddings:yes`)
 
-2. Agents (TS)
-
-   - Add the new enum value to `packages/agents/src/types/index.ts` under `DocumentSource`.
-   - Verify Postgres vector store accepts the new `source` and filters on it (`packages/agents/src/db/postgresVectorStore.ts`).
-
-3. Retrieval Pipeline (Python)
+2. Agents (Python)
 
    - Add the new enum value to `python/src/cairo_coder/core/types.py` under `DocumentSource`.
    - Ensure filtering by `metadata->>'source'` works with the new value in `python/src/cairo_coder/dspy/document_retriever.py`.
-   - Update the query processor resource descriptions in `python/src/cairo_coder/dspy/query_processor.py` (`RESOURCE_DESCRIPTIONS`).
+   - Update the query processor resource descriptions in `python/src/cairo_coder/dspy/query_processor.py` (`RESOURCE_DESCRIPTIONS`). The module validates that every `DocumentSource` has a description.
+
+3. Retrieval Pipeline (Python)
+
+   - No extra steps beyond the above; the retriever already supports filtering by `metadata->>'source'`.
 
 4. Optimized Program Files (Python) — required
 
@@ -34,7 +35,7 @@ When adding a new documentation source (e.g., a new docs site or SDK) make sure 
 
    - Ensure the new source appears where appropriate (e.g., `/v1/agents` output and documentation tables):
      - `API_DOCUMENTATION.md`
-     - `packages/ingester/README.md`
+     - `ingesters/README.md`
      - Any user-facing lists of supported sources
 
 6. Quick Sanity Check

@@ -1,22 +1,24 @@
-# Quick CLI script to analyze a dataset of question-answer pairs.
+"""Dataset analysis module for Cairo Coder.
+
+This module provides tools for analyzing question-answer datasets using LLMs.
+"""
 
 import json
+from pathlib import Path
 
 import dspy
 from dspy.adapters.baml_adapter import BAMLAdapter
 
 
 class DatasetAnalyzer(dspy.Signature):
-    """
-    You are provided a dataset of question-answer pairs.
-    This dataset is related to the Starknet blockchain and the Cairo programming language, and contains
-    mostly technical questions about code, infrastructure, and the overall Starknet ecosystem.
-    Your task is to analyze the dataset and provide valuable insights.
+    """Analyze a dataset of question-answer pairs.
+
+    This signature is designed for analyzing datasets related to the Starknet
+    blockchain and Cairo programming language, containing mostly technical
+    questions about code, infrastructure, and the Starknet ecosystem.
     """
 
-    dataset: list[dict] = dspy.InputField(
-        desc="The dataset of question-answer pairs."
-    )
+    dataset: list[dict] = dspy.InputField(desc="The dataset of question-answer pairs.")
     languages: list[str] = dspy.OutputField(
         desc="The list of all languages users have asked queries with."
     )
@@ -30,7 +32,7 @@ class DatasetAnalyzer(dspy.Signature):
         - "When im importing stuff from a file in my smart contract, what is the difference between super:: and crate:: ?" -> "Cairo language questions"
         - "how to use the `assert!` macro in my smart contract" -> "Cairo language questions"
         - "I am writing a function in my smart contract. I need to be sure the caller has enough balance or it reverts. how do I do this?" -> "Starknet smart contracts questions"
-        - "what does this error mean :\n```\n Account validation failed: \"StarknetError { code: KnownErrorCode(ValidateFailure), message: 'The 'validate' entry point panicked with: nError in contract (contract address: 0x0762c126b2655bc371c1075e2914edd42ba40fc2c485b5e8772f05c7e09fec26, class hash: 0x036078334509b514626504edc9fb252328d1a240e4e948bef8d0c08dff45927f, selector: 0x0289da278a8dc833409cabfdad1581e8e7d40e42dcaed693fa4008dcdb4963b3): n0x617267656e742f696e76616c69642d7369676e61747572652d6c656e677468 ('argent invalid signature length'). n' }```" -> "Debugging errors questions"
+        - "what does this error mean :\\n```\\n Account validation failed: \\"StarknetError { code: KnownErrorCode(ValidateFailure), message: 'The 'validate' entry point panicked with: nError in contract (contract address: 0x0762c126b2655bc371c1075e2914edd42ba40fc2c485b5e8772f05c7e09fec26, class hash: 0x036078334509b514626504edc9fb252328d1a240e4e948bef8d0c08dff45927f, selector: 0x0289da278a8dc833409cabfdad1581e8e7d40e42dcaed693fa4008dcdb4963b3): n0x617267656e742f696e76616c69642d7369676e61747572652d6c656e677468 ('argent invalid signature length'). n' }\\"```" -> "Debugging errors questions"
         - "How to declare and deploy a contract with constructor to sepolia or mainnet using starkli?" -> "Starknet network interactions questions"
         """
     )
@@ -44,23 +46,50 @@ class DatasetAnalyzer(dspy.Signature):
         """
     )
 
-def main():
-    dspy.configure(lm=dspy.LM("openrouter/x-ai/grok-4-fast:free", max_tokens=30000, cache=False), adapter=BAMLAdapter())
-    with open("qa_pairs.json") as f:
+class AnalysisResponse:
+    languages: list[str]
+    topics: list[tuple[str, int]]
+    analysis: str
+
+def analyze_dataset(
+    dataset_path: Path,
+    output_path: Path,
+    lm_model: str = "openrouter/x-ai/grok-4-fast:free",
+    max_tokens: int = 30000,
+) -> AnalysisResponse:
+    """Analyze a dataset of question-answer pairs.
+
+    Args:
+        dataset_path: Path to the input dataset JSON file
+        output_path: Path to save the analysis results
+        lm_model: Language model to use for analysis
+        max_tokens: Maximum tokens for the LLM response
+
+    Returns:
+        Dictionary containing the analysis results
+    """
+    # Configure DSPy
+    dspy.configure(lm=dspy.LM(lm_model, max_tokens=max_tokens, cache=False), adapter=BAMLAdapter())
+
+    # Load dataset
+    with open(dataset_path) as f:
         dataset = json.load(f)
+
+    # Run analysis
     analyzer = dspy.ChainOfThought(DatasetAnalyzer)
     response = analyzer(dataset=dataset)
-    response_dict = {
-        "languages": response.languages,
-        "topics": response.topics,
-        "analysis": response.analysis
-    }
 
-    with open("analysis.json", "w") as f:
-        json.dump(response_dict, f, indent=4)
+    # Create response dictionary
+    response = AnalysisResponse(
+        languages=response.languages,
+        topics=response.topics,
+        analysis=response.analysis,
+    )
 
+    # Save results
+    output_path = Path(output_path)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    with open(output_path, "w") as f:
+        json.dump(response.model_dump(), f, indent=4)
 
-
-
-if __name__ == "__main__":
-    main()
+    return response

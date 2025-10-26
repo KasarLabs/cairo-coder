@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """Documentation Snapshot Crawler - Extract clean documentation content from websites."""
 
-import argparse
 import asyncio
 import logging
+import os
 import re
 import xml.etree.ElementTree as ET
 from collections import deque
@@ -17,11 +17,13 @@ from bs4 import BeautifulSoup
 from markdownify import markdownify
 from tqdm.asyncio import tqdm
 
+from cairo_coder_tools.ingestion.web_targets import IWebsiteTarget
+
 # Configuration
-UA = "NotebookLM-prep-crawler/1.1 (+contact: you@example.com)"
+UA = "starknet-prep-crawler"
 OUT_FILE = Path("doc_dump")
-CONCURRENCY = 4  # Reduced from 6 to avoid rate limits
-MAX_RETRIES = 5
+CONCURRENCY = 4
+MAX_RETRIES = 6
 TIMEOUT = 30
 MAX_CRAWL_PAGES = 100
 
@@ -42,13 +44,26 @@ DOC_SELECTORS = [
     '.container-fluid', '.container', '.wrapper'
 ]
 
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+# Respect LOG_LEVEL env var (e.g., DEBUG, INFO, WARNING)
+_env_level = getattr(logging, str(os.environ.get("LOG_LEVEL", "INFO")).upper(), logging.INFO)
+logging.basicConfig(level=_env_level, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
 
 class DocsCrawler:
-    def __init__(self, base_url: str):
-        self.base_url = base_url.rstrip('/') + '/'
+    """Web crawler for documentation sites with filtering capabilities.
+
+    Uses an IWebsiteTarget object to define crawling behavior.
+    """
+
+    def __init__(self, target: "IWebsiteTarget"):
+        """Initialize the crawler.
+
+        Args:
+            target: IWebsiteTarget object defining crawling configuration and behavior
+        """
+        self.target = target
+        self.base_url = target.base_url.rstrip('/') + '/'
         self.domain = urlparse(self.base_url).netloc
         self.discovered_urls: list[str] = []
         self.fetched_pages: dict[str, dict] = {}
@@ -68,7 +83,7 @@ class DocsCrawler:
             await self.session.close()
 
     def is_valid_url(self, url: str) -> bool:
-        """Check if URL should be included."""
+        """Check if URL should be included during discovery (basic validation only)."""
         parsed = urlparse(url)
         base_parsed = urlparse(self.base_url)
 
@@ -86,9 +101,38 @@ class DocsCrawler:
         if parsed.query:
             return False
 
-        # Check exclude patterns
+        # Check default exclude patterns (common non-content paths)
         path = parsed.path
         return not any(re.search(pattern, path, re.IGNORECASE) for pattern in EXCLUDE_PATTERNS)
+
+    def filter_urls(self, urls: list[str]) -> list[str]:
+        """Filter URLs based on include/exclude patterns from the target.
+
+        This is applied AFTER discovery and BEFORE fetching.
+
+        Args:
+            urls: List of discovered URLs
+
+        Returns:
+            Filtered list of URLs
+        """
+        filtered_urls = []
+        include_patterns = self.target.get_include_url_patterns()
+        exclude_patterns = self.target.get_exclude_url_patterns()
+
+        for url in urls:
+            parsed = urlparse(url)
+            path = parsed.path
+
+            if include_patterns and not any(re.search(pattern, path, re.IGNORECASE) for pattern in include_patterns):
+                continue
+
+            if exclude_patterns and any(re.search(pattern, path, re.IGNORECASE) for pattern in exclude_patterns):
+                continue
+
+            filtered_urls.append(url)
+
+        return filtered_urls
 
     def normalize_url(self, url: str) -> str:
         """Remove fragment and normalize URL."""
@@ -223,6 +267,7 @@ class DocsCrawler:
     async def fetch_page(self, url: str) -> dict:
         """Fetch a single page with retries."""
         async with self.semaphore:
+            last_error = "Unknown error"
             for attempt in range(MAX_RETRIES):
                 try:
                     async with self.session.get(url) as response:
@@ -236,6 +281,18 @@ class DocsCrawler:
                                 'content': html,
                                 'error': None
                             }
+
+                        # Handle rate limiting (429) and server errors (5xx) with retry
+                        if response.status == 429 or response.status >= 500:
+                            last_error = f"Status {response.status}"
+                            if attempt < MAX_RETRIES - 1:
+                                wait_time = 2 ** attempt
+                                logger.debug(f"Got {response.status} for {url}, retrying in {wait_time}s (attempt {attempt + 1}/{MAX_RETRIES})")
+                                await asyncio.sleep(wait_time)
+                                continue
+                            logger.debug(f"Failed to fetch {url} after {MAX_RETRIES} attempts: {last_error}")
+
+                        # For other non-200 statuses, return immediately (no retry)
                         return {
                             'url': url,
                             'status': response.status,
@@ -244,18 +301,26 @@ class DocsCrawler:
                         }
 
                 except asyncio.TimeoutError:
-                    error = "Timeout"
+                    last_error = "Timeout"
+                    if attempt < MAX_RETRIES - 1:
+                        wait_time = 2 ** attempt
+                        logger.debug(f"Timeout for {url}, retrying in {wait_time}s (attempt {attempt + 1}/{MAX_RETRIES})")
+                        await asyncio.sleep(wait_time)
+                        continue
                 except Exception as e:
-                    error = str(e)
+                    last_error = str(e)
+                    if attempt < MAX_RETRIES - 1:
+                        wait_time = 2 ** attempt
+                        logger.debug(f"Error for {url}: {e}, retrying in {wait_time}s (attempt {attempt + 1}/{MAX_RETRIES})")
+                        await asyncio.sleep(wait_time)
+                        continue
 
-                if attempt < MAX_RETRIES - 1:
-                    await asyncio.sleep(2 ** attempt)  # Exponential backoff
-
+            # All retries exhausted
             return {
                 'url': url,
                 'status': None,
                 'content': None,
-                'error': error
+                'error': f"Failed after {MAX_RETRIES} attempts: {last_error}"
             }
 
     def extract_content(self, html: str, url: str) -> tuple[str, str]:
@@ -347,11 +412,20 @@ class DocsCrawler:
         ]
 
         # Process each page
+        filtered_out = 0
         for url in self.discovered_urls:
             page_data = self.fetched_pages.get(url, {})
 
             if page_data.get('content'):
                 title, markdown = self.extract_content(page_data['content'], url)
+
+                # Apply content filter from target
+                if not self.target.filter_content(markdown):
+                    filtered_out += 1
+                    continue
+
+                # Apply content processor from target (e.g., remove unwanted sections)
+                markdown = self.target.process_content(markdown)
 
                 if not markdown or len(markdown.strip()) < 50:
                     markdown = "*No content extracted.*"
@@ -373,13 +447,21 @@ class DocsCrawler:
                 error = page_data.get('error', 'Unknown error')
                 logger.info(f"Skipping {url}: {error}")
 
+        logger.info(f"Filtered out {filtered_out} pages based on content filter")
         return '\n'.join(lines)
 
-    async def run(self) -> None:
-        """Main execution flow."""
+    async def run(self, output_path: Optional[Path] = None) -> Path:
+        """Main execution flow.
+
+        Args:
+            output_path: Optional output path for the markdown file
+
+        Returns:
+            Path to the generated markdown file
+        """
         logger.info(f"Starting documentation crawler for: {self.base_url}")
 
-        # Discovery phase
+        # Phase 1: Discovery - find all URLs
         self.discovered_urls = await self.discover_urls_from_sitemap()
 
         if not self.discovered_urls:
@@ -388,45 +470,39 @@ class DocsCrawler:
 
         if not self.discovered_urls:
             logger.error("No URLs discovered!")
-            return
+            raise RuntimeError("No URLs discovered")
 
-        logger.info(f"Processing {len(self.discovered_urls)} URLs in order:")
+        logger.info(f"Discovered {len(self.discovered_urls)} URLs")
+
+        # Phase 2: Filtering - apply include/exclude patterns
+        original_count = len(self.discovered_urls)
+        self.discovered_urls = self.filter_urls(self.discovered_urls)
+        filtered_count = original_count - len(self.discovered_urls)
+
+        if filtered_count > 0:
+            logger.info(f"Filtered out {filtered_count} URLs, {len(self.discovered_urls)} remaining")
+
+        if not self.discovered_urls:
+            logger.error("No URLs remaining after filtering!")
+            raise RuntimeError("No URLs remaining after filtering")
+
+        logger.info(f"Processing {len(self.discovered_urls)} URLs:")
         for i, url in enumerate(self.discovered_urls[:10], 1):
             logger.info(f"  {i}. {url}")
         if len(self.discovered_urls) > 10:
             logger.info(f"  ... and {len(self.discovered_urls) - 10} more")
 
-        # Fetch phase
+        # Phase 3: Fetch - download the filtered URLs
         await self.fetch_all_pages()
 
         # Compile and save
         markdown_content = self.compile_markdown()
 
         # Save markdown
-        markdown_path = OUT_FILE.with_suffix('.md')
-        logger.info(f"Saving markdown to: {markdown_path}")
-        markdown_path.write_text(markdown_content, encoding='utf-8')
+        output_path = OUT_FILE.with_suffix('.md') if output_path is None else Path(output_path)
+
+        logger.info(f"Saving markdown to: {output_path}")
+        output_path.write_text(markdown_content, encoding='utf-8')
         logger.info(f"Markdown file size: {len(markdown_content):,} bytes")
 
-
-def main():
-    parser = argparse.ArgumentParser(
-        description="Documentation Snapshot Crawler - Extract clean documentation content from websites",
-        epilog="""
-Examples:
-  uv run docs-crawler https://docs.example.com
-        """,
-        formatter_class=argparse.RawDescriptionHelpFormatter
-    )
-    parser.add_argument('base_url', help='Base URL of the documentation site (e.g., https://docs.example.com)')
-
-    args = parser.parse_args()
-
-    async def run_crawler(base_url: str):
-        async with DocsCrawler(base_url) as crawler:
-            await crawler.run()
-    return asyncio.run(run_crawler(args.base_url))
-
-
-if __name__ == '__main__':
-    main()
+        return output_path

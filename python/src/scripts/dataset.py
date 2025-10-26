@@ -1,4 +1,9 @@
-from __future__ import annotations
+#!/usr/bin/env python3
+"""Dataset CLI for Cairo Coder.
+
+This module provides commands for extracting, generating, and analyzing datasets
+for use with Cairo Coder.
+"""
 
 import asyncio
 import json
@@ -8,13 +13,16 @@ import click
 import typer
 from typer.core import TyperGroup
 
-from cairo_coder.datasets.extractors import (
+from cairo_coder_tools.datasets.analysis import analyze_dataset
+from cairo_coder_tools.datasets.extractors import (
     extract_cairocoder_pairs,
     extract_starknet_agent_pairs,
 )
 
 
 class HelpOnInvalidCommand(TyperGroup):
+    """Custom typer group that shows help on invalid commands."""
+
     def get_command(self, ctx, cmd_name):  # type: ignore[override]
         cmd = super().get_command(ctx, cmd_name)
         if cmd is None:
@@ -148,7 +156,7 @@ def extract_cairo_coder(
         help="Write only queries as a JSON array instead of [{query, answer}] objects.",
     ),
 ) -> None:
-    """Extract QA pairs from a Cairo-Coder LangSmith export with `outputs.output`.
+    """Extract QA pairs from a Cairo-Coder LangSmith export.
 
     If neither filtering flag is used, extracts all matching records.
     """
@@ -226,6 +234,63 @@ def generate_starklings(
     output.parent.mkdir(parents=True, exist_ok=True)
     save_dataset(examples, str(output))
     typer.echo(f"Generated {len(examples)} examples to {output}")
+
+
+@app.command("analyze")
+def analyze(
+    input: Path = typer.Option(
+        Path("qa_pairs.json"),
+        "--input",
+        "-i",
+        help="Path to the input dataset JSON file",
+    ),
+    output: Path = typer.Option(
+        Path("analysis.json"),
+        "--output",
+        "-o",
+        help="Path to save the analysis results",
+    ),
+    model: str = typer.Option(
+        "openrouter/x-ai/grok-4-fast:free",
+        "--model",
+        "-m",
+        help="Language model to use for analysis",
+    ),
+    max_tokens: int = typer.Option(
+        30000,
+        "--max-tokens",
+        help="Maximum tokens for the LLM response",
+    ),
+) -> None:
+    """Analyze a dataset of question-answer pairs using an LLM.
+
+    This command uses an LLM to analyze the dataset and provide insights about:
+    - Languages used in queries
+    - Common topics and question categories
+    - Overall quality and patterns in the dataset
+    """
+    typer.echo(f"Analyzing dataset from {input}...")
+    typer.echo(f"Using model: {model}")
+
+    try:
+        result = analyze_dataset(
+            dataset_path=input,
+            output_path=output,
+            lm_model=model,
+            max_tokens=max_tokens,
+        )
+
+        typer.echo(typer.style("✓ Analysis complete!", fg=typer.colors.GREEN))
+        typer.echo(f"Results saved to: {output}")
+        typer.echo(f"\nFound {len(result.get('languages', []))} languages")
+        typer.echo(f"Identified {len(result.get('topics', []))} topic categories")
+
+    except Exception as e:
+        import traceback
+
+        traceback.print_exc()
+        typer.echo(typer.style(f"✗ Error: {str(e)}", fg=typer.colors.RED), err=True)
+        raise typer.Exit(code=1) from e
 
 
 if __name__ == "__main__":

@@ -47,7 +47,6 @@ packages/**/dist
 !.trunk/trunk.yaml
 !.trunk/.gitignore
 
-starklings/
 debug/
 
 fixtures/runner_crate/target

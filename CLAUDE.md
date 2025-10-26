@@ -118,8 +118,8 @@ ingesters/
 
 ```text
 Python Summarizer → Generated Markdown → Ingester → PostgreSQL → RAG Pipeline → Code Generation
-     (python/)            (python/src/scripts/         (ingesters/)     (pgvector)    (python/)
-                          summarizer/generated/)
+     (python/)            (python/src/cairo_coder_tools/ (ingesters/)     (pgvector)    (python/)
+                          ingestion/generated/)
 ```
 
 ## Configuration
