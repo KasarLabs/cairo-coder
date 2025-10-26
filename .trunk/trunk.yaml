@@ -16,6 +16,10 @@ runtimes:
     - python@3.10.8
 # This is the section where you manage your linters. (https://docs.trunk.io/check/configuration)
 lint:
+  ignore:
+    - linters: [ALL]
+      paths:
+        - python/src/cairo_coder_tools/ingestion/generated
   enabled:
     - ruff@0.12.3
     - actionlint@1.7.7

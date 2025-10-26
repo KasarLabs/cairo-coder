@@ -13,11 +13,11 @@ import click
 import typer
 from typer.core import TyperGroup
 
+from cairo_coder_tools.datasets.analysis import analyze_dataset
 from cairo_coder_tools.datasets.extractors import (
     extract_cairocoder_pairs,
     extract_starknet_agent_pairs,
 )
-from cairo_coder_tools.datasets.analysis import analyze_dataset
 
 
 class HelpOnInvalidCommand(TyperGroup):

@@ -1,4 +1,4 @@
-# www.starknet.io — Snapshot (2025-10-25)
+# www.starknet.io — Snapshot (2025-10-26)
 
 
 ---
@@ -613,6 +613,25 @@ Mar 23, 2025
 In this conversation, Xverse CEO Ken Liao, team member Yan, and Francis from StarkWare discuss the rapid evolution of the Bitcoin ecosystem. They explore how Xverse became the first wallet to support Ordinals, the rise of Runes, and what the future holds for Bitcoin Layer 2s. The discussion also covers the technical foundations of Ordinal theory, the challenges and promise of Runes, and how Starknet’s integration with Xverse opens the door to smart contracts, DeFi, and scalable apps on Bitcoin. This is a deep dive into how Bitcoin is becoming more programmable while staying true to its core values.
 
 Learn more about Starknet's Bitcoin vision →
+
+---
+Sources:
+  - https://www.starknet.io/blog/starknet-on-bitcoin-and-ethereum/
+---
+
+## Starknet on Bitcoin and Ethereum | Starknet
+
+Home  /  Blog
+
+Share this post:
+
+Mar 20, 2025
+
+The recent STARK Spaces featured Abdelhamid Bakhta (StarkWare Head of Ecosystem), Avihu Levy (StarkWare CPO),  Eli Ben-Sasson (StarkWare CEO), Vitalik Buterin (Ethereum co-founder), Dan Robinson (Asymmetric general partner), and Jeremy Rubin (Bitcoin developer), discussing Starknet’s plan to bridge Bitcoin and Ethereum. Starknet aims to become the first Layer 2 solution to settle on both networks, leveraging its high throughput and zk-STARK technology to enhance scalability while maintaining decentralization and self-custody.
+
+The team emphasized that Bitcoin and Ethereum are the most credible decentralized networks, and integrating Starknet with both will unlock new use cases, like decentralized finance (DeFi) and privacy-enhancing payments, while preserving their core values. This move signals a new era of blockchain interoperability, making Starknet a key player in scaling both ecosystems without compromising on security or decentralization.
+
+Learn more about Starknet scaling both Bitcoin and Ethereum →
 
 ---
 Sources:
@@ -1819,7 +1838,7 @@ npm init -y # or yarn init -y
 yarn add starknet dotenv @avnu/gasless-sdk axios
 ```
 
-###
+### 
 
 ### **Step 3: Setting Up a .env File for API Keys**
 
@@ -1970,7 +1989,7 @@ In this article, we’ll explore the need for on-chain games, their advantages, 
 
 Games have been integral to human history, from ancient board games like Chess and Go to modern digital experiences like World of Warcraft and Fortnite. However, the underlying structure of games has remained largely centralized — players interact with a game world owned and controlled by a central entity (developers, publishers, or platforms).
 
-###
+### 
 
 ### **The Transition to On-Chain Games**
 
@@ -1981,7 +2000,7 @@ On-chain games introduce a revolutionary concept: games where both state and lo
 * The game state is public, auditable, and tamper-proof.
 * Games can be composable, allowing external developers to build on top of existing game worlds.
 
-##
+## 
 
 ## **Why Do We Need On-Chain Games?**
 
@@ -2161,7 +2180,7 @@ katana --disable-fee --allowed-origins "*"
 In another terminal window, navigate again to the contracts directory and build the contracts using Sozo, and apply the migrations to deploy the contracts:
 
 ```
-sozo build
+sozo build 
 sozo migrate apply
 ```
 
@@ -2356,7 +2375,7 @@ With Cartridge Controller, Web3 games can offer a frictionless experience, keepi
 
 ---
 
-##
+## 
 
 ## **How to Integrate Cartridge Controller in Your Web3 Game**
 
@@ -2493,7 +2512,7 @@ How Do Session Keys Work?
 2. **dApp Executes Transactions**: The dApp uses this session key to sign transactions on behalf of the user within the given constraints.
 3. **Session Expires**: After the session key expires (or reaches its limits), it can no longer sign transactions, ensuring security.
 
-###
+### 
 
 ### Why are session keys useful?
 
@@ -2969,7 +2988,7 @@ Builders were tasked with leveraging both Telegram and Starknet infrastructure t
 
 ### Special Challenges
 
-The hackathon also featured sponsored challenges. Check out the winners for the other sponsored bounties here.
+The hackathon also featured sponsored challenges. Check out the winners for the other sponsored bounties here.  
  Onward to the ETHDenver Hacker House!
 
 The Starknet Winter Hackathon showcased the developer community’s creativity and skill. And with over 100 projects built, this is clearly just the beginning.
@@ -3001,7 +3020,7 @@ Here’s everything you need to know (so far).
 
 ## Developer’s Journey: Building with Starknet
 
-Starknet has always been committed to the founder’s product development journey, from ideation to mainnet launch and beyond. At our ETHDenver booth you can learn about all of the Starknet technology and opportunities that enable you to:
+Starknet has always been committed to the founder’s product development journey, from ideation to mainnet launch and beyond. At our ETHDenver booth you can learn about all of the Starknet technology and opportunities that enable you to:  
  Build Apps — From groundbreaking dApp or an experimental smart contract, Starknet gives founders the tools and infrastructure to move quickly from idea to IRL.
 
 Build Businesses — Take your project from an idea to a MVP or Mainnet product with the support of our ecosystem.
@@ -3224,7 +3243,7 @@ Whether you’re preparing to launch an MVP, refining your product for real user
 Past web3 and/or Starknet contributions and projects will be key in making your application stand out. A compelling Hacker House application portfolio will include:
 
 * **Proof of Work** — Showcase your completed projects on platforms like GitHub or personal websites. Highlight any involvement with blockchain, zero-knowledge proofs, or Starknet-specific technologies.
-* **Project Progress** — Share details of your current project, emphasizing its development stage. Include information about your MVP, key milestones achieved, and how your work is progressing toward Mainnet or product launch.
+* **Project Progress** — Share details of your current project, emphasizing its development stage. Include information about your MVP, key milestones achieved, and how your work is progressing toward Mainnet or product launch.  
    Prove your Cairo experience
 
 Starknet’s native programming language, Cairo, is central to the Starknet ecosystem. Your application should highlight your team’s familiarity with it.
@@ -4187,7 +4206,7 @@ That critical transformation is finally underway. In this episode, host Nathan J
 
 This conversation isn’t just about incremental improvements; it’s about a fundamental reimagining of how we interact with our digital assets, making crypto not just powerful, but practical and accessible for everyone.
 
-###
+### 
 
 ## **From Fintech Darling to Crypto Pioneer**
 
@@ -4201,7 +4220,7 @@ Revolut’s initial masterstroke was its travel card, which eliminated predatory
 
 Interestingly, it was Revolut’s entry into crypto during the 2017 bull run that provided a key lesson. “The numbers were just insane,” Chad recalled. Users flocked to the platform because it offered a trusted, one-tap way to buy Bitcoin and Ethereum, running for the hills when they looked at the complex interfaces of traditional crypto exchanges. “Even though Revolut’s fees were a little bit higher than traditional exchanges, people were happy to pay that 0.5% more for that ease of use, but also for the trust.” This proved a critical point: users will pay for simplicity and a name they trust. It’s this exact philosophy that Chad now brings to his work at Ready.
 
-###
+### 
 
 ## **The Bedrock Principle: Why Self-Custody is Everything**
 
@@ -4392,7 +4411,7 @@ A deep dive into how Starknet achieves scale, superior UX, and long-term vision
 
 Written by: Lyskey
 
-Aug 5, 2025 ·
+Aug 5, 2025 · 
   16 min read
 
 ### **TL;DR**
@@ -4416,13 +4435,13 @@ Starknet’s PMF in high-level (I’ll break it down to pieces in the next chapt
 * **Built Different, Therefore Built to Last:** Starknet’s power stems from a courageous, long-term decision to build its technology stack from scratch. Instead of adopting the familiar but limited EVM, Starknet is built on Cairo development language, a custom VM designed specifically for ZK-proofs and provable computation. This difficult path has laid the groundwork for a future of compounding technological superiority that is now becoming evident.
 * **A Haven for Serious Builders:** In a digital landscape littered with the ghosts of short-term, extractive projects, Starknet stands out as an ecosystem built for resilience and long-term innovation. It attracts and retains builders who are weary of hype cycles and are committed to creating sustainable, meaningful applications on a platform with a multi-cycle vision and a track record of shaping the future of the industry.
 
-###
+### 
 
 ## **Part I: Defining the Market — Who Are We Building For?**
 
 Before any product can find its fit, it must have a crystal-clear understanding of its market. For a public L2 like Starknet, the market is twofold: the developers who build on the layer, and the end-users they attract.
 
-####
+#### 
 
 ### **The Primary Customer: The Developer**
 
@@ -4442,7 +4461,7 @@ This represents the largest potential market by far: the 25-30 million developer
 
 While Starknet’s initial focus was on the crypto-native builders, its long-term strategy is increasingly geared towards empowering the UX-first and Web2 developers who will onboard the next billion users.
 
-####
+#### 
 
 ### **The Secondary Customer: The End User**
 
@@ -4452,7 +4471,7 @@ Developers build, and users come for what they’ve built. The applications flou
 * **DeFi Users:** This group ranges from sophisticated traders to passive yield seekers. They are drawn to Starknet by the promise of more efficient trading experiences (like those on AMMs such as Ekubo), better yield opportunities through innovative protocols, and advanced use cases that require computational power beyond the EVM’s reach.
 * **Consumer App Users:** This is the mainstream audience that has been historically unreachable for crypto. They are onboarded through applications with a true Web2-like feel, where the blockchain is entirely invisible. They are often mobile-first, demand low-friction experiences, and have no patience for seed phrases, transaction popups, or network switching. The current generation of blockchain infrastructure serves them poorly, which is precisely the gap Starknet was built to fill.
 
-###
+### 
 
 ### **The Underserved Needs: What the Market is Missing**
 
@@ -4500,9 +4519,9 @@ So, how does Starknet respond to these profound, unmet needs? Let’s move to th
 
 ## **Part II: The Product — Starknet’s Answer to the Market**
 
-####
+#### 
 
-###
+### 
 
 ### **The Value Proposition: What Starknet Promises**
 
@@ -4553,7 +4572,7 @@ Security without compromise is embedded in Starknet’s DNA. It is designed not 
 
 * **A Clear Path to Full Decentralization:** Starknet is recognized by the independent auditor L2Beat as a Stage 1 Rollup, with active work already underway to reach Stage 2, at which point the network will be fully trustless with complete escape guarantees for users. In addition, the ecosystem is committed to open-sourcing all its core components, including the upcoming S-two prover and Apollo sequencer, and already boasts the most decentralized stack of any L2 by a wide margin.
 
-* **Decentralizing Without Losing Performance:** Starknet is in the midst of a transition to a decentralized network secured by Proof-of-Stake consensus. This will be powered by STRK staking and, in a novel addition, BTC staking, creating a dual-token security mechanism. Normally, decentralizing a sequencer network introduces latency and slows a network down, as coordination between multiple validators is inherently slower than a single operator. However, Starknet will bypass this trade-off thanks to
+* **Decentralizing Without Losing Performance:** Starknet is in the midst of a transition to a decentralized network secured by Proof-of-Stake consensus. This will be powered by STRK staking and, in a novel addition, BTC staking, creating a dual-token security mechanism. Normally, decentralizing a sequencer network introduces latency and slows a network down, as coordination between multiple validators is inherently slower than a single operator. However, Starknet will bypass this trade-off thanks to  
   **Malachite**, a high-performance consensus engine built by Informal Systems. Tests show Malachite can handle ~50k TPS with a latency of just ~780ms across 100 validators. This means that when Starknet transitions to a decentralized sequencer set, it will become more robust and decentralized while *still* maintaining its high performance. Starknet is the real answer to the blockchain trilemma.
 
 3. **A Deep Dive into Blockchain Complexity Abstraction**
@@ -5220,7 +5239,7 @@ Next big goals:
 * Roll out Staking Phases 2 and 3
 * Final Phase 4 lands in early 2026, fully decentralizing the sequencer and prover
 
-##
+## 
 
 ## **Starknet Ecosystem Updates**
 
@@ -5237,7 +5256,7 @@ This Perp DEX is no joke—it already delivers a Hyperliquid-style experience:
 
 And soon, all of this will run directly on Starknet.
 
-###
+### 
 
 ### **Social Login & EVM Wallets**
 
@@ -5263,7 +5282,7 @@ Here’s how it works:
 
 All powered by CASH—the only native stablecoin on Starknet.
 
-###
+### 
 
 ### **Spend Starknet Assets IRL… for Free**
 
@@ -5276,7 +5295,7 @@ Argent just launched its new Lite Card:
 
 Also, Cavos is working on a virtual card to let you do the same.
 
-###
+### 
 
 ### **3 New Games Just Dropped**
 
@@ -5288,7 +5307,7 @@ Starknet’s gaming ecosystem is booming with 3 new games live on Mainnet::
 
 The gaming ecosystem is becoming too vast to track? Cartridge Arcade has your back—it’s the hub for all Dojo-powered games. Find games, player profiles, leaderboards, and more.
 
-###
+### 
 
 ### **Starknet Appchains: Full Steam Ahead**
 
@@ -5305,7 +5324,7 @@ Paradex, Starknet’s first live appchain, also tweaked its tokenomics:
 * Paradigm’s 13.4% allocation now unlocks on a linear, performance-based schedule
 * 85% of the codebase has been audited by Cairo Audit
 
-##
+## 
 
 ## **Alpha Zone: New Launches in May**
 
@@ -5355,7 +5374,7 @@ Jun 30, 2025 ·    6 min read
 
 Welcome to the 23rd edition of the monthly recap, your go-to source for the most significant updates and developments within the Starknet ecosystem.
 
-###
+### 
 
 ## **Key Highlights of the Month**
 
@@ -5400,7 +5419,7 @@ The subsequent major release, **Starknet v0.14.0**, is planned for Mainnet in mi
 
 Developers should review this version thoroughly due to the introduction of breaking changes.
 
-####
+#### 
 
 ### **Enhanced Performance, UX/DevX, and Decentralization**
 
@@ -5420,7 +5439,7 @@ In addition to Staking v2, StarkWare has revealed its plans to participate in ST
 
 On a related note, **Figment** now provides support for STRK staking, enabling institutions to delegate their STRK to Figment.
 
-###
+### 
 
 ## **Starknet Ecosystem Updates**
 
@@ -5452,7 +5471,7 @@ The **Wolf Pack League** has officially launched, creating a program that allows
 * Example of what you can build with it
 * Here’s how to get started
 
-####
+#### 
 
 ### **Endur Points Program & Airdrop**
 
@@ -5466,7 +5485,7 @@ The **Wolf Pack League** has officially launched, creating a program that allows
 * **Blob Arena** had its full launch during a major live sports event, reaching an audience of thousands.
 * **zkLend** is shutting down, with both its Money Market and liquid staking services being discontinued.
 
-####
+#### 
 
 ### **Alpha Zone**
 
@@ -5476,11 +5495,11 @@ Three new projects went live on Starknet Mainnet this month:
 * **Lutte Arcade**, a battler set in the lootverse.
 * **Karat**, a new NFT collection.
 
-###
+### 
 
-###
+### 
 
-###
+### 
 
 ## **Top Content of the Month**
 
@@ -5501,7 +5520,7 @@ Discover how **S-two**, StarkWare’s next-generation prover, is enabling partne
 
 When it comes to performance, S-two has significantly surpassed its competitors. See more here.
 
-###
+### 
 
 *Disclaimer: This blog post was written by 0xLyskey,, a community member. The views, thoughts, and opinions expressed in the text belong solely to the author. This content is provided for informational purposes only and should not be construed as financial, investment, or any other form of advice. Readers are solely responsible for their own decisions and are strongly encouraged to conduct their own research. Stay safe and do your own research.*
 
@@ -5820,7 +5839,7 @@ How much supply is “wasted” on exorbitantly high prices? Consider a $\overbr
 
 Some example computations show the extreme capital inefficiency of the constant-product curve.
 
-###
+### 
 
 ### Depth in general
 
@@ -7033,52 +7052,52 @@ More ecosystem products that align with the vision of BTCFi on Starknet. Stay tu
 
 ## General
 
-* What is BTCFi Season?
+* What is BTCFi Season? 
 
   BTCFi Season is an incentive program launched by the Starknet Foundation to bootstrap BTC liquidity and stablecoin borrowing activity against BTC on Starknet.
-* What is BTCFi Season’s purpose?
+* What is BTCFi Season’s purpose? 
 
   BTCFi Season is an important piece of the broader BTCFi on Starknet initiative that is designed to enable the activities that will kickstart a flywheel effect for sustainable BTC yield -consistent, predictable and competitive, driven by real economic activity- and ecosystem growth on Starknet.
-* Which DeFi verticals does BTCFi Season support?
+* Which DeFi verticals does BTCFi Season support? 
 
   BTCFi Season supports the DEX and Money Market verticals.
-* What activity will BTCFi Season support?
+* What activity will BTCFi Season support?  
 
   BTCFi Season supports protocols that enable highly liquid BTC pools on DEXs and Money Markets and borrowing of stablecoins against BTC collateral.
-* What assets and pairs will be eligible for incentives?
+* What assets and pairs will be eligible for incentives? 
 
   You can find an updated list of eligible assets and pairs on BTCFi Season’s website.
-* When does BTCFi Season launch?
+* When does BTCFi Season launch? 
 
   BTCFi Season launched on September 30th, 2025.
-* How long will BTCFi Season last?
+* How long will BTCFi Season last? 
 
   The program is set to run for a minimum of six months, with the potential to continue well beyond that.
 
 ## I am a User
 
-* How do I know if a project is a participating protocol in BTCFi Season and will be distributing STRK rewards?
+* How do I know if a project is a participating protocol in BTCFi Season and will be distributing STRK rewards? 
 
   You can find an updated list of eligible protocols on BTCFi Season’s website.
-* How do I know what actions are eligible for STRK rewards?
+* How do I know what actions are eligible for STRK rewards? 
 
   You will need to explore the individual participating protocols and their terms of use to see how you can earn STRK through their programs.
-* How can I claim my STRK from BTCFi Season?
+* How can I claim my STRK from BTCFi Season? 
 
   You will need to follow the guidelines provided from the individual participating protocols as they are responsible for their own distribution of STRK to their users based on their terms of use and announced programs.
-* What happens if I don’t claim my STRK from BTCFi Season?
+* What happens if I don’t claim my STRK from BTCFi Season? 
 
   You will be able to claim your STRK within each participating protocol. Any unclaimed STRK at the end of BTCFi Season will be returned back to the Foundation.
 
 ## I am a Protocol
 
-* How can I participate in BTCFi Season?
+* How can I participate in BTCFi Season? 
 
   The Starknet Foundation determines the appropriateness of participating protocols in its absolute discretion and is focused solely on protocols that support the DEX and Money Market verticals. If you are interested in participating in BTCFi Season, please apply using this [form] and we will be in touch shortly.
-* What criteria should I use for my incentive program?
+* What criteria should I use for my incentive program? 
 
   Each protocol shall determine its own criteria for rewarding users, deciding both which users qualify and how rewards are allocated on eligible activity and assets/pairs.
-* Am I required to make the criteria of my incentive program public?
+* Am I required to make the criteria of my incentive program public? 
 
   Yes. Announcing your incentive program’s criteria and terms of use is a mandatory requirement to participate in BTCFi Season.
 

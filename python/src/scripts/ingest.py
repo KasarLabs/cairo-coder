@@ -6,7 +6,6 @@ into a format suitable for the RAG pipeline.
 """
 
 import asyncio
-import re
 import resource
 from enum import Enum
 from pathlib import Path
@@ -20,89 +19,11 @@ from cairo_coder_tools.ingestion.base_summarizer import SummarizerConfig
 from cairo_coder_tools.ingestion.crawler import DocsCrawler
 from cairo_coder_tools.ingestion.header_fixer import HeaderFixer
 from cairo_coder_tools.ingestion.summarizer_factory import DocumentationType, SummarizerFactory
-
-
-def is_2025_blog_entry(content: str) -> bool:
-    """Check if content is a blog entry from 2025.
-
-    Looks for patterns like:
-        Home  /  Blog
-        Apr 3, 2025 ·    3 min read
-    OR
-        Home  /  Blog
-        Share this post:
-        Jul 29, 2025
-    """
-    import re
-
-    # Pattern 1: Month Day, Year · X min read
-    # Example: "Apr 3, 2025 ·    3 min read"
-    pattern1 = r'Home\s+/\s+Blog.*?(\w+\s+\d+,\s+(\d{4}))\s*·'
-
-    # Pattern 2: Month Day, Year (without the · min read)
-    # Example: "Jul 29, 2025" after "Share this post:"
-    pattern2 = r'Home\s+/\s+Blog.*?Share this post:.*?(\w+\s+\d+,\s+(\d{4}))'
-
-    # Pattern 3: Just Month Day, Year with min read
-    # Example: "Nov 26, 2024 ·    3 min read"
-    pattern3 = r'(\w+\s+\d+,\s+(\d{4}))\s*·.*?min read'
-
-    for pattern in [pattern1, pattern2, pattern3]:
-        matches = re.findall(pattern, content, re.DOTALL | re.IGNORECASE)
-        for match in matches:
-            year = match[1] if len(match) > 1 else match[-1]
-            if year == '2025':
-                return True
-
-    return False
-
-
-def clean_blog_content(content: str) -> str:
-    """Remove unwanted sections from blog content.
-
-    Removes:
-    - "Join our newsletter" section and its content
-    - "May also interest you" section and its content
-    """
-    import re
-
-    # Remove "Join our newsletter" section and everything after it until next header
-    # Match any header level (##, ###, ####, etc.)
-    content = re.sub(
-        r'^#{2,}\s*Join our newsletter.*?(?=^#{2,}|\Z)',
-        '',
-        content,
-        flags=re.DOTALL | re.IGNORECASE | re.MULTILINE
-    )
-
-    # Remove "May also interest you" section and everything after it
-    # Match any header level (##, ###, ####, etc.)
-    content = re.sub(
-        r'^#{2,}\s*May also interest you.*?(?=^#{2,}|\Z)',
-        '',
-        content,
-        flags=re.DOTALL | re.IGNORECASE | re.MULTILINE
-    )
-
-    # Also try to catch variations without markdown headers (plain text)
-    content = re.sub(
-        r'Join our newsletter.*?(?=\n\n[A-Z]|\Z)',
-        '',
-        content,
-        flags=re.DOTALL | re.IGNORECASE
-    )
-
-    content = re.sub(
-        r'May also interest you.*?(?=\n\n[A-Z]|\Z)',
-        '',
-        content,
-        flags=re.DOTALL | re.IGNORECASE
-    )
-
-    # Clean up multiple newlines
-    content = re.sub(r'\n{3,}', '\n\n', content)
-
-    return content.strip()
+from cairo_coder_tools.ingestion.web_targets import (
+    PREDEFINED_TARGETS,
+    IWebsiteTarget,
+    WebTargetConfig,
+)
 
 # Load environment variables
 load_dotenv()
@@ -118,13 +39,6 @@ class TargetRepo(str, Enum):
     CORELIB_DOCS = "https://github.com/starkware-libs/cairo-docs"
     CAIRO_BOOK = "https://github.com/cairo-book/cairo-book"
     # Add more repositories as needed
-
-
-class TargetWebsite(str, Enum):
-    """Predefined target websites for web crawling"""
-
-    STARKNET_BLOG_2025 = "https://www.starknet.io/blog"
-    # Add more websites as needed
 
 
 @app.command(name="from-git")
@@ -197,7 +111,9 @@ def from_git(
 @app.command(name="from-web")
 def from_web(
     url: str = typer.Argument(help="Base URL of website to crawl, or predefined target name."),
-    output: Path = typer.Option(Path("doc_dump.md"), "--output", "-o", help="Output file path"),
+    output: Optional[Path] = typer.Option(
+        None, "--output", "-o", help="Output file path (uses target default if not specified)"
+    ),
     content_filter: Optional[str] = typer.Option(
         None,
         "--content-filter",
@@ -218,7 +134,7 @@ def from_web(
 
     Examples:
         # Use predefined target for StarkNet 2025 blog posts
-        uv run ingest from-web starknet-blog-2025 --output starknet_blog_2025.md
+        uv run ingest from-web starknet-blog-2025
 
         # Crawl StarkNet blog manually with filter
         uv run ingest from-web https://www.starknet.io/blog --content-filter="2025"
@@ -227,63 +143,48 @@ def from_web(
         uv run ingest from-web https://example.com --include-patterns="/docs/,/api/"
     """
 
-    # Check for predefined website targets
-    actual_url = url
-    auto_filter_func = None
-    auto_processor_func = None
-    auto_exclude_patterns = None
-    auto_output = None
+    target: IWebsiteTarget
 
-    if url.upper().replace("-", "_") in [t.name for t in TargetWebsite]:
-        target = TargetWebsite[url.upper().replace("-", "_")]
-        actual_url = target.value
+    # Check if this is a predefined target
+    if url in PREDEFINED_TARGETS:
+        target = PREDEFINED_TARGETS[url]
+        typer.echo(f"Using predefined target: {target.name}")
+        typer.echo(f"  URL: {target.base_url}")
+        if target.get_exclude_url_patterns():
+            typer.echo(f"  Exclude patterns: {target.get_exclude_url_patterns()}")
+        # Show details for specific targets
+        if target.name == "starknet-blog-2025":
+            typer.echo("  Content filter: 2025 blog entries only")
+            typer.echo("  Content processor: removes newsletter/interest sections")
+    else:
+        # Create a generic target on the fly for custom URLs
+        include_pattern_list = None
+        if include_patterns:
+            include_pattern_list = [p.strip() for p in include_patterns.split(",")]
 
-        # Apply automatic settings for specific targets
-        if target == TargetWebsite.STARKNET_BLOG_2025:
-            auto_filter_func = is_2025_blog_entry
-            auto_processor_func = clean_blog_content
-            auto_exclude_patterns = [r'video\/$']  # Exclude URLs ending with video/
-            auto_output = Path("starknet_blog_2025.md")
-            typer.echo(f"Using predefined target: {target.name.lower().replace('_', '-')}")
-            typer.echo(f"  URL: {actual_url}")
-            typer.echo(f"  Auto-filter: 2025 blog entries")
-            typer.echo(f"  Auto-cleanup: Removing newsletter and interest sections")
-            typer.echo(f"  Auto-exclude: Skipping /video/ URLs")
-            if output == Path("doc_dump.md"):  # Only use auto output if user didn't specify
-                output = auto_output
-                typer.echo(f"  Output: {output}")
+        # Create content filter function if provided
+        content_filter_func = None
+        if content_filter:
 
-    # Parse include patterns if provided
-    include_pattern_list = None
-    if include_patterns:
-        include_pattern_list = [p.strip() for p in include_patterns.split(",")]
+            def filter_func(content: str) -> bool:
+                return content_filter in content
 
-    # Use auto exclude patterns if available
-    exclude_pattern_list = auto_exclude_patterns
+            content_filter_func = filter_func
 
-    # Create content filter function
-    content_filter_func = None
-    if content_filter:
-        # Manual filter takes precedence
-        def filter_func(content: str) -> bool:
-            return content_filter in content
+        target = WebTargetConfig(
+            name=url.split("/")[-1] or "custom",
+            base_url=url,
+            include_patterns=include_pattern_list,
+            content_filter=content_filter_func if content_filter_func else lambda _: True,
+        )
 
-        content_filter_func = filter_func
-    elif auto_filter_func:
-        # Use auto filter from predefined target
-        content_filter_func = auto_filter_func
-
-    # Use content processor from predefined target if available
-    content_processor_func = auto_processor_func
+    # Use target's default output path if user didn't specify one
+    if output is None:
+        output = target.get_default_output_path()
+        typer.echo(f"  Output: {output}")
 
     async def run_crawler() -> None:
-        async with DocsCrawler(
-            base_url=actual_url,
-            include_patterns=include_pattern_list,
-            exclude_url_patterns=exclude_pattern_list,
-            content_filter=content_filter_func,
-            content_processor=content_processor_func,
-        ) as crawler:
+        async with DocsCrawler(target=target) as crawler:
             output_path = await crawler.run(output)
             typer.echo(
                 typer.style(
@@ -310,15 +211,10 @@ def list_targets() -> None:
         typer.echo(f"  - {target.name.lower().replace('_', '-')}: {target.value}")
 
     typer.echo("\nWebsite Targets (use with 'from-web'):")
-    for target in TargetWebsite:
-        name = target.name.lower().replace('_', '-')
-        typer.echo(f"  - {name}: {target.value}")
-        # Show special features for specific targets
-        if target == TargetWebsite.STARKNET_BLOG_2025:
-            typer.echo(f"    → Skips video URLs (ending with /video/)")
-            typer.echo(f"    → Filters for 2025 blog entries only")
-            typer.echo(f"    → Removes 'Join our newsletter' sections")
-            typer.echo(f"    → Removes 'May also interest you' sections")
+    for name, target in PREDEFINED_TARGETS.items():
+        typer.echo(f"  - {name}: {target.base_url}")
+        if target.get_exclude_url_patterns():
+            typer.echo(f"    → Excludes URLs matching: {', '.join(target.get_exclude_url_patterns())}")
 
 
 @app.command(name="list-types")

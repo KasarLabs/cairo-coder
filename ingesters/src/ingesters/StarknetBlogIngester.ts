@@ -50,7 +50,7 @@ export class StarknetBlogIngester extends MarkdownIngester {
       'cairo_coder_tools',
       'ingestion',
       'generated',
-      'blog_summary.md',
+      'starknet-blog.md',
     );
 
     logger.info(`Reading Starknet blog summary from ${summaryPath}`);

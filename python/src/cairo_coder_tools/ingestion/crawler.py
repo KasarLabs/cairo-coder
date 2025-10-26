@@ -9,7 +9,7 @@ import xml.etree.ElementTree as ET
 from collections import deque
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Callable, Optional
+from typing import Optional
 from urllib.parse import urljoin, urlparse, urlunparse
 
 import aiohttp
@@ -17,11 +17,13 @@ from bs4 import BeautifulSoup
 from markdownify import markdownify
 from tqdm.asyncio import tqdm
 
+from cairo_coder_tools.ingestion.web_targets import IWebsiteTarget
+
 # Configuration
-UA = "NotebookLM-prep-crawler/1.1 (+contact: you@example.com)"
+UA = "starknet-prep-crawler"
 OUT_FILE = Path("doc_dump")
-CONCURRENCY = 4  # Low concurrency to avoid rate limits
-MAX_RETRIES = 5
+CONCURRENCY = 4
+MAX_RETRIES = 6
 TIMEOUT = 30
 MAX_CRAWL_PAGES = 100
 
@@ -49,35 +51,24 @@ logger = logging.getLogger(__name__)
 
 
 class DocsCrawler:
-    """Web crawler for documentation sites with filtering capabilities."""
+    """Web crawler for documentation sites with filtering capabilities.
 
-    def __init__(
-        self,
-        base_url: str,
-        include_patterns: Optional[list[str]] = None,
-        exclude_url_patterns: Optional[list[str]] = None,
-        content_filter: Optional[Callable[[str], bool]] = None,
-        content_processor: Optional[Callable[[str], str]] = None,
-    ):
+    Uses an IWebsiteTarget object to define crawling behavior.
+    """
+
+    def __init__(self, target: "IWebsiteTarget"):
         """Initialize the crawler.
 
         Args:
-            base_url: Base URL to start crawling from
-            include_patterns: Optional list of regex patterns for URLs to include
-            exclude_url_patterns: Optional list of regex patterns for URLs to exclude
-            content_filter: Optional function that returns True if content should be kept
-            content_processor: Optional function to post-process content (e.g., remove sections)
+            target: IWebsiteTarget object defining crawling configuration and behavior
         """
-        self.base_url = base_url.rstrip('/') + '/'
+        self.target = target
+        self.base_url = target.base_url.rstrip('/') + '/'
         self.domain = urlparse(self.base_url).netloc
         self.discovered_urls: list[str] = []
         self.fetched_pages: dict[str, dict] = {}
         self.session: Optional[aiohttp.ClientSession] = None
         self.semaphore = asyncio.Semaphore(CONCURRENCY)
-        self.include_patterns = include_patterns or []
-        self.exclude_url_patterns = exclude_url_patterns or []
-        self.content_filter = content_filter
-        self.content_processor = content_processor
 
     async def __aenter__(self):
         timeout = aiohttp.ClientTimeout(total=TIMEOUT)
@@ -115,7 +106,7 @@ class DocsCrawler:
         return not any(re.search(pattern, path, re.IGNORECASE) for pattern in EXCLUDE_PATTERNS)
 
     def filter_urls(self, urls: list[str]) -> list[str]:
-        """Filter URLs based on include/exclude patterns.
+        """Filter URLs based on include/exclude patterns from the target.
 
         This is applied AFTER discovery and BEFORE fetching.
 
@@ -126,20 +117,18 @@ class DocsCrawler:
             Filtered list of URLs
         """
         filtered_urls = []
+        include_patterns = self.target.get_include_url_patterns()
+        exclude_patterns = self.target.get_exclude_url_patterns()
 
         for url in urls:
             parsed = urlparse(url)
             path = parsed.path
 
-            # Check include patterns if provided
-            if self.include_patterns:
-                if not any(re.search(pattern, path, re.IGNORECASE) for pattern in self.include_patterns):
-                    continue
+            if include_patterns and not any(re.search(pattern, path, re.IGNORECASE) for pattern in include_patterns):
+                continue
 
-            # Check custom exclude patterns (user-provided)
-            if self.exclude_url_patterns:
-                if any(re.search(pattern, path, re.IGNORECASE) for pattern in self.exclude_url_patterns):
-                    continue
+            if exclude_patterns and any(re.search(pattern, path, re.IGNORECASE) for pattern in exclude_patterns):
+                continue
 
             filtered_urls.append(url)
 
@@ -301,6 +290,7 @@ class DocsCrawler:
                                 logger.debug(f"Got {response.status} for {url}, retrying in {wait_time}s (attempt {attempt + 1}/{MAX_RETRIES})")
                                 await asyncio.sleep(wait_time)
                                 continue
+                            logger.debug(f"Failed to fetch {url} after {MAX_RETRIES} attempts: {last_error}")
 
                         # For other non-200 statuses, return immediately (no retry)
                         return {
@@ -429,14 +419,13 @@ class DocsCrawler:
             if page_data.get('content'):
                 title, markdown = self.extract_content(page_data['content'], url)
 
-                # Apply content filter if provided
-                if self.content_filter and not self.content_filter(markdown):
+                # Apply content filter from target
+                if not self.target.filter_content(markdown):
                     filtered_out += 1
                     continue
 
-                # Apply content processor if provided (e.g., remove unwanted sections)
-                if self.content_processor:
-                    markdown = self.content_processor(markdown)
+                # Apply content processor from target (e.g., remove unwanted sections)
+                markdown = self.target.process_content(markdown)
 
                 if not markdown or len(markdown.strip()) < 50:
                     markdown = "*No content extracted.*"
@@ -458,7 +447,7 @@ class DocsCrawler:
                 error = page_data.get('error', 'Unknown error')
                 logger.info(f"Skipping {url}: {error}")
 
-        logger.info(f"Filtered out {filtered_out} pages based on content filter: {self.content_filter}")
+        logger.info(f"Filtered out {filtered_out} pages based on content filter")
         return '\n'.join(lines)
 
     async def run(self, output_path: Optional[Path] = None) -> Path:
@@ -510,10 +499,7 @@ class DocsCrawler:
         markdown_content = self.compile_markdown()
 
         # Save markdown
-        if output_path is None:
-            output_path = OUT_FILE.with_suffix('.md')
-        else:
-            output_path = Path(output_path)
+        output_path = OUT_FILE.with_suffix('.md') if output_path is None else Path(output_path)
 
         logger.info(f"Saving markdown to: {output_path}")
         output_path.write_text(markdown_content, encoding='utf-8')

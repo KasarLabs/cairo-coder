@@ -5,7 +5,6 @@ This module provides tools for analyzing question-answer datasets using LLMs.
 
 import json
 from pathlib import Path
-from typing import Any
 
 import dspy
 from dspy.adapters.baml_adapter import BAMLAdapter
