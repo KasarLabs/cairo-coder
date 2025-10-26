@@ -124,6 +124,19 @@ More content.`;
       expect(chunks[0]!.meta.title).toBe('Header with trailing hashes');
     });
 
+    it('should detect headers with up to 3 leading spaces', () => {
+      const splitter = new RecursiveMarkdownSplitter({
+        maxChars: 100,
+        minChars: 0,
+        overlap: 0,
+        headerLevels: [1, 2],
+      });
+      const text = '   ## Indented H2 Header\nBody under indented header.';
+      const chunks = splitter.splitMarkdownToChunks(text);
+      expect(chunks.length).toBeGreaterThanOrEqual(1);
+      expect(chunks[0]!.meta.title).toBe('Indented H2 Header');
+    });
+
     it('should prefer deepest header of configured levels (e.g., H2) for title', () => {
       const splitter = new RecursiveMarkdownSplitter({
         maxChars: 80,

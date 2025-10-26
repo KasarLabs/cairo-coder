@@ -237,7 +237,7 @@ export abstract class AsciiDocIngester extends BaseIngester {
       sections.forEach((section: ParsedSection, index: number) => {
         const hash: string = calculateHash(section.content);
         const sourceLink = `${this.config.baseUrl}/${page.name}${this.config.urlSuffix}${section.anchor ? '#' + section.anchor : ''}`;
-        console.debug(
+        logger.debug(
           `Section Title: ${section.title}, source: ${this.source}, sourceLink: ${sourceLink}`,
         );
         chunks.push(
