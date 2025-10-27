@@ -17,6 +17,33 @@ from cairo_coder.db.session import get_pool
 logger = structlog.get_logger(__name__)
 
 
+def _normalize_row(row: dict | None, fields_with_defaults: dict[str, Any]) -> dict | None:
+    """
+    Parse stringified JSON fields in a row dictionary and apply defaults for None values.
+
+    Args:
+        row: Dictionary from database row (or None)
+        fields_with_defaults: Mapping of field names to default values
+
+    Returns:
+        Normalized dictionary with parsed JSON fields, or None if input row is None
+    """
+    if row is None:
+        return None
+
+    d = dict(row)
+    for field, default_val in fields_with_defaults.items():
+        val = d.get(field)
+        if isinstance(val, str):
+            try:
+                d[field] = json.loads(val)
+            except (json.JSONDecodeError, TypeError):
+                d[field] = default_val
+        elif val is None:
+            d[field] = default_val
+    return d
+
+
 async def create_user_interaction(interaction: UserInteraction) -> None:
     """Persist a user interaction in the database."""
     pool = await get_pool()
@@ -89,14 +116,17 @@ async def get_interactions(
             OFFSET ${offset_placeholder}
         """
         rows = await connection.fetch(data_query, *params)
-    return [dict(row) for row in rows], int(total)
+
+    # Normalize JSON fields that may be returned as strings by asyncpg
+    items = [_normalize_row(dict(row), {"chat_history": []}) for row in rows]
+    return items, int(total)
 
 
 async def create_analysis_job(params: dict[str, Any]) -> uuid.UUID:
     """Insert a new analysis job and return its identifier."""
     pool = await get_pool()
     async with pool.acquire() as connection:
-        job_id = await connection.fetchval(
+        return await connection.fetchval(
             """
             INSERT INTO query_analyses (status, analysis_parameters)
             VALUES ('pending', $1)
@@ -104,7 +134,6 @@ async def create_analysis_job(params: dict[str, Any]) -> uuid.UUID:
             """,
             json.dumps(params),
         )
-    return job_id
 
 
 async def update_analysis_job(
@@ -144,7 +173,7 @@ async def get_analysis_jobs(limit: int = 100) -> list[dict[str, Any]]:
             """,
             limit,
         )
-    return [dict(row) for row in rows]
+    return [_normalize_row(dict(row), {"analysis_parameters": {}}) for row in rows]
 
 
 async def get_analysis_job_by_id(job_id: uuid.UUID) -> dict[str, Any] | None:
@@ -164,4 +193,7 @@ async def get_analysis_job_by_id(job_id: uuid.UUID) -> dict[str, Any] | None:
             """,
             job_id,
         )
-    return dict(row) if row is not None else None
+    return _normalize_row(
+        dict(row) if row else None,
+        {"analysis_parameters": {}, "analysis_result": None}
+    )

@@ -4,6 +4,8 @@ Asyncpg session management for the Query Insights persistence layer.
 
 from __future__ import annotations
 
+import asyncio
+
 import asyncpg
 import structlog
 
@@ -11,12 +13,20 @@ from cairo_coder.config.manager import ConfigManager
 
 logger = structlog.get_logger(__name__)
 
-pool: asyncpg.Pool | None = None
+# Maintain one pool per running event loop to avoid cross-loop usage issues
+pools: dict[int, asyncpg.Pool] = {}
 
 
 async def get_pool() -> asyncpg.Pool:
-    """Return the global asyncpg connection pool, lazily creating it."""
-    global pool
+    """Return an asyncpg connection pool bound to the current event loop.
+
+    FastAPI's TestClient and AnyIO can run application code across different
+    event loops. Using a single cached pool may lead to cross-loop errors.
+    To prevent this, we maintain a pool per loop.
+    """
+    loop = asyncio.get_running_loop()
+    key = id(loop)
+    pool = pools.get(key)
     if pool is None:
         config = ConfigManager.load_config()
         try:
@@ -25,6 +35,7 @@ async def get_pool() -> asyncpg.Pool:
                 min_size=2,
                 max_size=10,
             )
+            pools[key] = pool
             logger.info("Database connection pool created successfully.")
         except Exception as exc:  # pragma: no cover - defensive logging
             logger.error("Failed to create database connection pool", error=str(exc))
@@ -34,11 +45,15 @@ async def get_pool() -> asyncpg.Pool:
 
 async def close_pool() -> None:
     """Close the asyncpg connection pool if it is active."""
-    global pool
-    if pool is not None:
-        await pool.close()
-        pool = None
-        logger.info("Database connection pool closed.")
+    import contextlib
+
+    # Close and clear all pools
+    global pools
+    for p in list(pools.values()):
+        with contextlib.suppress(Exception):
+            await p.close()
+    pools.clear()
+    logger.info("Database connection pool(s) closed.")
 
 
 async def execute_schema_scripts() -> None:

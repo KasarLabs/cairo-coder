@@ -28,11 +28,11 @@ from cairo_coder.core.agent_factory import AgentFactory, create_agent_factory
 from cairo_coder.core.config import VectorStoreConfig
 from cairo_coder.core.rag_pipeline import RagPipeline
 from cairo_coder.core.types import Message, Role, StreamEventType
-from cairo_coder.dspy.document_retriever import SourceFilteredPgVectorRM
-from cairo_coder.dspy.suggestion_program import SuggestionGeneration
 from cairo_coder.db import session as db_session
 from cairo_coder.db.models import UserInteraction
 from cairo_coder.db.repository import create_user_interaction
+from cairo_coder.dspy.document_retriever import SourceFilteredPgVectorRM
+from cairo_coder.dspy.suggestion_program import SuggestionGeneration
 from cairo_coder.server.insights_api import router as insights_router
 from cairo_coder.utils.logging import setup_logging
 

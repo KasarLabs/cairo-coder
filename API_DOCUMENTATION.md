@@ -360,11 +360,11 @@ The Query Insights API exposes raw interaction logs and lightweight analytics fo
 
 Fetch paginated user queries within a specific window.
 
-- `start_date` *(ISO 8601, required)* — inclusive lower bound.
-- `end_date` *(ISO 8601, required)* — inclusive upper bound.
-- `agent_id` *(optional)* — filter by agent id when provided.
-- `limit` *(default `100`)* — maximum rows returned.
-- `offset` *(default `0`)* — pagination offset.
+- `start_date` _(ISO 8601, required)_ — inclusive lower bound.
+- `end_date` _(ISO 8601, required)_ — inclusive upper bound.
+- `agent_id` _(optional)_ — filter by agent id when provided.
+- `limit` _(default `100`)_ — maximum rows returned.
+- `offset` _(default `0`)_ — pagination offset.
 
 **Response** `200 OK`
 
@@ -388,7 +388,7 @@ Fetch paginated user queries within a specific window.
 
 Trigger an asynchronous analysis job. The response returns immediately with the job identifier; the analysis runs in the background.
 
-**Request**
+#### Request
 
 ```json
 {
