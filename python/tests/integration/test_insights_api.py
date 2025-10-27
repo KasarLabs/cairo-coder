@@ -1,8 +1,10 @@
 """
 Integration tests for the /v1/insights API endpoints.
 
-These tests rely on an ephemeral Postgres database via testcontainers and are
-skipped unless RUN_DB_TESTS=1 is set.
+These tests rely on an ephemeral Postgres database via testcontainers and run
+by default. They are automatically skipped if Docker is unavailable.
+
+To skip these tests explicitly, use: pytest -m "not db"
 """
 
 from __future__ import annotations

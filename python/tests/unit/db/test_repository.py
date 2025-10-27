@@ -1,7 +1,10 @@
 """
 Unit tests for cairo_coder.db.repository using an ephemeral Postgres DB.
 
-These tests use the shared DB fixtures from tests/integration/conftest.py.
+These tests use the shared DB fixtures from tests/integration/conftest.py and run
+by default. They are automatically skipped if Docker is unavailable.
+
+To skip these tests explicitly, use: pytest -m "not db"
 """
 
 from __future__ import annotations
