@@ -171,7 +171,8 @@ async def log_interaction_task(
         query=query,
         generated_answer=response.choices[0].message.content if response.choices else None,
         retrieved_sources=sources_data,
-        llm_usage=agent.get_lm_usage(),
+        # TODO: fix LLM usage metrics
+        llm_usage={}
     )
     await create_user_interaction(interaction)
 
