@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 Extract human queries from LangSmith runs and export to JSON.
 
@@ -11,8 +10,8 @@ Environment variables:
     LANGSMITH_PROJECT: Optional project name (default: "default")
 
 Example usage:
-    python extract_langsmith.py
-    python extract_langsmith.py --days 7 --output queries.json
+    uv run export_langsmith_human_queries.py
+    uv run export_langsmith_human_queries.py --days 7 --output queries.json
 """
 
 from __future__ import annotations
@@ -32,21 +31,15 @@ from langsmith import Client
 load_dotenv("../.env")
 
 
-class MessageType(Enum):
-    """Supported message types in LangChain format."""
-    HUMAN = "human"
-    HUMANMESSAGE = "humanmessage"
-    CONSTRUCTOR = "constructor"
-
-
 @dataclass
 class RunQueries:
     """Container for queries extracted from a single run."""
     run_id: str
     queries: list[str]
+    mcp_mode: bool
 
     def to_dict(self) -> dict[str, Any]:
-        return {"run_id": str(self.run_id), "queries": self.queries}
+        return {"run_id": self.run_id, "queries": self.queries, "mcp_mode": self.mcp_mode}
 
 
 @dataclass
@@ -54,7 +47,7 @@ class Config:
     """Script configuration."""
     output_path: Path
     days_back: int
-    run_name_filter: str
+    run_name_filters: list[str]
     project_name: str
 
     @classmethod
@@ -63,81 +56,9 @@ class Config:
         return cls(
             output_path=Path(args.output),
             days_back=args.days,
-            run_name_filter=args.name,
+            run_name_filters=args.names,
             project_name=project_name,
         )
-
-
-class HumanMessageExtractor:
-    """Extracts human messages from LangChain message structures."""
-
-    HUMAN_MESSAGE_KEYS = ["chat_history", "messages", "inputs", "input"]
-
-    @staticmethod
-    def _is_human_message_by_id(message: dict[str, Any]) -> bool:
-        """Check if message is human type based on ID field."""
-        msg_id = message["id"]
-        if isinstance(msg_id, list) and msg_id:
-            return str(msg_id[-1]).lower() == MessageType.HUMANMESSAGE.value
-        return False
-
-    @staticmethod
-    def _is_human_message_by_type(message: dict[str, Any]) -> bool:
-        """Check if message is human type based on type field."""
-        msg_type = str(message["type"]).lower()
-        return msg_type in {MessageType.HUMAN.value, MessageType.HUMANMESSAGE.value}
-
-    def _process_message_object(self, obj: Any) -> list[str]:
-        """Process a single message object and extract human content."""
-        # Check if this is a human message
-        is_human = (
-            self._is_human_message_by_id(obj) or
-            self._is_human_message_by_type(obj)
-        )
-        if not is_human:
-            return []
-
-        if "kwargs" not in obj or "content" not in obj["kwargs"]:
-            raise ValueError(f"Expected kwargs and content in message object: {obj}")
-
-        content = obj["kwargs"]["content"]
-        return [content] if content else []
-
-    def _process_value(self, value: Any) -> list[str]:
-        if not isinstance(value, list):
-            raise ValueError(f"Expected list, got {type(value)}: {value}")
-        results = []
-        for item in value:
-            results.extend(self._process_message_object(item))
-        return results
-
-    def extract(self, inputs: dict[str, Any]) -> list[str]:
-        """
-        Extract human messages from LangChain inputs.
-
-        Args:
-            inputs: Dictionary containing message data in various formats
-
-        Returns:
-            List of unique human message strings in order of appearance
-        """
-        results = []
-
-        for key in self.HUMAN_MESSAGE_KEYS:
-            if key not in inputs:
-                continue
-
-            results.extend(self._process_value(inputs[key]))
-
-        # Deduplicate while preserving order
-        seen = set()
-        unique_results = []
-        for query in results:
-            if query not in seen:
-                unique_results.append(query)
-                seen.add(query)
-
-        return unique_results
 
 
 class RunDeduplicator:
@@ -181,7 +102,6 @@ class LangSmithExporter:
     def __init__(self, config: Config):
         self.config = config
         self.client = Client()
-        self.extractor = HumanMessageExtractor()
         self.deduplicator = RunDeduplicator()
 
     def _get_time_range(self) -> tuple[datetime, datetime]:
@@ -193,24 +113,25 @@ class LangSmithExporter:
     def fetch_runs(self) -> list[RunQueries]:
         start_time, end_time = self._get_time_range()
 
+
+        filter_clauses = [f'eq(name, "{name}")' for name in self.config.run_name_filters]
         query_params = {
             "start_time": start_time,
             "end_time": end_time,
-            "filter": f'eq(name, "{self.config.run_name_filter}")',
+            "filter": f'or({",".join(filter_clauses)})',
             "project_name": self.config.project_name,
         }
 
         runs = []
-        for run in self.client.list_runs(**query_params):
+        all_runs = self.client.list_runs(**query_params)
+        for run in all_runs:
             run_data = run.dict()
             inputs = run_data["inputs"]
-
-            queries = self.extractor.extract(inputs)
-            if queries:
-                runs.append(RunQueries(
-                    run_id=run_data["id"],
-                    queries=queries,
-                ))
+            query = inputs["query"]
+            chat_history = inputs["chat_history"]
+            user_queries_in_history = [msg['content'] for msg in chat_history if msg["role"] == "user"]
+            full_query = user_queries_in_history + [query]
+            runs.append(RunQueries(run_id=str(run_data["id"]), queries=full_query, mcp_mode=inputs["mcp_mode"]))
 
         return runs
 
@@ -253,9 +174,10 @@ def parse_arguments() -> argparse.Namespace:
         help="Number of days to look back (default: %(default)s)",
     )
     parser.add_argument(
-        "--name",
-        default="RunnableSequence",
-        help="Filter runs by name (default: %(default)s)",
+        "--names",
+        default=["RagPipeline", "RagPipelineStreaming"],
+        nargs="+",
+        help="Filter runs by names (default: %(default)s)",
     )
 
     return parser.parse_args()
