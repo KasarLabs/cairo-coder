@@ -15,6 +15,7 @@ from .generation_program import (
     create_generation_program,
     create_mcp_generation_program,
 )
+from .grok_search import GrokSearchProgram
 from .query_processor import QueryProcessorProgram, create_query_processor
 from .retrieval_judge import RetrievalJudge
 from .suggestion_program import SuggestionGeneration
@@ -29,4 +30,5 @@ __all__ = [
     "create_mcp_generation_program",
     "RetrievalJudge",
     "SuggestionGeneration",
+    "GrokSearchProgram",
 ]

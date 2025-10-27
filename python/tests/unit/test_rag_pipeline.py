@@ -11,50 +11,10 @@ import pytest
 
 from cairo_coder.core.rag_pipeline import (
     RagPipeline,
-    RagPipelineConfig,
     RagPipelineFactory,
 )
 from cairo_coder.core.types import Document, DocumentSource, Message, Role, StreamEventType
 from cairo_coder.dspy.retrieval_judge import RetrievalJudge
-
-
-@pytest.fixture
-def pipeline_config(
-    mock_vector_store_config,
-    mock_query_processor,
-    mock_document_retriever,
-    mock_generation_program,
-    mock_mcp_generation_program,
-):
-    """Create a pipeline configuration."""
-    return RagPipelineConfig(
-        name="test_pipeline",
-        vector_store_config=mock_vector_store_config,
-        query_processor=mock_query_processor,
-        document_retriever=mock_document_retriever,
-        generation_program=mock_generation_program,
-        mcp_generation_program=mock_mcp_generation_program,
-        sources=list(DocumentSource),
-        max_source_count=10,
-        similarity_threshold=0.4,
-    )
-
-
-@pytest.fixture
-def pipeline(pipeline_config):
-    """Create a RagPipeline instance."""
-    with patch("cairo_coder.core.rag_pipeline.RetrievalJudge") as mock_judge_class:
-        mock_judge = Mock()
-        mock_judge.get_lm_usage.return_value = {}
-        mock_judge.aforward = AsyncMock(side_effect=lambda query, documents: documents)
-        mock_judge_class.return_value = mock_judge
-        return RagPipeline(pipeline_config)
-
-
-@pytest.fixture
-def rag_pipeline(pipeline_config):
-    """Alias fixture for pipeline to maintain backward compatibility."""
-    return RagPipeline(pipeline_config)
 
 
 # Helper functions for test data creation
@@ -309,8 +269,6 @@ class TestRagPipelineWithJudge:
         # Verify judge was called
         pipeline.retrieval_judge.aforward.assert_called_once()
 
-        # Check that the pipeline stored the correct number of filtered documents
-        assert hasattr(pipeline, "_current_documents")
         filtered_docs = pipeline._current_documents
         assert len(filtered_docs) == expected_count
 

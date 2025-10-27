@@ -14,6 +14,7 @@ from fastapi.testclient import TestClient
 
 from cairo_coder.core.agent_factory import AgentFactory
 from cairo_coder.core.config import VectorStoreConfig
+from cairo_coder.core.rag_pipeline import RagPipeline, RagPipelineConfig
 from cairo_coder.core.types import (
     Document,
     DocumentSource,
@@ -29,7 +30,7 @@ from cairo_coder.dspy.retrieval_judge import RetrievalJudge
 from cairo_coder.server.app import CairoCoderServer, get_agent_factory
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="function")
 def mock_returned_documents(sample_documents):
     """DSPy Examples derived from sample_documents for DRY content."""
     return [dspy.Example(content=doc.page_content, metadata=doc.metadata) for doc in sample_documents]
@@ -251,7 +252,7 @@ def sample_processed_query():
     )
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="function")
 def sample_documents():
     """
     Create a collection of sample documents for testing.
@@ -333,6 +334,9 @@ def clean_config_env_vars(monkeypatch):
     for var in env_vars_to_clean:
         original_values[var] = os.environ.get(var)
         monkeypatch.delenv(var, raising=False)
+
+    # Ensure xAI SDK clients can initialize in tests (no real network calls occur).
+    monkeypatch.setenv("XAI_API_KEY", "test")
 
     yield
 
@@ -450,3 +454,41 @@ def mock_retrieval_judge():
     judge.get_lm_usage = Mock(return_value={})
 
     return judge
+
+@pytest.fixture
+def pipeline_config(
+    mock_vector_store_config,
+    mock_query_processor,
+    mock_document_retriever,
+    mock_generation_program,
+    mock_mcp_generation_program,
+):
+    """Create a pipeline configuration."""
+    return RagPipelineConfig(
+        name="test_pipeline",
+        vector_store_config=mock_vector_store_config,
+        query_processor=mock_query_processor,
+        document_retriever=mock_document_retriever,
+        generation_program=mock_generation_program,
+        mcp_generation_program=mock_mcp_generation_program,
+        sources=list(DocumentSource),
+        max_source_count=10,
+        similarity_threshold=0.4,
+    )
+
+
+
+@pytest.fixture(scope="function")
+def pipeline(pipeline_config):
+    """Create a RagPipeline instance."""
+    with patch("cairo_coder.core.rag_pipeline.RetrievalJudge") as mock_judge_class:
+        mock_judge = Mock()
+        mock_judge.get_lm_usage.return_value = {}
+        mock_judge.aforward = AsyncMock(side_effect=lambda query, documents: documents)
+        mock_judge_class.return_value = mock_judge
+        return RagPipeline(pipeline_config)
+
+@pytest.fixture(scope="function")
+def rag_pipeline(pipeline_config):
+    """Alias fixture for pipeline to maintain backward compatibility."""
+    return RagPipeline(pipeline_config)

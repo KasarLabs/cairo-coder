@@ -29,7 +29,7 @@ class TestDocumentRetrieverProgram:
             similarity_threshold=0.4,
         )
 
-    @pytest.fixture(scope="session")
+    @pytest.fixture(scope="function")
     def mock_dspy_examples(self, sample_documents: list[Document]) -> list[dspy.Example]:
         """Create mock DSPy Example objects from sample documents."""
         examples = []

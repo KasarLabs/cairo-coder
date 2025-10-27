@@ -26,6 +26,7 @@ from cairo_coder.core.types import (
 )
 from cairo_coder.dspy.document_retriever import DocumentRetrieverProgram
 from cairo_coder.dspy.generation_program import GenerationProgram, McpGenerationProgram
+from cairo_coder.dspy.grok_search import GrokSearchProgram
 from cairo_coder.dspy.query_processor import QueryProcessorProgram
 from cairo_coder.dspy.retrieval_judge import RetrievalJudge
 
@@ -73,6 +74,8 @@ class RagPipeline(dspy.Module):
         self.generation_program = config.generation_program
         self.mcp_generation_program = config.mcp_generation_program
         self.retrieval_judge = RetrievalJudge()
+        self.grok_search = GrokSearchProgram()
+        self._grok_citations: list[str] = []
 
         # Pipeline state
         self._current_processed_query: ProcessedQuery | None = None
@@ -96,6 +99,22 @@ class RagPipeline(dspy.Module):
             processed_query=processed_query, sources=retrieval_sources
         )
 
+        # Optional Grok web/X augmentation: activate when STARKNET_BLOG is among sources.
+        try:
+            if DocumentSource.STARKNET_BLOG in retrieval_sources:
+                grok_docs = await self.grok_search.aforward(processed_query)
+                self._grok_citations = list(self.grok_search.last_citations)
+                if grok_docs:
+                    documents.extend(grok_docs)
+                grok_summary_doc = next((d for d in grok_docs if d.metadata.get("name") == "grok-answer"), None)
+            else:
+                self._grok_citations = []
+                grok_summary_doc = None
+        except Exception as e:
+            logger.warning("Grok augmentation failed; continuing without it", error=str(e), exc_info=True)
+            grok_summary_doc = None
+            self._grok_citations = []
+
         try:
             with dspy.context(
                 lm=dspy.LM("gemini/gemini-flash-lite-latest", max_tokens=10000, temperature=0.5),
@@ -109,6 +128,16 @@ class RagPipeline(dspy.Module):
                 exc_info=True,
             )
             # documents already contains all retrieved docs, no action needed
+
+        # Ensure Grok summary is present and first in order (for generation context)
+        try:
+            if grok_summary_doc is not None:
+                if grok_summary_doc in documents:
+                    documents = [grok_summary_doc] + [d for d in documents if d is not grok_summary_doc]
+                else:
+                    documents = [grok_summary_doc] + documents
+        except Exception:
+            pass
 
         self._current_documents = documents
 
@@ -290,13 +319,33 @@ class RagPipeline(dspy.Module):
             List of dicts: [{"title": str, "url": str}, ...]
         """
         sources: list[dict[str, str]] = []
+
+        # Helper to extract domain title
+        def title_from_url(url: str) -> str:
+            try:
+                import urllib.parse as _up
+
+                host = _up.urlparse(url).netloc
+                return host or url
+            except Exception:
+                return url
+
+        # 1) Vector store and other docs (skip Grok summary virtual doc)
         for doc in documents:
+            if doc.metadata.get("name") == "grok-answer" or doc.metadata.get("is_virtual"):
+                continue
             if doc.source_link is None:
                 logger.warning(f"Document {doc.title} has no source link")
-                to_append = ({"metadata": {"title": doc.title, "url": ""}})
+                to_append = {"metadata": {"title": doc.title, "url": ""}}
             else:
-                to_append = ({"metadata": {"title": doc.title, "url": doc.source_link}})
+                to_append = {"metadata": {"title": doc.title, "url": doc.source_link}}
             sources.append(to_append)
+
+        # 2) Append Grok citations (raw URLs)
+        for url in self._grok_citations:
+            if not url:
+                continue
+            sources.append({"metadata": {"title": title_from_url(url), "url": url}})
 
         return sources
 
@@ -325,11 +374,12 @@ class RagPipeline(dspy.Module):
         for i, doc in enumerate(documents, 1):
             source_name = doc.metadata.get("source_display", "Unknown Source")
             title = doc.metadata.get("title", f"Document {i}")
-            url = doc.metadata.get("url", "#")
+            url = doc.metadata.get("url")
 
             context_parts.append(f"## {i}. {title}")
             context_parts.append(f"Source: {source_name}")
-            context_parts.append(f"URL: {url}")
+            if url:
+                context_parts.append(f"URL: {url}")
             context_parts.append("")
             context_parts.append(doc.page_content)
             context_parts.append("")
