@@ -3,10 +3,15 @@ from __future__ import annotations
 import json
 import os
 import re
-from collections.abc import Iterable, Iterator
-from typing import Optional
+from collections.abc import Iterator
+from dataclasses import dataclass
+from datetime import datetime, timedelta, timezone
+from pathlib import Path
+from typing import Any
 
 import jsonlines
+from dotenv import load_dotenv
+from langsmith import Client
 
 # ------------------------------
 # Generic JSONL/JSON stream utils
@@ -39,306 +44,206 @@ def _read_records_json_stream(path: str) -> Iterator[dict]:
         idx = end
 
 
-# ------------------------------
-# Starknet-Agent LangSmith extractor
-# ------------------------------
-
-def _iter_chat_pairs(chat_history: list[dict]) -> Iterable[tuple[str, str]]:
-    """Yield (human, ai) pairs from a chat history list.
-
-    The dataset alternates HumanMessage and AIMessage, starting with human.
-    This function pairs messages two-by-two in that order. If the structure
-    deviates, it will try to match by the `id` field's last segment.
-    """
-
-    def is_human(msg: dict) -> bool:
-        try:
-            return msg.get("id", [None, None, None])[-1] == "HumanMessage"
-        except Exception:
-            return False
-
-    def is_ai(msg: dict) -> bool:
-        try:
-            return msg.get("id", [None, None, None])[-1] == "AIMessage"
-        except Exception:
-            return False
-
-    i = 0
-    n = len(chat_history)
-    while i + 1 < n:
-        h = chat_history[i]
-        a = chat_history[i + 1]
-
-        # Prefer strict alternating order, but fall back to type checks if needed
-        if not (is_human(h) and is_ai(a)):
-            # Try to advance to the next valid human-ai pair
-            # Find next human
-            while i < n and not is_human(chat_history[i]):
-                i += 1
-            if i + 1 >= n:
-                break
-            # Next should be AI
-            if not is_ai(chat_history[i + 1]):
-                i += 1
-                continue
-            h = chat_history[i]
-            a = chat_history[i + 1]
-
-        h_content = h.get("kwargs", {}).get("content", "")
-        a_content = a.get("kwargs", {}).get("content", "")
-
-        if h_content and a_content:
-            yield h_content, a_content
-
-        i += 2
-
-
-def extract_starknet_agent_pairs(input_path: str) -> list[dict[str, str]]:
-    """Extract de-duplicated {query, answer} pairs from a LangSmith JSONL export
-    containing chat histories under `inputs.chat_history` with alternating
-    HumanMessage/AIMessage entries.
-    """
-    # Helpers for stronger deduplication
-    ws_re = re.compile(r"\s+")
-    cite_re = re.compile(r"\[(?:\d+(?:-\d+)?(?:,\s*)?)+\]")
-
-    def normalize_text(s: str) -> str:
-        if not s:
-            return ""
-        # Remove code-fence markers and backticks but keep content
-        s = s.replace("```", "").replace("`", "")
-        # Drop inline citation markers like [1], [1][4], [2-5]
-        s = cite_re.sub("", s)
-        # Lowercase and collapse whitespace
-        s = s.lower().strip()
-        return ws_re.sub(" ", s)
-
-    grouped: dict[str, list[tuple[str, str, str]]] = {}
-
-    # Try JSONL first
-    try:
-        iterator: Iterable[dict] = _read_records_jsonl(input_path)
-        had_any = False
-        for obj in iterator:
-            had_any = True
-            chat = obj.get("inputs", {}).get("chat_history")
-            if not isinstance(chat, list):
-                continue
-            for q, a in _iter_chat_pairs(chat):
-                nq, na = normalize_text(q), normalize_text(a)
-                if not nq or not na:
-                    continue
-                bucket = grouped.setdefault(nq, [])
-                # Dedup within same query: drop prefixes, keep the longest
-                replaced = False
-                for idx, (ea, _oq, _oa) in enumerate(bucket):
-                    if na == ea:
-                        replaced = True
-                        break
-                    if na.startswith(ea):
-                        bucket[idx] = (na, q, a)
-                        replaced = True
-                        break
-                    if ea.startswith(na):
-                        replaced = True
-                        break
-                if not replaced:
-                    bucket.append((na, q, a))
-        if had_any:
-            out: list[dict[str, str]] = []
-            for entries in grouped.values():
-                for _, q, a in entries:
-                    out.append({"query": q, "answer": a})
-            return out
-    except Exception:
-        # fall through to stream parser
-        pass
-
-    # Fallback: concatenated JSON objects (pretty-printed)
-    for obj in _read_records_json_stream(input_path):
-        chat = obj.get("inputs", {}).get("chat_history")
-        if not isinstance(chat, list):
-            continue
-        for q, a in _iter_chat_pairs(chat):
-            nq, na = normalize_text(q), normalize_text(a)
-            if not nq or not na:
-                continue
-            bucket = grouped.setdefault(nq, [])
-            replaced = False
-            for idx, (ea, _oq, _oa) in enumerate(bucket):
-                if na == ea:
-                    replaced = True
-                    break
-                if na.startswith(ea):
-                    bucket[idx] = (na, q, a)
-                    replaced = True
-                    break
-                if ea.startswith(na):
-                    replaced = True
-                    break
-            if not replaced:
-                bucket.append((na, q, a))
-
-    out: list[dict[str, str]] = []
-    for entries in grouped.values():
-        for _, q, a in entries:
-            out.append({"query": q, "answer": a})
-    return out
 
 
 # ------------------------------
 # Cairo-Coder LangSmith extractor
 # ------------------------------
 
-ANSWER_RE_SQ = re.compile(r"answer\s*=\s*'((?:\\'|[^'])*)'")
-ANSWER_RE_DQ = re.compile(r'answer\s*=\s*"((?:\\"|[^"])*)"')
-HAS_REASONING_RE = re.compile(r"reasoning=")
+# Regex patterns for extracting answer from Prediction output
+ANSWER_RE_SQ = re.compile(r"answer\s*=\s*'((?:\\'|[^'])*)'", re.DOTALL)
+ANSWER_RE_DQ = re.compile(r'answer\s*=\s*"((?:\\"|[^"])*)"', re.DOTALL)
 
 
-def _extract_answer_fragment(s: str) -> Optional[str]:
-    """Extract the quoted answer=... string from the Prediction-like output.
+def _extract_answer_from_prediction(output: str) -> str:
+    """Extract the answer field from a Prediction output string.
 
-    Returns the unescaped string content if found, otherwise None.
+    Handles both single and double quoted strings, with proper escape handling.
+    Returns the raw output if extraction fails.
+
+    Args:
+        output: The Prediction output string
+
+    Returns:
+        The extracted and unescaped answer string, or the original output if extraction fails
     """
-    m = ANSWER_RE_SQ.search(s)
+    # Try single quotes first
+    m = ANSWER_RE_SQ.search(output)
     if m:
-        raw = "'" + m.group(1) + "'"  # re-wrap for literal_eval
+        raw = "'" + m.group(1) + "'"
     else:
-        m = ANSWER_RE_DQ.search(s)
+        # Try double quotes
+        m = ANSWER_RE_DQ.search(output)
         if not m:
-            return None
+            # If no match, return the original output
+            return output
         raw = '"' + m.group(1) + '"'
 
     try:
         import ast
-
+        # Use literal_eval to properly unescape the string
         return ast.literal_eval(raw)
     except Exception:
-        # Fallback: interpret common escapes
+        # Fallback: try manual unescaping
         try:
             return raw[1:-1].encode("utf-8").decode("unicode_escape")
         except Exception:
+            # Last resort: return the string without quotes
             return raw[1:-1]
 
 
-def _is_single_output(outputs: object) -> tuple[bool, Optional[str]]:
-    """Check that outputs is a dict with a single key 'output' string.
+@dataclass
+class RunQueries:
+    """Container for queries extracted from a single run."""
+    run_id: str
+    queries: list[str]
+    output: str
+    mcp_mode: bool
 
-    Returns (ok, output_string_or_None).
-    """
-    if not isinstance(outputs, dict):
-        return False, None
-    if set(outputs.keys()) != {"output"}:
-        return False, None
-    val = outputs.get("output")
-    if not isinstance(val, str):
-        return False, None
-    return True, val
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "run_id": self.run_id,
+            "queries": self.queries,
+            "mcp_mode": self.mcp_mode,
+            "output": self.output
+        }
+
+
+class RunDeduplicator:
+    """Removes runs whose queries are prefixes of other runs."""
+
+    def deduplicate(self, runs: list[RunQueries]) -> list[RunQueries]:
+        """
+        Remove runs that are prefixes of longer runs.
+
+        Args:
+            runs: List of run queries to deduplicate
+
+        Returns:
+            Filtered list with prefix runs removed
+        """
+        if not runs:
+            return []
+
+        # Sort by query count (longest first) while tracking original indices
+        indexed_runs = list(enumerate(runs))
+        indexed_runs.sort(key=lambda x: len(x[1].queries), reverse=True)
+
+        kept_queries = []
+        keep_indices = set()
+
+        for idx, run in indexed_runs:
+            # Skip if this run's queries are a prefix of any kept run
+            if any(run.queries == kq[:len(run.queries)] for kq in kept_queries):
+                continue
+
+            keep_indices.add(idx)
+            kept_queries.append(run.queries)
+
+        # Restore original order
+        return [run for idx, run in enumerate(runs) if idx in keep_indices]
 
 
 def extract_cairocoder_pairs(
-    input_path: str,
     *,
-    only_mcp: bool,
-    only_generated_answers: bool,
-) -> tuple[list[dict[str, str]], dict[str, int]]:
-    """Extract {query, answer} pairs from a LangSmith JSONL export for Cairo-Coder.
+    days_back: int = 14,
+    run_name_filters: list[str] | None = None,
+    project_name: str | None = None,
+) -> tuple[list[dict[str, Any]], dict[str, int]]:
+    """Extract {query, answer} pairs from LangSmith for Cairo-Coder.
 
-    The record format is expected to have `outputs: {"output": "Prediction(..."}`.
-    Use `only_mcp=True` to keep Prediction outputs without `reasoning=`.
-    Use `only_generated_answers=True` to keep outputs with `reasoning=`.
+    This function connects to LangSmith API and fetches runs from the specified
+    project, then deduplicates and formats them as query/answer pairs.
 
-    Returns a tuple of (pairs, stats) where stats has total/matched/skipped.
+    Args:
+        days_back: Number of days to look back for runs (default: 14)
+        run_name_filters: List of run names to filter by (default: ["RagPipeline", "RagPipelineStreaming"])
+        project_name: LangSmith project name (default: from LANGSMITH_PROJECT env var or "default")
+
+    Returns:
+        A tuple of (pairs, stats) where:
+        - pairs is a list of dicts, each containing run information
+        - stats contains total runs, matched runs, etc.
     """
-    results: list[dict] = []
-    total = 0
-    matched = 0
+    # Load environment variables
+    load_dotenv(Path(__file__).parent.parent.parent.parent / ".env")
+
+    if run_name_filters is None:
+        run_name_filters = ["RagPipeline", "RagPipelineStreaming"]
+
+    if project_name is None:
+        project_name = os.getenv("LANGSMITH_PROJECT", "default")
+
+    # Initialize LangSmith client
+    client = Client()
+    deduplicator = RunDeduplicator()
+
+    # Calculate time range
+    end_time = datetime.now(timezone.utc)
+    start_time = end_time - timedelta(days=days_back)
+
+    # Build filter query
+    filter_clauses = [f'eq(name, "{name}")' for name in run_name_filters]
+    query_params = {
+        "start_time": start_time,
+        "end_time": end_time,
+        "filter": f'or({",".join(filter_clauses)})',
+        "project_name": project_name,
+    }
+
+    # Fetch runs from LangSmith
+    runs = []
+    total_runs = 0
     skipped = 0
 
-    # First try strict JSONL; if that fails, fall back to JSON stream.
     try:
-        iterator: Iterable[dict] = _read_records_jsonl(input_path)
-        had_any = False
-        for rec in iterator:
-            had_any = True
-            total += 1
-            ok, out_str = _is_single_output(rec.get("outputs"))
-            if not ok or out_str is None:
-                skipped += 1
-                continue
-
-            has_reasoning = bool(HAS_REASONING_RE.search(out_str))
-            looks_like_prediction = out_str.startswith("Prediction(") and ("answer=" in out_str)
-
-            if only_mcp:
-                if not looks_like_prediction or has_reasoning:
-                    continue
-            elif only_generated_answers and not has_reasoning:
-                continue
-
-            query = None
+        all_runs = client.list_runs(**query_params)
+        for run in all_runs:
+            total_runs += 1
             try:
-                inputs = rec.get("inputs")
-                if isinstance(inputs, dict):
-                    q = inputs.get("query")
-                    if isinstance(q, str):
-                        query = q
-            except Exception:
-                query = None
+                run_data = run.dict()
+                inputs = run_data["inputs"]
+                query = inputs["query"]
+                chat_history = inputs.get("chat_history", [])
+                output = run_data["outputs"]["output"]
+                mcp_mode = inputs.get("mcp_mode", False)
 
-            if not query:
+                # Extract user queries from chat history
+                user_queries_in_history = [
+                    msg['content'] for msg in chat_history
+                    if isinstance(msg, dict) and msg.get("role") == "user"
+                ]
+
+                # Combine chat history queries with current query
+                full_query = user_queries_in_history + [query]
+
+                # Extract clean answer from Prediction output
+                clean_output = _extract_answer_from_prediction(output)
+
+                runs.append(RunQueries(
+                    run_id=str(run_data["id"]),
+                    queries=full_query,
+                    mcp_mode=mcp_mode,
+                    output=clean_output
+                ))
+            except (KeyError, TypeError):
                 skipped += 1
                 continue
+    except Exception as e:
+        # Return empty results with error stats if LangSmith fetch fails
+        stats = {"total": 0, "matched": 0, "skipped": 0, "error": str(e)}
+        return [], stats
 
-            answer = _extract_answer_fragment(out_str)
-            if not answer:
-                skipped += 1
-                continue
+    # Deduplicate runs
+    runs = deduplicator.deduplicate(runs)
 
-            results.append({"query": query, "answer": answer})
-            matched += 1
+    # Convert to output format
+    results = [run.to_dict() for run in runs]
 
-        if not had_any:
-            raise RuntimeError("jsonlines yielded no records; trying stream parser")
-    except Exception:
-        for rec in _read_records_json_stream(input_path):
-            total += 1
-            ok, out_str = _is_single_output(rec.get("outputs"))
-            if not ok or out_str is None:
-                skipped += 1
-                continue
+    stats = {
+        "total": total_runs,
+        "matched": len(results),
+        "skipped": skipped
+    }
 
-            has_reasoning = bool(HAS_REASONING_RE.search(out_str))
-            looks_like_prediction = out_str.startswith("Prediction(") and ("answer=" in out_str)
-
-            if only_mcp:
-                if not looks_like_prediction or has_reasoning:
-                    continue
-            elif only_generated_answers and not has_reasoning:
-                continue
-
-            query = None
-            try:
-                inputs = rec.get("inputs")
-                if isinstance(inputs, dict):
-                    q = inputs.get("query")
-                    if isinstance(q, str):
-                        query = q
-            except Exception:
-                query = None
-
-            if not query:
-                skipped += 1
-                continue
-
-            answer = _extract_answer_fragment(out_str)
-            if not answer:
-                skipped += 1
-                continue
-
-            results.append({"query": query, "answer": answer})
-            matched += 1
-
-    stats = {"total": total, "matched": matched, "skipped": skipped}
     return results, stats
-

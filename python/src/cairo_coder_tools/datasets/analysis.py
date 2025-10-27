@@ -215,7 +215,7 @@ def collect_counts(
         for fw in r["frameworks"]:
             frameworks_counts[fw] += 1
 
-    return category_counts, intent_counts, ves_by_category, frameworks_counts
+    return category_counts, intent_counts, leaves_by_category, frameworks_counts
 
 
 def plot_barh(ax, labels: list[str], counts: list[int], title: str, xlabel: str, color: str):
