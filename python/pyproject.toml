@@ -142,6 +142,9 @@ strict_optional = true
 testpaths = ["tests"]
 pythonpath = ["src"]
 asyncio_mode = "auto"
+markers = [
+  "db: marks tests that require a database (run by default, use -m 'not db' to skip)",
+]
 filterwarnings = [
   "ignore::DeprecationWarning",
   "ignore::PendingDeprecationWarning",

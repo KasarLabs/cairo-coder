@@ -18,7 +18,7 @@ import langsmith as ls
 import structlog
 import uvicorn
 from dspy.adapters import ChatAdapter, XMLAdapter
-from fastapi import Depends, FastAPI, Header, HTTPException, Request
+from fastapi import BackgroundTasks, Depends, FastAPI, Header, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field, field_validator
@@ -28,8 +28,12 @@ from cairo_coder.core.agent_factory import AgentFactory, create_agent_factory
 from cairo_coder.core.config import VectorStoreConfig
 from cairo_coder.core.rag_pipeline import RagPipeline
 from cairo_coder.core.types import Message, Role, StreamEventType
+from cairo_coder.db import session as db_session
+from cairo_coder.db.models import UserInteraction
+from cairo_coder.db.repository import create_user_interaction
 from cairo_coder.dspy.document_retriever import SourceFilteredPgVectorRM
 from cairo_coder.dspy.suggestion_program import SuggestionGeneration
+from cairo_coder.server.insights_api import router as insights_router
 from cairo_coder.utils.logging import setup_logging
 
 # Configure structured logging
@@ -140,6 +144,39 @@ class SuggestionResponse(BaseModel):
     suggestions: list[str] = Field(..., description="List of 4-5 follow-up suggestions")
 
 
+async def log_interaction_task(
+    agent_id: str,
+    mcp_mode: bool,
+    query: str,
+    chat_history: list[Message],
+    response: ChatCompletionResponse,
+    agent: RagPipeline,
+) -> None:
+    """Background task that persists a user interaction."""
+    sources_data = [
+        {"page_content": doc.page_content, "metadata": doc.metadata}
+        for doc in agent.last_retrieved_documents
+    ]
+
+    # Convert Message objects to dicts for JSON serialization
+    chat_history_dicts = [
+        {"role": msg.role.value if hasattr(msg.role, "value") else msg.role, "content": msg.content}
+        for msg in chat_history
+    ] if chat_history else None
+
+    interaction = UserInteraction(
+        agent_id=agent_id,
+        mcp_mode=mcp_mode,
+        chat_history=chat_history_dicts,
+        query=query,
+        generated_answer=response.choices[0].message.content if response.choices else None,
+        retrieved_sources=sources_data,
+        # TODO: fix LLM usage metrics
+        llm_usage={}
+    )
+    await create_user_interaction(interaction)
+
+
 class CairoCoderServer:
     """
     FastAPI server for Cairo Coder that replicates TypeScript backend functionality.
@@ -176,6 +213,8 @@ class CairoCoderServer:
             allow_methods=["*"],
             allow_headers=["*"],
         )
+
+        self.app.include_router(insights_router)
 
         # Setup routes
         self._setup_routes()
@@ -241,6 +280,7 @@ class CairoCoderServer:
             agent_id: str,
             request: ChatCompletionRequest,
             req: Request,
+            background_tasks: BackgroundTasks,
             mcp: str | None = Header(None),
             x_mcp_mode: str | None = Header(None, alias="x-mcp-mode"),
             vector_db: SourceFilteredPgVectorRM = Depends(get_vector_db),
@@ -267,13 +307,14 @@ class CairoCoderServer:
             mcp_mode = bool(mcp or x_mcp_mode)
 
             return await self._handle_chat_completion(
-                request, req, agent_factory, agent_id, mcp_mode, vector_db
+                request, req, background_tasks, agent_factory, agent_id, mcp_mode, vector_db
             )
 
         @self.app.post("/v1/chat/completions")
         async def v1_chat_completions(
             request: ChatCompletionRequest,
             req: Request,
+            background_tasks: BackgroundTasks,
             mcp: str | None = Header(None),
             x_mcp_mode: str | None = Header(None, alias="x-mcp-mode"),
             vector_db: SourceFilteredPgVectorRM = Depends(get_vector_db),
@@ -284,13 +325,14 @@ class CairoCoderServer:
             mcp_mode = bool(mcp or x_mcp_mode)
 
             return await self._handle_chat_completion(
-                request, req, agent_factory, None, mcp_mode, vector_db
+                request, req, background_tasks, agent_factory, None, mcp_mode, vector_db
             )
 
         @self.app.post("/chat/completions")
         async def chat_completions(
             request: ChatCompletionRequest,
             req: Request,
+            background_tasks: BackgroundTasks,
             mcp: str | None = Header(None),
             x_mcp_mode: str | None = Header(None, alias="x-mcp-mode"),
             vector_db: SourceFilteredPgVectorRM = Depends(get_vector_db),
@@ -301,7 +343,7 @@ class CairoCoderServer:
             mcp_mode = bool(mcp or x_mcp_mode)
 
             return await self._handle_chat_completion(
-                request, req, agent_factory, None, mcp_mode, vector_db
+                request, req, background_tasks, agent_factory, None, mcp_mode, vector_db
             )
 
         @self.app.post("/v1/suggestions", response_model=SuggestionResponse)
@@ -334,6 +376,7 @@ class CairoCoderServer:
         self,
         request: ChatCompletionRequest,
         req: Request,
+        background_tasks: BackgroundTasks,
         agent_factory: AgentFactory,
         agent_id: str | None = None,
         mcp_mode: bool = False,
@@ -349,23 +392,19 @@ class CairoCoderServer:
             # Get last user message as query
             query = request.messages[-1].content
 
+            # Determine agent ID (fallback to cairo-coder)
+            effective_agent_id = agent_id or "cairo-coder"
+
             # Create agent
-            if agent_id:
-                agent = agent_factory.get_or_create_agent(
-                    agent_id=agent_id,
-                    mcp_mode=mcp_mode,
-                )
-            else:
-                # In the default case, fallback to cairo-coder
-                agent = agent_factory.get_or_create_agent(
-                    agent_id="cairo-coder",
-                    mcp_mode=mcp_mode,
-                )
+            agent = agent_factory.get_or_create_agent(
+                agent_id=effective_agent_id,
+                mcp_mode=mcp_mode,
+            )
 
             # Handle streaming vs non-streaming
             if request.stream:
                 return StreamingResponse(
-                    self._stream_chat_completion(agent, query, messages[:-1], mcp_mode),
+                    self._stream_chat_completion(agent, query, messages[:-1], mcp_mode, effective_agent_id),
                     media_type="text/event-stream",
                     headers={
                         "Cache-Control": "no-cache",
@@ -373,7 +412,20 @@ class CairoCoderServer:
                         "X-Accel-Buffering": "no",
                     },
                 )
-            return await self._generate_chat_completion(agent, query, messages[:-1], mcp_mode)
+            chat_history = messages[:-1]
+            response = await self._generate_chat_completion(agent, query, chat_history, mcp_mode)
+
+            background_tasks.add_task(
+                log_interaction_task,
+                agent_id=effective_agent_id,
+                mcp_mode=mcp_mode,
+                query=query,
+                chat_history=chat_history,
+                response=response,
+                agent=agent,
+            )
+
+            return response
 
         except ValueError as e:
             raise HTTPException(
@@ -397,7 +449,7 @@ class CairoCoderServer:
             ) from e
 
     async def _stream_chat_completion(
-        self, agent: RagPipeline, query: str, history: list[Message], mcp_mode: bool
+        self, agent: RagPipeline, query: str, history: list[Message], mcp_mode: bool, agent_id: str
     ) -> AsyncGenerator[str, None]:
         """Stream chat completion response - replicates TypeScript streaming."""
         response_id = str(uuid.uuid4())
@@ -511,6 +563,25 @@ class CairoCoderServer:
         }
         yield f"data: {json.dumps(final_chunk)}\n\n"
         yield "data: [DONE]\n\n"
+
+        # Log interaction after streaming completes
+        # Create a mock response object for logging
+        response = ChatCompletionResponse(
+            id=response_id,
+            created=created,
+            choices=[
+                ChatCompletionChoice(
+                    index=0,
+                    message=ChatMessage(role=Role.ASSISTANT, content=content_buffer),
+                    finish_reason="stop",
+                )
+            ],
+            usage={"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0},
+        )
+        try:
+            await log_interaction_task(agent_id, mcp_mode, query, history, response, agent)
+        except Exception as log_error:
+            logger.error("Failed to log streaming interaction", error=str(log_error), exc_info=True)
 
     def _format_chat_history_for_suggestions(self, chat_history: list[ChatMessage]) -> str:
         """
@@ -660,6 +731,10 @@ async def lifespan(app: FastAPI):
 
     logger.info("Starting Cairo Coder server - initializing resources")
 
+    # Initialize SQL persistence layer
+    await db_session.get_pool()
+    await db_session.execute_schema_scripts()
+
     # Load config once
     config = ConfigManager.load_config()
     vector_store_config = config.vector_store
@@ -686,6 +761,8 @@ async def lifespan(app: FastAPI):
 
     # Cleanup
     logger.info("Shutting down Cairo Coder server - cleaning up resources")
+
+    await db_session.close_pool()
 
     if _vector_db and _vector_db.pool:
         await _vector_db.pool.close()

@@ -352,6 +352,112 @@ Common cases:
 - `404 Not Found` — unknown agent id.
 - `500 Internal Server Error` — unexpected backend issues.
 
+## Query Insights
+
+The Query Insights API exposes raw interaction logs and lightweight analytics for downstream processing.
+
+### `GET /v1/insights/queries`
+
+Fetch paginated user queries within a specific window.
+
+- `start_date` _(ISO 8601, required)_ — inclusive lower bound.
+- `end_date` _(ISO 8601, required)_ — inclusive upper bound.
+- `agent_id` _(optional)_ — filter by agent id when provided.
+- `limit` _(default `100`)_ — maximum rows returned.
+- `offset` _(default `0`)_ — pagination offset.
+
+**Response** `200 OK`
+
+```json
+{
+  "items": [
+    {
+      "id": "ad0c2b34-04ab-4d0a-9855-47c19f0f2830",
+      "created_at": "2024-04-01T12:30:45.123456+00:00",
+      "agent_id": "cairo-coder",
+      "final_user_query": "How do I declare a storage variable in Cairo 1?"
+    }
+  ],
+  "total": 1,
+  "limit": 100,
+  "offset": 0
+}
+```
+
+### `POST /v1/insights/analyze`
+
+Trigger an asynchronous analysis job. The response returns immediately with the job identifier; the analysis runs in the background.
+
+#### Request
+
+```json
+{
+  "start_date": "2024-04-01T00:00:00Z",
+  "end_date": "2024-04-15T23:59:59Z",
+  "agent_id": "cairo-coder"
+}
+```
+
+**Response** `202 Accepted`
+
+```json
+{
+  "analysis_id": "88ed4a1e-1bda-45b9-a3e8-5c6df8b6f1f1",
+  "status": "pending"
+}
+```
+
+### `GET /v1/insights/analyses`
+
+List recent analysis jobs.
+
+**Response** `200 OK`
+
+```json
+[
+  {
+    "id": "88ed4a1e-1bda-45b9-a3e8-5c6df8b6f1f1",
+    "created_at": "2024-04-15T12:00:00+00:00",
+    "status": "completed",
+    "analysis_parameters": {
+      "start_date": "2024-04-01T00:00:00+00:00",
+      "end_date": "2024-04-15T23:59:59+00:00",
+      "agent_id": "cairo-coder"
+    }
+  }
+]
+```
+
+### `GET /v1/insights/analyses/{analysis_id}`
+
+Fetch a specific analysis job. If the job completed successfully, `analysis_result` contains the summarized metrics; otherwise `error_message` explains the failure.
+
+**Response** `200 OK`
+
+```json
+{
+  "id": "88ed4a1e-1bda-45b9-a3e8-5c6df8b6f1f1",
+  "created_at": "2024-04-15T12:00:00+00:00",
+  "status": "completed",
+  "analysis_parameters": {
+    "start_date": "2024-04-01T00:00:00+00:00",
+    "end_date": "2024-04-15T23:59:59+00:00",
+    "agent_id": "cairo-coder"
+  },
+  "analysis_result": {
+    "total_queries": 42,
+    "average_word_count": 18.6,
+    "top_terms": [
+      ["cairo", 7],
+      ["storage", 4]
+    ]
+  },
+  "error_message": null
+}
+```
+
+If the job id is unknown, the server responds with `404 Not Found`.
+
 ## Versioning & Compatibility
 
 - Current API version: `1.0.0` (see FastAPI metadata).
