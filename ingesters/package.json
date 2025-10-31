@@ -1,6 +1,6 @@
 {
   "name": "cairo-coder-ingester",
-  "version": "0.2.2",
+  "version": "0.3.0",
   "scripts": {
     "test": "bun test",
     "check": "bun tsc --noEmit",
