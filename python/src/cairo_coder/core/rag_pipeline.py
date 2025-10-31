@@ -23,6 +23,7 @@ from cairo_coder.core.types import (
     ProcessedQuery,
     StreamEvent,
     StreamEventType,
+    title_from_url,
 )
 from cairo_coder.dspy.document_retriever import DocumentRetrieverProgram
 from cairo_coder.dspy.generation_program import GenerationProgram, McpGenerationProgram
@@ -321,15 +322,6 @@ class RagPipeline(dspy.Module):
         sources: list[dict[str, str]] = []
         seen_urls: set[str] = set()
 
-        # Helper to extract domain title
-        def title_from_url(url: str) -> str:
-            try:
-                import urllib.parse as _up
-
-                host = _up.urlparse(url).netloc
-                return host or url
-            except Exception:
-                return url
 
         # 1) Vector store and other docs (skip Grok summary virtual doc)
         for doc in documents:

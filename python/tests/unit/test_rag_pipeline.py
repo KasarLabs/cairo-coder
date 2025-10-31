@@ -528,6 +528,21 @@ class TestPipelineHelperMethods:
         urls = [s["metadata"].get("url", "") for s in sources]
         assert urls.count(url) == 1
 
+    def test_format_sources_title_fallback(self, rag_pipeline):
+        """Missing document titles should fall back to a human-friendly domain."""
+        doc = Document(
+            page_content="Some content",
+            metadata={
+                "sourceLink": "https://docs.example.com/path/to/page",
+            },
+        )
+
+        sources = rag_pipeline._format_sources([doc])
+
+        assert len(sources) == 1
+        assert sources[0]["metadata"]["title"] == "Page"
+        assert sources[0]["metadata"]["url"] == "https://docs.example.com/path/to/page"
+
     def test_prepare_context_excludes_virtual_document_headers(self, rag_pipeline):
         """Virtual documents should not have headers to prevent citation."""
         docs = [

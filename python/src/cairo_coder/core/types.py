@@ -75,6 +75,30 @@ class ProcessedQuery:
     resources: list[DocumentSource] = field(default_factory=list)
 
 
+# Helper to extract domain title
+def title_from_url(url: str) -> str:
+    try:
+        import urllib.parse as _up
+
+        parsed = _up.urlparse(url)
+
+        # Try to extract a meaningful title from the path
+        path = parsed.path.strip('/')
+        if path:
+            # Get the last segment of the path
+            last_segment = path.split('/')[-1]
+            # Remove file extensions
+            last_segment = last_segment.rsplit('.', 1)[0]
+            # Convert hyphens/underscores to spaces and title case
+            if last_segment:
+                return last_segment.replace('-', ' ').replace('_', ' ').title()
+
+        # Fallback to netloc if path extraction fails
+        host = parsed.netloc
+        return host or url
+    except Exception:
+        return url
+
 @dataclass(frozen=True)
 class Document:
     """
@@ -95,7 +119,8 @@ class Document:
     @property
     def title(self) -> str | None:
         """Get document title from metadata."""
-        return self.metadata.get("title", self.page_content[:20])
+        title_fallback = title_from_url(self.source_link) if self.source_link else None
+        return self.metadata.get("title", title_fallback or self.page_content[:20])
 
     @property
     def source_link(self) -> str | None:
