@@ -13,6 +13,7 @@ from unittest.mock import AsyncMock
 import pytest
 
 from cairo_coder.core.types import Document, DocumentSource
+from cairo_coder.dspy.grok_search import GrokSearchProgram
 
 # A small subset of the real Grok response shared for mocks
 GROK_ANSWER = (
@@ -85,11 +86,14 @@ async def test_grok_summary_is_first_in_generation_context(
         sources=[DocumentSource.STARKNET_BLOG],
     )
 
-    # Inspect the generation context to confirm ordering and labeling
+    # Inspect the generation context to confirm virtual doc has no header
     _, kwargs = pipeline.generation_program.aforward.call_args
     context = kwargs["context"]
-    assert "## 1. Grok Web/X Summary" in context
-    assert "Source: Grok Web/X" in context
+    # Virtual documents should NOT have headers to prevent citation
+    assert "## Grok Web/X Summary" not in context
+    assert "*Source: Grok Web/X*" not in context
+    # But the content should still be present
+    assert GROK_ANSWER in context
 
 
 @pytest.mark.asyncio
@@ -122,3 +126,25 @@ async def test_grok_failure_does_not_pollute_sources(
 
     # None of the Grok citations should be present on failure
     assert all(url not in urls for url in GROK_CITATIONS)
+
+def test_extract_urls_from_text_markdown_and_bare():
+    text = (
+        "Ekubo offers up to [35% APY](https://app.ekubo.org/) on BTC pairs.\n"
+        "See community thread: https://x.com/user/status/12345 and details at "
+        "[Troves](https://app.troves.fi/). Duplicate: https://app.ekubo.org/"
+    )
+
+    urls = GrokSearchProgram._extract_urls_from_text(text)
+
+    assert urls[0] == "https://app.ekubo.org/"
+    assert "https://x.com/user/status/12345" in urls
+    assert "https://app.troves.fi/" in urls
+    # Deduplication preserves first occurrence
+    assert urls.count("https://app.ekubo.org/") == 1
+
+
+def test_extract_urls_strips_trailing_punctuations():
+    text = "Check https://example.com/path). And [ref](https://site.org/page)."
+    urls = GrokSearchProgram._extract_urls_from_text(text)
+    assert "https://example.com/path" in urls
+    assert "https://site.org/page" in urls

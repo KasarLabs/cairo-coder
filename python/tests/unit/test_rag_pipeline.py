@@ -491,6 +491,79 @@ class TestPipelineHelperMethods:
         assert sources[1]["metadata"]["url"] == "https://example.com"
         assert sources[1]["metadata"]["title"] == "No SourceLink Doc"
 
+    def test_prepare_context_headers_with_and_without_links(self, rag_pipeline):
+        """Headers should use markdown links when URL present and plain titles otherwise."""
+        docs = [
+            Document(
+                page_content="Linked content",
+                metadata={
+                    "title": "Linked Doc",
+                    "source_display": "Docs",
+                    "sourceLink": "https://example.com/linked",
+                },
+            ),
+            Document(
+                page_content="Unlinked content",
+                metadata={
+                    "title": "Unlinked Doc",
+                    "source_display": "Docs",
+                },
+            ),
+        ]
+
+        context = rag_pipeline._prepare_context(docs)
+        assert "## [Linked Doc](https://example.com/linked)" in context
+        assert "*Source: Docs*" in context
+        assert "## Unlinked Doc" in context
+
+    def test_format_sources_deduplicates_urls(self, rag_pipeline):
+        """Duplicate URLs should be deduplicated in sources output."""
+        url = "https://example.com/dup"
+        docs = [
+            Document(page_content="A", metadata={"title": "A1", "sourceLink": url}),
+            Document(page_content="B", metadata={"title": "A2", "sourceLink": url}),
+        ]
+
+        sources = rag_pipeline._format_sources(docs)
+        urls = [s["metadata"].get("url", "") for s in sources]
+        assert urls.count(url) == 1
+
+    def test_prepare_context_excludes_virtual_document_headers(self, rag_pipeline):
+        """Virtual documents should not have headers to prevent citation."""
+        docs = [
+            Document(
+                page_content="Real documentation content",
+                metadata={
+                    "title": "Real Doc",
+                    "source_display": "Docs",
+                    "sourceLink": "https://example.com/real",
+                    "is_virtual": False,
+                },
+            ),
+            Document(
+                page_content="Virtual content with [inline link](https://example.com/inline)",
+                metadata={
+                    "title": "Virtual Summary",
+                    "source_display": "Virtual Source",
+                    "sourceLink": "",
+                    "is_virtual": True,
+                },
+            ),
+        ]
+
+        context = rag_pipeline._prepare_context(docs)
+
+        # Real document should have header
+        assert "## [Real Doc](https://example.com/real)" in context
+        assert "*Source: Docs*" in context
+
+        # Virtual document should NOT have header or source label
+        assert "Virtual Summary" not in context
+        assert "Virtual Source" not in context
+
+        # But virtual document content should still be present
+        assert "Virtual content with [inline link](https://example.com/inline)" in context
+
     def test_get_current_state(self, sample_documents, sample_processed_query, pipeline):
         """Test pipeline state retrieval."""
         # Set internal state

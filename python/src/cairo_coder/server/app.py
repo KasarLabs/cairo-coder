@@ -414,7 +414,7 @@ class CairoCoderServer:
         yield f"data: {json.dumps(initial_chunk)}\n\n"
 
         # Process agent and stream responses
-        content_buffer = ""
+        final_response = ""
 
         try:
             with ls.trace(name="RagPipelineStreaming", run_type="chain", inputs={"query": query, "chat_history": history, "mcp_mode": mcp_mode}) as rt:
@@ -443,8 +443,6 @@ class CairoCoderServer:
                         }
                         yield f"data: {json.dumps(processing_chunk)}\n\n"
                     elif event.type == StreamEventType.RESPONSE:
-                        content_buffer += event.data
-
                         # Send content chunk
                         chunk = {
                             "id": response_id,
@@ -458,6 +456,7 @@ class CairoCoderServer:
                         yield f"data: {json.dumps(chunk)}\n\n"
                     elif event.type == StreamEventType.FINAL_RESPONSE:
                         # Emit an explicit final response event for clients
+                        final_response = event.data
                         final_event = {
                             "type": "final_response",
                             "data": event.data,
@@ -479,10 +478,11 @@ class CairoCoderServer:
                             ],
                         }
                         yield f"data: {json.dumps(error_chunk)}\n\n"
+                        rt.end(outputs={"output": final_response})
                         break
                     elif event.type == StreamEventType.END:
+                        rt.end(outputs={"output": final_response})
                         break
-                rt.end(outputs={"output": content_buffer})
 
         except Exception as e:
             logger.error("Error during agent streaming", error=str(e), exc_info=True)
@@ -494,7 +494,7 @@ class CairoCoderServer:
                 "choices": [
                     {
                         "index": 0,
-                        "delta": {"content": f"\n\nError: {str(e)}"},
+                        "delta": {"content": "\n\n Could not generate a response due to a technical issue. Please try again later."},
                         "finish_reason": "stop",
                     }
                 ],

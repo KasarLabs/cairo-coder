@@ -20,10 +20,12 @@ from __future__ import annotations
 
 import hashlib
 import os
+import re
 from urllib.parse import urlparse
 
 import dspy
 import structlog
+from langsmith import traceable
 from xai_sdk import AsyncClient as XaiClient
 from xai_sdk.chat import Response, user
 from xai_sdk.tools import web_search, x_search
@@ -63,16 +65,43 @@ class GrokSearchProgram(dspy.Module):
         self.last_citations: list[str] = []
 
     @staticmethod
+    def _extract_urls_from_text(text: str) -> list[str]:
+        """Extract HTTP/HTTPS URLs from markdown text.
+
+        Supports both markdown links `[text](url)` and bare URLs. Deduplicates while
+        preserving order and strips common trailing punctuation.
+        """
+        urls: list[str] = []
+        # Markdown links
+        for m in re.findall(r"\[[^\]]*\]\((https?://[^)\s]+)\)", text):
+            urls.append(m.strip())
+        # Bare URLs
+        for m in re.findall(r"(?<!\()\bhttps?://[^\s)\]]+", text):
+            urls.append(m.strip())
+
+        seen: set[str] = set()
+        result: list[str] = []
+        for u in urls:
+            u = u.rstrip(".,;:)")
+            if u not in seen:
+                seen.add(u)
+                result.append(u)
+        return result
+
+    @staticmethod
     def _domain_from_url(url: str) -> str:
         try:
             return urlparse(url).netloc or url
         except Exception:
             return url
 
-    async def aforward(self, processed_query: ProcessedQuery) -> list[Document]:
+    @traceable(name="GrokSearchProgram", run_type="llm")
+    async def aforward(self, processed_query: ProcessedQuery, chat_history: str) -> list[Document]:
         formatted_query = f"""Answer the following query: {processed_query.original}. \
+            Here is the chat history: {chat_history}, that might be relevant to the question. \
             For more context, here are some semantic terms associated with the question: \
-            {', '.join(processed_query.search_queries)}.
+            {', '.join(processed_query.search_queries)}. \
+            Make sure that your final answer will contain links to the relevant sources used to construct your answer.
         """
         chat = self.client.chat.create(
             model=DEFAULT_GROK_MODEL,
@@ -82,20 +111,20 @@ class GrokSearchProgram(dspy.Module):
         chat.append(user(formatted_query))
         response: Response = await chat.sample()
         answer: str = response.content
-        citations_urls: list[str] = response.citations
+        # Extract citations from Grok's answer content (regex), not from response.citations
+        citations_urls: list[str] = self._extract_urls_from_text(answer)
         self.last_citations = list(citations_urls or [])
         logger.info(f"Answer: {answer}")
         logger.info(f"Citations URLs: {citations_urls}")
 
-        # Assemble a compact source list at the end
+        # Preserve Grok's inline links; optionally add a markdown list of sources
+        answer_with_sources = answer
         cite_lines = []
-        for i, url in enumerate(citations_urls):
-            title = self._domain_from_url(url) or f"Source {i}"
-            cite_lines.append(f"[{i}] {title}: {url}")
+        for url in citations_urls:
+            domain = self._domain_from_url(url)
+            cite_lines.append(f"- [{domain}]({url})")
         if cite_lines:
-            answer_with_sources = f"{answer}\n\nSources:\n" + "\n".join(cite_lines)
-        else:
-            answer_with_sources = answer
+            answer_with_sources = f"{answer}\n\n**Sources used by Grok:**\n" + "\n".join(cite_lines)
 
         documents: list[Document] = []
         unique_id = _mk_unique_id("grok-answer", answer)

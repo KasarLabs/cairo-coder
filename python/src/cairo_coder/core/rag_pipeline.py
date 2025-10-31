@@ -102,7 +102,7 @@ class RagPipeline(dspy.Module):
         # Optional Grok web/X augmentation: activate when STARKNET_BLOG is among sources.
         try:
             if DocumentSource.STARKNET_BLOG in retrieval_sources:
-                grok_docs = await self.grok_search.aforward(processed_query)
+                grok_docs = await self.grok_search.aforward(processed_query, chat_history_str)
                 self._grok_citations = list(self.grok_search.last_citations)
                 if grok_docs:
                     documents.extend(grok_docs)
@@ -319,6 +319,7 @@ class RagPipeline(dspy.Module):
             List of dicts: [{"title": str, "url": str}, ...]
         """
         sources: list[dict[str, str]] = []
+        seen_urls: set[str] = set()
 
         # Helper to extract domain title
         def title_from_url(url: str) -> str:
@@ -334,18 +335,26 @@ class RagPipeline(dspy.Module):
         for doc in documents:
             if doc.metadata.get("name") == "grok-answer" or doc.metadata.get("is_virtual"):
                 continue
-            if doc.source_link is None:
+            url = doc.source_link or doc.metadata.get("url") or ""
+            if not url:
                 logger.warning(f"Document {doc.title} has no source link")
-                to_append = {"metadata": {"title": doc.title, "url": ""}}
-            else:
-                to_append = {"metadata": {"title": doc.title, "url": doc.source_link}}
+                to_append = {"metadata": {"title": doc.title, "url": "", "source_type": "documentation"}}
+                sources.append(to_append)
+                continue
+            if url in seen_urls:
+                continue
+            to_append = {"metadata": {"title": doc.title, "url": url, "source_type": "documentation"}}
             sources.append(to_append)
+            seen_urls.add(url)
 
         # 2) Append Grok citations (raw URLs)
         for url in self._grok_citations:
             if not url:
                 continue
-            sources.append({"metadata": {"title": title_from_url(url), "url": url}})
+            if url in seen_urls:
+                continue
+            sources.append({"metadata": {"title": title_from_url(url), "url": url, "source_type": "web_search"}})
+            seen_urls.add(url)
 
         return sources
 
@@ -371,16 +380,30 @@ class RagPipeline(dspy.Module):
         context_parts.append("Relevant Documentation:")
         context_parts.append("")
 
-        for i, doc in enumerate(documents, 1):
+        for doc in documents:
             source_name = doc.metadata.get("source_display", "Unknown Source")
-            title = doc.metadata.get("title", f"Document {i}")
-            url = doc.metadata.get("url")
+            title = doc.metadata.get("title", "Untitled Document")
+            url = doc.metadata.get("url") or doc.metadata.get("sourceLink", "")
+            is_virtual = doc.metadata.get("is_virtual", False)
 
-            context_parts.append(f"## {i}. {title}")
-            context_parts.append(f"Source: {source_name}")
+            # For virtual documents (like Grok summaries), include content without a header
+            # This prevents the LLM from citing the container instead of the actual sources
+            if is_virtual:
+                context_parts.append(doc.page_content)
+                context_parts.append("")
+                context_parts.append("---")
+                context_parts.append("")
+                continue
+
+            # For real documents, include header with URL if available
             if url:
-                context_parts.append(f"URL: {url}")
+                context_parts.append(f"## [{title}]({url})")
+            else:
+                context_parts.append(f"## {title}")
+
+            context_parts.append(f"*Source: {source_name}*")
             context_parts.append("")
+
             context_parts.append(doc.page_content)
             context_parts.append("")
             context_parts.append("---")
