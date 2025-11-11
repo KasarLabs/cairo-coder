@@ -7,11 +7,13 @@ to reduce code duplication and ensure consistency.
 
 import os
 from unittest.mock import AsyncMock, Mock, patch
+from urllib.parse import urlparse
 
 import dspy
 import pytest
 from fastapi.testclient import TestClient
 
+from cairo_coder.agents.registry import AgentId
 from cairo_coder.core.agent_factory import AgentFactory
 from cairo_coder.core.config import VectorStoreConfig
 from cairo_coder.core.rag_pipeline import RagPipeline, RagPipelineConfig
@@ -27,7 +29,7 @@ from cairo_coder.dspy.document_retriever import DocumentRetrieverProgram, Source
 from cairo_coder.dspy.generation_program import GenerationProgram, McpGenerationProgram
 from cairo_coder.dspy.query_processor import QueryProcessorProgram
 from cairo_coder.dspy.retrieval_judge import RetrievalJudge
-from cairo_coder.server.app import CairoCoderServer, get_agent_factory
+from cairo_coder.server.app import CairoCoderServer, get_agent_factory, get_vector_db
 
 
 @pytest.fixture(scope="function")
@@ -123,7 +125,7 @@ def mock_agent_factory(mock_agent: Mock):
     Returns a mock AgentFactory.
     """
     factory = Mock(spec=AgentFactory)
-    factory.get_available_agents.return_value = ["cairo-coder", "scarb-assistant"]
+    factory.get_available_agents.return_value = ["cairo-coder", "starknet-agent"]
 
     def get_agent_info(agent_id, **kwargs):
         # Use the actual registry
@@ -209,6 +211,7 @@ def mock_agent():
     mock_agent.forward = mock_forward
     mock_agent.aforward = mock_aforward
     mock_agent.aforward_streaming = mock_aforward_streaming
+
     return mock_agent
 
 
@@ -222,17 +225,68 @@ def server(mock_vector_store_config):
 # Low-level pipeline fixtures (for integration tests)
 # =============================================================================
 
+@pytest.fixture(scope="session")
+def postgres_container():
+    """Session-scoped Postgres container for DB-backed tests.
+
+    Skips if testcontainers is unavailable (e.g., in CI without Docker).
+    """
+    try:
+        from testcontainers.postgres import PostgresContainer  # type: ignore
+    except Exception as exc:  # pragma: no cover - optional dependency
+        pytest.skip(f"testcontainers not available: {exc}")
+
+    container = PostgresContainer("postgres:16-alpine")
+    container.start()
+    try:
+        yield container
+    finally:
+        container.stop()
+
 
 @pytest.fixture
-def client(server, mock_agent_factory, mock_vector_db):
-    """Unit-level client: uses mock_agent_factory and shared mock_vector_db."""
-    from cairo_coder.server.app import get_vector_db
+def client(server, postgres_container, real_pipeline, mock_vector_db, mock_agent_factory, monkeypatch, mock_vector_store_config):
+    """Integration-level client with pipeline injection.
 
-    async def mock_get_agent_factory():
-        return mock_agent_factory
+    Overrides FastAPI dependencies:
+    - get_vector_db -> shared mock_vector_db
+    - get_agent_factory -> shared mock_agent_factory returning real_pipeline
+    """
+    from unittest.mock import AsyncMock, Mock
+
+
+    # Configure the reusable mock factory to return the real pipeline
+    mock_agent_factory.get_or_create_agent.return_value = real_pipeline
+    mock_agent_factory.get_available_agents.return_value = [agent_id.value for agent_id in AgentId]
+
+    # Ensure the app's lifespan can initialize vector DB using the ephemeral Postgres
+    raw_dsn = postgres_container.get_connection_url()
+    dsn = raw_dsn.replace("postgresql+psycopg2", "postgresql")
+
+    parsed = urlparse(dsn)
+    host = parsed.hostname or "127.0.0.1"
+    port = str(parsed.port or 5432)
+    user = parsed.username or "postgres"
+    password = parsed.password or "postgres"
+    database = (parsed.path or "/postgres").lstrip("/")
+
+    # Set env so ConfigManager.load_config() succeeds and the vector DB connects
+    monkeypatch.setenv("POSTGRES_HOST", host)
+    monkeypatch.setenv("POSTGRES_PORT", port)
+    monkeypatch.setenv("POSTGRES_DB", database)
+    monkeypatch.setenv("POSTGRES_USER", user)
+    monkeypatch.setenv("POSTGRES_PASSWORD", password)
+    # Keep default table name for vector store
+    monkeypatch.setenv("POSTGRES_TABLE_NAME", "documents")
+
+    # Mock vector DB pool initialization
+    mock_vector_db._ensure_pool = AsyncMock()
+    if not hasattr(mock_vector_db, 'pool') or mock_vector_db.pool is None:
+        mock_vector_db.pool = Mock()
+        mock_vector_db.pool.close = AsyncMock()
 
     server.app.dependency_overrides[get_vector_db] = lambda: mock_vector_db
-    server.app.dependency_overrides[get_agent_factory] = mock_get_agent_factory
+    server.app.dependency_overrides[get_agent_factory] = lambda: mock_agent_factory
     return TestClient(server.app)
 
 # =============================================================================
