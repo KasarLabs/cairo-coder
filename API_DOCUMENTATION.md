@@ -378,8 +378,8 @@ Fetch paginated user queries. If no date range is provided, returns the most rec
       "agent_id": "cairo-coder",
       "query": "How do I declare a storage variable in Cairo 1?",
       "chat_history": [
-        {"role": "user", "content": "What is Cairo?"},
-        {"role": "assistant", "content": "Cairo is a programming language..."}
+        { "role": "user", "content": "What is Cairo?" },
+        { "role": "assistant", "content": "Cairo is a programming language..." }
       ],
       "output": "To declare a storage variable in Cairo 1, you use the #[storage] attribute..."
     }

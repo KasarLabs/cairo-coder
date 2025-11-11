@@ -11,9 +11,9 @@ import uuid
 from datetime import datetime, timezone
 from typing import Any
 
-from cairo_coder.agents.registry import AgentId
 import structlog
 
+from cairo_coder.agents.registry import AgentId
 from cairo_coder.db.models import UserInteraction
 from cairo_coder.db.repository import migrate_user_interaction
 

@@ -5,7 +5,6 @@ Data access helpers for the Query Insights persistence layer.
 from __future__ import annotations
 
 import json
-import uuid
 from datetime import datetime
 from typing import Any
 
