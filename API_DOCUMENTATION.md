@@ -352,6 +352,44 @@ Common cases:
 - `404 Not Found` — unknown agent id.
 - `500 Internal Server Error` — unexpected backend issues.
 
+## Query Insights
+
+The Query Insights API exposes raw interaction logs and lightweight analytics for downstream processing.
+
+### `GET /v1/insights/queries`
+
+Fetch paginated user queries. If no date range is provided, returns the most recent queries ordered by creation time.
+
+- `start_date` _(ISO 8601, optional)_ — inclusive lower bound for filtering by creation time.
+- `end_date` _(ISO 8601, optional)_ — inclusive upper bound for filtering by creation time.
+- `agent_id` _(optional)_ — filter by agent id when provided.
+- `query_text` _(optional)_ — filter by text contained in the query (case-insensitive).
+- `limit` _(default `100`)_ — maximum rows returned.
+- `offset` _(default `0`)_ — pagination offset.
+
+**Response** `200 OK`
+
+```json
+{
+  "items": [
+    {
+      "id": "ad0c2b34-04ab-4d0a-9855-47c19f0f2830",
+      "created_at": "2024-04-01T12:30:45.123456+00:00",
+      "agent_id": "cairo-coder",
+      "query": "How do I declare a storage variable in Cairo 1?",
+      "chat_history": [
+        {"role": "user", "content": "What is Cairo?"},
+        {"role": "assistant", "content": "Cairo is a programming language..."}
+      ],
+      "output": "To declare a storage variable in Cairo 1, you use the #[storage] attribute..."
+    }
+  ],
+  "total": 1,
+  "limit": 100,
+  "offset": 0
+}
+```
+
 ## Versioning & Compatibility
 
 - Current API version: `1.0.0` (see FastAPI metadata).

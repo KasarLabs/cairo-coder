@@ -82,6 +82,11 @@ class RagPipeline(dspy.Module):
         self._current_processed_query: ProcessedQuery | None = None
         self._current_documents: list[Document] = []
 
+    @property
+    def last_retrieved_documents(self) -> list[Document]:
+        """Documents retrieved during the most recent pipeline execution."""
+        return self._current_documents
+
     async def _aprocess_query_and_retrieve_docs(
         self,
         query: str,

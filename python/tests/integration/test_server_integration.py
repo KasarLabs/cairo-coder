@@ -11,6 +11,7 @@ import json
 import uuid
 from unittest.mock import Mock, patch
 
+import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
@@ -580,9 +581,27 @@ class TestOpenAICompatibility:
 
 
 class TestSuggestionEndpoint:
-    """Test suite for the suggestion generation endpoint."""
+    @pytest.fixture(autouse=True)
+    def setup(self, monkeypatch):
+        from unittest.mock import AsyncMock, Mock
 
-    def test_suggestion_generation_success(self, client: TestClient):
+        import dspy
+        # Create a mock program
+        mock_program = Mock(spec=dspy.Predict)
+        mock_program.aforward = AsyncMock(
+            return_value=dspy.Prediction(suggestions=["My custom suggestion"])
+        )
+        # Patch dspy.Predict constructor
+        original_predict = dspy.Predict
+        def mock_predict_constructor(signature):
+            from cairo_coder.dspy.suggestion_program import SuggestionGeneration
+            if signature is SuggestionGeneration:
+                return mock_program
+            return original_predict(signature)
+        monkeypatch.setattr("dspy.Predict", mock_predict_constructor)
+
+    """Test suite for the suggestion generation endpoint."""
+    def test_suggestion_generation_success(self, monkeypatch, client: TestClient):
         """Test successful suggestion generation with chat history."""
         response = client.post(
             "/v1/suggestions",

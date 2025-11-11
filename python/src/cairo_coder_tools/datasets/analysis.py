@@ -22,6 +22,7 @@ Notes:
 import argparse
 import json
 import os
+import re
 import sys
 from collections import Counter, defaultdict
 from collections.abc import Iterable
@@ -216,6 +217,39 @@ def collect_counts(
             frameworks_counts[fw] += 1
 
     return category_counts, intent_counts, leaves_by_category, frameworks_counts
+
+
+def run_analysis_from_queries(queries: list[str]) -> dict[str, Any]:
+    """
+    Produce lightweight analytics from a list of user queries.
+
+    Returns aggregate counts plus the most frequent normalized terms to surface
+    recurring topics.
+    """
+    total_queries = len(queries)
+    if total_queries == 0:
+        return {
+            "total_queries": 0,
+            "average_word_count": 0.0,
+            "top_terms": [],
+        }
+
+    word_counts: list[int] = []
+    term_counter: Counter[str] = Counter()
+
+    for query in queries:
+        tokens = re.findall(r"[a-z0-9]+", query.lower())
+        word_counts.append(len(tokens))
+        term_counter.update(tokens)
+
+    average_word_count = sum(word_counts) / total_queries if word_counts else 0.0
+    top_terms = term_counter.most_common(10)
+
+    return {
+        "total_queries": total_queries,
+        "average_word_count": average_word_count,
+        "top_terms": top_terms,
+    }
 
 
 def plot_barh(ax, labels: list[str], counts: list[int], title: str, xlabel: str, color: str):
