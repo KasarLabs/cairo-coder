@@ -94,54 +94,31 @@ def _extract_answer_from_prediction(output: str) -> str:
 
 @dataclass
 class RunQueries:
-    """Container for queries extracted from a single run."""
+    """Container for a single run from LangSmith.
+
+    This represents a single query with its chat history, matching the format
+    that LangSmith provides and the live server uses.
+    """
     run_id: str
-    queries: list[str]
+    query: str
+    chat_history: list[dict[str, str]]
     output: str
     mcp_mode: bool
+    created_at: datetime
+    agent_id: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
-        return {
+        result = {
             "run_id": self.run_id,
-            "queries": self.queries,
+            "query": self.query,
+            "chat_history": self.chat_history,
             "mcp_mode": self.mcp_mode,
-            "output": self.output
+            "output": self.output,
+            "created_at": self.created_at.isoformat(),
         }
-
-
-class RunDeduplicator:
-    """Removes runs whose queries are prefixes of other runs."""
-
-    def deduplicate(self, runs: list[RunQueries]) -> list[RunQueries]:
-        """
-        Remove runs that are prefixes of longer runs.
-
-        Args:
-            runs: List of run queries to deduplicate
-
-        Returns:
-            Filtered list with prefix runs removed
-        """
-        if not runs:
-            return []
-
-        # Sort by query count (longest first) while tracking original indices
-        indexed_runs = list(enumerate(runs))
-        indexed_runs.sort(key=lambda x: len(x[1].queries), reverse=True)
-
-        kept_queries = []
-        keep_indices = set()
-
-        for idx, run in indexed_runs:
-            # Skip if this run's queries are a prefix of any kept run
-            if any(run.queries == kq[:len(run.queries)] for kq in kept_queries):
-                continue
-
-            keep_indices.add(idx)
-            kept_queries.append(run.queries)
-
-        # Restore original order
-        return [run for idx, run in enumerate(runs) if idx in keep_indices]
+        if self.agent_id:
+            result["agent_id"] = self.agent_id
+        return result
 
 
 def extract_cairocoder_pairs(
@@ -150,10 +127,14 @@ def extract_cairocoder_pairs(
     run_name_filters: list[str] | None = None,
     project_name: str | None = None,
 ) -> tuple[list[dict[str, Any]], dict[str, int]]:
-    """Extract {query, answer} pairs from LangSmith for Cairo-Coder.
+    """Extract runs from LangSmith for Cairo-Coder.
 
     This function connects to LangSmith API and fetches runs from the specified
-    project, then deduplicates and formats them as query/answer pairs.
+    project. Each run is returned as-is with its query, chat_history, and output,
+    matching the format the live server uses.
+
+    This replaces the old behavior of combining queries into arrays and deduplicating.
+    Now every query creates a database entry, making all queries searchable.
 
     Args:
         days_back: Number of days to look back for runs (default: 14)
@@ -161,8 +142,8 @@ def extract_cairocoder_pairs(
         project_name: LangSmith project name (default: from LANGSMITH_PROJECT env var or "default")
 
     Returns:
-        A tuple of (pairs, stats) where:
-        - pairs is a list of dicts, each containing run information
+        A tuple of (runs, stats) where:
+        - runs is a list of dicts, each containing {run_id, query, chat_history, output, mcp_mode, created_at}
         - stats contains total runs, matched runs, etc.
     """
     # Load environment variables
@@ -176,7 +157,6 @@ def extract_cairocoder_pairs(
 
     # Initialize LangSmith client
     client = Client()
-    deduplicator = RunDeduplicator()
 
     # Calculate time range
     end_time = datetime.now(timezone.utc)
@@ -208,23 +188,24 @@ def extract_cairocoder_pairs(
                 output = run_data["outputs"]["output"]
                 mcp_mode = inputs.get("mcp_mode", False)
 
-                # Extract user queries from chat history
-                user_queries_in_history = [
-                    msg['content'] for msg in chat_history
-                    if isinstance(msg, dict) and msg.get("role") == "user"
-                ]
-
-                # Combine chat history queries with current query
-                full_query = user_queries_in_history + [query]
-
                 # Extract clean answer from Prediction output
                 clean_output = _extract_answer_from_prediction(output)
 
+                # Get timestamp (prefer start_time, fallback to end_time or now)
+                run_timestamp = run_data.get("start_time") or run_data.get("end_time")
+                if isinstance(run_timestamp, str):
+                    run_timestamp = datetime.fromisoformat(run_timestamp.replace('Z', '+00:00'))
+                elif not isinstance(run_timestamp, datetime):
+                    run_timestamp = datetime.now(timezone.utc)
+
+                # Pass through data as LangSmith provides it
                 runs.append(RunQueries(
                     run_id=str(run_data["id"]),
-                    queries=full_query,
+                    query=query,
+                    chat_history=chat_history,  # Keep full chat history with user+assistant messages
                     mcp_mode=mcp_mode,
-                    output=clean_output
+                    output=clean_output,
+                    created_at=run_timestamp,
                 ))
             except (KeyError, TypeError):
                 skipped += 1
@@ -233,9 +214,6 @@ def extract_cairocoder_pairs(
         # Return empty results with error stats if LangSmith fetch fails
         stats = {"total": 0, "matched": 0, "skipped": 0, "error": str(e)}
         return [], stats
-
-    # Deduplicate runs
-    runs = deduplicator.deduplicate(runs)
 
     # Convert to output format
     results = [run.to_dict() for run in runs]

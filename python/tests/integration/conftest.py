@@ -9,10 +9,8 @@ from unittest.mock import AsyncMock, Mock
 
 import dspy
 import pytest
-from fastapi.testclient import TestClient
 
 from cairo_coder.agents.registry import AgentId
-from cairo_coder.server.app import get_agent_factory, get_vector_db
 
 
 @pytest.fixture
@@ -149,18 +147,128 @@ def patch_suggestion_program(monkeypatch):
     monkeypatch.setattr("dspy.Predict", mock_predict_constructor)
 
 
-@pytest.fixture
-def client(server, real_pipeline, mock_vector_db, mock_agent_factory, patch_suggestion_program):
-    """Integration-level client with pipeline injection.
+@pytest.fixture(scope="function")
+async def test_db_pool(postgres_container):
+    """Asyncpg pool connected to the ephemeral Postgres.
 
-    Overrides FastAPI dependencies:
-    - get_vector_db -> shared mock_vector_db
-    - get_agent_factory -> shared mock_agent_factory returning real_pipeline
+    Creates schema directly to avoid cross-loop pool reuse with the app.
     """
-    # Configure the reusable mock factory to return the real pipeline
-    mock_agent_factory.get_or_create_agent.return_value = real_pipeline
-    mock_agent_factory.get_available_agents.return_value = [agent_id.value for agent_id in AgentId]
+    import asyncpg  # local import to avoid import at collection when skipped
 
-    server.app.dependency_overrides[get_vector_db] = lambda: mock_vector_db
-    server.app.dependency_overrides[get_agent_factory] = lambda: mock_agent_factory
-    return TestClient(server.app)
+    raw_dsn = postgres_container.get_connection_url()
+    # Convert SQLAlchemy-style DSN to asyncpg-compatible DSN
+    dsn = raw_dsn.replace("postgresql+psycopg2", "postgresql")
+    pool = await asyncpg.create_pool(dsn=dsn, min_size=1, max_size=5)
+
+    async with pool.acquire() as connection:
+        await connection.execute(
+            """
+            CREATE EXTENSION IF NOT EXISTS pgcrypto;
+            CREATE TABLE IF NOT EXISTS user_interactions (
+                id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                agent_id VARCHAR(50) NOT NULL,
+                mcp_mode BOOLEAN NOT NULL DEFAULT FALSE,
+                chat_history JSONB,
+                query TEXT NOT NULL,
+                generated_answer TEXT,
+                retrieved_sources JSONB,
+                llm_usage JSONB
+            );
+            """
+        )
+        await connection.execute(
+            """
+            CREATE INDEX IF NOT EXISTS idx_interactions_created_at
+                ON user_interactions(created_at);
+            CREATE INDEX IF NOT EXISTS idx_interactions_agent_id
+                ON user_interactions(agent_id);
+            """
+        )
+
+    try:
+        yield pool
+    finally:
+        await pool.close()
+
+
+@pytest.fixture()
+async def db_connection(test_db_pool):
+    """Function-scoped connection with a clean state per test.
+
+    - Truncates tables before each test
+    - Wraps operations in a transaction and rolls back at teardown
+    """
+    async with test_db_pool.acquire() as conn:
+        # Ensure clean tables and commit immediately so other connections can see it
+        await conn.execute("TRUNCATE TABLE user_interactions RESTART IDENTITY;")
+        # No explicit transaction to allow visibility from the app connection
+        yield conn
+
+
+@pytest.fixture()
+async def populated_db_connection(db_connection):
+    """Populate DB with sample interactions and analyses before yielding connection."""
+    import uuid
+    from datetime import datetime, timedelta, timezone
+
+    now = datetime.now(timezone.utc)
+
+    # Insert sample interactions
+    import json as _json
+
+    interactions = [
+        {
+            "id": uuid.uuid4(),
+            "created_at": now - timedelta(hours=4),
+            "agent_id": "cairo-coder",
+            "mcp_mode": False,
+            "chat_history": _json.dumps([]),
+            "query": "What is Cairo?",
+            "generated_answer": "Cairo is a programming language",
+            "retrieved_sources": None,
+            "llm_usage": None,
+        },
+        {
+            "id": uuid.uuid4(),
+            "created_at": now - timedelta(hours=2),
+            "agent_id": "starknet-agent",
+            "mcp_mode": True,
+            "chat_history": _json.dumps([]),
+            "query": "How to deploy a contract?",
+            "generated_answer": "Use Starknet CLI",
+            "retrieved_sources": None,
+            "llm_usage": None,
+        },
+        {
+            "id": uuid.uuid4(),
+            "created_at": now - timedelta(minutes=30),
+            "agent_id": "cairo-coder",
+            "mcp_mode": False,
+            "chat_history": _json.dumps([]),
+            "query": "Storage variables?",
+            "generated_answer": "Use #[storage]",
+            "retrieved_sources": None,
+            "llm_usage": None,
+        },
+    ]
+
+    for it in interactions:
+        await db_connection.execute(
+            """
+            INSERT INTO user_interactions (
+                id, created_at, agent_id, mcp_mode, chat_history, query, generated_answer, retrieved_sources, llm_usage
+            ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+            """,
+            it["id"],
+            it["created_at"],
+            it["agent_id"],
+            it["mcp_mode"],
+            it["chat_history"],
+            it["query"],
+            it["generated_answer"],
+            it["retrieved_sources"],
+            it["llm_usage"],
+        )
+
+    return db_connection
