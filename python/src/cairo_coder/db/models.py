@@ -10,6 +10,8 @@ from typing import Any, Optional
 
 from pydantic import BaseModel, Field
 
+from cairo_coder.core.types import RetrievedSourceData
+
 
 class UserInteraction(BaseModel):
     """Represents a record in the user_interactions table."""
@@ -21,5 +23,5 @@ class UserInteraction(BaseModel):
     chat_history: Optional[list[dict[str, Any]]] = None
     query: str
     generated_answer: Optional[str] = None
-    retrieved_sources: Optional[list[dict[str, Any]]] = None
+    retrieved_sources: Optional[list[RetrievedSourceData]] = None
     llm_usage: Optional[dict[str, Any]] = None

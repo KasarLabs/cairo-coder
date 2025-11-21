@@ -13,7 +13,7 @@ import structlog
 from langsmith import traceable
 
 import dspy
-from cairo_coder.core.types import DocumentSource, ProcessedQuery
+from cairo_coder.core.types import DocumentSource, ProcessedQuery, LMUsage
 
 logger = structlog.get_logger(__name__)
 
@@ -125,7 +125,7 @@ class QueryProcessorProgram(dspy.Module):
         }
 
     @traceable(name="QueryProcessorProgram", run_type="llm", metadata={"llm_provider": dspy.settings.lm})
-    async def aforward(self, query: str, chat_history: Optional[str] = None) -> ProcessedQuery:
+    async def aforward(self, query: str, chat_history: Optional[str] = None) -> tuple[ProcessedQuery, LMUsage]:
         """
         Process a user query into a structured format for document retrieval.
 
@@ -144,19 +144,14 @@ class QueryProcessorProgram(dspy.Module):
         resources = self._validate_resources(result.resources)
 
         # Build structured query result
-        return ProcessedQuery(
+        processed_query = ProcessedQuery(
             original=query,
             search_queries=search_queries,
             is_contract_related=self._is_contract_query(query),
             is_test_related=self._is_test_query(query),
             resources=resources,
         )
-
-    def get_lm_usage(self) -> dict[str, int]:
-        """
-        Get the total number of tokens used by the LLM.
-        """
-        return self.retrieval_program.get_lm_usage()
+        return processed_query, result.get_lm_usage()
 
     def _validate_resources(self, resources: list[str]) -> list[DocumentSource]:
         """

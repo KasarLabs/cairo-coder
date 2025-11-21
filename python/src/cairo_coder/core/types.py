@@ -74,6 +74,29 @@ class ProcessedQuery:
     is_test_related: bool = False
     resources: list[DocumentSource] = field(default_factory=list)
 
+LMUsageEntry = dict[str, Any]
+LMUsage = dict[str, LMUsageEntry]
+
+
+class RetrievedSourceData(TypedDict):
+    """Structure for retrieved source data stored in database."""
+
+    page_content: str
+    metadata: DocumentMetadata
+
+
+class FormattedSourceMetadata(TypedDict):
+    """Metadata structure for formatted sources sent to frontend."""
+
+    title: str
+    url: str
+    source_type: str
+
+
+class FormattedSource(TypedDict):
+    """Structure for formatted sources sent to frontend."""
+
+    metadata: FormattedSourceMetadata
 
 # Helper to extract domain title
 def title_from_url(url: str) -> str:

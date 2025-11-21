@@ -171,12 +171,6 @@ class RetrievalJudge(dspy.Module):
 
         return keep_docs
 
-    def get_lm_usage(self) -> dict[str, int]:
-        """
-        Get the total number of tokens used by the LLM.
-        """
-        return self.rater.get_lm_usage()
-
     # =========================
     # Internal Helpers
     # =========================

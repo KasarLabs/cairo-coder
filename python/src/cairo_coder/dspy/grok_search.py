@@ -103,6 +103,7 @@ class GrokSearchProgram(dspy.Module):
             {', '.join(processed_query.search_queries)}. \
             Make sure that your final answer will contain links to the relevant sources used to construct your answer.
         """
+        # TODO: track LM usage
         chat = self.client.chat.create(
             model=DEFAULT_GROK_MODEL,
             tools=[web_search(), x_search()],
