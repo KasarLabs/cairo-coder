@@ -4,7 +4,7 @@ build-backend = "uv_build"
 
 [project]
 name = "cairo-coder"
-version = "0.3.0"
+version = "0.3.1"
 description = "Cairo language code generation service using DSPy RAG"
 authors = [{ name = "Kasar Labs", email = "admin@kasarlabs.com" }]
 readme = "README.md"
