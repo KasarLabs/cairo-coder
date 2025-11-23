@@ -34,8 +34,11 @@ class TestQueryProcessorProgram:
 
         query = "How do I define storage variables in a Cairo contract?"
 
-        result = await processor.aforward(query)
+        result_prediction = await processor.aforward(query)
 
+        # aforward now returns a Prediction with processed_query attribute
+        assert isinstance(result_prediction, dspy.Prediction)
+        result = result_prediction.processed_query
         assert isinstance(result, ProcessedQuery)
         assert result.original == query
         assert result.is_contract_related is True
@@ -96,8 +99,11 @@ class TestQueryProcessorProgram:
                 )
             )
 
-            result = await processor.aforward("")
+            result_prediction = await processor.aforward("")
 
+            # aforward now returns a Prediction
+            assert isinstance(result_prediction, dspy.Prediction)
+            result = result_prediction.processed_query
             assert result.original == ""
             assert result.resources == list(DocumentSource)  # Default fallback
 

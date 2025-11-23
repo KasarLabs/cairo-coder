@@ -171,8 +171,7 @@ async def log_interaction_task(
         query=query,
         generated_answer=response.choices[0].message.content if response.choices else None,
         retrieved_sources=sources_data,
-        # TODO: fix LLM usage metrics
-        llm_usage={}
+        llm_usage=agent.get_lm_usage(),
     )
     await create_user_interaction(interaction)
 
@@ -203,7 +202,7 @@ async def log_interaction_raw(
         query=query,
         generated_answer=generated_answer,
         retrieved_sources=sources_data,
-        llm_usage={},
+        llm_usage=agent.get_lm_usage()
     )
     await create_user_interaction(interaction)
 
@@ -270,13 +269,15 @@ class CairoCoderServer:
             logger.warning("Bad request", error=str(exc), path=request.url.path)
             return JSONResponse(
                 status_code=400,
-                content=ErrorResponse(
-                    error=ErrorDetail(
-                        message=str(exc),
-                        type="invalid_request_error",
-                        code="invalid_request",
-                    )
-                ).model_dump(),
+                content={
+                    "detail": ErrorResponse(
+                        error=ErrorDetail(
+                            message=str(exc),
+                            type="invalid_request_error",
+                            code="invalid_request",
+                        )
+                    ).model_dump()
+                },
             )
 
         @self.app.exception_handler(Exception)
@@ -285,13 +286,15 @@ class CairoCoderServer:
             logger.error("Unhandled exception", error=str(exc), path=request.url.path, exc_info=True)
             return JSONResponse(
                 status_code=500,
-                content=ErrorResponse(
-                    error=ErrorDetail(
-                        message="Internal server error",
-                        type="server_error",
-                        code="internal_error",
-                    )
-                ).model_dump(),
+                content={
+                    "detail": ErrorResponse(
+                        error=ErrorDetail(
+                            message=f"Internal server error: {str(exc)}",
+                            type="server_error",
+                            code="internal_error",
+                        )
+                    ).model_dump()
+                },
             )
 
     def _setup_routes(self):
@@ -340,8 +343,19 @@ class CairoCoderServer:
             agent_factory: AgentFactory = Depends(get_agent_factory),
         ):
             """Agent-specific chat completions"""
-            # Validate agent exists (will raise ValueError if not found, handled by global handler)
-            agent_factory.get_agent_info(agent_id=agent_id)
+            try:
+                agent_factory.get_agent_info(agent_id=agent_id)
+            except ValueError as exc:
+                raise HTTPException(
+                    status_code=404,
+                    detail={
+                        "error": {
+                            "message": str(exc),
+                            "type": "invalid_request_error",
+                            "code": "agent_not_found",
+                        }
+                    },
+                ) from exc
 
             # Determine MCP mode
             mcp_mode = bool(mcp or x_mcp_mode)

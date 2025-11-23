@@ -51,9 +51,11 @@ class TestDocumentRetrieverProgram:
         retriever.vector_db.aforward.return_value = mock_dspy_examples
 
         # Execute retrieval - use async version since we're in async test
-        result = await retriever.aforward(sample_processed_query)
+        prediction = await retriever.aforward(sample_processed_query)
 
-        # Verify results
+        # Verify results - aforward now returns a Prediction with documents attribute
+        assert isinstance(prediction, dspy.Prediction)
+        result = prediction.documents
         assert len(result) != 0
         assert all(isinstance(doc, Document) for doc in result)
 
@@ -78,10 +80,11 @@ class TestDocumentRetrieverProgram:
             resources=[DocumentSource.CAIRO_BOOK],
         )
 
-        result = await retriever.aforward(query)
+        prediction = await retriever.aforward(query)
 
         # Should still work with empty transformed terms
-        assert len(result) != 0
+        assert isinstance(prediction, dspy.Prediction)
+        assert len(prediction.documents) != 0
 
         # Query should just be the reasoning with empty tags
         expected_query = query.original
@@ -95,9 +98,11 @@ class TestDocumentRetrieverProgram:
         # Override sources
         custom_sources = [DocumentSource.SCARB_DOCS, DocumentSource.OPENZEPPELIN_DOCS]
 
-        result = await retriever.aforward(sample_processed_query, sources=custom_sources)
+        prediction = await retriever.aforward(sample_processed_query, sources=custom_sources)
 
         # Verify result
+        assert isinstance(prediction, dspy.Prediction)
+        result = prediction.documents
         assert len(result) != 0
 
         # Note: sources filtering is not currently implemented in PgVectorRM call
@@ -109,9 +114,11 @@ class TestDocumentRetrieverProgram:
         """Test handling of empty document results."""
         retriever.vector_db.aforward = AsyncMock(return_value=[])
 
-        result = await retriever.aforward(sample_processed_query)
+        prediction = await retriever.aforward(sample_processed_query)
 
-        assert result == []
+        # Should return prediction with empty documents list
+        assert isinstance(prediction, dspy.Prediction)
+        assert prediction.documents == []
 
     @pytest.mark.asyncio
     async def test_pgvector_rm_error_handling(self, retriever, sample_processed_query):
@@ -174,7 +181,8 @@ class TestDocumentRetrieverProgram:
 
         retriever.vector_db.aforward = AsyncMock(return_value=mock_examples)
 
-        result = await retriever.aforward(sample_processed_query)
+        prediction = await retriever.aforward(sample_processed_query)
+        result = prediction.documents
 
         # Verify conversion to Document objects
         # Ran 3 times the query, returned 2 docs each - but de-duped
@@ -235,12 +243,13 @@ class TestDocumentRetrieverProgram:
         )
         mock_vector_db.aforward.return_value = mock_dspy_examples
 
-        result: list[Document] = await retriever.aforward(query)
+        prediction = await retriever.aforward(query)
+        result: list[Document] = prediction.documents
 
         found_templates = {
-            doc.source
+            doc.title
             for doc in result
-            if "Template" in doc.source
+            if "Template" in doc.title
         }
         assert set(expected_templates) == found_templates
 

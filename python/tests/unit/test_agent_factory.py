@@ -155,34 +155,46 @@ class TestAgentRegistry:
         with pytest.raises(ValueError, match="Agent not found: invalid"):
             get_agent_by_string_id("invalid")
 
-    @patch("cairo_coder.core.rag_pipeline.RagPipelineFactory.create_pipeline")
-    def test_agent_spec_build_general(self, mock_create_pipeline, mock_vector_db, mock_vector_store_config):
+    def test_agent_spec_build_general(self, mock_vector_db, mock_vector_store_config):
         """Test building a general agent from spec."""
         spec = registry[AgentId.CAIRO_CODER]
         mock_pipeline = Mock(spec=RagPipeline)
-        mock_create_pipeline.return_value = mock_pipeline
 
-        pipeline = spec.build(mock_vector_db, mock_vector_store_config)
+        # Patch the spec's pipeline_builder directly
+        original_builder = spec.pipeline_builder
+        spec.pipeline_builder = Mock(return_value=mock_pipeline)
 
-        assert pipeline == mock_pipeline
-        mock_create_pipeline.assert_called_once()
-        call_args = mock_create_pipeline.call_args[1]
-        assert call_args["name"] == "Cairo Coder"
-        assert call_args["vector_db"] == mock_vector_db
-        assert call_args["vector_store_config"] == mock_vector_store_config
+        try:
+            pipeline = spec.build(mock_vector_db, mock_vector_store_config)
 
-    @patch("cairo_coder.core.rag_pipeline.RagPipelineFactory.create_pipeline")
-    def test_agent_spec_build_scarb(self, mock_create_scarb, mock_vector_db, mock_vector_store_config):
+            assert pipeline == mock_pipeline
+            spec.pipeline_builder.assert_called_once()
+            call_args = spec.pipeline_builder.call_args[1]
+            assert call_args["name"] == "Cairo Coder"
+            assert call_args["vector_db"] == mock_vector_db
+            assert call_args["vector_store_config"] == mock_vector_store_config
+        finally:
+            # Restore original builder
+            spec.pipeline_builder = original_builder
+
+    def test_agent_spec_build_scarb(self, mock_vector_db, mock_vector_store_config):
         """Test building a Starknet agent from spec."""
         spec = registry[AgentId.STARKNET]
         mock_pipeline = Mock(spec=RagPipeline)
-        mock_create_scarb.return_value = mock_pipeline
 
-        pipeline = spec.build(mock_vector_db, mock_vector_store_config)
+        # Patch the spec's pipeline_builder directly
+        original_builder = spec.pipeline_builder
+        spec.pipeline_builder = Mock(return_value=mock_pipeline)
 
-        assert pipeline == mock_pipeline
-        mock_create_scarb.assert_called_once()
-        call_args = mock_create_scarb.call_args[1]
-        assert call_args["name"] == "Starknet Agent"
-        assert call_args["vector_db"] == mock_vector_db
-        assert call_args["vector_store_config"] == mock_vector_store_config
+        try:
+            pipeline = spec.build(mock_vector_db, mock_vector_store_config)
+
+            assert pipeline == mock_pipeline
+            spec.pipeline_builder.assert_called_once()
+            call_args = spec.pipeline_builder.call_args[1]
+            assert call_args["name"] == "Starknet Agent"
+            assert call_args["vector_db"] == mock_vector_db
+            assert call_args["vector_store_config"] == mock_vector_store_config
+        finally:
+            # Restore original builder
+            spec.pipeline_builder = original_builder

@@ -287,7 +287,7 @@ def client(server, postgres_container, real_pipeline, mock_vector_db, mock_agent
 
     server.app.dependency_overrides[get_vector_db] = lambda: mock_vector_db
     server.app.dependency_overrides[get_agent_factory] = lambda: mock_agent_factory
-    return TestClient(server.app)
+    return TestClient(server.app, raise_server_exceptions=False)
 
 # =============================================================================
 # Sample Data Fixtures
@@ -403,8 +403,11 @@ def clean_config_env_vars(monkeypatch):
 def mock_query_processor(sample_processed_query):
     """Create a mock QueryProcessorProgram."""
     processor = Mock(spec=QueryProcessorProgram)
-    processor.forward = Mock(return_value=sample_processed_query)
-    processor.aforward = AsyncMock(return_value=sample_processed_query)
+    prediction = dspy.Prediction(processed_query=sample_processed_query)
+    prediction.set_lm_usage({})
+
+    processor.forward = Mock(return_value=prediction)
+    processor.aforward = AsyncMock(return_value=prediction)
     processor.get_lm_usage = Mock(return_value={})
     return processor
 
@@ -413,8 +416,11 @@ def mock_query_processor(sample_processed_query):
 def mock_document_retriever(sample_documents):
     """Create a mock DocumentRetrieverProgram."""
     retriever = Mock(spec=DocumentRetrieverProgram)
-    retriever.forward = Mock(return_value=sample_documents)
-    retriever.aforward = AsyncMock(return_value=sample_documents)
+    prediction = dspy.Prediction(documents=sample_documents)
+    prediction.set_lm_usage({})
+
+    retriever.forward = Mock(return_value=prediction)
+    retriever.aforward = AsyncMock(return_value=prediction)
     retriever.get_lm_usage = Mock(return_value={})
     return retriever
 
@@ -424,14 +430,21 @@ def mock_generation_program():
     """Create a mock GenerationProgram."""
     program = Mock(spec=GenerationProgram)
     answer = "Here's how to write Cairo contracts..."
-    program.forward = Mock(return_value=dspy.Prediction(answer=answer))
-    program.aforward = AsyncMock(return_value=dspy.Prediction(answer=answer))
+
+    # Create predictions with usage tracking
+    prediction = dspy.Prediction(answer=answer)
+    prediction.set_lm_usage({})
+
+    program.forward = Mock(return_value=prediction)
+    program.aforward = AsyncMock(return_value=prediction)
     program.get_lm_usage = Mock(return_value={})
 
     async def mock_streaming(*args, **kwargs):
         yield dspy.streaming.StreamResponse(predict_name="GenerationProgram", signature_field_name="answer", chunk="Here's how to write ", is_last_chunk=False)
         yield dspy.streaming.StreamResponse(predict_name="GenerationProgram", signature_field_name="answer", chunk="Cairo contracts...", is_last_chunk=True)
-        yield dspy.Prediction(answer=answer)
+        final_prediction = dspy.Prediction(answer=answer)
+        final_prediction.set_lm_usage({})
+        yield final_prediction
 
     program.aforward_streaming = mock_streaming
     return program
@@ -458,7 +471,11 @@ Cairo contracts are defined using #[starknet::contract].
 
 Storage variables use #[storage] attribute.
 """
-    program.aforward = AsyncMock(return_value=dspy.Prediction(answer=mcp_answer))
+    # Create prediction with usage tracking
+    prediction = dspy.Prediction(answer=mcp_answer)
+    prediction.set_lm_usage({})
+
+    program.aforward = AsyncMock(return_value=prediction)
     program.get_lm_usage = Mock(return_value={})
     return program
 
@@ -532,15 +549,44 @@ def pipeline_config(
 
 
 
+@pytest.fixture
+def pipeline_config_for_pipeline(
+    mock_vector_store_config,
+    mock_query_processor,
+    mock_document_retriever,
+    mock_generation_program,
+    mock_mcp_generation_program,
+):
+    """Create a pipeline configuration with prediction-returning mocks."""
+    return RagPipelineConfig(
+        name="test_pipeline",
+        vector_store_config=mock_vector_store_config,
+        query_processor=mock_query_processor,
+        document_retriever=mock_document_retriever,
+        generation_program=mock_generation_program,
+        mcp_generation_program=mock_mcp_generation_program,
+        sources=list(DocumentSource),
+        max_source_count=10,
+        similarity_threshold=0.4,
+    )
+
+
 @pytest.fixture(scope="function")
-def pipeline(pipeline_config):
+def pipeline(pipeline_config_for_pipeline):
     """Create a RagPipeline instance."""
     with patch("cairo_coder.core.rag_pipeline.RetrievalJudge") as mock_judge_class:
         mock_judge = Mock()
         mock_judge.get_lm_usage.return_value = {}
-        mock_judge.aforward = AsyncMock(side_effect=lambda query, documents: documents)
+
+        # Judge should return prediction with documents
+        async def judge_aforward(query, documents):
+            prediction = dspy.Prediction(documents=documents)
+            prediction.set_lm_usage({})
+            return prediction
+
+        mock_judge.aforward = AsyncMock(side_effect=judge_aforward)
         mock_judge_class.return_value = mock_judge
-        return RagPipeline(pipeline_config)
+        return RagPipeline(pipeline_config_for_pipeline)
 
 @pytest.fixture(scope="function")
 def rag_pipeline(pipeline_config):

@@ -13,7 +13,7 @@ import structlog
 from langsmith import traceable
 
 import dspy
-from cairo_coder.core.types import DocumentSource, ProcessedQuery, LMUsage
+from cairo_coder.core.types import DocumentSource, ProcessedQuery
 
 logger = structlog.get_logger(__name__)
 
@@ -125,7 +125,7 @@ class QueryProcessorProgram(dspy.Module):
         }
 
     @traceable(name="QueryProcessorProgram", run_type="llm", metadata={"llm_provider": dspy.settings.lm})
-    async def aforward(self, query: str, chat_history: Optional[str] = None) -> tuple[ProcessedQuery, LMUsage]:
+    async def aforward(self, query: str, chat_history: Optional[str] = None) -> dspy.Prediction:
         """
         Process a user query into a structured format for document retrieval.
 
@@ -134,7 +134,7 @@ class QueryProcessorProgram(dspy.Module):
             chat_history: Previous conversation context (optional)
 
         Returns:
-            ProcessedQuery with search terms, resource identification, and categorization
+            dspy.Prediction containing processed_query and attached usage
         """
         # Execute the DSPy retrieval program
         result = await self.retrieval_program.aforward(query=query, chat_history=chat_history)
@@ -151,7 +151,11 @@ class QueryProcessorProgram(dspy.Module):
             is_test_related=self._is_test_query(query),
             resources=resources,
         )
-        return processed_query, result.get_lm_usage()
+
+        prediction = dspy.Prediction(processed_query=processed_query)
+        prediction.set_lm_usage(result.get_lm_usage() or {})
+
+        return prediction
 
     def _validate_resources(self, resources: list[str]) -> list[DocumentSource]:
         """

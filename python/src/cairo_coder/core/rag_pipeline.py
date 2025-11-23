@@ -24,6 +24,7 @@ from cairo_coder.core.types import (
     ProcessedQuery,
     StreamEvent,
     StreamEventType,
+    combine_usage,
     title_from_url,
 )
 from cairo_coder.dspy.document_retriever import DocumentRetrieverProgram
@@ -98,14 +99,8 @@ class RagPipeline(dspy.Module):
         Args:
             prediction: DSPy prediction object with usage information
         """
-        usage = prediction.get_lm_usage();
-        for model_name, metrics in usage.items():
-            if model_name not in self._accumulated_usage:
-                self._accumulated_usage[model_name] = {}
-            for metric_name, value in metrics.items():
-                self._accumulated_usage[model_name][metric_name] = (
-                    self._accumulated_usage[model_name].get(metric_name, 0) + value
-                )
+        usage = prediction.get_lm_usage()
+        self._accumulated_usage = combine_usage(self._accumulated_usage, usage)
 
     def _reset_usage(self) -> None:
         """Reset accumulated usage for a new request."""
@@ -118,22 +113,28 @@ class RagPipeline(dspy.Module):
         sources: list[DocumentSource] | None = None,
     ) -> tuple[ProcessedQuery, list[Document]]:
         """Process query and retrieve documents - shared async logic."""
-        processed_query = await self.query_processor.aforward(
+        qp_prediction = await self.query_processor.aforward(
             query=query, chat_history=chat_history_str
         )
-        self._accumulate_usage(processed_query)
+        self._accumulate_usage(qp_prediction)
+        processed_query = qp_prediction.processed_query
         self._current_processed_query = processed_query
 
         # Use provided sources or fall back to processed query sources
         retrieval_sources = sources or processed_query.resources
-        documents = await self.document_retriever.aforward(
+        dr_prediction = await self.document_retriever.aforward(
             processed_query=processed_query, sources=retrieval_sources
         )
+        self._accumulate_usage(dr_prediction)
+        documents = dr_prediction.documents
 
         # Optional Grok web/X augmentation: activate when STARKNET_BLOG is among sources.
         try:
             if DocumentSource.STARKNET_BLOG in retrieval_sources:
-                grok_docs = await self.grok_search.aforward(processed_query, chat_history_str)
+                grok_pred = await self.grok_search.aforward(processed_query, chat_history_str)
+                self._accumulate_usage(grok_pred)
+                grok_docs = grok_pred.documents
+
                 self._grok_citations = list(self.grok_search.last_citations)
                 if grok_docs:
                     documents.extend(grok_docs)
@@ -151,7 +152,9 @@ class RagPipeline(dspy.Module):
                 lm=dspy.LM("gemini/gemini-flash-lite-latest", max_tokens=10000, temperature=0.5),
                 adapter=XMLAdapter(),
             ):
-                documents = await self.retrieval_judge.aforward(query=query, documents=documents)
+                judge_pred = await self.retrieval_judge.aforward(query=query, documents=documents)
+                self._accumulate_usage(judge_pred)
+                documents = judge_pred.documents
         except Exception as e:
             logger.warning(
                 "Retrieval judge failed (async), using all documents",
@@ -197,6 +200,7 @@ class RagPipeline(dspy.Module):
         if mcp_mode:
             result = await self.mcp_generation_program.aforward(documents)
             self._accumulate_usage(result)
+            result.set_lm_usage(self._accumulated_usage)
             return result
 
         context = self._prepare_context(documents)
@@ -204,7 +208,10 @@ class RagPipeline(dspy.Module):
         result = await self.generation_program.aforward(
             query=query, context=context, chat_history=chat_history_str
         )
-        self._accumulate_usage(result)
+        if result:
+            self._accumulate_usage(result)
+            # Update the result's usage to include accumulated usage from previous steps
+            result.set_lm_usage(self._accumulated_usage)
         return result
 
 
@@ -283,6 +290,7 @@ class RagPipeline(dspy.Module):
                                     logger.warning(f"Unknown signature field name: {chunk.signature_field_name}")
                             elif isinstance(chunk, dspy.Prediction):
                                 # Final complete answer
+                                self._accumulate_usage(chunk)
                                 final_text = getattr(chunk, "answer", None) or chunk_accumulator
                                 yield StreamEvent(type=StreamEventType.FINAL_RESPONSE, data=final_text)
                                 rt.end(outputs={"output": final_text})

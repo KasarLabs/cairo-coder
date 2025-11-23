@@ -43,8 +43,9 @@ class TestRetrievalJudge:
     async def test_aforward_empty_documents(self):
         """Test forward with empty document list."""
         judge = RetrievalJudge()
-        result = await judge.aforward("test query", [])
-        assert result == []
+        prediction = await judge.aforward("test query", [])
+        assert isinstance(prediction, dspy.Prediction)
+        assert prediction.documents == []
 
     @pytest.mark.asyncio
     async def test_aforward_with_mocked_rater(self, sample_documents):
@@ -58,7 +59,8 @@ class TestRetrievalJudge:
         ])
 
         documents = sample_documents
-        filtered_docs = await judge.aforward("How to write Cairo programs?", documents)
+        prediction = await judge.aforward("How to write Cairo programs?", documents)
+        filtered_docs = prediction.documents
 
         # Assertions
         assert len(filtered_docs) == 1  # Only first doc passes threshold
@@ -77,7 +79,8 @@ class TestRetrievalJudge:
             MagicMock(resource_note=0.7, reasoning="Valid result"),
         ])
         documents = sample_documents[:2]
-        filtered_docs = await judge.aforward("test query", documents)
+        prediction = await judge.aforward("test query", documents)
+        filtered_docs = prediction.documents
 
         # Should only keep the doc that was successfully parsed and scored above threshold.
         assert len(filtered_docs) == 1
@@ -95,7 +98,8 @@ class TestRetrievalJudge:
         judge = RetrievalJudge()
         judge.rater.acall = AsyncMock(side_effect=Exception("Parallel execution failed"))
         documents = sample_documents
-        filtered_docs = await judge.aforward("test query", documents)
+        prediction = await judge.aforward("test query", documents)
+        filtered_docs = prediction.documents
 
         # Should return all documents on failure
         assert len(filtered_docs) == len(documents)
@@ -105,7 +109,7 @@ class TestRetrievalJudge:
     async def test_aforward_with_contract_and_test_templates(self, sample_documents):
         """Test forward with contract template."""
         judge = RetrievalJudge()
-        result = await judge.aforward(
+        prediction = await judge.aforward(
             "test query",
             [
                 Document(
@@ -118,6 +122,7 @@ class TestRetrievalJudge:
                 ),
             ],
         )
+        result = prediction.documents
         assert result == [
             Document(
                 page_content="",
@@ -133,7 +138,7 @@ class TestRetrievalJudge:
     async def test_aforward_with_contract_template(self, sample_documents):
         """Test async forward with contract template."""
         judge = RetrievalJudge()
-        result = await judge.aforward(
+        prediction = await judge.aforward(
             "test query",
             [
                 Document(
@@ -146,6 +151,7 @@ class TestRetrievalJudge:
                 ),
             ],
         )
+        result = prediction.documents
         assert result == [
             Document(
                 page_content="",
@@ -168,7 +174,8 @@ class TestRetrievalJudge:
             MagicMock(resource_note=0.5, reasoning="Valid score"),
         ])
         documents = sample_documents
-        filtered_docs = await judge.aforward("test", documents)
+        prediction = await judge.aforward("test", documents)
+        filtered_docs = prediction.documents
 
         # Check scores are clamped and filtering works
         assert len(filtered_docs) == 2  # Only 2 docs pass threshold of 0.4

@@ -163,6 +163,10 @@ class TestDataIngestion:
             "messages": [{"role": "user", "content": "Hello"}],
             "stream": False,
         }
+
+        async with test_db_pool.acquire() as conn:
+            initial_count = await conn.fetchval("SELECT COUNT(*) FROM user_interactions")
+
         resp = client.post("/v1/chat/completions", json=payload)
         assert resp.status_code == 200
 
@@ -171,11 +175,11 @@ class TestDataIngestion:
         for _ in range(50):
             async with test_db_pool.acquire() as conn:
                 count = await conn.fetchval("SELECT COUNT(*) FROM user_interactions")
-            if count >= 1:
+            if count >= initial_count + 1:
                 break
             await asyncio.sleep(0.05)
 
-        assert count >= 1
+        assert count >= initial_count + 1
 
         # Verify content matches request/response shape
         async with test_db_pool.acquire() as conn:
@@ -199,6 +203,10 @@ class TestDataIngestion:
             "messages": [{"role": "user", "content": "Hello streaming"}],
             "stream": True,
         }
+
+        async with test_db_pool.acquire() as conn:
+            initial_count = await conn.fetchval("SELECT COUNT(*) FROM user_interactions")
+
         # The `with` statement ensures the full request/response cycle completes
         with client.stream("POST", "/v1/chat/completions", json=payload) as response:
             assert response.status_code == 200
@@ -210,11 +218,11 @@ class TestDataIngestion:
         for _ in range(50):  # Wait up to ~2.5 seconds
             async with test_db_pool.acquire() as conn:
                 count = await conn.fetchval("SELECT COUNT(*) FROM user_interactions")
-            if count >= 1:
+            if count >= initial_count + 1:
                 break
             await asyncio.sleep(0.05)
 
-        assert count >= 1, "Interaction was not logged for streaming request"
+        assert count >= initial_count + 1, "Interaction was not logged for streaming request"
 
         # Verify the logged data
         async with test_db_pool.acquire() as conn:
