@@ -565,7 +565,7 @@ class DocumentRetrieverProgram(dspy.Module):
 
     async def aforward(
         self, processed_query: ProcessedQuery, sources: list[DocumentSource] | None = None
-    ) -> list[Document]:
+    ) -> dspy.Prediction:
         """
         Execute the document retrieval process asynchronously.
 
@@ -574,7 +574,7 @@ class DocumentRetrieverProgram(dspy.Module):
             sources: Optional list of DocumentSource to filter by
 
         Returns:
-            List of relevant Document objects, ranked by similarity
+            dspy.Prediction containing list of relevant Document objects, ranked by similarity
         """
         # Use sources from processed query if not provided
         if sources is None:
@@ -584,10 +584,15 @@ class DocumentRetrieverProgram(dspy.Module):
         documents = await self._afetch_documents(processed_query, sources)
 
         if not documents:
-            return []
+            empty_prediction = dspy.Prediction(documents=[])
+            empty_prediction.set_lm_usage({})
+            return empty_prediction
 
         # Step 2: Enrich context with appropriate templates based on query type.
-        return self._enhance_context(processed_query, documents)
+        enhanced_documents = self._enhance_context(processed_query, documents)
+        prediction = dspy.Prediction(documents=enhanced_documents)
+        prediction.set_lm_usage({})
+        return prediction
 
     def forward(
         self, processed_query: ProcessedQuery, sources: list[DocumentSource] | None = None
@@ -701,7 +706,11 @@ class DocumentRetrieverProgram(dspy.Module):
             context.append(
                 Document(
                     page_content=CONTRACT_TEMPLATE,
-                    metadata={"title": CONTRACT_TEMPLATE_TITLE, "source": CONTRACT_TEMPLATE_TITLE, "sourceLink": "https://www.starknet.io/cairo-book/ch103-06-01-deploying-and-interacting-with-a-voting-contract.html"},
+                    metadata={
+                        "title": CONTRACT_TEMPLATE_TITLE,
+                        "source": DocumentSource.CAIRO_BOOK,
+                        "sourceLink": "https://www.starknet.io/cairo-book/ch103-06-01-deploying-and-interacting-with-a-voting-contract.html",
+                    },
                 )
             )
 
@@ -710,7 +719,11 @@ class DocumentRetrieverProgram(dspy.Module):
             context.append(
                 Document(
                     page_content=TEST_TEMPLATE,
-                    metadata={"title": TEST_TEMPLATE_TITLE, "source": TEST_TEMPLATE_TITLE, "sourceLink": "https://www.starknet.io/cairo-book/ch104-02-testing-smart-contracts.html"},
+                    metadata={
+                        "title": TEST_TEMPLATE_TITLE,
+                        "source": DocumentSource.CAIRO_BOOK,
+                        "sourceLink": "https://www.starknet.io/cairo-book/ch104-02-testing-smart-contracts.html",
+                    },
                 )
             )
         return context

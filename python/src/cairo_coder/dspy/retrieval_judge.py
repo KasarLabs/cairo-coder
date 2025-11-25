@@ -16,7 +16,7 @@ import structlog
 from langsmith import traceable
 
 import dspy
-from cairo_coder.core.types import Document
+from cairo_coder.core.types import Document, combine_usage
 from cairo_coder.dspy.document_retriever import CONTRACT_TEMPLATE_TITLE, TEST_TEMPLATE_TITLE
 
 logger = structlog.get_logger(__name__)
@@ -135,14 +135,16 @@ class RetrievalJudge(dspy.Module):
     @traceable(
         name="RetrievalJudge", run_type="llm", metadata={"llm_provider": dspy.settings.lm}
     )
-    async def aforward(self, query: str, documents: list[Document]) -> list[Document]:
+    async def aforward(self, query: str, documents: list[Document]) -> dspy.Prediction:
         """Async judge."""
         if not documents:
-            return documents
+            return dspy.Prediction(documents=documents)
 
         keep_docs, judged_indices, judged_payloads = self._split_templates_and_prepare_docs(
             documents
         )
+        
+        aggregated_usage = {}
 
         # TODO: can we use dspy.Parallel here instead of asyncio gather?
         if judged_payloads:
@@ -154,6 +156,12 @@ class RetrievalJudge(dspy.Module):
                 results = await asyncio.gather(
                     *[judge_one(ds) for ds in judged_payloads], return_exceptions=True
                 )
+                
+                # Aggregate usage from results
+                for res in results:
+                    if isinstance(res, dspy.Prediction):
+                        aggregated_usage = combine_usage(aggregated_usage, res.get_lm_usage())
+
                 self._attach_scores_and_filter_async(
                     query=query,
                     documents=documents,
@@ -167,15 +175,11 @@ class RetrievalJudge(dspy.Module):
                     error=str(e),
                     exc_info=True,
                 )
-                return documents
+                return dspy.Prediction(documents=documents)
 
-        return keep_docs
-
-    def get_lm_usage(self) -> dict[str, int]:
-        """
-        Get the total number of tokens used by the LLM.
-        """
-        return self.rater.get_lm_usage()
+        pred = dspy.Prediction(documents=keep_docs)
+        pred.set_lm_usage(aggregated_usage)
+        return pred
 
     # =========================
     # Internal Helpers

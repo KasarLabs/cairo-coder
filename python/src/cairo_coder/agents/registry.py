@@ -5,8 +5,10 @@ A lightweight enum-based registry that replaces the configuration-based
 agent system with a simple, in-memory registry of available agents.
 """
 
-from dataclasses import dataclass
+from collections.abc import Callable
+from dataclasses import dataclass, field
 from enum import Enum
+from typing import Any
 
 from cairo_coder.core.config import VectorStoreConfig
 from cairo_coder.core.rag_pipeline import RagPipeline, RagPipelineFactory
@@ -33,7 +35,8 @@ class AgentSpec:
     name: str
     description: str
     sources: list[DocumentSource]
-    generation_program_type: AgentId
+    pipeline_builder: Callable[..., RagPipeline]
+    builder_kwargs: dict[str, Any] = field(default_factory=dict)
     max_source_count: int = 5
     similarity_threshold: float = 0.4
 
@@ -48,31 +51,15 @@ class AgentSpec:
         Returns:
             Configured RagPipeline instance
         """
-        match self.generation_program_type:
-            case AgentId.STARKNET:
-                return RagPipelineFactory.create_pipeline(
-                    name=self.name,
-                    vector_store_config=vector_store_config,
-                    sources=self.sources,
-                    query_processor=create_query_processor(),
-                    generation_program=create_generation_program(AgentId.STARKNET),
-                    mcp_generation_program=create_mcp_generation_program(),
-                    max_source_count=self.max_source_count,
-                    similarity_threshold=self.similarity_threshold,
-                    vector_db=vector_db,
-                )
-            case AgentId.CAIRO_CODER:
-                return RagPipelineFactory.create_pipeline(
-                    name=self.name,
-                    vector_store_config=vector_store_config,
-                    sources=self.sources,
-                    query_processor=create_query_processor(),
-                    generation_program=create_generation_program(AgentId.CAIRO_CODER),
-                    mcp_generation_program=create_mcp_generation_program(),
-                    max_source_count=self.max_source_count,
-                    similarity_threshold=self.similarity_threshold,
-                    vector_db=vector_db,
-                )
+        return self.pipeline_builder(
+            name=self.name,
+            vector_store_config=vector_store_config,
+            vector_db=vector_db,
+            sources=self.sources,
+            max_source_count=self.max_source_count,
+            similarity_threshold=self.similarity_threshold,
+            **self.builder_kwargs,
+        )
 
 
 # The global registry of available agents
@@ -81,7 +68,12 @@ registry: dict[AgentId, AgentSpec] = {
         name="Cairo Coder",
         description="General Cairo programming assistant",
         sources=list(DocumentSource),  # All sources
-        generation_program_type=AgentId.CAIRO_CODER,
+        pipeline_builder=RagPipelineFactory.create_pipeline,
+        builder_kwargs={
+            "query_processor": create_query_processor(),
+            "generation_program": create_generation_program(AgentId.CAIRO_CODER),
+            "mcp_generation_program": create_mcp_generation_program(),
+        },
         max_source_count=5,
         similarity_threshold=0.4,
     ),
@@ -89,7 +81,12 @@ registry: dict[AgentId, AgentSpec] = {
         name="Starknet Agent",
         description="Assistant for the Starknet ecosystem (contracts, tools, docs).",
         sources=list(DocumentSource),
-        generation_program_type=AgentId.STARKNET,
+        pipeline_builder=RagPipelineFactory.create_pipeline,
+        builder_kwargs={
+            "query_processor": create_query_processor(),
+            "generation_program": create_generation_program(AgentId.STARKNET),
+            "mcp_generation_program": create_mcp_generation_program(),
+        },
         max_source_count=5,
         similarity_threshold=0.4,
     ),

@@ -10,6 +10,7 @@ These tests verify that:
 
 from unittest.mock import AsyncMock
 
+import dspy
 import pytest
 
 from cairo_coder.core.types import Document, DocumentSource
@@ -46,7 +47,9 @@ async def test_grok_citations_emitted_in_sources_and_summary_excluded(
 ):
     # Mock Grok module on the pipeline instance
     grok_doc = _make_grok_summary_doc(GROK_ANSWER)
-    pipeline.grok_search.aforward = AsyncMock(return_value=[grok_doc])
+    grok_prediction = dspy.Prediction(documents=[grok_doc])
+    grok_prediction.set_lm_usage({})
+    pipeline.grok_search.aforward = AsyncMock(return_value=grok_prediction)
     pipeline.grok_search.last_citations = list(GROK_CITATIONS)
 
     # Stream to get SOURCES event
@@ -78,7 +81,9 @@ async def test_grok_summary_is_first_in_generation_context(
 ):
     # Mock Grok module on the pipeline instance
     grok_doc = _make_grok_summary_doc(GROK_ANSWER)
-    pipeline.grok_search.aforward = AsyncMock(return_value=[grok_doc])
+    grok_prediction = dspy.Prediction(documents=[grok_doc])
+    grok_prediction.set_lm_usage({})
+    pipeline.grok_search.aforward = AsyncMock(return_value=grok_prediction)
     pipeline.grok_search.last_citations = list(GROK_CITATIONS)
 
     await pipeline.aforward(

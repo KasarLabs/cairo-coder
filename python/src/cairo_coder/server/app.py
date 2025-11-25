@@ -20,7 +20,7 @@ import uvicorn
 from dspy.adapters import ChatAdapter, XMLAdapter
 from fastapi import BackgroundTasks, Depends, FastAPI, Header, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import StreamingResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import BaseModel, Field, field_validator
 
 from cairo_coder.config.manager import ConfigManager
@@ -171,8 +171,7 @@ async def log_interaction_task(
         query=query,
         generated_answer=response.choices[0].message.content if response.choices else None,
         retrieved_sources=sources_data,
-        # TODO: fix LLM usage metrics
-        llm_usage={}
+        llm_usage=agent.get_lm_usage(),
     )
     await create_user_interaction(interaction)
 
@@ -203,7 +202,7 @@ async def log_interaction_raw(
         query=query,
         generated_answer=generated_answer,
         retrieved_sources=sources_data,
-        llm_usage={},
+        llm_usage=agent.get_lm_usage()
     )
     await create_user_interaction(interaction)
 
@@ -247,6 +246,9 @@ class CairoCoderServer:
 
         self.app.include_router(insights_router)
 
+        # Setup global exception handler
+        self._setup_exception_handlers()
+
         # Setup routes
         self._setup_routes()
 
@@ -257,6 +259,43 @@ class CairoCoderServer:
             embedder=embedder,
             track_usage=True,
         )
+
+    def _setup_exception_handlers(self):
+        """Setup global exception handlers for the application."""
+
+        @self.app.exception_handler(ValueError)
+        async def value_error_handler(request: Request, exc: ValueError):
+            """Handle ValueError as 400 Bad Request."""
+            logger.warning("Bad request", error=str(exc), path=request.url.path)
+            return JSONResponse(
+                status_code=400,
+                content={
+                    "detail": ErrorResponse(
+                        error=ErrorDetail(
+                            message=str(exc),
+                            type="invalid_request_error",
+                            code="invalid_request",
+                        )
+                    ).model_dump()
+                },
+            )
+
+        @self.app.exception_handler(Exception)
+        async def global_exception_handler(request: Request, exc: Exception):
+            """Handle all unhandled exceptions as 500 Internal Server Error."""
+            logger.error("Unhandled exception", error=str(exc), path=request.url.path, exc_info=True)
+            return JSONResponse(
+                status_code=500,
+                content={
+                    "detail": ErrorResponse(
+                        error=ErrorDetail(
+                            message=f"Internal server error: {str(exc)}",
+                            type="server_error",
+                            code="internal_error",
+                        )
+                    ).model_dump()
+                },
+            )
 
     def _setup_routes(self):
         """Setup FastAPI routes matching TypeScript backend."""
@@ -271,40 +310,26 @@ class CairoCoderServer:
             agent_factory: AgentFactory = Depends(get_agent_factory),
         ):
             """List all available agents."""
-            try:
-                # Create agent factory with injected vector_db
-                available_agents = agent_factory.get_available_agents()
-                agents_info = []
+            available_agents = agent_factory.get_available_agents()
+            agents_info = []
 
-                for agent_id in available_agents:
-                    try:
-                        info = agent_factory.get_agent_info(agent_id=agent_id)
-                        agents_info.append(
-                            AgentInfo(
-                                id=info["id"],
-                                name=info["name"],
-                                description=info["description"],
-                                sources=info["sources"],
-                            )
+            for agent_id in available_agents:
+                try:
+                    info = agent_factory.get_agent_info(agent_id=agent_id)
+                    agents_info.append(
+                        AgentInfo(
+                            id=info["id"],
+                            name=info["name"],
+                            description=info["description"],
+                            sources=info["sources"],
                         )
-                    except Exception as e:
-                        logger.warning(
-                            "Failed to get agent info", agent_id=agent_id, error=str(e), exc_info=True
-                        )
+                    )
+                except Exception as e:
+                    logger.warning(
+                        "Failed to get agent info", agent_id=agent_id, error=str(e), exc_info=True
+                    )
 
-                return agents_info
-            except Exception as e:
-                logger.error("Failed to list agents", error=str(e), exc_info=True)
-                raise HTTPException(
-                    status_code=500,
-                    detail=ErrorResponse(
-                        error=ErrorDetail(
-                            message="Failed to list agents",
-                            type="server_error",
-                            code="internal_error",
-                        )
-                    ).dict(),
-                ) from e
+            return agents_info
 
         @self.app.post("/v1/agents/{agent_id}/chat/completions")
         async def agent_chat_completions(
@@ -318,21 +343,19 @@ class CairoCoderServer:
             agent_factory: AgentFactory = Depends(get_agent_factory),
         ):
             """Agent-specific chat completions"""
-            # Create agent factory to validate agent exists
             try:
                 agent_factory.get_agent_info(agent_id=agent_id)
-            except ValueError as e:
+            except ValueError as exc:
                 raise HTTPException(
                     status_code=404,
-                    detail=ErrorResponse(
-                        error=ErrorDetail(
-                            message=f"Agent '{agent_id}' not found",
-                            type="invalid_request_error",
-                            code="agent_not_found",
-                            param="agent_id",
-                        )
-                    ).dict(),
-                ) from e
+                    detail={
+                        "error": {
+                            "message": str(exc),
+                            "type": "invalid_request_error",
+                            "code": "agent_not_found",
+                        }
+                    },
+                ) from exc
 
             # Determine MCP mode
             mcp_mode = bool(mcp or x_mcp_mode)
@@ -380,28 +403,14 @@ class CairoCoderServer:
         @self.app.post("/v1/suggestions", response_model=SuggestionResponse)
         async def generate_suggestions(request: SuggestionRequest):
             """Generate follow-up conversation suggestions based on chat history."""
-            try:
-                formatted_history = self._format_chat_history_for_suggestions(request.chat_history)
-                suggestion_program = dspy.Predict(SuggestionGeneration)
-                with dspy.context(
-                    lm=dspy.LM("gemini/gemini-flash-lite-latest", max_tokens=10000), adapter=XMLAdapter()
-                ):
-                    result = await suggestion_program.aforward(chat_history=formatted_history)
-                suggestions = result.suggestions if isinstance(result.suggestions, list) else []
-                return SuggestionResponse(suggestions=suggestions)
-
-            except Exception as e:
-                logger.error("Error generating suggestions", error=str(e), exc_info=True)
-                raise HTTPException(
-                    status_code=500,
-                    detail=ErrorResponse(
-                        error=ErrorDetail(
-                            message="Failed to generate suggestions",
-                            type="server_error",
-                            code="internal_error",
-                        )
-                    ).dict(),
-                ) from e
+            formatted_history = self._format_chat_history_for_suggestions(request.chat_history)
+            suggestion_program = dspy.Predict(SuggestionGeneration)
+            with dspy.context(
+                lm=dspy.LM("gemini/gemini-flash-lite-latest", max_tokens=10000), adapter=XMLAdapter()
+            ):
+                result = await suggestion_program.aforward(chat_history=formatted_history)
+            suggestions = result.suggestions if isinstance(result.suggestions, list) else []
+            return SuggestionResponse(suggestions=suggestions)
 
     async def _handle_chat_completion(
         self,
@@ -414,70 +423,48 @@ class CairoCoderServer:
         vector_db: SourceFilteredPgVectorRM | None = None,
     ):
         """Handle chat completion request."""
-        try:
-            # Convert messages to internal format
-            messages = []
-            for msg in request.messages:
-                messages.append(Message(role=msg.role, content=msg.content))
+        # Convert messages to internal format
+        messages = []
+        for msg in request.messages:
+            messages.append(Message(role=msg.role, content=msg.content))
 
-            # Get last user message as query
-            query = request.messages[-1].content
+        # Get last user message as query
+        query = request.messages[-1].content
 
-            # Determine agent ID (fallback to cairo-coder)
-            effective_agent_id = agent_id or "cairo-coder"
+        # Determine agent ID (fallback to cairo-coder)
+        effective_agent_id = agent_id or "cairo-coder"
 
-            # Create agent
-            agent = agent_factory.get_or_create_agent(
-                agent_id=effective_agent_id,
-                mcp_mode=mcp_mode,
+        # Create agent
+        agent = agent_factory.get_or_create_agent(
+            agent_id=effective_agent_id,
+            mcp_mode=mcp_mode,
+        )
+
+        # Handle streaming vs non-streaming
+        if request.stream:
+            return StreamingResponse(
+                self._stream_chat_completion(agent, query, messages[:-1], mcp_mode, effective_agent_id),
+                media_type="text/event-stream",
+                headers={
+                    "Cache-Control": "no-cache",
+                    "Connection": "keep-alive",
+                    "X-Accel-Buffering": "no",
+                },
             )
+        chat_history = messages[:-1]
+        response = await self._generate_chat_completion(agent, query, chat_history, mcp_mode)
 
-            # Handle streaming vs non-streaming
-            if request.stream:
-                return StreamingResponse(
-                    self._stream_chat_completion(agent, query, messages[:-1], mcp_mode, effective_agent_id),
-                    media_type="text/event-stream",
-                    headers={
-                        "Cache-Control": "no-cache",
-                        "Connection": "keep-alive",
-                        "X-Accel-Buffering": "no",
-                    },
-                )
-            chat_history = messages[:-1]
-            response = await self._generate_chat_completion(agent, query, chat_history, mcp_mode)
+        background_tasks.add_task(
+            log_interaction_task,
+            agent_id=effective_agent_id,
+            mcp_mode=mcp_mode,
+            query=query,
+            chat_history=chat_history,
+            response=response,
+            agent=agent,
+        )
 
-            background_tasks.add_task(
-                log_interaction_task,
-                agent_id=effective_agent_id,
-                mcp_mode=mcp_mode,
-                query=query,
-                chat_history=chat_history,
-                response=response,
-                agent=agent,
-            )
-
-            return response
-
-        except ValueError as e:
-            raise HTTPException(
-                status_code=400,
-                detail=ErrorResponse(
-                    error=ErrorDetail(
-                        message=str(e), type="invalid_request_error", code="invalid_request"
-                    )
-                ).dict(),
-            ) from e
-
-        except Exception as e:
-            logger.error("Error in chat completion", error=str(e), exc_info=True)
-            raise HTTPException(
-                status_code=500,
-                detail=ErrorResponse(
-                    error=ErrorDetail(
-                        message="Internal server error", type="server_error", code="internal_error"
-                    )
-                ).model_dump(),
-            ) from e
+        return response
 
     async def _stream_chat_completion(
         self, agent: RagPipeline, query: str, history: list[Message], mcp_mode: bool, agent_id: str
@@ -644,10 +631,9 @@ class CairoCoderServer:
 
         answer = response.answer
 
-        # Somehow this is not always returning something (None). In that case, we're not capable of getting the
-        # tracked usage.
-        lm_usage = response.get_lm_usage()
-        logger.info(f"LM usage from response: {lm_usage}")
+        # Get accumulated usage from the pipeline (not the prediction)
+        lm_usage = agent.get_lm_usage()
+        logger.info(f"LM usage from pipeline: {lm_usage}")
 
         if not lm_usage:
             logger.warning("No LM usage data available, setting defaults to 0")

@@ -15,6 +15,8 @@ from urllib.parse import urlparse
 
 import pytest
 
+from cairo_coder.core.types import DocumentSource
+
 # Import shared fixtures from integration conftest
 pytest_plugins = ["tests.integration.conftest"]
 
@@ -47,7 +49,9 @@ async def test_create_user_interaction(test_db_pool, db_connection):
         chat_history=[{"role": "user", "content": "Hello"}],
         query="Hello",
         generated_answer="Hi",
-        retrieved_sources=[{"pageContent": "Cairo", "metadata": {"source": "cairo_book"}}],
+        retrieved_sources=[
+            {"page_content": "Cairo", "metadata": {"source": DocumentSource.CAIRO_BOOK}}
+        ],
         llm_usage={"model": {"prompt_tokens": 1, "completion_tokens": 1, "total_tokens": 2}},
     )
 
@@ -187,4 +191,3 @@ async def test_migrate_user_interaction_upsert(test_db_pool, db_connection):
     # Verify still only one record
     count = await db_connection.fetchval("SELECT COUNT(*) FROM user_interactions WHERE id = $1", interaction_id)
     assert count == 1
-

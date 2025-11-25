@@ -96,13 +96,14 @@ class GrokSearchProgram(dspy.Module):
             return url
 
     @traceable(name="GrokSearchProgram", run_type="llm")
-    async def aforward(self, processed_query: ProcessedQuery, chat_history: str) -> list[Document]:
+    async def aforward(self, processed_query: ProcessedQuery, chat_history: str) -> dspy.Prediction:
         formatted_query = f"""Answer the following query: {processed_query.original}. \
             Here is the chat history: {chat_history}, that might be relevant to the question. \
             For more context, here are some semantic terms associated with the question: \
             {', '.join(processed_query.search_queries)}. \
             Make sure that your final answer will contain links to the relevant sources used to construct your answer.
         """
+        # TODO: track LM usage
         chat = self.client.chat.create(
             model=DEFAULT_GROK_MODEL,
             tools=[web_search(), x_search()],
@@ -147,4 +148,6 @@ class GrokSearchProgram(dspy.Module):
             )
         )
 
-        return documents
+        prediction = dspy.Prediction(documents=documents)
+        prediction.set_lm_usage({})
+        return prediction

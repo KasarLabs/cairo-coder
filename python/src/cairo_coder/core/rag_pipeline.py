@@ -19,10 +19,12 @@ from cairo_coder.core.config import VectorStoreConfig
 from cairo_coder.core.types import (
     Document,
     DocumentSource,
+    FormattedSource,
     Message,
     ProcessedQuery,
     StreamEvent,
     StreamEventType,
+    combine_usage,
     title_from_url,
 )
 from cairo_coder.dspy.document_retriever import DocumentRetrieverProgram
@@ -82,10 +84,27 @@ class RagPipeline(dspy.Module):
         self._current_processed_query: ProcessedQuery | None = None
         self._current_documents: list[Document] = []
 
+        # Token usage accumulator
+        self._accumulated_usage: dict[str, dict[str, int]] = {}
+
     @property
     def last_retrieved_documents(self) -> list[Document]:
         """Documents retrieved during the most recent pipeline execution."""
         return self._current_documents
+
+    def _accumulate_usage(self, prediction: dspy.Prediction) -> None:
+        """
+        Accumulate token usage from a prediction.
+
+        Args:
+            prediction: DSPy prediction object with usage information
+        """
+        usage = prediction.get_lm_usage()
+        self._accumulated_usage = combine_usage(self._accumulated_usage, usage)
+
+    def _reset_usage(self) -> None:
+        """Reset accumulated usage for a new request."""
+        self._accumulated_usage = {}
 
     async def _aprocess_query_and_retrieve_docs(
         self,
@@ -94,21 +113,28 @@ class RagPipeline(dspy.Module):
         sources: list[DocumentSource] | None = None,
     ) -> tuple[ProcessedQuery, list[Document]]:
         """Process query and retrieve documents - shared async logic."""
-        processed_query = await self.query_processor.aforward(
+        qp_prediction = await self.query_processor.aforward(
             query=query, chat_history=chat_history_str
         )
+        self._accumulate_usage(qp_prediction)
+        processed_query = qp_prediction.processed_query
         self._current_processed_query = processed_query
 
         # Use provided sources or fall back to processed query sources
         retrieval_sources = sources or processed_query.resources
-        documents = await self.document_retriever.aforward(
+        dr_prediction = await self.document_retriever.aforward(
             processed_query=processed_query, sources=retrieval_sources
         )
+        self._accumulate_usage(dr_prediction)
+        documents = dr_prediction.documents
 
         # Optional Grok web/X augmentation: activate when STARKNET_BLOG is among sources.
         try:
             if DocumentSource.STARKNET_BLOG in retrieval_sources:
-                grok_docs = await self.grok_search.aforward(processed_query, chat_history_str)
+                grok_pred = await self.grok_search.aforward(processed_query, chat_history_str)
+                self._accumulate_usage(grok_pred)
+                grok_docs = grok_pred.documents
+
                 self._grok_citations = list(self.grok_search.last_citations)
                 if grok_docs:
                     documents.extend(grok_docs)
@@ -126,7 +152,9 @@ class RagPipeline(dspy.Module):
                 lm=dspy.LM("gemini/gemini-flash-lite-latest", max_tokens=10000, temperature=0.5),
                 adapter=XMLAdapter(),
             ):
-                documents = await self.retrieval_judge.aforward(query=query, documents=documents)
+                judge_pred = await self.retrieval_judge.aforward(query=query, documents=documents)
+                self._accumulate_usage(judge_pred)
+                documents = judge_pred.documents
         except Exception as e:
             logger.warning(
                 "Retrieval judge failed (async), using all documents",
@@ -158,6 +186,9 @@ class RagPipeline(dspy.Module):
         mcp_mode: bool = False,
         sources: list[DocumentSource] | None = None,
     ) -> dspy.Prediction:
+        # Reset usage for this request
+        self._reset_usage()
+
         chat_history_str = self._format_chat_history(chat_history or [])
         processed_query, documents = await self._aprocess_query_and_retrieve_docs(
             query, chat_history_str, sources
@@ -167,13 +198,21 @@ class RagPipeline(dspy.Module):
         )
 
         if mcp_mode:
-            return await self.mcp_generation_program.aforward(documents)
+            result = await self.mcp_generation_program.aforward(documents)
+            self._accumulate_usage(result)
+            result.set_lm_usage(self._accumulated_usage)
+            return result
 
         context = self._prepare_context(documents)
 
-        return await self.generation_program.aforward(
+        result = await self.generation_program.aforward(
             query=query, context=context, chat_history=chat_history_str
         )
+        if result:
+            self._accumulate_usage(result)
+            # Update the result's usage to include accumulated usage from previous steps
+            result.set_lm_usage(self._accumulated_usage)
+        return result
 
 
     async def aforward_streaming(
@@ -251,6 +290,7 @@ class RagPipeline(dspy.Module):
                                     logger.warning(f"Unknown signature field name: {chunk.signature_field_name}")
                             elif isinstance(chunk, dspy.Prediction):
                                 # Final complete answer
+                                self._accumulate_usage(chunk)
                                 final_text = getattr(chunk, "answer", None) or chunk_accumulator
                                 yield StreamEvent(type=StreamEventType.FINAL_RESPONSE, data=final_text)
                                 rt.end(outputs={"output": final_text})
@@ -268,28 +308,12 @@ class RagPipeline(dspy.Module):
 
     def get_lm_usage(self) -> dict[str, dict[str, int]]:
         """
-        Get the total number of tokens used by the LLM.
+        Get accumulated token usage from all predictions in the pipeline.
+
+        Returns:
+            Dictionary mapping model names to usage metrics
         """
-        generation_usage = self.generation_program.get_lm_usage()
-        query_usage = self.query_processor.get_lm_usage()
-        judge_usage = self.retrieval_judge.get_lm_usage()
-
-        # Additive merge strategy
-        merged_usage = {}
-
-        # Helper function to merge usage dictionaries
-        def merge_usage_dict(target: dict, source: dict) -> None:
-            for model_name, metrics in source.items():
-                if model_name not in target:
-                    target[model_name] = {}
-                for metric_name, value in metrics.items():
-                    target[model_name][metric_name] = target[model_name].get(metric_name, 0) + value
-
-        merge_usage_dict(merged_usage, generation_usage)
-        merge_usage_dict(merged_usage, query_usage)
-        merge_usage_dict(merged_usage, judge_usage)
-
-        return merged_usage
+        return self._accumulated_usage
 
     def _format_chat_history(self, chat_history: list[Message]) -> str:
         """
@@ -311,7 +335,7 @@ class RagPipeline(dspy.Module):
 
         return "\n".join(formatted_messages)
 
-    def _format_sources(self, documents: list[Document]) -> list[dict[str, Any]]:
+    def _format_sources(self, documents: list[Document]) -> list[FormattedSource]:
         """
         Format documents for the frontend-friendly sources event.
 
@@ -322,9 +346,9 @@ class RagPipeline(dspy.Module):
             documents: List of retrieved documents
 
         Returns:
-            List of dicts: [{"title": str, "url": str}, ...]
+            List of formatted sources with metadata
         """
-        sources: list[dict[str, str]] = []
+        sources: list[FormattedSource] = []
         seen_urls: set[str] = set()
 
 

@@ -49,7 +49,7 @@ class TestServerIntegration:
 
         data = response.json()
         assert "detail" in data
-        assert data["detail"]["error"]["message"] == "Failed to list agents"
+        assert data["detail"]["error"]["message"] == "Internal server error: Database error"
         assert data["detail"]["error"]["type"] == "server_error"
 
     def test_full_agent_workflow(self, client: TestClient, mock_agent: Mock):
@@ -258,8 +258,6 @@ class TestServerIntegration:
 
     def test_agent_chat_completions_invalid_agent(self, client: TestClient, mock_agent_factory: Mock):
         """Test agent-specific chat completions with invalid agent."""
-        mock_agent_factory.get_agent_info.side_effect = ValueError("Agent not found")
-
         response = client.post(
             "/v1/agents/unknown-agent/chat/completions",
             json={"messages": [{"role": "user", "content": "Hello"}]},

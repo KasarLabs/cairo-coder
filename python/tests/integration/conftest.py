@@ -86,7 +86,12 @@ def real_pipeline(mock_query_processor, mock_vector_store_config, mock_vector_db
     # Avoid LLM calls in the judge and non-streaming generation
     from unittest.mock import AsyncMock, Mock
 
-    pipeline.retrieval_judge.aforward = AsyncMock(side_effect=lambda query, documents: documents)
+    async def _judge_aforward(query, documents):
+        prediction = dspy.Prediction(documents=documents)
+        prediction.set_lm_usage({})
+        return prediction
+
+    pipeline.retrieval_judge.aforward = AsyncMock(side_effect=_judge_aforward)
     pipeline.retrieval_judge.get_lm_usage = Mock(return_value={})
 
     # Patch non-streaming generation to mimic conversation turns using chat_history
@@ -101,24 +106,32 @@ def real_pipeline(mock_query_processor, mock_vector_store_config, mock_vector_db
             "You can deploy it using Scarb with the deploy command.",
         ]
         idx = min((len(lines)) // 2, len(responses) - 1)
-        return _dspy.Prediction(answer=responses[idx])
+        prediction = _dspy.Prediction(answer=responses[idx])
+        prediction.set_lm_usage({})
+        return prediction
 
     async def _fake_gen_aforward_streaming(query: str, context: str, chat_history: str | None = None):
         yield dspy.streaming.StreamResponse(predict_name="GenerationProgram", signature_field_name="answer", chunk="Hello! I'm Cairo Coder, ", is_last_chunk=False)
         yield dspy.streaming.StreamResponse(predict_name="GenerationProgram", signature_field_name="answer", chunk="ready to help with Cairo programming.", is_last_chunk=True)
-        yield dspy.Prediction(answer="Hello! I'm Cairo Coder, ready to help with Cairo programming.")
+        final_prediction = dspy.Prediction(answer="Hello! I'm Cairo Coder, ready to help with Cairo programming.")
+        final_prediction.set_lm_usage({})
+        yield final_prediction
 
     pipeline.generation_program.aforward = AsyncMock(side_effect=_fake_gen_aforward)
     pipeline.generation_program.aforward_streaming =_fake_gen_aforward_streaming
     pipeline.generation_program.get_lm_usage = Mock(return_value={})
 
     # Patch MCP generation to a deterministic simple string as tests expect
-    pipeline.mcp_generation_program.aforward = AsyncMock(
-        return_value=_dspy.Prediction(answer="Cairo is a programming language")
-    )
-    pipeline.mcp_generation_program.forward = lambda documents: _dspy.Prediction(
-        answer="Cairo is a programming language"
-    )
+    mcp_prediction = _dspy.Prediction(answer="Cairo is a programming language")
+    mcp_prediction.set_lm_usage({})
+    pipeline.mcp_generation_program.aforward = AsyncMock(return_value=mcp_prediction)
+
+    def _mcp_forward(documents):  # noqa: ARG001 - deterministic response
+        prediction = _dspy.Prediction(answer="Cairo is a programming language")
+        prediction.set_lm_usage({})
+        return prediction
+
+    pipeline.mcp_generation_program.forward = _mcp_forward
 
     return pipeline
 

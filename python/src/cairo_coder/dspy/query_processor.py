@@ -125,7 +125,7 @@ class QueryProcessorProgram(dspy.Module):
         }
 
     @traceable(name="QueryProcessorProgram", run_type="llm", metadata={"llm_provider": dspy.settings.lm})
-    async def aforward(self, query: str, chat_history: Optional[str] = None) -> ProcessedQuery:
+    async def aforward(self, query: str, chat_history: Optional[str] = None) -> dspy.Prediction:
         """
         Process a user query into a structured format for document retrieval.
 
@@ -134,7 +134,7 @@ class QueryProcessorProgram(dspy.Module):
             chat_history: Previous conversation context (optional)
 
         Returns:
-            ProcessedQuery with search terms, resource identification, and categorization
+            dspy.Prediction containing processed_query and attached usage
         """
         # Execute the DSPy retrieval program
         result = await self.retrieval_program.aforward(query=query, chat_history=chat_history)
@@ -144,7 +144,7 @@ class QueryProcessorProgram(dspy.Module):
         resources = self._validate_resources(result.resources)
 
         # Build structured query result
-        return ProcessedQuery(
+        processed_query = ProcessedQuery(
             original=query,
             search_queries=search_queries,
             is_contract_related=self._is_contract_query(query),
@@ -152,11 +152,10 @@ class QueryProcessorProgram(dspy.Module):
             resources=resources,
         )
 
-    def get_lm_usage(self) -> dict[str, int]:
-        """
-        Get the total number of tokens used by the LLM.
-        """
-        return self.retrieval_program.get_lm_usage()
+        prediction = dspy.Prediction(processed_query=processed_query)
+        prediction.set_lm_usage(result.get_lm_usage() or {})
+
+        return prediction
 
     def _validate_resources(self, resources: list[str]) -> list[DocumentSource]:
         """

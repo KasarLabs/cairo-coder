@@ -192,12 +192,6 @@ class GenerationProgram(dspy.Module):
             raise FileNotFoundError(f"{compiled_program_path} not found")
         self.generation_program.load(compiled_program_path)
 
-    def get_lm_usage(self) -> dict[str, int]:
-        """
-        Get the total number of tokens used by the LLM.
-        """
-        return self.generation_program.get_lm_usage()
-
     @traceable(
         name="GenerationProgram", run_type="llm", metadata={"llm_provider": dspy.settings.lm}
     )
@@ -338,14 +332,6 @@ class McpGenerationProgram(dspy.Module):
         Format documents for MCP mode response.
         """
         return self(documents)
-
-    def get_lm_usage(self) -> dict[str, int]:
-        """
-        Get the total number of tokens used by the LLM.
-        Note: MCP mode doesn't use LLM generation, so no tokens are consumed.
-        """
-        # MCP mode doesn't use LLM generation, return empty dict
-        return {}
 
 
 def create_generation_program(program_type: str) -> GenerationProgram:

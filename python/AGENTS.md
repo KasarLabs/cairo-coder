@@ -12,6 +12,7 @@ This repo uses a unified, deterministic testing infrastructure to keep tests fas
   - Unit client uses `mock_agent_factory` and `mock_vector_db`.
   - Integration client injects a real `RagPipeline` wired to `mock_query_processor` + `mock_vector_db` (via the same `mock_agent_factory`).
 - Replace ad‑hoc stubs with shared fixtures: `sample_processed_query`, `mock_query_processor`, `sample_documents`, and `mock_returned_documents` (built from `sample_documents`).
+- Respect declared types. When a signature says the argument is type `T`, never guard it with `is None` or `hasattr` checks for `T`'s own surface area—just call the method and let the type system show bugs. (Example: if something is typed `dspy.Prediction`, call `get_lm_usage()` directly and set usage via `set_lm_usage`. Don't assume these attributes are not present.)
 
 ## DSPy/LLM Behavior
 
