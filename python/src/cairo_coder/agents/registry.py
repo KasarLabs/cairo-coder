@@ -26,6 +26,7 @@ class AgentId(str, Enum):
 
     CAIRO_CODER = "cairo-coder"
     STARKNET = "starknet-agent"
+    DOJO = "dojo-agent"
 
 
 @dataclass
@@ -90,6 +91,19 @@ registry: dict[AgentId, AgentSpec] = {
         max_source_count=5,
         similarity_threshold=0.4,
     ),
+    AgentId.DOJO: AgentSpec(
+        name="Dojo Agent",
+        description="Assistant specialized in the Dojo framework for Starknet.",
+        sources=[DocumentSource.DOJO_DOCS],
+        pipeline_builder=RagPipelineFactory.create_pipeline,
+        builder_kwargs={
+            "query_processor": create_query_processor(),
+            "generation_program": create_generation_program(AgentId.DOJO),
+            "mcp_generation_program": create_mcp_generation_program(),
+        },
+        max_source_count=5,
+        similarity_threshold=0.4,
+    )
 }
 
 

@@ -27,6 +27,7 @@ RESOURCE_DESCRIPTIONS = {
     DocumentSource.SCARB_DOCS: "Scarb Documentation. For using the Scarb package manager: building, compiling, generating compilation artifacts, managing dependencies, configuration of Scarb.toml.",
     DocumentSource.STARKNET_JS: "StarknetJS Documentation. For using the StarknetJS library: interacting with Starknet contracts, (calls and transactions), deploying Starknet contracts, front-end APIs, javascript integration examples, guides, tutorials and general JS/TS documentation for starknet.",
     DocumentSource.STARKNET_BLOG: "Starknet Blog Documentation. For latest Starknet updates, announcements, feature releases, ecosystem developments, integration guides, and community updates. Useful for understanding recent Starknet innovations, new tools, partnerships, and protocol enhancements.",
+    DocumentSource.DOJO_DOCS: "Dojo Documentation. For building onchain games and autonomous worlds using the Dojo framework: entity component system (ECS) patterns, world contracts, models, systems, events, indexing, client libraries (dojo.js, torii), deployment, and game development patterns on Starknet.",
 }
 
 # Ensure all DocumentSource variants are covered
