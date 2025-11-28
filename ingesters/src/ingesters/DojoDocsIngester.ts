@@ -8,6 +8,12 @@ import { exec as execCallback } from 'child_process';
 import { MarkdownIngester } from './MarkdownIngester';
 import { processDocFiles } from '../utils/fileUtils';
 
+/**
+ * Ingester for Dojo documentation
+ *
+ * This ingester downloads the Dojo Book repository and processes all markdown
+ * documentation files from the docs directory.
+ */
 export class DojoDocsIngester extends MarkdownIngester {
   constructor() {
     const config: BookConfig = {
@@ -16,7 +22,7 @@ export class DojoDocsIngester extends MarkdownIngester {
       fileExtension: '.md',
       chunkSize: 4096,
       chunkOverlap: 512,
-      baseUrl: 'https://dojoengine.org/sdk/javascript',
+      baseUrl: 'https://book.dojoengine.org',
       urlSuffix: '',
       useUrlMapping: true,
     };
@@ -30,11 +36,11 @@ export class DojoDocsIngester extends MarkdownIngester {
    */
   protected getExtractDir(): string {
     const { getTempDir } = require('../utils/paths');
-    return getTempDir('dojo-js-docs');
+    return getTempDir('dojo-docs');
   }
 
   /**
-   * Download and extract the repository
+   * Download and extract the Dojo Book repository
    *
    * @returns Promise<BookPageDto[]> - Array of book pages
    */
@@ -42,7 +48,7 @@ export class DojoDocsIngester extends MarkdownIngester {
     const extractDir = this.getExtractDir();
     const repoUrl = `https://github.com/${this.config.repoOwner}/${this.config.repoName}.git`;
 
-    logger.info(`Cloning repository from ${repoUrl}`);
+    logger.info(`Cloning Dojo Book repository from ${repoUrl}`);
 
     // Clone the repository
     const exec = promisify(execCallback);
@@ -50,25 +56,20 @@ export class DojoDocsIngester extends MarkdownIngester {
       await fs.rm(extractDir, { recursive: true, force: true });
       await exec(`git clone ${repoUrl} ${extractDir}`);
     } catch (error) {
-      logger.error('Error cloning repository:', error);
-      throw new Error('Failed to clone repository');
+      logger.error('Error cloning Dojo repository:', error);
+      throw new Error('Failed to clone Dojo repository');
     }
 
-    logger.info('Repository cloned successfully.');
+    logger.info('Dojo repository cloned successfully.');
 
-    // Process the markdown files from docs/pages/client/sdk directory
+    // Process all markdown files from the docs directory
     const docsDir = path.join(extractDir, 'docs');
 
-    // Log what files exist in the directory
-    logger.info(`Looking for files in: ${docsDir}`);
-    const allFiles = await fs.readdir(docsDir);
-    logger.info(`Found ${allFiles.length} files: ${allFiles.join(', ')}`);
-
-    let pages = await processDocFiles(this.config, docsDir);
-    logger.info(`Processed ${pages.length} total pages before filtering`);
+    logger.info(`Processing documentation files in ${docsDir}`);
+    const pages = await processDocFiles(this.config, docsDir);
 
     logger.info(
-      `Processed ${pages.length} documentation pages from Dojo JS (javascript only)`,
+      `Processed ${pages.length} documentation pages from Dojo Book`,
     );
 
     return pages;

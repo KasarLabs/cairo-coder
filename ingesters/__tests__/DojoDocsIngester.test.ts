@@ -3,9 +3,9 @@ import { DojoDocsIngester } from '../src/ingesters/DojoDocsIngester';
 import * as fs from 'fs/promises';
 import { getTempDir } from '../src/utils/paths';
 
-describe('DojoJsDocsIngester', () => {
+describe('DojoDocsIngester', () => {
   let ingester: DojoDocsIngester;
-  const extractDir = getTempDir('dojo-js-docs');
+  const extractDir = getTempDir('dojo-docs');
 
   beforeAll(() => {
     ingester = new DojoDocsIngester();
@@ -20,25 +20,23 @@ describe('DojoJsDocsIngester', () => {
     }
   });
 
-  test('should download and extract Dojo JS docs', async () => {
+  test('should download and extract Dojo docs', async () => {
     // This will actually download the repo - may take time
     const pages = await (ingester as any).downloadAndExtractDocs();
 
     console.log('\n=== Download Results ===');
     console.log(`Total pages found: ${pages.length}`);
-    console.log('\nPage details:');
-    pages.forEach((page: any) => {
+    console.log('\nPage details (first 5):');
+    pages.slice(0, 5).forEach((page: any) => {
       console.log(`  - ${page.name} (${page.content.length} chars)`);
-      console.log(`    First 200 chars: ${page.content.substring(0, 200)}...`);
+      console.log(`    First 100 chars: ${page.content.substring(0, 100)}...`);
     });
 
     expect(pages).toBeDefined();
     expect(pages.length).toBeGreaterThan(0);
 
-    // Check that we only got javascript files
-    pages.forEach((page: any) => {
-      expect(page.name).toContain('javascript');
-    });
+    // Check that we got Dojo documentation
+    expect(pages.some((page: any) => page.content.includes('Dojo'))).toBe(true);
   }, 60000); // 60 second timeout for git clone
 
   test('should verify extracted directory structure', async () => {
@@ -46,16 +44,16 @@ describe('DojoJsDocsIngester', () => {
     await (ingester as any).downloadAndExtractDocs();
 
     // Check directory structure
-    const docsDir = `${extractDir}/docs/pages/client/sdk`;
+    const docsDir = `${extractDir}/docs`;
     const stat = await fs.stat(docsDir);
 
     console.log('\n=== Directory Structure ===');
     console.log(`Docs directory: ${docsDir}`);
     console.log(`Exists: ${stat.isDirectory()}`);
 
-    // List files in the directory
+    // List top-level items in the directory
     const files = await fs.readdir(docsDir);
-    console.log(`\nFiles found: ${files.length}`);
+    console.log(`\nTop-level items found: ${files.length}`);
     files.forEach(file => {
       console.log(`  - ${file}`);
     });
