@@ -9,6 +9,7 @@ import { CoreLibDocsIngester } from './ingesters/CoreLibDocsIngester';
 import { ScarbDocsIngester } from './ingesters/ScarbDocsIngester';
 import { StarknetJSIngester } from './ingesters/StarknetJSIngester';
 import { StarknetBlogIngester } from './ingesters/StarknetBlogIngester';
+import { DojoDocsIngester } from './ingesters/DojoDocsIngester';
 
 /**
  * Factory class for creating ingesters
@@ -48,11 +49,11 @@ export class IngesterFactory {
       case 'scarb_docs':
         return new ScarbDocsIngester();
 
-      case 'starknet_js':
-        return new StarknetJSIngester();
-
       case 'starknet_blog':
         return new StarknetBlogIngester();
+
+      case 'dojo_docs':
+        return new DojoDocsIngester();
 
       default:
         throw new Error(`Unsupported source: ${source}`);

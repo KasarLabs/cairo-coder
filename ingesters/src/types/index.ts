@@ -17,6 +17,7 @@ export enum DocumentSource {
   SCARB_DOCS = 'scarb_docs',
   STARKNET_JS = 'starknet_js',
   STARKNET_BLOG = 'starknet_blog',
+  DOJO_DOCS = 'dojo_docs',
 }
 
 export type BookChunk = {
