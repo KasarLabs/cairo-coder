@@ -68,9 +68,7 @@ export class DojoDocsIngester extends MarkdownIngester {
     logger.info(`Processing documentation files in ${docsDir}`);
     const pages = await processDocFiles(this.config, docsDir);
 
-    logger.info(
-      `Processed ${pages.length} documentation pages from Dojo Book`,
-    );
+    logger.info(`Processed ${pages.length} documentation pages from Dojo Book`);
 
     return pages;
   }

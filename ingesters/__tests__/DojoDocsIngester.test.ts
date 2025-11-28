@@ -54,7 +54,7 @@ describe('DojoDocsIngester', () => {
     // List top-level items in the directory
     const files = await fs.readdir(docsDir);
     console.log(`\nTop-level items found: ${files.length}`);
-    files.forEach(file => {
+    files.forEach((file) => {
       console.log(`  - ${file}`);
     });
 
