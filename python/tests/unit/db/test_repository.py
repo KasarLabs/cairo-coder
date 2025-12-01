@@ -64,6 +64,29 @@ async def test_create_user_interaction(test_db_pool, db_connection):
 
 
 @pytest.mark.asyncio
+async def test_create_user_interaction_with_conversation_id(test_db_pool, db_connection):
+    """Test that conversation_id is stored correctly."""
+    from cairo_coder.db.models import UserInteraction
+    from cairo_coder.db.repository import create_user_interaction
+
+    conversation_id = "abc123def456"
+    interaction = UserInteraction(
+        agent_id="cairo-coder",
+        mcp_mode=False,
+        conversation_id=conversation_id,
+        chat_history=[{"role": "user", "content": "Hello"}],
+        query="Hello",
+        generated_answer="Hi",
+    )
+
+    await create_user_interaction(interaction)
+
+    row = await db_connection.fetchrow("SELECT * FROM user_interactions WHERE id = $1", interaction.id)
+    assert row is not None
+    assert row["conversation_id"] == conversation_id
+
+
+@pytest.mark.asyncio
 async def test_get_interactions(test_db_pool, db_connection):
     from cairo_coder.db.repository import get_interactions
 
@@ -134,6 +157,49 @@ async def test_get_interactions(test_db_pool, db_connection):
     items, total = await get_interactions(None, None, "cairo-coder", 100, 0)
     assert total == 2
     assert all(it["agent_id"] == "cairo-coder" for it in items)
+
+
+@pytest.mark.asyncio
+async def test_get_interactions_filter_by_conversation_id(test_db_pool, db_connection):
+    """Test that interactions can be filtered by conversation_id."""
+    from cairo_coder.db.repository import get_interactions
+
+    now = datetime.now(timezone.utc)
+    conv_id_1 = "conversation-aaa"
+    conv_id_2 = "conversation-bbb"
+
+    # Seed records with different conversation IDs
+    await db_connection.execute(
+        """
+        INSERT INTO user_interactions (id, created_at, agent_id, mcp_mode, query, conversation_id)
+        VALUES ($1, $2, $3, $4, $5, $6),
+               ($7, $8, $9, $10, $11, $12),
+               ($13, $14, $15, $16, $17, $18),
+               ($19, $20, $21, $22, $23, $24)
+        """,
+        uuid.uuid4(), now - timedelta(hours=3), "cairo-coder", False, "First message conv 1", conv_id_1,
+        uuid.uuid4(), now - timedelta(hours=2), "cairo-coder", False, "Second message conv 1", conv_id_1,
+        uuid.uuid4(), now - timedelta(hours=1), "cairo-coder", False, "First message conv 2", conv_id_2,
+        uuid.uuid4(), now - timedelta(minutes=30), "cairo-coder", False, "No conversation", None,
+    )
+
+    # Filter by conversation_id 1
+    items, total = await get_interactions(None, None, None, 100, 0, conversation_id=conv_id_1)
+    assert total == 2
+    assert all(it["conversation_id"] == conv_id_1 for it in items)
+
+    # Filter by conversation_id 2
+    items, total = await get_interactions(None, None, None, 100, 0, conversation_id=conv_id_2)
+    assert total == 1
+    assert items[0]["conversation_id"] == conv_id_2
+
+    # Verify conversation_id is returned in results
+    items, total = await get_interactions(None, None, None, 100, 0)
+    assert total == 4
+    conv_ids = [it.get("conversation_id") for it in items]
+    assert conv_id_1 in conv_ids
+    assert conv_id_2 in conv_ids
+    assert None in conv_ids
 
 
 @pytest.mark.asyncio

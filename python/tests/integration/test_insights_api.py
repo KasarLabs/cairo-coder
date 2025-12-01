@@ -155,6 +155,72 @@ class TestInsightsAPI:
         assert data["total"] >= 1
         assert all(item["agent_id"] == "cairo-coder" for item in data["items"])
 
+    def test_get_queries_with_conversation_id_filter(self, client, db_connection):
+        """Test that queries can be filtered by conversation_id."""
+        import asyncio
+        import json as _json
+        import uuid
+        from datetime import datetime, timedelta, timezone
+
+        now = datetime.now(timezone.utc)
+        conv_id = "test-conversation-123"
+
+        # Seed records with and without conversation_id
+        async def seed():
+            await db_connection.execute(
+                """
+                INSERT INTO user_interactions (id, created_at, agent_id, mcp_mode, conversation_id, chat_history, query, generated_answer)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8),
+                       ($9, $10, $11, $12, $13, $14, $15, $16),
+                       ($17, $18, $19, $20, $21, $22, $23, $24)
+                """,
+                uuid.uuid4(), now - timedelta(hours=2), "cairo-coder", False, conv_id, _json.dumps([]), "First msg", "Response 1",
+                uuid.uuid4(), now - timedelta(hours=1), "cairo-coder", False, conv_id, _json.dumps([{"role": "user", "content": "First msg"}]), "Second msg", "Response 2",
+                uuid.uuid4(), now - timedelta(minutes=30), "cairo-coder", False, None, _json.dumps([]), "Other msg", "Other response",
+            )
+
+        asyncio.get_event_loop().run_until_complete(seed())
+
+        # Filter by conversation_id
+        resp = client.get(
+            "/v1/insights/queries",
+            params={"conversation_id": conv_id, "limit": 100, "offset": 0},
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["total"] == 2
+        assert all(item["conversation_id"] == conv_id for item in data["items"])
+
+    def test_get_queries_returns_conversation_id(self, client, db_connection):
+        """Test that conversation_id is included in the response."""
+        import asyncio
+        import json as _json
+        import uuid
+        from datetime import datetime, timezone
+
+        now = datetime.now(timezone.utc)
+        conv_id = "response-test-conv-456"
+
+        async def seed():
+            await db_connection.execute(
+                """
+                INSERT INTO user_interactions (id, created_at, agent_id, mcp_mode, conversation_id, chat_history, query, generated_answer)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+                """,
+                uuid.uuid4(), now, "cairo-coder", False, conv_id, _json.dumps([]), "Test query", "Test response",
+            )
+
+        asyncio.get_event_loop().run_until_complete(seed())
+
+        resp = client.get("/v1/insights/queries", params={"limit": 100, "offset": 0})
+        assert resp.status_code == 200
+        data = resp.json()
+
+        # Find our seeded record and verify conversation_id is present
+        matching = [item for item in data["items"] if item.get("conversation_id") == conv_id]
+        assert len(matching) == 1
+        assert matching[0]["conversation_id"] == conv_id
+
 
 class TestDataIngestion:
     async def test_chat_completion_logs_interaction_to_db(self, client, test_db_pool):

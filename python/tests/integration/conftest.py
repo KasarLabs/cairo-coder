@@ -182,6 +182,7 @@ async def test_db_pool(postgres_container):
                 created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
                 agent_id VARCHAR(50) NOT NULL,
                 mcp_mode BOOLEAN NOT NULL DEFAULT FALSE,
+                conversation_id VARCHAR(100),
                 chat_history JSONB,
                 query TEXT NOT NULL,
                 generated_answer TEXT,
@@ -196,6 +197,8 @@ async def test_db_pool(postgres_container):
                 ON user_interactions(created_at);
             CREATE INDEX IF NOT EXISTS idx_interactions_agent_id
                 ON user_interactions(agent_id);
+            CREATE INDEX IF NOT EXISTS idx_interactions_conversation_id
+                ON user_interactions(conversation_id);
             """
         )
 
