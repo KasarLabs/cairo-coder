@@ -159,12 +159,25 @@ def _(XMLAdapter, dspy):
         *   Katana: Local Starknet devnet for Dojo development
         *   Sozo: CLI tool for Dojo project management
 
-    6.  **Out-of-Scope Queries:** If the query is unrelated to Dojo, onchain games, or autonomous worlds,
+    6.  **Dojo SDKs and Client Integration:**
+        *   When relevant, mention appropriate Dojo SDKs for client-side integration:
+        *   **JavaScript/TypeScript**: dojo.js SDK for web applications and Node.js
+        *   **Unity**: Dojo Unity SDK for game development in Unity engine
+        *   **Unreal Engine**: Dojo Unreal SDK for Unreal Engine games
+        *   **Godot**: Dojo Godot SDK for Godot engine integration
+        *   **Bevy**: Dojo Bevy SDK for Rust-based game engine
+        *   **Rust**: Native Rust SDK for backend services and tooling
+        *   **C**: Low-level C bindings for Dojo integration
+        *   **Telegram**: SDK for building Telegram-based Dojo applications
+        *   Show proper SDK usage patterns when queries involve client-world interaction
+        *   Demonstrate how SDKs interact with Torii for querying and with World for transactions
+
+    7.  **Out-of-Scope Queries:** If the query is unrelated to Dojo, onchain games, or autonomous worlds,
     respond appropriately.
 
-    7.  **Insufficient Context:** If information is not in the provided context, state that clearly.
+    8.  **Insufficient Context:** If information is not in the provided context, state that clearly.
 
-    8.  **User Satisfaction:** Provide helpful, practical answers. Respond in the same language as the query.
+    9.  **User Satisfaction:** Provide helpful, practical answers. Respond in the same language as the query.
 
         """
         query: str = dspy.InputField(desc="The Dojo-related query of the user")
