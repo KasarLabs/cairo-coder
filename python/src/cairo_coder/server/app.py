@@ -151,6 +151,7 @@ async def log_interaction_task(
     chat_history: list[Message],
     response: ChatCompletionResponse,
     agent: RagPipeline,
+    conversation_id: str | None = None,
 ) -> None:
     """Background task that persists a user interaction."""
     sources_data = [
@@ -167,6 +168,7 @@ async def log_interaction_task(
     interaction = UserInteraction(
         agent_id=agent_id,
         mcp_mode=mcp_mode,
+        conversation_id=conversation_id,
         chat_history=chat_history_dicts,
         query=query,
         generated_answer=response.choices[0].message.content if response.choices else None,
@@ -183,6 +185,7 @@ async def log_interaction_raw(
     chat_history: list[Message],
     generated_answer: str | None,
     agent: RagPipeline,
+    conversation_id: str | None = None,
 ) -> None:
     """Persist a user interaction without constructing a full response object."""
     sources_data = [
@@ -198,6 +201,7 @@ async def log_interaction_raw(
     interaction = UserInteraction(
         agent_id=agent_id,
         mcp_mode=mcp_mode,
+        conversation_id=conversation_id,
         chat_history=chat_history_dicts,
         query=query,
         generated_answer=generated_answer,
@@ -423,6 +427,9 @@ class CairoCoderServer:
         vector_db: SourceFilteredPgVectorRM | None = None,
     ):
         """Handle chat completion request."""
+        # Extract conversation ID from header
+        conversation_id = req.headers.get("x-conversation-id")
+
         # Convert messages to internal format
         messages = []
         for msg in request.messages:
@@ -443,7 +450,9 @@ class CairoCoderServer:
         # Handle streaming vs non-streaming
         if request.stream:
             return StreamingResponse(
-                self._stream_chat_completion(agent, query, messages[:-1], mcp_mode, effective_agent_id),
+                self._stream_chat_completion(
+                    agent, query, messages[:-1], mcp_mode, effective_agent_id, conversation_id
+                ),
                 media_type="text/event-stream",
                 headers={
                     "Cache-Control": "no-cache",
@@ -462,12 +471,19 @@ class CairoCoderServer:
             chat_history=chat_history,
             response=response,
             agent=agent,
+            conversation_id=conversation_id,
         )
 
         return response
 
     async def _stream_chat_completion(
-        self, agent: RagPipeline, query: str, history: list[Message], mcp_mode: bool, agent_id: str
+        self,
+        agent: RagPipeline,
+        query: str,
+        history: list[Message],
+        mcp_mode: bool,
+        agent_id: str,
+        conversation_id: str | None = None,
     ) -> AsyncGenerator[str, None]:
         """Stream chat completion response - replicates TypeScript streaming."""
         response_id = str(uuid.uuid4())
@@ -580,6 +596,7 @@ class CairoCoderServer:
                     chat_history=history,
                     generated_answer=final_response,
                     agent=agent,
+                    conversation_id=conversation_id,
                 )
             except Exception as log_error:
                 logger.error("Failed to log streaming interaction", error=str(log_error), exc_info=True)
