@@ -28,6 +28,7 @@ class QueryResponse(BaseModel):
     query: str
     chat_history: list[dict[str, Any]]
     output: str | None
+    conversation_id: str | None = None
 
 
 class PaginatedQueryResponse(BaseModel):
@@ -45,6 +46,7 @@ async def get_raw_queries(
     end_date: datetime | None = None,
     agent_id: str | None = None,
     query_text: str | None = None,
+    conversation_id: str | None = None,
     limit: int = 100,
     offset: int = 0,
 ) -> PaginatedQueryResponse:
@@ -52,9 +54,11 @@ async def get_raw_queries(
 
     If start_date and end_date are not provided, returns the last N queries
     ordered by creation time (where N is the limit parameter).
+
+    Use conversation_id to filter queries belonging to a specific conversation.
     """
     items, total = await get_interactions(
-        start_date, end_date, agent_id, limit, offset, query_text
+        start_date, end_date, agent_id, limit, offset, query_text, conversation_id
     )
     # Map generated_answer to output for API response
     responses = [
@@ -65,6 +69,7 @@ async def get_raw_queries(
             query=item["query"],
             chat_history=item["chat_history"] or [],
             output=item.get("generated_answer"),
+            conversation_id=item.get("conversation_id"),
         )
         for item in items
     ]
