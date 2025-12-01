@@ -15,6 +15,8 @@ import { processDocFiles } from '../utils/fileUtils';
  * documentation files from the docs directory.
  */
 export class DojoDocsIngester extends MarkdownIngester {
+  private static readonly BASE_URL = 'https://book.dojoengine.org';
+
   constructor() {
     const config: BookConfig = {
       repoName: 'book',
@@ -22,7 +24,7 @@ export class DojoDocsIngester extends MarkdownIngester {
       fileExtension: '.md',
       chunkSize: 4096,
       chunkOverlap: 512,
-      baseUrl: 'https://book.dojoengine.org',
+      baseUrl: DojoDocsIngester.BASE_URL,
       urlSuffix: '',
       useUrlMapping: true,
     };
