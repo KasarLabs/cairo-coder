@@ -23,6 +23,19 @@ No authentication is enforced by the server. Add your own gateway (API key, OAut
 - `Content-Type: application/json` — required for JSON POSTs.
 - `Accept: application/json` or `text/event-stream` depending on `stream` usage.
 - `x-mcp-mode: true` or `mcp: true` — optional. When present (any value), the request runs in **MCP mode**, returning raw documentation snippets instead of synthesized answers. See [MCP Mode](#mcp-mode).
+- `x-conversation-id` — optional. Links multiple requests to the same conversation for analytics.
+- `x-user-id` — optional. Anonymous user identifier for tracking usage across sessions. The server hashes this value before storage for privacy.
+- `x-api-key` — optional. When present, the server uses a hash of the API key as the user identifier (takes precedence over `x-user-id`).
+
+#### User Identification
+
+The server derives an anonymized `user_id` for each request using the following priority:
+
+1. If `x-api-key` header is present → hash the API key
+2. Else if `x-user-id` header is present → hash the user ID
+3. Else → no user identification
+
+This allows tracking user behavior across sessions without storing sensitive identifiers.
 
 ## Health Check
 
@@ -366,6 +379,8 @@ Fetch paginated user queries. If no date range is provided, returns the most rec
 - `query_text` _(optional)_ — filter by text contained in the query (case-insensitive).
 - `limit` _(default `100`)_ — maximum rows returned.
 - `offset` _(default `0`)_ — pagination offset.
+- `conversation_id` _(optional)_ — filter by conversation id.
+- `user_id` _(optional)_ — filter by hashed user id. Useful for tracking individual user journeys and retention.
 
 **Response** `200 OK`
 
@@ -381,7 +396,9 @@ Fetch paginated user queries. If no date range is provided, returns the most rec
         { "role": "user", "content": "What is Cairo?" },
         { "role": "assistant", "content": "Cairo is a programming language..." }
       ],
-      "output": "To declare a storage variable in Cairo 1, you use the #[storage] attribute..."
+      "output": "To declare a storage variable in Cairo 1, you use the #[storage] attribute...",
+      "conversation_id": "123e4567-e89b-12d3-a456-426614174000",
+      "user_id": "a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6"
     }
   ],
   "total": 1,
@@ -389,6 +406,8 @@ Fetch paginated user queries. If no date range is provided, returns the most rec
   "offset": 0
 }
 ```
+
+The `user_id` field contains the hashed identifier derived from either the `x-api-key` or `x-user-id` header at request time. This enables user retention and usage analytics without storing raw identifiers.
 
 ## Versioning & Compatibility
 
