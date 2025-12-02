@@ -26,20 +26,27 @@ export async function processDocFiles(
 
       for (const entry of entries) {
         const fullPath = path.join(dir, entry.name);
-        for (const fileExtension of config.fileExtensions) {
-          if (entry.isDirectory()) {
-            // Recursively process subdirectories
-            await processDirectory(fullPath);
-          } else if (
-            entry.isFile() &&
-            path.extname(entry.name).toLowerCase() === fileExtension
-          ) {
+
+        if (entry.isDirectory()) {
+          // Recursively process subdirectories
+          await processDirectory(fullPath);
+        } else if (entry.isFile()) {
+          // Check if the file matches any of the configured extensions
+          const fileExt = path.extname(entry.name).toLowerCase();
+          if (config.fileExtensions.includes(fileExt)) {
             // Process documentation files
             const content = await fs.readFile(fullPath, 'utf8');
+
+            // Skip empty files
+            if (content.trim().length === 0) {
+              logger.warn(`Skipping empty file: ${fullPath}`);
+              continue;
+            }
+
             pages.push({
               name: path
                 .relative(directory, fullPath)
-                .replace(fileExtension, ''),
+                .replace(fileExt, ''),
               content,
             });
           }
