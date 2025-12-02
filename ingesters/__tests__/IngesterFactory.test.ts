@@ -74,7 +74,7 @@ describe('IngesterFactory', () => {
         DocumentSource.OPENZEPPELIN_DOCS,
         DocumentSource.CORELIB_DOCS,
         DocumentSource.SCARB_DOCS,
-        DocumentSource.STARKNET_JS,
+        // DocumentSource.STARKNET_JS is commented out in the enum
         DocumentSource.STARKNET_BLOG,
         DocumentSource.DOJO_DOCS,
       ]);

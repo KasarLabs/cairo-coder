@@ -44,9 +44,7 @@ export async function processDocFiles(
             }
 
             pages.push({
-              name: path
-                .relative(directory, fullPath)
-                .replace(fileExt, ''),
+              name: path.relative(directory, fullPath).replace(fileExt, ''),
               content,
             });
           }

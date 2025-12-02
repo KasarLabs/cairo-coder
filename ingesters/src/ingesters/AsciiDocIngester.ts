@@ -200,7 +200,10 @@ export abstract class AsciiDocIngester extends BaseIngester {
             hasRelevantFiles = true;
           }
         }
-      } else if (entry.isFile() && path.extname(entry.name) === fileExtensions) {
+      } else if (
+        entry.isFile() &&
+        path.extname(entry.name) === fileExtensions
+      ) {
         if (entry.name.toLowerCase() === 'nav.adoc') {
           continue;
         }
