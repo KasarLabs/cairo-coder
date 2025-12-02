@@ -84,7 +84,7 @@ class TestAgentFactory:
         """Test getting available agent IDs."""
         available_agents = agent_factory.get_available_agents()
 
-        assert available_agents == ["cairo-coder", "starknet-agent", "dojo-agent"]
+        assert available_agents == ["cairo-coder", "starknet-agent"]
 
     def test_get_agent_info(self, agent_factory):
         """Test getting agent information."""
@@ -138,7 +138,7 @@ class TestAgentRegistry:
         """Test that registry contains all expected agents."""
         assert AgentId.CAIRO_CODER in registry
         assert AgentId.STARKNET in registry
-        assert len(registry) == 3
+        assert len(registry) == 2
 
     def test_get_agent_by_string_id_valid(self):
         """Test getting agent by valid string ID."""
@@ -149,10 +149,6 @@ class TestAgentRegistry:
         enum_id, spec = get_agent_by_string_id("starknet-agent")
         assert enum_id == AgentId.STARKNET
         assert spec.name == "Starknet Agent"
-
-        enum_id, spec = get_agent_by_string_id("dojo-agent")
-        assert enum_id == AgentId.DOJO
-        assert spec.name == "Dojo Agent"
 
     def test_get_agent_by_string_id_invalid(self):
         """Test getting agent by invalid string ID."""
@@ -197,27 +193,6 @@ class TestAgentRegistry:
             spec.pipeline_builder.assert_called_once()
             call_args = spec.pipeline_builder.call_args[1]
             assert call_args["name"] == "Starknet Agent"
-            assert call_args["vector_db"] == mock_vector_db
-            assert call_args["vector_store_config"] == mock_vector_store_config
-        finally:
-            # Restore original builder
-            spec.pipeline_builder = original_builder
-    def test_agent_spec_build_dojo(self, mock_vector_db, mock_vector_store_config):
-        """Test building a Dojo agent from spec."""
-        spec = registry[AgentId.DOJO]
-        mock_pipeline = Mock(spec=RagPipeline)
-
-        # Patch the spec's pipeline_builder directly
-        original_builder = spec.pipeline_builder
-        spec.pipeline_builder = Mock(return_value=mock_pipeline)
-
-        try:
-            pipeline = spec.build(mock_vector_db, mock_vector_store_config)
-
-            assert pipeline == mock_pipeline
-            spec.pipeline_builder.assert_called_once()
-            call_args = spec.pipeline_builder.call_args[1]
-            assert call_args["name"] == "Dojo Agent"
             assert call_args["vector_db"] == mock_vector_db
             assert call_args["vector_store_config"] == mock_vector_store_config
         finally:

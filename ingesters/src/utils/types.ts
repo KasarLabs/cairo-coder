@@ -31,7 +31,7 @@ export type BookConfig = {
   repoName: string;
 
   /** The file extension of the documentation files */
-  fileExtension: string;
+  fileExtensions: Array<string>;
 
   /** The size of each chunk in characters */
   chunkSize: number;

@@ -33,7 +33,7 @@ export class StarknetDocsIngester extends MarkdownIngester {
     const config: BookConfig = {
       repoOwner: 'starknet-io',
       repoName: 'starknet-docs',
-      fileExtension: '.mdx',
+      fileExtensions: ['.mdx'],
       chunkSize: 4096,
       chunkOverlap: 512,
       baseUrl: StarknetDocsIngester.BASE_URL,
@@ -112,26 +112,28 @@ export class StarknetDocsIngester extends MarkdownIngester {
       const entries = await fs.readdir(dir, { withFileTypes: true });
 
       for (const entry of entries) {
-        const fullPath = path.join(dir, entry.name);
+        for (const extension of this.config.fileExtensions) {
+          const fullPath = path.join(dir, entry.name);
 
-        if (entry.isDirectory()) {
-          // Recursively process subdirectories
-          await processDirectory(fullPath);
-        } else if (
-          entry.isFile() &&
-          path.extname(entry.name).toLowerCase() === this.config.fileExtension
-        ) {
-          // Process MDX files
-          const content = await fs.readFile(fullPath, 'utf8');
+          if (entry.isDirectory()) {
+            // Recursively process subdirectories
+            await processDirectory(fullPath);
+          } else if (
+            entry.isFile() &&
+            path.extname(entry.name).toLowerCase() === extension // Handle specified extensions
+          ) {
+            // Process MDX files
+            const content = await fs.readFile(fullPath, 'utf8');
 
-          // Remove the repository path to get relative path
-          const relativePath = path.relative(this.getExtractDir(), fullPath);
-          const pageName = relativePath.replace('.mdx', '');
+            // Remove the repository path to get relative path
+            const relativePath = path.relative(this.getExtractDir(), fullPath);
+            const pageName = relativePath.replace('.mdx', '');
 
-          pages.push({
-            name: pageName,
-            content,
-          });
+            pages.push({
+              name: pageName,
+              content,
+            });
+          }
         }
       }
     };

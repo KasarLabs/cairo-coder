@@ -12,7 +12,7 @@ describe('DojoDocsIngester', () => {
     expect(ingester.config).toEqual({
       repoOwner: 'dojoengine',
       repoName: 'book',
-      fileExtension: '.md',
+      fileExtensions: ['.md', '.mdx'],
       chunkSize: 4096,
       chunkOverlap: 512,
       baseUrl: 'https://book.dojoengine.org',

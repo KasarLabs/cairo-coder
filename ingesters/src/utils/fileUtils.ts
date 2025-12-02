@@ -26,23 +26,23 @@ export async function processDocFiles(
 
       for (const entry of entries) {
         const fullPath = path.join(dir, entry.name);
-
-        if (entry.isDirectory()) {
-          // Recursively process subdirectories
-          await processDirectory(fullPath);
-        } else if (
-          entry.isFile() &&
-          path.extname(entry.name).toLowerCase() === config.fileExtension
-        ) {
-          // Process documentation files
-          const content = await fs.readFile(fullPath, 'utf8');
-
-          pages.push({
-            name: path
-              .relative(directory, fullPath)
-              .replace(config.fileExtension, ''),
-            content,
-          });
+        for (const fileExtension of config.fileExtensions) {
+          if (entry.isDirectory()) {
+            // Recursively process subdirectories
+            await processDirectory(fullPath);
+          } else if (
+            entry.isFile() &&
+            path.extname(entry.name).toLowerCase() === fileExtension
+          ) {
+            // Process documentation files
+            const content = await fs.readFile(fullPath, 'utf8');
+            pages.push({
+              name: path
+                .relative(directory, fullPath)
+                .replace(fileExtension, ''),
+              content,
+            });
+          }
         }
       }
     }

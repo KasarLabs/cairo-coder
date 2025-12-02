@@ -21,7 +21,7 @@ export class DojoDocsIngester extends MarkdownIngester {
     const config: BookConfig = {
       repoName: 'book',
       repoOwner: 'dojoengine',
-      fileExtension: '.md',
+      fileExtensions: ['.md', '.mdx'],
       chunkSize: 4096,
       chunkOverlap: 512,
       baseUrl: DojoDocsIngester.BASE_URL,
