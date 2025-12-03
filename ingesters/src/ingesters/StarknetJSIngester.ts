@@ -26,7 +26,7 @@ export class StarknetJSIngester extends MarkdownIngester {
       useUrlMapping: true,
     };
 
-    super(config, DocumentSource.CAIRO_BOOK);
+    super(config, DocumentSource.STARKNET_JS);
   }
 
   protected getExtractDir(): string {

@@ -49,8 +49,8 @@ export class IngesterFactory {
       case 'scarb_docs':
         return new ScarbDocsIngester();
 
-      // case 'starknet_js':
-      //   return new StarknetJSIngester();
+      case 'starknet_js':
+        return new StarknetJSIngester();
 
       case 'starknet_blog':
         return new StarknetBlogIngester();
