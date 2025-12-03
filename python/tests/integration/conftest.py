@@ -165,8 +165,15 @@ async def test_db_pool(postgres_container):
     """Asyncpg pool connected to the ephemeral Postgres.
 
     Creates schema directly to avoid cross-loop pool reuse with the app.
+    Clears global pools dict before creating a new pool to prevent connection exhaustion.
     """
     import asyncpg  # local import to avoid import at collection when skipped
+
+    from cairo_coder.db import session as db_session
+
+    # Clear any lingering pools from the global dict to prevent connection exhaustion
+    # during long test runs
+    await db_session.close_pool()
 
     raw_dsn = postgres_container.get_connection_url()
     # Convert SQLAlchemy-style DSN to asyncpg-compatible DSN
