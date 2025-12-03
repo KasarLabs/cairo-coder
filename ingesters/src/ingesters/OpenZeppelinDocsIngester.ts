@@ -2,7 +2,6 @@ import * as fsPromises from 'fs/promises';
 import * as path from 'path';
 import { Document } from '@langchain/core/documents';
 import { type BookChunk, DocumentSource } from '../types';
-import { VectorStore } from '../db/postgresVectorStore';
 import { type BookConfig, type BookPageDto } from '../utils/types';
 import { logger } from '../utils/logger';
 import {
@@ -68,33 +67,36 @@ export class OpenZeppelinDocsIngester extends AsciiDocIngester {
         const entries = await fsPromises.readdir(dir, { withFileTypes: true });
 
         for (const entry of entries) {
-          for (const fileExtension of config.fileExtensions) {
-            const fullPath = path.join(dir, entry.name);
+          const fullPath = path.join(dir, entry.name);
 
-            if (entry.isDirectory()) {
-              // Recursively process subdirectories
-              await processDirectory(fullPath);
-            } else if (
-              entry.isFile() &&
-              path.extname(entry.name).toLowerCase() === fileExtension // TODO: handle multiple extensions
-            ) {
-              // Process AsciiDoc files
-              const content = await fsPromises.readFile(fullPath, 'utf8');
+          if (entry.isDirectory()) {
+            // Recursively process subdirectories
+            await processDirectory(fullPath);
+          } else if (
+            entry.isFile() &&
+            config.fileExtensions.includes(
+              path.extname(entry.name).toLowerCase(),
+            )
+          ) {
+            // Process AsciiDoc files
+            const content = await fsPromises.readFile(fullPath, 'utf8');
 
-              // Get the relative path of the file from the base directory - which reflects the online website directory structure
-              const relativePath = path.relative(directory, fullPath);
+            // Get the relative path of the file from the base directory - which reflects the online website directory structure
+            const relativePath = path.relative(directory, fullPath);
 
-              // Inject cairo-contracts/2.0.0 in the fullPath to reflect online website directory structure
-              // This is the special handling for OpenZeppelin docs
-              const adaptedFullPageName = path
-                .join('contracts-cairo', OZ_DOCS_VERSION, relativePath)
-                .replace(fileExtension, '');
+            // Get the file extension to remove it from the final page name
+            const fileExtension = path.extname(entry.name).toLowerCase();
 
-              pages.push({
-                name: adaptedFullPageName,
-                content,
-              });
-            }
+            // Inject cairo-contracts/2.0.0 in the fullPath to reflect online website directory structure
+            // This is the special handling for OpenZeppelin docs
+            const adaptedFullPageName = path
+              .join('contracts-cairo', OZ_DOCS_VERSION, relativePath)
+              .replace(fileExtension, '');
+
+            pages.push({
+              name: adaptedFullPageName,
+              content,
+            });
           }
         }
       }

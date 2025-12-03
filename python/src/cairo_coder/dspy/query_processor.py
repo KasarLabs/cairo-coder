@@ -9,10 +9,10 @@ and resource identification.
 import os
 from typing import Optional
 
+import dspy
 import structlog
 from langsmith import traceable
 
-import dspy
 from cairo_coder.core.types import DocumentSource, ProcessedQuery
 
 logger = structlog.get_logger(__name__)

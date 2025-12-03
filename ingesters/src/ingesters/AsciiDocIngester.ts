@@ -161,13 +161,13 @@ export abstract class AsciiDocIngester extends BaseIngester {
    *
    * @param sourceDir - Source directory
    * @param targetDir - Target directory
-   * @param fileExtensions - File extension to process
+   * @param fileExtension - File extension to process
    * @returns Promise<boolean> - Whether relevant files were found
    */
   private async restructureFiles(
     sourceDir: string,
     targetDir: string,
-    fileExtensions: string = '.adoc',
+    fileExtension: string = '.adoc',
   ): Promise<boolean> {
     const entries = await fs.readdir(sourceDir, { withFileTypes: true });
     let hasRelevantFiles = false;
@@ -185,7 +185,7 @@ export abstract class AsciiDocIngester extends BaseIngester {
           const subDirHasRelevantFiles = await this.restructureFiles(
             sourcePath,
             targetDir,
-            fileExtensions,
+            fileExtension,
           );
           if (subDirHasRelevantFiles) {
             hasRelevantFiles = true;
@@ -194,16 +194,13 @@ export abstract class AsciiDocIngester extends BaseIngester {
           const subDirHasRelevantFiles = await this.restructureFiles(
             sourcePath,
             targetPath,
-            fileExtensions,
+            fileExtension,
           );
           if (subDirHasRelevantFiles) {
             hasRelevantFiles = true;
           }
         }
-      } else if (
-        entry.isFile() &&
-        path.extname(entry.name) === fileExtensions
-      ) {
+      } else if (entry.isFile() && path.extname(entry.name) === fileExtension) {
         if (entry.name.toLowerCase() === 'nav.adoc') {
           continue;
         }
