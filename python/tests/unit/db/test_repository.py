@@ -203,6 +203,72 @@ async def test_get_interactions_filter_by_conversation_id(test_db_pool, db_conne
 
 
 @pytest.mark.asyncio
+async def test_create_user_interaction_with_user_id(test_db_pool, db_connection):
+    """Test that user_id is stored correctly."""
+    from cairo_coder.db.models import UserInteraction
+    from cairo_coder.db.repository import create_user_interaction
+
+    user_id = "hashed_user_abc123"
+    interaction = UserInteraction(
+        agent_id="cairo-coder",
+        mcp_mode=False,
+        user_id=user_id,
+        chat_history=[{"role": "user", "content": "Hello"}],
+        query="Hello",
+        generated_answer="Hi",
+    )
+
+    await create_user_interaction(interaction)
+
+    row = await db_connection.fetchrow("SELECT * FROM user_interactions WHERE id = $1", interaction.id)
+    assert row is not None
+    assert row["user_id"] == user_id
+
+
+@pytest.mark.asyncio
+async def test_get_interactions_filter_by_user_id(test_db_pool, db_connection):
+    """Test that interactions can be filtered by user_id."""
+    from cairo_coder.db.repository import get_interactions
+
+    now = datetime.now(timezone.utc)
+    user_id_1 = "hashed_user_aaa"
+    user_id_2 = "hashed_user_bbb"
+
+    # Seed records with different user IDs
+    await db_connection.execute(
+        """
+        INSERT INTO user_interactions (id, created_at, agent_id, mcp_mode, query, user_id)
+        VALUES ($1, $2, $3, $4, $5, $6),
+               ($7, $8, $9, $10, $11, $12),
+               ($13, $14, $15, $16, $17, $18),
+               ($19, $20, $21, $22, $23, $24)
+        """,
+        uuid.uuid4(), now - timedelta(hours=3), "cairo-coder", False, "First message user 1", user_id_1,
+        uuid.uuid4(), now - timedelta(hours=2), "cairo-coder", False, "Second message user 1", user_id_1,
+        uuid.uuid4(), now - timedelta(hours=1), "cairo-coder", False, "First message user 2", user_id_2,
+        uuid.uuid4(), now - timedelta(minutes=30), "cairo-coder", False, "No user", None,
+    )
+
+    # Filter by user_id 1
+    items, total = await get_interactions(None, None, None, 100, 0, user_id=user_id_1)
+    assert total == 2
+    assert all(it["user_id"] == user_id_1 for it in items)
+
+    # Filter by user_id 2
+    items, total = await get_interactions(None, None, None, 100, 0, user_id=user_id_2)
+    assert total == 1
+    assert items[0]["user_id"] == user_id_2
+
+    # Verify user_id is returned in results
+    items, total = await get_interactions(None, None, None, 100, 0)
+    assert total == 4
+    user_ids = [it.get("user_id") for it in items]
+    assert user_id_1 in user_ids
+    assert user_id_2 in user_ids
+    assert None in user_ids
+
+
+@pytest.mark.asyncio
 async def test_migrate_user_interaction_upsert(test_db_pool, db_connection):
     """Test that migrate_user_interaction performs upsert (insert or update)."""
     from cairo_coder.db.models import UserInteraction

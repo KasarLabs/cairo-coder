@@ -165,8 +165,15 @@ async def test_db_pool(postgres_container):
     """Asyncpg pool connected to the ephemeral Postgres.
 
     Creates schema directly to avoid cross-loop pool reuse with the app.
+    Clears global pools dict before creating a new pool to prevent connection exhaustion.
     """
     import asyncpg  # local import to avoid import at collection when skipped
+
+    from cairo_coder.db import session as db_session
+
+    # Clear any lingering pools from the global dict to prevent connection exhaustion
+    # during long test runs
+    await db_session.close_pool()
 
     raw_dsn = postgres_container.get_connection_url()
     # Convert SQLAlchemy-style DSN to asyncpg-compatible DSN
@@ -183,6 +190,7 @@ async def test_db_pool(postgres_container):
                 agent_id VARCHAR(50) NOT NULL,
                 mcp_mode BOOLEAN NOT NULL DEFAULT FALSE,
                 conversation_id VARCHAR(100),
+                user_id VARCHAR(100),
                 chat_history JSONB,
                 query TEXT NOT NULL,
                 generated_answer TEXT,
@@ -199,6 +207,8 @@ async def test_db_pool(postgres_container):
                 ON user_interactions(agent_id);
             CREATE INDEX IF NOT EXISTS idx_interactions_conversation_id
                 ON user_interactions(conversation_id);
+            CREATE INDEX IF NOT EXISTS idx_interactions_user_id
+                ON user_interactions(user_id);
             """
         )
 

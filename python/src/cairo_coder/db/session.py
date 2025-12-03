@@ -72,6 +72,7 @@ async def execute_schema_scripts() -> None:
                 agent_id VARCHAR(50) NOT NULL,
                 mcp_mode BOOLEAN NOT NULL DEFAULT FALSE,
                 conversation_id VARCHAR(100),
+                user_id VARCHAR(100),
                 chat_history JSONB,
                 query TEXT NOT NULL,
                 generated_answer TEXT,
@@ -87,6 +88,13 @@ async def execute_schema_scripts() -> None:
             ADD COLUMN IF NOT EXISTS conversation_id VARCHAR(100);
             """
         )
+        # Migration: add user_id column if it doesn't exist (for existing tables)
+        await connection.execute(
+            """
+            ALTER TABLE user_interactions
+            ADD COLUMN IF NOT EXISTS user_id VARCHAR(100);
+            """
+        )
         await connection.execute(
             """
             CREATE INDEX IF NOT EXISTS idx_interactions_created_at
@@ -95,6 +103,8 @@ async def execute_schema_scripts() -> None:
                 ON user_interactions(agent_id);
             CREATE INDEX IF NOT EXISTS idx_interactions_conversation_id
                 ON user_interactions(conversation_id);
+            CREATE INDEX IF NOT EXISTS idx_interactions_user_id
+                ON user_interactions(user_id);
             """
         )
     logger.info("Database schema initialized.")

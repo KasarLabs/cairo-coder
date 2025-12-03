@@ -6,6 +6,7 @@ API endpoints and behaviors.
 """
 
 import argparse
+import hashlib
 import json
 import os
 import time
@@ -39,6 +40,24 @@ from cairo_coder.utils.logging import setup_logging
 # Configure structured logging
 setup_logging(os.environ.get("LOG_LEVEL", "INFO"), os.environ.get("LOG_FORMAT", "console"))
 logger = structlog.get_logger(__name__)
+
+
+def hash_user_id(user_id: str | None) -> str | None:
+    """
+    Hash a user ID for anonymization.
+
+    Uses SHA-256 to create a consistent, anonymized identifier from the raw user ID.
+    This ensures privacy while maintaining the ability to track user behavior.
+
+    Args:
+        user_id: Raw user ID from header (UUID or API key)
+
+    Returns:
+        Hashed user ID (first 32 chars of SHA-256 hex digest) or None if no input
+    """
+    if user_id is None:
+        return None
+    return hashlib.sha256(user_id.encode()).hexdigest()[:32]
 
 # Global vector DB instance managed by FastAPI lifecycle
 _vector_db: SourceFilteredPgVectorRM | None = None
@@ -152,6 +171,7 @@ async def log_interaction_task(
     response: ChatCompletionResponse,
     agent: RagPipeline,
     conversation_id: str | None = None,
+    user_id: str | None = None,
 ) -> None:
     """Background task that persists a user interaction."""
     sources_data = [
@@ -169,6 +189,7 @@ async def log_interaction_task(
         agent_id=agent_id,
         mcp_mode=mcp_mode,
         conversation_id=conversation_id,
+        user_id=user_id,
         chat_history=chat_history_dicts,
         query=query,
         generated_answer=response.choices[0].message.content if response.choices else None,
@@ -186,6 +207,7 @@ async def log_interaction_raw(
     generated_answer: str | None,
     agent: RagPipeline,
     conversation_id: str | None = None,
+    user_id: str | None = None,
 ) -> None:
     """Persist a user interaction without constructing a full response object."""
     sources_data = [
@@ -202,6 +224,7 @@ async def log_interaction_raw(
         agent_id=agent_id,
         mcp_mode=mcp_mode,
         conversation_id=conversation_id,
+        user_id=user_id,
         chat_history=chat_history_dicts,
         query=query,
         generated_answer=generated_answer,
@@ -429,6 +452,11 @@ class CairoCoderServer:
         """Handle chat completion request."""
         # Extract conversation ID from header
         conversation_id = req.headers.get("x-conversation-id")
+        # Extract user identifier for anonymized tracking
+        # Priority: 1) x-api-key (for authenticated users), 2) x-user-id (for frontend users)
+        api_key = req.headers.get("x-api-key")
+        raw_user_id = req.headers.get("x-user-id")
+        user_id = hash_user_id(api_key) if api_key else hash_user_id(raw_user_id)
 
         # Convert messages to internal format
         messages = []
@@ -451,7 +479,7 @@ class CairoCoderServer:
         if request.stream:
             return StreamingResponse(
                 self._stream_chat_completion(
-                    agent, query, messages[:-1], mcp_mode, effective_agent_id, conversation_id
+                    agent, query, messages[:-1], mcp_mode, effective_agent_id, conversation_id, user_id
                 ),
                 media_type="text/event-stream",
                 headers={
@@ -472,6 +500,7 @@ class CairoCoderServer:
             response=response,
             agent=agent,
             conversation_id=conversation_id,
+            user_id=user_id,
         )
 
         return response
@@ -484,6 +513,7 @@ class CairoCoderServer:
         mcp_mode: bool,
         agent_id: str,
         conversation_id: str | None = None,
+        user_id: str | None = None,
     ) -> AsyncGenerator[str, None]:
         """Stream chat completion response - replicates TypeScript streaming."""
         response_id = str(uuid.uuid4())
@@ -597,6 +627,7 @@ class CairoCoderServer:
                     generated_answer=final_response,
                     agent=agent,
                     conversation_id=conversation_id,
+                    user_id=user_id,
                 )
             except Exception as log_error:
                 logger.error("Failed to log streaming interaction", error=str(log_error), exc_info=True)

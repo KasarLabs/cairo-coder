@@ -84,18 +84,20 @@ async def create_user_interaction(interaction: UserInteraction) -> None:
                     agent_id,
                     mcp_mode,
                     conversation_id,
+                    user_id,
                     chat_history,
                     query,
                     generated_answer,
                     retrieved_sources,
                     llm_usage
                 )
-                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
                 """,
                 interaction.id,
                 interaction.agent_id,
                 interaction.mcp_mode,
                 interaction.conversation_id,
+                interaction.user_id,
                 _serialize_json_field(interaction.chat_history),
                 interaction.query,
                 interaction.generated_answer,
@@ -115,6 +117,7 @@ async def get_interactions(
     offset: int,
     query_text: str | None = None,
     conversation_id: str | None = None,
+    user_id: str | None = None,
 ) -> tuple[list[dict[str, Any]], int]:
     """Fetch paginated interactions matching the supplied filters.
 
@@ -146,6 +149,10 @@ async def get_interactions(
             params.append(conversation_id)
             filters.append(f"conversation_id = ${len(params)}")
 
+        if user_id:
+            params.append(user_id)
+            filters.append(f"user_id = ${len(params)}")
+
         where_clause = "WHERE " + " AND ".join(filters) if filters else ""
 
         count_query = f"""
@@ -159,7 +166,7 @@ async def get_interactions(
         limit_placeholder = len(params) - 1
         offset_placeholder = len(params)
         data_query = f"""
-            SELECT id, created_at, agent_id, query, chat_history, generated_answer, conversation_id
+            SELECT id, created_at, agent_id, query, chat_history, generated_answer, conversation_id, user_id
             FROM user_interactions
             {where_clause}
             ORDER BY created_at DESC
@@ -200,18 +207,20 @@ async def migrate_user_interaction(interaction: UserInteraction) -> tuple[bool, 
                     agent_id,
                     mcp_mode,
                     conversation_id,
+                    user_id,
                     chat_history,
                     query,
                     generated_answer,
                     retrieved_sources,
                     llm_usage
                 )
-                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
                 ON CONFLICT (id) DO UPDATE SET
                     created_at = EXCLUDED.created_at,
                     agent_id = EXCLUDED.agent_id,
                     mcp_mode = EXCLUDED.mcp_mode,
                     conversation_id = EXCLUDED.conversation_id,
+                    user_id = EXCLUDED.user_id,
                     chat_history = EXCLUDED.chat_history,
                     query = EXCLUDED.query,
                     generated_answer = EXCLUDED.generated_answer,
@@ -224,6 +233,7 @@ async def migrate_user_interaction(interaction: UserInteraction) -> tuple[bool, 
                 interaction.agent_id,
                 interaction.mcp_mode,
                 interaction.conversation_id,
+                interaction.user_id,
                 _serialize_json_field(interaction.chat_history),
                 interaction.query,
                 interaction.generated_answer,
