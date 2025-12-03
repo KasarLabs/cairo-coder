@@ -20,6 +20,7 @@ class UserInteraction(BaseModel):
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     agent_id: str
     mcp_mode: bool = False
+    conversation_id: Optional[str] = None
     chat_history: Optional[list[dict[str, Any]]] = None
     query: str
     generated_answer: Optional[str] = None
