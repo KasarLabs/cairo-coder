@@ -210,7 +210,9 @@ def combine_usage(usage1: LMUsage, usage2: LMUsage) -> LMUsage:
             # Merge metrics
             for key, value in metrics.items():
                 if isinstance(value, int | float):
-                    result[model][key] = result[model].get(key, 0) + value
+                    # Use (x or 0) to handle None values - dict.get() returns None
+                    # if the key exists with value None, not the default
+                    result[model][key] = (result[model].get(key) or 0) + value
                 elif isinstance(value, dict):
                     if key not in result[model] or result[model][key] is None:
                         result[model][key] = value.copy()
@@ -219,7 +221,7 @@ def combine_usage(usage1: LMUsage, usage2: LMUsage) -> LMUsage:
                         for detail_key, detail_value in value.items():
                             if isinstance(detail_value, int | float):
                                 result[model][key][detail_key] = (
-                                    result[model][key].get(detail_key, 0) + detail_value
+                                    (result[model][key].get(detail_key) or 0) + detail_value
                                 )
     return result
 
