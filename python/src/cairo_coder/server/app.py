@@ -55,7 +55,7 @@ def hash_user_id(user_id: str | None) -> str | None:
     Returns:
         Hashed user ID (first 32 chars of SHA-256 hex digest) or None if no input
     """
-    if not user_id:
+    if user_id is None:
         return None
     return hashlib.sha256(user_id.encode()).hexdigest()[:32]
 
