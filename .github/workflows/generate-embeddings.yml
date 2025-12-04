@@ -64,24 +64,12 @@ jobs:
 
           # General Configuration
           PORT="3001"
-          SIMILARITY_MEASURE="cosine"
-
-          # Provider Configuration
-          DEFAULT_CHAT_PROVIDER="gemini"
-          DEFAULT_CHAT_MODEL="Gemini Flash 2.5"
-          DEFAULT_FAST_CHAT_PROVIDER="gemini"
-          DEFAULT_FAST_CHAT_MODEL="Gemini Flash 2.5"
-          DEFAULT_EMBEDDING_PROVIDER="openai"
-          DEFAULT_EMBEDDING_MODEL="Text embedding 3 large"
 
           # API Keys
           OPENAI_API_KEY="${{ secrets.OPENAI }}"
           ANTHROPIC_API_KEY="${{ secrets.ANTHROPIC }}"
           GEMINI_API_KEY="${{ secrets.GEMINI }}"
 
-          # Version Configuration
-          STARKNET_FOUNDRY_VERSION="0.47.0"
-          SCARB_VERSION="2.11.4"
           EOL
 
       - name: Generate embeddings

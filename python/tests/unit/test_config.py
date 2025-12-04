@@ -30,7 +30,6 @@ class TestConfigManager:
         assert config.vector_store.user == "cairocoder"
         assert config.vector_store.password == "test-password"
         assert config.vector_store.table_name == "documents"
-        assert config.vector_store.similarity_measure == "cosine"
         assert config.host == "0.0.0.0"
         assert config.port == 3001
         assert config.debug is False
@@ -44,7 +43,6 @@ class TestConfigManager:
         monkeypatch.setenv("POSTGRES_USER", "env-user")
         monkeypatch.setenv("POSTGRES_PASSWORD", "env-pass")
         monkeypatch.setenv("POSTGRES_TABLE_NAME", "env-table")
-        monkeypatch.setenv("SIMILARITY_MEASURE", "dot_product")
         monkeypatch.setenv("HOST", "127.0.0.1")
         monkeypatch.setenv("PORT", "8080")
         monkeypatch.setenv("DEBUG", "true")
@@ -58,7 +56,6 @@ class TestConfigManager:
         assert config.vector_store.user == "env-user"
         assert config.vector_store.password == "env-pass"
         assert config.vector_store.table_name == "env-table"
-        assert config.vector_store.similarity_measure == "dot_product"
         assert config.host == "127.0.0.1"
         assert config.port == 8080
         assert config.debug is True
