@@ -10,7 +10,7 @@ export interface BookPageDto {
 export type BookConfig = {
   repoOwner: string;
   repoName: string;
-  fileExtension: string;
+  fileExtensions: string;
   chunkSize: number;
   chunkOverlap: number;
 };

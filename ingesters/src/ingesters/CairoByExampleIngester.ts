@@ -17,7 +17,7 @@ export class CairoByExampleIngester extends MarkdownIngester {
     const config: BookConfig = {
       repoOwner: 'enitrat',
       repoName: 'cairo-by-example',
-      fileExtension: '.md',
+      fileExtensions: ['.md'],
       chunkSize: 4096,
       chunkOverlap: 512,
       baseUrl: 'https://enitrat.github.io/cairo-by-example',

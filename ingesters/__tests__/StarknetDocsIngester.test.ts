@@ -12,7 +12,7 @@ describe('StarknetDocsIngester', () => {
     expect(ingester.config).toEqual({
       repoOwner: 'starknet-io',
       repoName: 'starknet-docs',
-      fileExtension: '.mdx',
+      fileExtensions: ['.mdx'],
       chunkSize: 4096,
       chunkOverlap: 512,
       baseUrl: 'https://docs.starknet.io',

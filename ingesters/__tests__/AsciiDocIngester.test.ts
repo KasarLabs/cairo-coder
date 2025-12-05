@@ -66,7 +66,7 @@ describe('AsciiDocIngester', () => {
       bookConfig: {
         repoOwner: 'test-owner',
         repoName: 'test-repo',
-        fileExtension: '.adoc',
+        fileExtensions: ['.adoc'],
         chunkSize: 1000,
         chunkOverlap: 200,
         baseUrl: 'https://example.com',
@@ -300,7 +300,7 @@ This is page 2 content.`,
         bookConfig: {
           repoOwner: 'test-owner',
           repoName: 'test-repo',
-          fileExtension: '.adoc',
+          fileExtensions: ['.adoc'],
           chunkSize: 1000,
           chunkOverlap: 200,
           baseUrl: '',

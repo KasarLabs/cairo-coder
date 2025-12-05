@@ -30,19 +30,24 @@ export async function processDocFiles(
         if (entry.isDirectory()) {
           // Recursively process subdirectories
           await processDirectory(fullPath);
-        } else if (
-          entry.isFile() &&
-          path.extname(entry.name).toLowerCase() === config.fileExtension
-        ) {
-          // Process documentation files
-          const content = await fs.readFile(fullPath, 'utf8');
+        } else if (entry.isFile()) {
+          // Check if the file matches any of the configured extensions
+          const fileExt = path.extname(entry.name).toLowerCase();
+          if (config.fileExtensions.includes(fileExt)) {
+            // Process documentation files
+            const content = await fs.readFile(fullPath, 'utf8');
 
-          pages.push({
-            name: path
-              .relative(directory, fullPath)
-              .replace(config.fileExtension, ''),
-            content,
-          });
+            // Skip empty files
+            if (content.trim().length === 0) {
+              logger.warn(`Skipping empty file: ${fullPath}`);
+              continue;
+            }
+
+            pages.push({
+              name: path.relative(directory, fullPath).replace(fileExt, ''),
+              content,
+            });
+          }
         }
       }
     }

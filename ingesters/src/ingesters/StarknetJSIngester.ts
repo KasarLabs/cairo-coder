@@ -18,7 +18,7 @@ export class StarknetJSIngester extends MarkdownIngester {
     const config: BookConfig = {
       repoOwner: 'starknet-io',
       repoName: 'starknet.js',
-      fileExtension: '.md',
+      fileExtensions: ['.md'],
       chunkSize: 4096,
       chunkOverlap: 512,
       baseUrl: 'https://starknetjs.com/docs/next/guides',

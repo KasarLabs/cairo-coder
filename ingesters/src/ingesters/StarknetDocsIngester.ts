@@ -33,7 +33,7 @@ export class StarknetDocsIngester extends MarkdownIngester {
     const config: BookConfig = {
       repoOwner: 'starknet-io',
       repoName: 'starknet-docs',
-      fileExtension: '.mdx',
+      fileExtensions: ['.mdx'],
       chunkSize: 4096,
       chunkOverlap: 512,
       baseUrl: StarknetDocsIngester.BASE_URL,
@@ -119,7 +119,9 @@ export class StarknetDocsIngester extends MarkdownIngester {
           await processDirectory(fullPath);
         } else if (
           entry.isFile() &&
-          path.extname(entry.name).toLowerCase() === this.config.fileExtension
+          this.config.fileExtensions.includes(
+            path.extname(entry.name).toLowerCase(),
+          )
         ) {
           // Process MDX files
           const content = await fs.readFile(fullPath, 'utf8');

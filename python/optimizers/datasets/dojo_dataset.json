@@ -1,0 +1,79 @@
+{
+  "examples": [
+    {
+      "query": "Write a simple example of Dojo frontend bindings with wallet integration",
+      "chat_history": [],
+      "mcp_mode": false
+    },
+    {
+      "query": "How does DojoProvider execute transactions with an account? Does it use the account's provider or the dojoConfig RPC URL?",
+      "chat_history": [],
+      "mcp_mode": true
+    },
+    {
+      "query": "How do I upgrade a Dojo contract that's already deployed when the class hash has changed? The contract code was updated but migration fails with class hash mismatch.",
+      "chat_history": [],
+      "mcp_mode": true
+    },
+    {
+      "query": "How do I upgrade a Dojo contract when sozo migrate fails with class hash mismatch? The contract code was updated but the class is already declared on-chain.\n\nCode snippets for context:\nsozo migrate fails with class hash mismatch",
+      "chat_history": [],
+      "mcp_mode": true
+    },
+    {
+      "query": "How do I configure the writers section in dojo.toml for a system contract? What should the tag be - namespace::contract_name or just contract_name?\n\nCode snippets for context:\n[writers]\n\"clickergame\" = [\"gg-clicker\"]",
+      "chat_history": [],
+      "mcp_mode": true
+    },
+    {
+      "query": "How do I handle class hash mismatch errors when deploying Dojo contracts? The error says \"Mismatch compiled class hash\" - should I modify the code or is there a flag to skip declaration?",
+      "chat_history": [],
+      "mcp_mode": true
+    },
+    {
+      "query": "How do I resolve \"Mismatch compiled class hash\" errors when deploying Dojo contracts? The classes seem to be already declared on-chain with different compiled class hashes. Can I skip declaration or force new class hashes?",
+      "chat_history": [],
+      "mcp_mode": true
+    },
+    {
+      "query": "How can I manually register already-declared contract classes to a Dojo world? The classes are already declared on-chain but sozo migration fails due to compiled class hash mismatch. Can I use sozo or sncast to register existing class declarations to the world?",
+      "chat_history": [],
+      "mcp_mode": true
+    },
+    {
+      "query": "How do I set up an account for Dojo sozo migrate on devnet/katana? The account doesn't exist error keeps appearing. What's the correct way to create and configure an account for devnet deployment?",
+      "chat_history": [],
+      "mcp_mode": true
+    },
+    {
+      "query": "Compiling dojo_macros v1.7.0-alpha.2 (git+https://github.com/dojoengine/dojo?tag=v1.7.0-alpha.2#a064752fff355f325cf0b00828d236b399333432)\n    Finished `release` profile [optimized] target(s) in 0.16s\n   Compiling ponzi_land v1.4.0 (/Users/gianfranco/PonziLand/contracts/Scarb.toml)\nwarn[E0001]: Unused variable. Consider ignoring by prefixing with `_`.\n --> /Users/gianfranco/PonziLand/contracts/src/systems/actions.cairo:807:17\n            let nuked_land_owner = land.owner;\n                ^^^^^^^^^^^^^^^^\n\nwarn: Usage of deprecated feature `\"deprecated-starknet-consts\"` with no `#[feature(\"deprecated-starknet-consts\")]` attribute. Note: \"Use `TryInto::try_into` in const context instead.\"\n --> /Users/gianfranco/PonziLand/contracts/src/interfaces/systems.cairo:17:42\n            Option::None => { (starknet::contract_address_const::<0x0>()) },\n                                         ^^^^^^^^^^^^^^^^^^^^^^\n\nwarn: Usage of deprecated feature `\"deprecated-starknet-consts\"` with no `#[feature(\"deprecated-starknet-consts\")]` attribute. Note: \"Use `TryInto::try_into` in const context instead.\"\n --> /Users/gianfranco/PonziLand/contracts/src/models/land.cairo:6:33\nuse starknet::{ContractAddress, contract_address_const};\n                                ^^^^^^^^^^^^^^^^^^^^^^\n\nwarn: Usage of deprecated feature `\"starknet-storage-deprecation\"` with no `#[feature(\"starknet-storage-deprecation\")]` attribute. Note: \"Use `starknet::storage::MutableVecTrait::push` or `starknet::storage::MutableVecTrait::allocate` instead.\"\n --> /Users/gianfranco/PonziLand/contracts/src/components/auction.cairo:171:64\n            self.used_lands_in_circle.entry((circle, section)).append().write(random_index);\n                                                               ^^^^^^\n\nwarn: Plugin diagnostic: Missing `ValidStorageTypeTrait` for member type. Inference failed with: `Trait has no implementation in context: core::starknet::storage::ValidStorageTypeTrait::<core::starknet::storage::map::Map::<(core::integer::u16, core::integer::u16), ponzi_land::components::taxes::TaxesComponent::TaxEdge>>.`. Possible solutions: implement `Store`, mark type with `#[storage_node]`, or use valid args for `Vec` or `Map` library types. To suppress this warning, use `#[allow(starknet::invalid_storage_member_types)]`.\n --> /Users/gianfranco/PonziLand/contracts/src/components/taxes.cairo:73:19\n        tax_edge: Map<(u16, u16), TaxEdge>,\n                  ^^^^^^^^^^^^^^^^^^^^^^^^\n\nerror[E0002]: Method `read` could not be called on type `core::starknet::storage::storage_base::StorageBase::<core::starknet::storage::map::Map::<(core::integer::u16, core::integer::u16), ponzi_land::components::taxes::TaxesComponent::TaxEdge>>`.\nCandidate `core::starknet::storage::map::StorageMapReadAccess::read` inference failed with: Trait has no implementation in context: core::starknet::storage::map::StorageMapReadAccess::<core::starknet::storage::storage_base::StorageBase::<core::starknet::storage::map::Map::<(core::integer::u16, core::integer::u16), ponzi_land::components::taxes::TaxesComponent::TaxEdge>>>.\nCandidate `core::starknet::storage::StoragePointerReadAccess::read` inference failed with: Trait has no implementation in context: core::starknet::storage::StoragePointerReadAccess::<core::starknet::storage::storage_base::StorageBase::<core::starknet::storage::map::Map::<(core::integer::u16, core::integer::u16), ponzi_land::components::taxes::TaxesComponent::TaxEdge>>>.\nCandidate `core::starknet::storage::map::StorageMapReadAccess::read` inference failed with: Trait has no implementation in context: core::starknet::storage::map::StorageMapReadAccess::<core::starknet::storage::StoragePath::<core::starknet::storage::map::Map::<(core::integer::u16, core::integer::u16), ponzi_land::components::taxes::TaxesComponent::TaxEdge>>>.\nCandidate `core::starknet::storage::StoragePointerReadAccess::read` inference failed with: Trait has no implementation in context: core::starknet::storage::StoragePointerReadAccess::<core::starknet::storage::StoragePath::<core::starknet::storage::map::Map::<(core::integer::u16, core::integer::u16), ponzi_land::components::taxes::TaxesComponent::TaxEdge>>>.\n --> /Users/gianfranco/PonziLand/contracts/src/components/taxes.cairo:131:27\n            self.tax_edge.read((payer_location, claimer_location))\n                          ^^^^\n\nerror[E0002]: Method `write` could not be called on type `core::starknet::storage::storage_base::StorageBase::<core::starknet::storage::Mutable::<core::starknet::storage::map::Map::<(core::integer::u16, core::integer::u16), ponzi_land::components::taxes::TaxesComponent::TaxEdge>>>`.\nCandidate `core::starknet::storage::map::StorageMapWriteAccess::write` inference failed with: Trait has no implementation in context: core::starknet::storage::map::StorageMapWriteAccess::<core::starknet::storage::storage_base::StorageBase::<core::starknet::storage::Mutable::<core::starknet::storage::map::Map::<(core::integer::u16, core::integer::u16), ponzi_land::components::taxes::TaxesComponent::TaxEdge>>>>.\nCandidate `core::starknet::storage::StoragePointerWriteAccess::write` inference failed with: Trait has no implementation in context: core::starknet::storage::StoragePointerWriteAccess::<core::starknet::storage::storage_base::StorageBase::<core::starknet::storage::Mutable::<core::starknet::storage::map::Map::<(core::integer::u16, core::integer::u16), ponzi_land::components::taxes::TaxesComponent::TaxEdge>>>>.\nCandidate `core::starknet::storage::map::StorageMapWriteAccess::write` inference failed with: Trait has no implementation in context: core::starknet::storage::map::StorageMapWriteAccess::<core::starknet::storage::StoragePath::<core::starknet::storage::Mutable::<core::starknet::storage::map::Map::<(core::integer::u16, core::integer::u16), ponzi_land::components::taxes::TaxesComponent::TaxEdge>>>>.\nCandidate `core::starknet::storage::StoragePointerWriteAccess::write` inference failed with: Trait has no implementation in context: core::starknet::storage::StoragePointerWriteAccess::<core::starknet::storage::StoragePath::<core::starknet::storage::Mutable::<core::starknet::storage::map::Map::<(core::integer::u16, core::integer::u16), ponzi_land::components::taxes::TaxesComponent::TaxEdge>>>>.\n --> /Users/gianfranco/PonziLand/contracts/src/components/taxes.cairo:143:27\n            self.tax_edge.write((payer_location, claimer_location), edge);\n                          ^^^^^\n\nerror: could not compile `ponzi_land` due to previous error\nerror: Scarb command failed with exit code: exit status: 1\ngianfranco@gianfrancos-MacBook-Air contracts % \n",
+      "chat_history": [],
+      "mcp_mode": false
+    },
+    {
+      "query": "What are the best practices for creating template examples for Dojo models and systems? How should I structure template code with clear examples?",
+      "chat_history": [],
+      "mcp_mode": true
+    },
+    {
+      "query": "What Dojo version tag is compatible with Scarb 2.9.1 and Cairo 2.9.1? I need the correct git tag for Scarb.toml dependencies.",
+      "chat_history": [],
+      "mcp_mode": true
+    },
+    {
+      "query": "As a Starknet ecosystem expert, answer the following question about Starknet concepts, or general knowledge:\n\nWhat are best practices for keeping Dojo runtime namespaces and selector strings consistent between deployed worlds and client/session configurations in Starknet apps?",
+      "chat_history": [],
+      "mcp_mode": true
+    },
+    {
+      "query": "What are the correct patterns for Dojo ECS models, systems, and entity deletion? Specifically: 1) How to properly define Dojo models with #[dojo::model], 2) How to use get! and set! macros correctly, 3) How to delete entities in Dojo, 4) How to handle Option types in Cairo, 5) Correct syntax for arrays and spans in Cairo",
+      "chat_history": [],
+      "mcp_mode": true
+    },
+    {
+      "query": "In Dojo framework, how do you delete entities/models? What is the correct syntax? Does Dojo have a delete! macro like set! and get!? Also, what is the correct way to handle for loops and while loops in Cairo - can you use mutable loop variables with let mut inside loops?",
+      "chat_history": [],
+      "mcp_mode": true
+    }
+  ]
+}

@@ -88,7 +88,7 @@ class StarknetEcosystemGeneration(Signature):
         *   **Never use markdown link syntax without a URL** (e.g., never write `[text]` or `[text]()`). Either include a full URL or use plain text.
         *   Place citations naturally within sentences for readability.
 
-    4.  **Mathematical Formulas:** Use LaTeX for math formulas. Use block format `$$\nLaTeX code\n$$\`
+    4.  **Mathematical Formulas:** Use LaTeX for math formulas. Use block format `$$\\nLaTeX code\\n$$\\`
     (with newlines) or inline format `$ LaTeX code $`.
 
     5.  **Cairo Code Generation:**
@@ -106,7 +106,7 @@ class StarknetEcosystemGeneration(Signature):
 
     5.bis: **LaTeX Generation:**
         *   If providing LaTeX code, never cite sources using `[number]` notation or include HTML tags inside the LaTeX block.
-        *   If providing LaTeX code, for big blocks, always use the block format `$$\nLaTeX code\n$$\` (with newlines).
+        *   If providing LaTeX code, for big blocks, always use the block format `$$\\nLaTeX code\\n$$\\` (with newlines).
         *   If providing LaTeX code, for inlined content  always use the inline format `$ LaTeX code $`.
         *   If the context contains latex blocks in places where inlined formulas are used, try to
         *   convert the latex blocks to inline formulas with a single $ sign, e.g. "The presence of
@@ -150,6 +150,8 @@ within that context.
     answer: str = OutputField(
         desc="Final answer. If code, wrap in ```cairo; otherwise, provide a concise, sourced explanation."
     )
+
+
 
 
 class GenerationProgram(dspy.Module):

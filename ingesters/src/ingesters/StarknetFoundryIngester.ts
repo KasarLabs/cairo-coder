@@ -27,7 +27,7 @@ export class StarknetFoundryIngester extends MarkdownIngester {
     const config: BookConfig = {
       repoOwner: 'foundry-rs',
       repoName: 'starknet-foundry',
-      fileExtension: '.md',
+      fileExtensions: ['.md'],
       chunkSize: 4096,
       chunkOverlap: 512,
       baseUrl: 'https://foundry-rs.github.io/starknet-foundry',

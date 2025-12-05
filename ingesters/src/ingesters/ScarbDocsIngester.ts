@@ -23,7 +23,7 @@ export class ScarbDocsIngester extends MarkdownIngester {
     const config: BookConfig = {
       repoOwner: 'software-mansion',
       repoName: 'scarb',
-      fileExtension: '.md',
+      fileExtensions: ['.md'],
       chunkSize: 4096,
       chunkOverlap: 512,
       baseUrl: 'https://docs.swmansion.com/scarb/docs',
