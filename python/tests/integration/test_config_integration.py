@@ -17,7 +17,6 @@ class TestConfigIntegration:
         monkeypatch.setenv("POSTGRES_USER", "test_user")
         monkeypatch.setenv("POSTGRES_PASSWORD", "test_password")
         monkeypatch.setenv("POSTGRES_TABLE_NAME", "test_documents")
-        monkeypatch.setenv("SIMILARITY_MEASURE", "cosine")
         monkeypatch.setenv("HOST", "localhost")
         monkeypatch.setenv("PORT", "8001")
         monkeypatch.setenv("DEBUG", "true")
@@ -31,7 +30,6 @@ class TestConfigIntegration:
         assert config.vector_store.user == "test_user"
         assert config.vector_store.password == "test_password"
         assert config.vector_store.table_name == "test_documents"
-        assert config.vector_store.similarity_measure == "cosine"
         assert config.host == "localhost"
         assert config.port == 8001
         assert config.debug is True

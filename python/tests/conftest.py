@@ -367,8 +367,6 @@ def clean_config_env_vars(monkeypatch):
         "POSTGRES_USER",
         "POSTGRES_PASSWORD",
         "POSTGRES_TABLE_NAME",
-        "POSTGRES_ROOT_DB",
-        "SIMILARITY_MEASURE",
         "HOST",
         "PORT",
         "DEBUG",

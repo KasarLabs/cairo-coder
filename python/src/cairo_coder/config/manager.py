@@ -27,7 +27,6 @@ class ConfigManager:
             user=os.getenv("POSTGRES_USER", "cairocoder"),
             password=os.getenv("POSTGRES_PASSWORD", ""),
             table_name=os.getenv("POSTGRES_TABLE_NAME", "documents"),
-            similarity_measure=os.getenv("SIMILARITY_MEASURE", "cosine"),
         )
 
         # Validate essential configuration

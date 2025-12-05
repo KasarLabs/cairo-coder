@@ -18,7 +18,9 @@ Cairo Coder is an AI-powered code generation service specifically designed for t
 ## Installation
 
 ```bash
-# Install uv package manager
+cd python
+
+# Install uv package manager (if not already installed)
 curl -LsSf https://astral.sh/uv/install.sh | sh
 
 # Install dependencies
@@ -31,8 +33,8 @@ Cairo Coder uses environment variables for all sensitive configuration like API 
 
 ```bash
 # From the root directory
-cp .env.example .env
-# Edit .env with your credentials
+# Create .env file with required environment variables
+# See main README.md for required variables
 ```
 
 ## Running the Service
@@ -56,13 +58,24 @@ docker compose up postgres
 
 ```bash
 # From root directory
-pnpm generate-embeddings
+cd ingesters
+bun install
+bun run generate-embeddings:yes
+cd ..
 ```
 
-4. Start the FastAPI server:
+4. Start the FastAPI server (from python directory):
 
 ```bash
+cd python
 uv run cairo-coder
+```
+
+Or with development mode (auto-reload):
+
+```bash
+cd python
+uv run cairo-coder --dev
 ```
 
 ### Dockerized

@@ -44,8 +44,8 @@ class PgVectorRM(dspy.Retrieve):
         llm = dspy.LM("gemini/gemini-flash-latest")
         dspy.configure(lm=llm)
 
-        # DATABASE_URL should be in the format postgresql://user:password@host/database
-        db_url = os.getenv("DATABASE_URL")
+        # DATABASE_URL should be in the format:
+        db_url = postgresql://user:password@host/database
 
         # embedding_func will default to dspy.settings.embedder
         retriever_model = PgVectorRM(db_url, "paragraphs", fields=["text", "document_id"], k=20)

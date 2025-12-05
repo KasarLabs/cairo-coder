@@ -755,7 +755,6 @@ def get_vector_store_config() -> VectorStoreConfig:
         user=config.vector_store.user,
         password=config.vector_store.password,
         table_name=config.vector_store.table_name,
-        similarity_measure=config.vector_store.similarity_measure,
     )
 
 

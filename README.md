@@ -66,9 +66,10 @@ Using Docker is highly recommended for a streamlined setup.
 
     Edit the `.env` file with your credentials:
 
-    - Database credentials (defaults provided for local development)
-    - LLM API keys (at least one required: OpenAI, Anthropic, or Gemini)
-    - Optional: LangSmith credentials for monitoring
+    - Database credentials (defaults provided above for local development)
+    - LLM API keys (at least one required: `GEMINI_API_KEY` is recommended)
+    - Optional: `XAI_API_KEY` for Grok search functionality
+    - Optional: `LANGSMITH_*` variables for monitoring
 
 3.  **Run the Ingester (First Time Setup)**
 
@@ -120,12 +121,11 @@ Cairo Coder uses a modern architecture based on Retrieval-Augmented Generation (
 
 ### Project Structure
 
-The project is organized as a monorepo with multiple packages:
+The project is organized as a monorepo with multiple components:
 
 - **python/**: The core RAG agent and API server implementation using DSPy and FastAPI.
-- **packages/ingester/**: (TypeScript) Data ingestion tools for Cairo documentation sources.
-- **packages/typescript-config/**: Shared TypeScript configuration.
-- **(Legacy)** `packages/agents`: The original Langchain-based TypeScript implementation.
+- **ingesters/**: (TypeScript/Bun) Data ingestion tools for Cairo documentation sources.
+- **docker-compose.yml**: Orchestrates postgres, backend, and ingester services.
 
 ### RAG Pipeline (Python/DSPy)
 
@@ -141,21 +141,48 @@ The RAG pipeline is implemented in the `python/src/cairo_coder/core/` directory 
 
 ### Python Service
 
-For local development of the Python service, navigate to `python/` and run the following commands`
+For local development of the Python service:
 
 1.  **Setup Environment**:
+
     ```bash
-    # Install uv package manager
-      curl -LsSf https://astral.sh/uv/install.sh | sh
+    cd python
+
+    # Install uv package manager (if not already installed)
+    curl -LsSf https://astral.sh/uv/install.sh | sh
+
+    # Install dependencies
+    uv sync
     ```
-2.  **Run Server**:
-    > Note: make sure the database is running, and the ingesters have been run.
+
+2.  **Start Database** (from root directory):
+
     ```bash
-      uv run cairo-coder --dev
+    # From root directory
+    docker compose up postgres
     ```
-3.  **Run Tests & Linting**:
+
+3.  **Run Ingester** (first time setup, from root directory):
+
     ```bash
-      uv run pytest
+    # From root directory
+    cd ingesters
+    bun install
+    bun run generate-embeddings:yes
+    cd ..
+    ```
+
+4.  **Run Server** (from python directory):
+
+    ```bash
+    cd python
+    uv run cairo-coder --dev
+    ```
+
+5.  **Run Tests** (from python directory):
+    ```bash
+    cd python
+    uv run pytest
     ```
 
 ### Starklings Evaluation
@@ -165,11 +192,12 @@ A script is included to evaluate the agent's performance on the Starklings exerc
 > Note: we recommend pre-warming the compilation cache by running `cd fixtures/runner_crate && scarb build` before running the evaluation.
 
 ```bash
-# Run a single evaluation round
+# From python directory
+cd python
 uv run starklings_evaluate
 ```
 
-Results are saved in the `starklings_results/` directory.
+Results are saved in the `python/starklings_results/` directory.
 
 ## Contribution
 
