@@ -70,6 +70,14 @@ export class DojoDocsIngester extends MarkdownIngester {
     logger.info(`Processing documentation files in ${docsDir}`);
     const pages = await processDocFiles(this.config, docsDir);
 
+    for (const page of pages) {
+      // Remove "pages/" prefix if present
+      page.name = page.name.replace(/^pages\//, '');
+
+      // Remove "/index" suffix if present
+      page.name = page.name.replace(/\/index$/, '');
+    }
+
     logger.info(`Processed ${pages.length} documentation pages from Dojo Book`);
 
     return pages;
