@@ -30,7 +30,7 @@ export class StarknetBlogIngester extends MarkdownIngester {
     const config: BookConfig = {
       repoOwner: 'starknet',
       repoName: 'starknet-blog',
-      fileExtension: '.md',
+      fileExtensions: ['.md'],
       chunkSize: 4096,
       chunkOverlap: 512,
       baseUrl: 'https://www.starknet.io/blog',

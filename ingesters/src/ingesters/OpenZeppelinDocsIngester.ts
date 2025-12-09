@@ -2,7 +2,6 @@ import * as fsPromises from 'fs/promises';
 import * as path from 'path';
 import { Document } from '@langchain/core/documents';
 import { type BookChunk, DocumentSource } from '../types';
-import { VectorStore } from '../db/postgresVectorStore';
 import { type BookConfig, type BookPageDto } from '../utils/types';
 import { logger } from '../utils/logger';
 import {
@@ -28,7 +27,7 @@ export class OpenZeppelinDocsIngester extends AsciiDocIngester {
     const config: BookConfig = {
       repoOwner: 'OpenZeppelin',
       repoName: 'cairo-contracts',
-      fileExtension: '.adoc',
+      fileExtensions: ['.adoc'],
       chunkSize: 4096,
       chunkOverlap: 512,
       baseUrl: 'https://docs.openzeppelin.com',
@@ -75,7 +74,9 @@ export class OpenZeppelinDocsIngester extends AsciiDocIngester {
             await processDirectory(fullPath);
           } else if (
             entry.isFile() &&
-            path.extname(entry.name).toLowerCase() === config.fileExtension
+            config.fileExtensions.includes(
+              path.extname(entry.name).toLowerCase(),
+            )
           ) {
             // Process AsciiDoc files
             const content = await fsPromises.readFile(fullPath, 'utf8');
@@ -83,11 +84,14 @@ export class OpenZeppelinDocsIngester extends AsciiDocIngester {
             // Get the relative path of the file from the base directory - which reflects the online website directory structure
             const relativePath = path.relative(directory, fullPath);
 
+            // Get the file extension to remove it from the final page name
+            const fileExtension = path.extname(entry.name).toLowerCase();
+
             // Inject cairo-contracts/2.0.0 in the fullPath to reflect online website directory structure
             // This is the special handling for OpenZeppelin docs
             const adaptedFullPageName = path
               .join('contracts-cairo', OZ_DOCS_VERSION, relativePath)
-              .replace(config.fileExtension, '');
+              .replace(fileExtension, '');
 
             pages.push({
               name: adaptedFullPageName,

@@ -29,7 +29,7 @@ export class CairoBookIngester extends MarkdownIngester {
     const config: BookConfig = {
       repoOwner: 'cairo-book',
       repoName: 'cairo-book',
-      fileExtension: '.md',
+      fileExtensions: ['.md'],
       chunkSize: 4096,
       chunkOverlap: 512,
       baseUrl: 'https://book.cairo-lang.org',

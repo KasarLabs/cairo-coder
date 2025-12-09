@@ -89,7 +89,7 @@ registry: dict[AgentId, AgentSpec] = {
         },
         max_source_count=5,
         similarity_threshold=0.4,
-    ),
+    )
 }
 
 

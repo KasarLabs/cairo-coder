@@ -29,7 +29,7 @@ export class CoreLibDocsIngester extends MarkdownIngester {
     const config: BookConfig = {
       repoOwner: 'enitrat',
       repoName: 'cairo-docs',
-      fileExtension: '.md',
+      fileExtensions: ['.md'],
       chunkSize: 4096,
       chunkOverlap: 512,
       baseUrl: 'https://docs.starknet.io/build/corelib/intro',
