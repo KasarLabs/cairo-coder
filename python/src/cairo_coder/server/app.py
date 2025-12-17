@@ -281,7 +281,7 @@ class CairoCoderServer:
 
         embedder = dspy.Embedder("gemini/gemini-embedding-001", dimensions=3072, batch_size=512)
         dspy.configure(
-            lm=dspy.LM("gemini/gemini-flash-latest", max_tokens=30000, cache=False),
+            lm=dspy.LM("gemini/gemini-3-flash-preview", max_tokens=30000, cache=False),
             adapter=ChatAdapter(),
             embedder=embedder,
             track_usage=True,

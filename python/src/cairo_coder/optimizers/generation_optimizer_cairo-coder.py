@@ -33,7 +33,7 @@ def _():
 
     ## Setup embedder and LM in dspy.configure
     embedder = dspy.Embedder("gemini/gemini-embedding-001", dimensions=3072, batch_size=512)
-    lm = dspy.LM("gemini/gemini-flash-latest", max_tokens=30000, cache=False)
+    lm = dspy.LM("gemini/gemini-3-flash-preview", max_tokens=30000, cache=False)
     dspy.configure(lm=lm, adapter=XMLAdapter(), embedder=embedder)
 
     ## Setup VectorDB for document retrieval - will use dspy.settings.embedder
@@ -206,7 +206,7 @@ def _(data, dspy, generation_program):
     print(example)
     # Querying with the examples
     response = generation_program(example.query)
-    print(response.answer)
+    print(response)
     dspy.inspect_history(n=1)
 
     answer_code = extract_cairo_code(response.answer)
@@ -259,7 +259,7 @@ def _(XMLAdapter, check_compilation, dspy, extract_cairo_code):
         else:
             compil_string = "The program compiles successfully."
         with dspy.context(
-            lm=dspy.LM("openrouter/x-ai/grok-4-fast:free", max_tokens=30000), adapter=XMLAdapter()
+            lm=dspy.LM("gemini/gemini-3-flash-preview", max_tokens=30000), adapter=XMLAdapter()
         ):
             response_rating = gencode_rater(
                 query=gold.query,
@@ -340,12 +340,13 @@ def _(compute_overall_score_with_feedback, dspy, os):
     os.makedirs(prog_candidates_dir, exist_ok=True)
     optimizer = GEPA(
         metric=compute_overall_score_with_feedback,
-        auto="light", # <-- We will use a light budget for this tutorial. However, we typically recommend using auto="heavy" for optimized performance!
+        # auto="light", # <-- We will use a light budget for this tutorial. However, we typically recommend using auto="heavy" for optimized performance!
+        max_full_evals=9,
         num_threads=12,
         track_stats=True,
         log_dir="./gepa-run-logs",
         reflection_lm=dspy.LM(
-            model="openrouter/x-ai/grok-4-fast:free", temperature=1.0, max_tokens=32000
+            model="gemini/gemini-3-flash-preview", temperature=1.0, max_tokens=32000
         ),
     )
     return (optimizer,)

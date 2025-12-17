@@ -100,6 +100,9 @@ class RagPipeline(dspy.Module):
             prediction: DSPy prediction object with usage information
         """
         usage = prediction.get_lm_usage()
+        if not usage:
+            logger.warning("No usage found in prediction")
+            return
         self._accumulated_usage = combine_usage(self._accumulated_usage, usage)
 
     def _reset_usage(self) -> None:

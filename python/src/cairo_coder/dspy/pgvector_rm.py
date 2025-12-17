@@ -41,7 +41,7 @@ class PgVectorRM(dspy.Retrieve):
         embedder = dspy.Embedder("gemini/gemini-embedding-001", dimensions=3072)
         dspy.configure(embedder=embedder)
 
-        llm = dspy.LM("gemini/gemini-flash-latest")
+        llm = dspy.LM("gemini/gemini-3-flash-preview")
         dspy.configure(lm=llm)
 
         # DATABASE_URL should be in the format:

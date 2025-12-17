@@ -33,7 +33,7 @@ def _():
 
     ## Setup embedder and LM in dspy.configure
     embedder = dspy.Embedder("gemini/gemini-embedding-001", dimensions=3072, batch_size=512)
-    lm = dspy.LM("gemini/gemini-flash-latest", max_tokens=30000, cache=False)
+    lm = dspy.LM("gemini/gemini-3-flash-preview", max_tokens=30000, cache=False)
     dspy.configure(lm=lm, adapter=XMLAdapter(), embedder=embedder)
 
     ## Setup VectorDB for document retrieval - will use dspy.settings.embedder
