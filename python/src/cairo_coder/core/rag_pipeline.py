@@ -7,6 +7,7 @@ RAG workflow: Query Processing → Document Retrieval → Generation.
 
 from collections.abc import AsyncGenerator
 from dataclasses import dataclass
+import os
 from typing import Any
 
 import dspy
@@ -133,7 +134,7 @@ class RagPipeline(dspy.Module):
 
         # Optional Grok web/X augmentation: activate when STARKNET_BLOG is among sources.
         try:
-            if DocumentSource.STARKNET_BLOG in retrieval_sources:
+            if DocumentSource.STARKNET_BLOG in retrieval_sources and not os.getenv("OPTIMIZER_RUN"):
                 grok_pred = await self.grok_search.aforward(processed_query, chat_history_str)
                 self._accumulate_usage(grok_pred)
                 grok_docs = grok_pred.documents
