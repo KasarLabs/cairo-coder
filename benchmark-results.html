@@ -1,0 +1,351 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Cairo Coder Benchmark Results</title>
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/reveal.js@4.6.1/dist/reveal.css"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/reveal.js@4.6.1/dist/theme/black.css"
+    />
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <style>
+      .chart-container {
+        width: 90%;
+        max-width: 900px;
+        margin: 0 auto;
+        background: rgba(255, 255, 255, 0.05);
+        border-radius: 12px;
+        padding: 20px;
+      }
+      .reveal h1,
+      .reveal h2 {
+        text-transform: none;
+      }
+      .reveal h1 {
+        font-size: 2.2em;
+      }
+      .reveal h2 {
+        font-size: 1.6em;
+        margin-bottom: 30px;
+      }
+      .subtitle {
+        color: #888;
+        font-size: 0.6em;
+        margin-top: 10px;
+      }
+      .legend-note {
+        font-size: 0.5em;
+        color: #aaa;
+        margin-top: 20px;
+      }
+      .highlight-green {
+        color: #4ade80;
+      }
+      .highlight-blue {
+        color: #60a5fa;
+      }
+      .reveal ul {
+        display: block;
+      }
+      .reveal li {
+        margin-bottom: 0.5em;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="reveal">
+      <div class="slides">
+        <!-- Title Slide -->
+        <section>
+          <h1>Cairo Coder Benchmark Results</h1>
+          <p class="subtitle">Model Performance Comparison</p>
+          <p style="font-size: 0.5em; color: #666; margin-top: 40px">
+            December 2024
+          </p>
+        </section>
+
+        <!-- Legend Explanation -->
+        <section>
+          <h2>Methodology</h2>
+          <ul
+            style="
+              font-size: 0.75em;
+              text-align: left;
+              max-width: 800px;
+              margin: 0 auto;
+            "
+          >
+            <li>
+              <strong style="color: #f87171">Raw Model</strong> - Base model
+              without Cairo Coder
+            </li>
+            <li>
+              <strong style="color: #60a5fa">Cairo Coder Base</strong> - With
+              RAG pipeline
+            </li>
+            <li>
+              <strong style="color: #4ade80">Cairo Coder Optimised</strong> -
+              Pipeline + prompt optimization
+            </li>
+          </ul>
+          <p style="font-size: 0.6em; color: #888; margin-top: 40px">
+            Two evaluations: Code Generation & Starknet Agent
+          </p>
+        </section>
+
+        <!-- Cairo Coder Gen Eval -->
+        <section>
+          <h2>Code Generation Eval</h2>
+          <p style="font-size: 0.6em; color: #888">% Success Rate</p>
+          <div class="chart-container">
+            <canvas id="genEvalChart"></canvas>
+          </div>
+        </section>
+
+        <!-- Starknet Agent -->
+        <section>
+          <h2>Starknet Agent Eval</h2>
+          <p style="font-size: 0.6em; color: #888">% Success Rate</p>
+          <div class="chart-container">
+            <canvas id="starknetAgentChart"></canvas>
+          </div>
+        </section>
+
+        <!-- Improvement from Raw to Optimised -->
+        <section>
+          <h2>Cairo Coder Impact</h2>
+          <p style="font-size: 0.6em; color: #888">
+            Improvement: Raw Model → Cairo Coder Optimised
+          </p>
+          <div class="chart-container">
+            <canvas id="improvementChart"></canvas>
+          </div>
+        </section>
+
+        <!-- Key Takeaways -->
+        <section>
+          <h2>Key Takeaways</h2>
+          <ul
+            style="
+              font-size: 0.7em;
+              text-align: left;
+              max-width: 800px;
+              margin: 0 auto;
+            "
+          >
+            <li>
+              <strong>Gemini 3 Flash Preview</strong> significantly outperforms
+              2.5 Flash
+            </li>
+            <li>
+              Cairo Coder delivers massive gains on code generation:
+              <ul>
+                <li>
+                  2.5 Flash: <span class="highlight-green">+19%</span> absolute
+                  (46% → 65%)
+                </li>
+                <li>
+                  3 Flash: <span class="highlight-green">+23%</span> absolute
+                  (67% → 90%)
+                </li>
+              </ul>
+            </li>
+            <li>
+              Starknet Agent sees even larger improvements:
+              <ul>
+                <li>
+                  2.5 Flash:
+                  <span class="highlight-green">+55.3%</span> absolute (36% →
+                  91.3%)
+                </li>
+                <li>
+                  3 Flash: <span class="highlight-green">+12.3%</span> absolute
+                  (83.2% → 95.5%)
+                </li>
+              </ul>
+            </li>
+            <li>
+              Optimization adds <span class="highlight-blue">+5-15%</span> on
+              top of base pipeline
+            </li>
+          </ul>
+        </section>
+
+        <!-- Final Summary -->
+        <section>
+          <h2>Best Configuration</h2>
+          <div style="font-size: 1.2em; margin-top: 40px">
+            <p>
+              <strong>Gemini 3 Flash Preview + Cairo Coder Optimised</strong>
+            </p>
+            <p style="font-size: 1.5em; margin-top: 30px">
+              <span class="highlight-green">90%</span> Code Gen &nbsp;|&nbsp;
+              <span class="highlight-green">95.5%</span> Starknet Agent
+            </p>
+          </div>
+        </section>
+      </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/reveal.js@4.6.1/dist/reveal.js"></script>
+    <script>
+      Reveal.initialize({
+        hash: true,
+        transition: "slide",
+      });
+
+      const chartColors = {
+        raw: "rgba(248, 113, 113, 0.8)",
+        rawBorder: "rgba(248, 113, 113, 1)",
+        base: "rgba(96, 165, 250, 0.8)",
+        baseBorder: "rgba(96, 165, 250, 1)",
+        optimised: "rgba(74, 222, 128, 0.8)",
+        optimisedBorder: "rgba(74, 222, 128, 1)",
+      };
+
+      const chartOptions = {
+        responsive: true,
+        maintainAspectRatio: true,
+        scales: {
+          y: {
+            beginAtZero: true,
+            max: 100,
+            ticks: {
+              color: "#ccc",
+              callback: function (value) {
+                return value + "%";
+              },
+            },
+            grid: {
+              color: "rgba(255, 255, 255, 0.1)",
+            },
+          },
+          x: {
+            ticks: {
+              color: "#ccc",
+            },
+            grid: {
+              color: "rgba(255, 255, 255, 0.1)",
+            },
+          },
+        },
+        plugins: {
+          legend: {
+            labels: {
+              color: "#ccc",
+              font: {
+                size: 14,
+              },
+            },
+          },
+          tooltip: {
+            callbacks: {
+              label: function (context) {
+                return context.dataset.label + ": " + context.raw + "%";
+              },
+            },
+          },
+        },
+      };
+
+      // Cairo Coder Gen Eval Chart
+      new Chart(document.getElementById("genEvalChart"), {
+        type: "bar",
+        data: {
+          labels: ["Gemini 2.5 Flash Latest", "Gemini 3 Flash Preview"],
+          datasets: [
+            {
+              label: "Raw Model",
+              data: [46, 67],
+              backgroundColor: chartColors.raw,
+              borderColor: chartColors.rawBorder,
+              borderWidth: 2,
+            },
+            {
+              label: "Cairo Coder Base",
+              data: [58, 85.3],
+              backgroundColor: chartColors.base,
+              borderColor: chartColors.baseBorder,
+              borderWidth: 2,
+            },
+            {
+              label: "Cairo Coder Optimised",
+              data: [65, 90],
+              backgroundColor: chartColors.optimised,
+              borderColor: chartColors.optimisedBorder,
+              borderWidth: 2,
+            },
+          ],
+        },
+        options: chartOptions,
+      });
+
+      // Starknet Agent Chart
+      new Chart(document.getElementById("starknetAgentChart"), {
+        type: "bar",
+        data: {
+          labels: ["Gemini 2.5 Flash Latest", "Gemini 3 Flash Preview"],
+          datasets: [
+            {
+              label: "Raw Model",
+              data: [36, 83.2],
+              backgroundColor: chartColors.raw,
+              borderColor: chartColors.rawBorder,
+              borderWidth: 2,
+            },
+            {
+              label: "Cairo Coder Base",
+              data: [76.47, 90.34],
+              backgroundColor: chartColors.base,
+              borderColor: chartColors.baseBorder,
+              borderWidth: 2,
+            },
+            {
+              label: "Cairo Coder Optimised",
+              data: [91.3, 95.5],
+              backgroundColor: chartColors.optimised,
+              borderColor: chartColors.optimisedBorder,
+              borderWidth: 2,
+            },
+          ],
+        },
+        options: chartOptions,
+      });
+
+      // Improvement Chart
+      new Chart(document.getElementById("improvementChart"), {
+        type: "bar",
+        data: {
+          labels: [
+            "Code Gen\n2.5 Flash",
+            "Code Gen\n3 Flash",
+            "Starknet Agent\n2.5 Flash",
+            "Starknet Agent\n3 Flash",
+          ],
+          datasets: [
+            {
+              label: "Raw Model",
+              data: [46, 67, 36, 83.2],
+              backgroundColor: chartColors.raw,
+              borderColor: chartColors.rawBorder,
+              borderWidth: 2,
+            },
+            {
+              label: "Cairo Coder Optimised",
+              data: [65, 90, 91.3, 95.5],
+              backgroundColor: chartColors.optimised,
+              borderColor: chartColors.optimisedBorder,
+              borderWidth: 2,
+            },
+          ],
+        },
+        options: chartOptions,
+      });
+    </script>
+  </body>
+</html>

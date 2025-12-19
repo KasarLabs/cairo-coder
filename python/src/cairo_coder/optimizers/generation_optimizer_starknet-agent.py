@@ -7,6 +7,7 @@ app = marimo.App(width="medium")
 @app.cell
 def _():
     import os
+
     import dspy
 
     # Start mlflow for monitoring `mlflow ui --port 5000`

@@ -5,9 +5,9 @@ This module implements the RagPipeline class that orchestrates the three-stage
 RAG workflow: Query Processing → Document Retrieval → Generation.
 """
 
+import os
 from collections.abc import AsyncGenerator
 from dataclasses import dataclass
-import os
 from typing import Any
 
 import dspy
