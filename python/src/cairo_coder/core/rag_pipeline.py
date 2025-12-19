@@ -5,6 +5,7 @@ This module implements the RagPipeline class that orchestrates the three-stage
 RAG workflow: Query Processing → Document Retrieval → Generation.
 """
 
+import os
 from collections.abc import AsyncGenerator
 from dataclasses import dataclass
 from typing import Any
@@ -100,6 +101,9 @@ class RagPipeline(dspy.Module):
             prediction: DSPy prediction object with usage information
         """
         usage = prediction.get_lm_usage()
+        if not usage:
+            logger.warning("No usage found in prediction")
+            return
         self._accumulated_usage = combine_usage(self._accumulated_usage, usage)
 
     def _reset_usage(self) -> None:
@@ -130,7 +134,7 @@ class RagPipeline(dspy.Module):
 
         # Optional Grok web/X augmentation: activate when STARKNET_BLOG is among sources.
         try:
-            if DocumentSource.STARKNET_BLOG in retrieval_sources:
+            if DocumentSource.STARKNET_BLOG in retrieval_sources and not os.getenv("OPTIMIZER_RUN"):
                 grok_pred = await self.grok_search.aforward(processed_query, chat_history_str)
                 self._accumulate_usage(grok_pred)
                 grok_docs = grok_pred.documents

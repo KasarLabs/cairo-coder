@@ -143,7 +143,7 @@ class RetrievalJudge(dspy.Module):
         keep_docs, judged_indices, judged_payloads = self._split_templates_and_prepare_docs(
             documents
         )
-        
+
         aggregated_usage = {}
 
         # TODO: can we use dspy.Parallel here instead of asyncio gather?
@@ -151,16 +151,16 @@ class RetrievalJudge(dspy.Module):
             try:
                 # Judge concurrently
                 async def judge_one(doc_string: str):
-                    return await self.rater.acall(query=query, system_resource=doc_string)
+                    return await self.rater.aforward(query=query, system_resource=doc_string)
 
                 results = await asyncio.gather(
                     *[judge_one(ds) for ds in judged_payloads], return_exceptions=True
                 )
-                
+
                 # Aggregate usage from results
                 for res in results:
                     if isinstance(res, dspy.Prediction):
-                        aggregated_usage = combine_usage(aggregated_usage, res.get_lm_usage())
+                        aggregated_usage = combine_usage(aggregated_usage, res.get_lm_usage() or {})
 
                 self._attach_scores_and_filter_async(
                     query=query,

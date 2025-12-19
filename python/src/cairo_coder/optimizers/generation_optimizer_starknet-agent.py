@@ -6,7 +6,6 @@ app = marimo.App(width="medium")
 
 @app.cell
 def _():
-
     import os
 
     import dspy
@@ -33,7 +32,7 @@ def _():
 
     ## Setup embedder and LM in dspy.configure
     embedder = dspy.Embedder("gemini/gemini-embedding-001", dimensions=3072, batch_size=512)
-    lm = dspy.LM("gemini/gemini-flash-latest", max_tokens=30000, cache=False)
+    lm = dspy.LM("gemini/gemini-3-flash-preview", max_tokens=30000, cache=False)
     dspy.configure(lm=lm, adapter=XMLAdapter(), embedder=embedder)
 
     ## Setup VectorDB for document retrieval - will use dspy.settings.embedder
@@ -140,15 +139,15 @@ def _(XMLAdapter, dspy):
     context block below. Do not introduce external knowledge or assumptions.
 
     3.  **Citations:**
-        *   Attribute information accurately by citing the relevant context number(s) using bracket notation
-            \`[number]\`.
-        *   Place citations at the end of sentences or paragraphs that draw information
-            directly from the context. Ensure all key information, claims, and explanations derived from the
-            context are cited. You can cite multiple sources for a single statement if needed by using:
-            \`[number1][number2]\`. Don't add multiple citations in the same bracket. Citations are
-            *not* required for general conversational text or structure, or code lines (e.g.,
-            "Certainly, here's how you can do that:") but *are* required for any substantive
-            information, explanation, or definition taken from the context.
+        *   Cite sources using inline markdown links: \`[descriptive text](url)\`.
+        *   When referencing information from the context, use the URLs provided in the document headers or inline within the context itself.
+        *   **NEVER cite a section header or document title that has no URL.** Instead, find and cite the specific URL mentioned within that section's content.
+        *   Examples:
+            - "Starknet supports liquid staking [via Endur](https://endur.fi/)."
+            - "According to [community analysis](https://x.com/username/status/...), Ekubo offers up to 35% APY."
+        *   If absolutely no URL is available for a piece of information, cite it by name without brackets: "According to the Cairo Book..."
+        *   **Never use markdown link syntax without a URL** (e.g., never write \`[text]\` or \`[text]()\`). Either include a full URL or use plain text.
+        *   Place citations naturally within sentences for readability.
 
     4.  **Mathematical Formulas:** Use LaTeX for math formulas. Use block format \`$$\nLaTeX code\n$$\`
     (with newlines) or inline format \`$ LaTeX code $\`.
@@ -157,17 +156,17 @@ def _(XMLAdapter, dspy):
         *   If providing Cairo smart contract code, adhere to best practices: define an explicit interface
             (\`trait\`), implement it within the contract module using \`#[abi(embed_v0)]\`, include
             necessary imports.  Minimize comments within code blocks. Focus on essential explanations.
-            Extremely important: Inside code blocks (\`\`\`cairo ... \`\`\`) you must
-            NEVER cite sources using \`[number]\` notation or include HTML tags. Comments should be minimal
+        Extremely important: Inside code blocks (\`\`\`cairo ... \`\`\`) you must
+            NEVER include markdown links or citations, and never include HTML tags. Comments should be minimal
             and only explain the code itself. Violating this will break the code formatting for the
             user. You can, after the code block, add a line with some links to the sources used to generate the code.
         *   After presenting a code block, provide a clear explanation in the text that follows. Describe
             the purpose of the main components (functions, storage variables, interfaces), explain how the
             code addresses the user's request, and reference the relevant Cairo or Starknet concepts
-            demonstrated \`[cite relevant context numbers here if applicable]\`.
+            demonstrated, citing sources with inline markdown links where appropriate.
 
     5.bis: **LaTeX Generation:**
-        *   If providing LaTeX code, never cite sources using \`[number]\` notation or include HTML tags inside the LaTeX block.
+        *   If providing LaTeX code, never include markdown links or citations, and never include HTML tags inside the LaTeX block.
         *   If providing LaTeX code, for big blocks, always use the block format \`$$\nLaTeX code\n$$\` (with newlines).
         *   If providing LaTeX code, for inlined content  always use the inline format \`$ LaTeX code $\`.
         *   If the context contains latex blocks in places where inlined formulas are used, try to
@@ -178,8 +177,8 @@ def _(XMLAdapter, dspy):
 
     6.  **Handling Conflicting Information:** If the provided context contains conflicting information
     on a topic, acknowledge the discrepancy in your response. Present the different viewpoints clearly,
-    citing the respective sources \`[number]\`. When citing multiple sources, cite them as
-    \`[number1][number2]\`. If possible, indicate if one source seems more up-to-date or authoritative
+    and cite the respective sources using inline markdown links (e.g., "According to [Source A](url) ...",
+    "However, [Source B](url) suggests ..."). If possible, indicate if one source seems more up-to-date or authoritative
     based *only* on the provided context, but avoid making definitive judgments without clear evidence
     within that context.
 
@@ -205,7 +204,7 @@ def _(XMLAdapter, dspy):
         query: str = dspy.InputField(desc="The query of the user")
         answer: str = dspy.InputField(desc="The answer to the query")
         score: float = dspy.OutputField(
-            desc="A confidence score in range [0, 1.0] on the how precise, self-sufficient, and fully accurate the answer is. 0 means that the answer is totally wrong and does not adhere to the instructions; it has logical issues or is unable to answer; 0.5 means that the answer is _partially_ addressing the query but there might be a few minor misses, unclear parts, or badly following instructions (missing citations, wrong citation syntax, citations not at the end of the doc, etc), but it's a helpful; 1.0 means that the query is well answered, with no blind spots, and the citations are properly organized, code is properly structured, and right latex syntax. Pay a lot of attention on the citations syntax, whether they're properly linked at the end of the answer, etc."
+            desc="A confidence score in range [0, 1.0] on how precise, self-sufficient, and fully accurate the answer is. 0 means that the answer is totally wrong and does not adhere to the instructions; it has logical issues or is unable to answer; 0.5 means that the answer is _partially_ addressing the query but there might be a few minor misses, unclear parts, or badly following instructions (missing citations, wrong citation syntax like using [number] instead of inline markdown links, or markdown links without URLs), but it's helpful; 1.0 means that the query is well answered, with no blind spots, citations use proper inline markdown link syntax [text](url), code is properly structured, and right latex syntax. Pay attention to citation format: they should be inline markdown links placed naturally within sentences."
         )
         feedback: Optional[str] = dspy.OutputField(
             desc="""A textual feedback on how to improve the generated query. Notably, this feedback should analyze the code and ensure it follows the guidelines provided in the instructions.
@@ -217,7 +216,7 @@ def _(XMLAdapter, dspy):
 
     def compute_metrics(gold, pred, trace=None) -> dict:
         with dspy.context(
-            lm=dspy.LM("gemini/gemini-flash-lite-latest", max_tokens=30000), adapter=XMLAdapter()
+            lm=dspy.LM("gemini/gemini-flash-preview", max_tokens=30000), adapter=XMLAdapter()
         ):
             response_rating = answer_rater(
                 query=gold.query,
@@ -295,12 +294,12 @@ def _(compute_overall_score_with_feedback, dspy, os):
     optimizer = GEPA(
         metric=compute_overall_score_with_feedback,
         # auto="light", # <-- We will use a light budget for this tutorial. However, we typically recommend using auto="heavy" for optimized performance!
-        max_metric_calls=500,
+        max_metric_calls=365,
         num_threads=12,
         track_stats=True,
         log_dir="./gepa-run-logs",
         reflection_lm=dspy.LM(
-            model="openai/gpt-5-codex", temperature=1.0, max_tokens=16000
+            model="gemini/gemini-3-flash-preview", temperature=1.0, max_tokens=16000
         ),
     )
     return (optimizer,)

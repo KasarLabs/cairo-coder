@@ -50,9 +50,9 @@ class TestRetrievalJudge:
     @pytest.mark.asyncio
     async def test_aforward_with_mocked_rater(self, sample_documents):
         """Test forward method with mocked rater execution."""
-        # Mock rater.acall to return per-document results
+        # Mock rater.aforward to return per-document results
         judge = RetrievalJudge()
-        judge.rater.acall = AsyncMock(side_effect=[
+        judge.rater.aforward = AsyncMock(side_effect=[
             MagicMock(resource_note=0.8, reasoning="Resource Cairo Introduction is highly relevant"),
             MagicMock(resource_note=0.3, reasoning="Resource Starknet Overview is somewhat relevant"),
             MagicMock(resource_note=0.1, reasoning="Resource Python Guide is not relevant"),
@@ -67,14 +67,14 @@ class TestRetrievalJudge:
         assert filtered_docs[0].metadata["llm_judge_score"] == 0.8
         assert "highly relevant" in filtered_docs[0].metadata["llm_judge_reason"]
 
-        # rater.acall was invoked for each doc
-        assert judge.rater.acall.await_count == 3
+        # rater.aforward was invoked for each doc
+        assert judge.rater.aforward.await_count == 3
 
     @pytest.mark.asyncio
     async def test_forward_with_parse_error(self, sample_documents):
         """Test forward handling parse errors gracefully by dropping the invalid doc."""
         judge = RetrievalJudge()
-        judge.rater.acall = AsyncMock(side_effect=[
+        judge.rater.aforward = AsyncMock(side_effect=[
             MagicMock(resource_note="invalid", reasoning="Some reasoning"),  # Invalid score
             MagicMock(resource_note=0.7, reasoning="Valid result"),
         ])
@@ -96,7 +96,7 @@ class TestRetrievalJudge:
     async def test_aforward_with_exception(self, sample_documents):
         """Test forward handling exceptions by returning all documents."""
         judge = RetrievalJudge()
-        judge.rater.acall = AsyncMock(side_effect=Exception("Parallel execution failed"))
+        judge.rater.aforward = AsyncMock(side_effect=Exception("Parallel execution failed"))
         documents = sample_documents
         prediction = await judge.aforward("test query", documents)
         filtered_docs = prediction.documents
@@ -168,7 +168,7 @@ class TestRetrievalJudge:
     async def test_score_clamping(self, sample_documents):
         """Test that scores are properly clamped to [0,1] range."""
         judge = RetrievalJudge()
-        judge.rater.acall = AsyncMock(side_effect=[
+        judge.rater.aforward = AsyncMock(side_effect=[
             MagicMock(resource_note=1.5, reasoning="Score too high"),
             MagicMock(resource_note=-0.3, reasoning="Score too low"),
             MagicMock(resource_note=0.5, reasoning="Valid score"),

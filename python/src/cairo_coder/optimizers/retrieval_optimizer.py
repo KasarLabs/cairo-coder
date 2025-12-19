@@ -73,7 +73,7 @@ def _(dspy, vector_db, vector_store_config):
 
         def forward(self, query):
             try:
-                processed_query = self.query_processor_program(query=query)
+                processed_query = self.query_processor_program(query=query).processed_query
                 retrieved_docs = document_retriever(
                     processed_query=processed_query, sources=processed_query.resources
                 )
