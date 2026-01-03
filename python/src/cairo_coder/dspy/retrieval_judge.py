@@ -18,7 +18,7 @@ from langsmith import traceable
 import dspy
 from cairo_coder.core.constants import SIMILARITY_THRESHOLD
 from cairo_coder.core.types import Document, combine_usage
-from cairo_coder.dspy.document_retriever import CONTRACT_TEMPLATE_TITLE, TEST_TEMPLATE_TITLE
+from cairo_coder.dspy.templates import CONTRACT_TEMPLATE_TITLE, TEST_TEMPLATE_TITLE
 
 logger = structlog.get_logger(__name__)
 
