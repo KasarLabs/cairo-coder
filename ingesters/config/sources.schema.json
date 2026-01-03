@@ -1,0 +1,79 @@
+{
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "title": "Cairo Coder Sources Config",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["sources"],
+  "properties": {
+    "sources": {
+      "type": "object",
+      "additionalProperties": {
+        "$ref": "#/definitions/sourceConfig"
+      }
+    }
+  },
+  "definitions": {
+    "sourceConfig": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "description", "ingesterClass", "config"],
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "ingesterClass": {
+          "type": "string"
+        },
+        "config": {
+          "$ref": "#/definitions/bookConfig"
+        }
+      }
+    },
+    "bookConfig": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "repoOwner",
+        "repoName",
+        "fileExtensions",
+        "chunkSize",
+        "chunkOverlap",
+        "baseUrl",
+        "urlSuffix",
+        "useUrlMapping"
+      ],
+      "properties": {
+        "repoOwner": {
+          "type": "string"
+        },
+        "repoName": {
+          "type": "string"
+        },
+        "fileExtensions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "chunkSize": {
+          "type": "integer"
+        },
+        "chunkOverlap": {
+          "type": "integer"
+        },
+        "baseUrl": {
+          "type": "string"
+        },
+        "urlSuffix": {
+          "type": "string"
+        },
+        "useUrlMapping": {
+          "type": "boolean"
+        }
+      }
+    }
+  }
+}
