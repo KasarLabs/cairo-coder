@@ -1,0 +1,155 @@
+{
+  "$schema": "./sources.schema.json",
+  "sources": {
+    "cairo_book": {
+      "name": "Cairo Book",
+      "description": "The official Cairo programming language book",
+      "ingesterClass": "CairoBookIngester",
+      "config": {
+        "repoOwner": "cairo-book",
+        "repoName": "cairo-book",
+        "fileExtensions": [".md"],
+        "chunkSize": 4096,
+        "chunkOverlap": 512,
+        "baseUrl": "https://book.cairo-lang.org",
+        "urlSuffix": ".html",
+        "useUrlMapping": true
+      }
+    },
+    "starknet_docs": {
+      "name": "Starknet Docs",
+      "description": "Official Starknet documentation",
+      "ingesterClass": "StarknetDocsIngester",
+      "config": {
+        "repoOwner": "starknet-io",
+        "repoName": "starknet-docs",
+        "fileExtensions": [".mdx"],
+        "chunkSize": 4096,
+        "chunkOverlap": 512,
+        "baseUrl": "https://docs.starknet.io",
+        "urlSuffix": "",
+        "useUrlMapping": true
+      }
+    },
+    "starknet_foundry": {
+      "name": "Starknet Foundry",
+      "description": "Starknet Foundry testing framework documentation",
+      "ingesterClass": "StarknetFoundryIngester",
+      "config": {
+        "repoOwner": "foundry-rs",
+        "repoName": "starknet-foundry",
+        "fileExtensions": [".md"],
+        "chunkSize": 4096,
+        "chunkOverlap": 512,
+        "baseUrl": "https://foundry-rs.github.io/starknet-foundry",
+        "urlSuffix": ".html",
+        "useUrlMapping": true
+      }
+    },
+    "cairo_by_example": {
+      "name": "Cairo By Example",
+      "description": "Learn Cairo through practical examples",
+      "ingesterClass": "CairoByExampleIngester",
+      "config": {
+        "repoOwner": "NethermindEth",
+        "repoName": "StarknetByExample",
+        "fileExtensions": [".md"],
+        "chunkSize": 4096,
+        "chunkOverlap": 512,
+        "baseUrl": "https://starknet-by-example.voyager.online",
+        "urlSuffix": ".html",
+        "useUrlMapping": true
+      }
+    },
+    "openzeppelin_docs": {
+      "name": "OpenZeppelin Docs",
+      "description": "OpenZeppelin Cairo contracts documentation",
+      "ingesterClass": "OpenZeppelinDocsIngester",
+      "config": {
+        "repoOwner": "OpenZeppelin",
+        "repoName": "cairo-contracts",
+        "fileExtensions": [".adoc"],
+        "chunkSize": 4096,
+        "chunkOverlap": 512,
+        "baseUrl": "https://docs.openzeppelin.com/contracts-cairo",
+        "urlSuffix": "",
+        "useUrlMapping": false
+      }
+    },
+    "corelib_docs": {
+      "name": "Core Library Docs",
+      "description": "Cairo core library documentation",
+      "ingesterClass": "CoreLibDocsIngester",
+      "config": {
+        "repoOwner": "starkware-libs",
+        "repoName": "cairo",
+        "fileExtensions": [".md"],
+        "chunkSize": 4096,
+        "chunkOverlap": 512,
+        "baseUrl": "https://docs.cairo-lang.org/core",
+        "urlSuffix": ".html",
+        "useUrlMapping": true
+      }
+    },
+    "scarb_docs": {
+      "name": "Scarb Docs",
+      "description": "Scarb package manager documentation",
+      "ingesterClass": "ScarbDocsIngester",
+      "config": {
+        "repoOwner": "software-mansion",
+        "repoName": "scarb",
+        "fileExtensions": [".md"],
+        "chunkSize": 4096,
+        "chunkOverlap": 512,
+        "baseUrl": "https://docs.swmansion.com/scarb/docs",
+        "urlSuffix": ".html",
+        "useUrlMapping": true
+      }
+    },
+    "starknet_js": {
+      "name": "Starknet.js",
+      "description": "Starknet JavaScript SDK documentation",
+      "ingesterClass": "StarknetJSIngester",
+      "config": {
+        "repoOwner": "starknet-io",
+        "repoName": "starknet.js",
+        "fileExtensions": [".md"],
+        "chunkSize": 4096,
+        "chunkOverlap": 512,
+        "baseUrl": "https://www.starknetjs.com",
+        "urlSuffix": "",
+        "useUrlMapping": true
+      }
+    },
+    "starknet_blog": {
+      "name": "Starknet Blog",
+      "description": "Official Starknet blog posts and articles",
+      "ingesterClass": "StarknetBlogIngester",
+      "config": {
+        "repoOwner": "starknet-io",
+        "repoName": "starknet-blog",
+        "fileExtensions": [".md"],
+        "chunkSize": 4096,
+        "chunkOverlap": 512,
+        "baseUrl": "https://starknet.io/blog",
+        "urlSuffix": "",
+        "useUrlMapping": false
+      }
+    },
+    "dojo_docs": {
+      "name": "Dojo Docs",
+      "description": "Dojo game engine documentation",
+      "ingesterClass": "DojoDocsIngester",
+      "config": {
+        "repoOwner": "dojoengine",
+        "repoName": "book",
+        "fileExtensions": [".mdx", ".md"],
+        "chunkSize": 4096,
+        "chunkOverlap": 512,
+        "baseUrl": "https://book.dojoengine.org",
+        "urlSuffix": "",
+        "useUrlMapping": true
+      }
+    }
+  }
+}
