@@ -16,7 +16,6 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from cairo_coder.agents.registry import AgentId
-from cairo_coder.config.manager import ConfigManager
 from cairo_coder.core.config import VectorStoreConfig
 from cairo_coder.server.app import CairoCoderServer, ChatCompletionResponse, create_app
 
@@ -89,13 +88,20 @@ class TestServerIntegration:
         ]
 
         async def mock_aforward(query: str, chat_history=None, mcp_mode=False, **kwargs):
+            from cairo_coder.core.types import PipelineResult
+
             history_length = len(chat_history) if chat_history else 0
             response_idx = min(history_length // 2, len(conversation_responses) - 1)
 
-            mock_response = Mock()
-            mock_response.answer = conversation_responses[response_idx]
-            mock_response.get_lm_usage.return_value = {}
-            return mock_response
+            # Return a PipelineResult with the answer
+            return PipelineResult(
+                processed_query=None,
+                documents=[],
+                grok_citations=[],
+                usage={},
+                answer=conversation_responses[response_idx],
+                formatted_sources=[],
+            )
 
         mock_agent.aforward = mock_aforward
 
@@ -344,8 +350,6 @@ class TestServerStartup:
 
     def test_server_startup_with_mocked_dependencies(self, mock_vector_store_config: Mock):
         """Test that server can start with mocked dependencies."""
-        Mock(spec=ConfigManager)
-
         with patch("cairo_coder.server.app.create_agent_factory"):
             app = create_app(mock_vector_store_config)
             assert app.title == "Cairo Coder"
@@ -366,12 +370,8 @@ class TestServerStartup:
             assert isinstance(app, FastAPI)
 
     def test_create_app_with_defaults(self, mock_vector_store_config: Mock):
-        """Test create_app with default config manager."""
-        with (
-            patch("cairo_coder.server.app.create_agent_factory"),
-            patch("cairo_coder.config.manager.ConfigManager") as mock_config_class,
-        ):
-            mock_config_class.return_value = Mock()
+        """Test create_app with default config."""
+        with patch("cairo_coder.server.app.create_agent_factory"):
             app = create_app(mock_vector_store_config)
 
         assert isinstance(app, FastAPI)

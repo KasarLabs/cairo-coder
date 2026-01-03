@@ -84,7 +84,7 @@ def real_pipeline(mock_query_processor, mock_vector_store_config, mock_vector_db
     )
 
     # Avoid LLM calls in the judge and non-streaming generation
-    from unittest.mock import AsyncMock, Mock
+    from unittest.mock import AsyncMock
 
     async def _judge_aforward(query, documents):
         prediction = dspy.Prediction(documents=documents)
@@ -92,7 +92,6 @@ def real_pipeline(mock_query_processor, mock_vector_store_config, mock_vector_db
         return prediction
 
     pipeline.retrieval_judge.aforward = AsyncMock(side_effect=_judge_aforward)
-    pipeline.retrieval_judge.get_lm_usage = Mock(return_value={})
 
     # Patch non-streaming generation to mimic conversation turns using chat_history
     import dspy as _dspy
@@ -119,7 +118,6 @@ def real_pipeline(mock_query_processor, mock_vector_store_config, mock_vector_db
 
     pipeline.generation_program.aforward = AsyncMock(side_effect=_fake_gen_aforward)
     pipeline.generation_program.aforward_streaming =_fake_gen_aforward_streaming
-    pipeline.generation_program.get_lm_usage = Mock(return_value={})
 
     # Patch MCP generation to a deterministic simple string as tests expect
     mcp_prediction = _dspy.Prediction(answer="Cairo is a programming language")

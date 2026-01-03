@@ -6,8 +6,8 @@ import dspy
 import pytest
 
 from cairo_coder.core.types import Document
-from cairo_coder.dspy.document_retriever import CONTRACT_TEMPLATE_TITLE, TEST_TEMPLATE_TITLE
 from cairo_coder.dspy.retrieval_judge import RetrievalJudge
+from cairo_coder.dspy.templates import CONTRACT_TEMPLATE_TITLE, TEST_TEMPLATE_TITLE
 
 
 class TestRetrievalJudge:

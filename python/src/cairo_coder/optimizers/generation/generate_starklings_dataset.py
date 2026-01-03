@@ -10,7 +10,7 @@ from pathlib import Path
 
 import structlog
 
-from cairo_coder.config.manager import ConfigManager
+from cairo_coder.core.config import load_config
 from cairo_coder.optimizers.generation.starklings_helper import (
     StarklingsExercise,
     ensure_starklings_repo,
@@ -76,7 +76,7 @@ def process_exercise(exercise: StarklingsExercise) -> GenerationExample | None:
 async def generate_dataset() -> list[GenerationExample]:
     """Generate the complete dataset from Starklings exercises."""
     # Load config once
-    ConfigManager.load_config()
+    load_config()
 
     # Ensure Starklings repo exists
     success = ensure_starklings_repo("temp/starklings-cairo1")

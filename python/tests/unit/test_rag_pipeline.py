@@ -71,7 +71,6 @@ def create_custom_retrieval_judge(score_map, threshold=0.4):
     judge.forward = Mock(side_effect=filter_docs)
     judge.aforward = AsyncMock(side_effect=async_filter_docs)
     judge.threshold = threshold
-    judge.get_lm_usage = Mock(return_value={})
 
     return judge
 
@@ -290,7 +289,7 @@ class TestRagPipelineWithJudge:
         pipeline.retrieval_judge.aforward.side_effect = judge_aforward_with_prediction
         pipeline.retrieval_judge.threshold = judge.threshold
 
-        await pipeline.aforward("test query")
+        result = await pipeline.aforward("test query")
 
         # Count filtered docs based on threshold
         scores = [0.9, 0.8, 0.7, 0.6]
@@ -299,7 +298,8 @@ class TestRagPipelineWithJudge:
         # Verify judge was called
         pipeline.retrieval_judge.aforward.assert_called_once()
 
-        filtered_docs = pipeline._current_documents
+        # Access filtered docs from the returned PipelineResult
+        filtered_docs = result.documents
         assert len(filtered_docs) == expected_count
 
         # Verify all filtered docs meet threshold
@@ -631,19 +631,6 @@ class TestPipelineHelperMethods:
         # But virtual document content should still be present
         assert "Virtual content with [inline link](https://example.com/inline)" in context
 
-    def test_get_current_state(self, sample_documents, sample_processed_query, pipeline):
-        """Test pipeline state retrieval."""
-        # Set internal state
-        pipeline._current_processed_query = sample_processed_query
-        pipeline._current_documents = sample_documents
-
-        state = pipeline.get_current_state()
-
-        assert state["processed_query"] is not None
-        assert state["documents_count"] == 4
-        assert len(state["documents"]) == 4
-        assert state["config"]["name"] == "test_pipeline"
-
     # Define reusable usage constants to keep tests DRY
     _QUERY_USAGE_MINI = {
         "gpt-4o-mini": {"prompt_tokens": 200, "completion_tokens": 100, "total_tokens": 300}
@@ -687,7 +674,7 @@ class TestPipelineHelperMethods:
     )
     @pytest.mark.asyncio
     @patch("cairo_coder.core.rag_pipeline.RetrievalJudge")
-    async def test_get_lm_usage(
+    async def test_pipeline_usage_aggregation(
         self,
         mock_judge_class,
         pipeline_config,
@@ -698,7 +685,7 @@ class TestPipelineHelperMethods:
         judge_usage,
         expected_usage,
     ):
-        """Tests that get_lm_usage correctly aggregates token usage from its components."""
+        """Tests that PipelineResult correctly aggregates token usage from its components."""
         # Set up mocks to return predictions with usage
         qp_prediction = dspy.Prediction(processed_query=sample_processed_query)
         qp_prediction.set_lm_usage(query_usage)
@@ -721,11 +708,10 @@ class TestPipelineHelperMethods:
 
         # Create pipeline and execute it
         pipeline = RagPipeline(pipeline_config)
-        await pipeline.aforward("test query")
+        pipeline_result = await pipeline.aforward("test query")
 
-        # Check accumulated usage
-        result = pipeline.get_lm_usage()
-        assert result == expected_usage
+        # Check accumulated usage from the returned PipelineResult
+        assert pipeline_result.usage == expected_usage
 
     @pytest.mark.asyncio
     @pytest.mark.parametrize(
@@ -737,10 +723,12 @@ class TestPipelineHelperMethods:
             ),
         ],
     )
-    async def test_get_lm_usage_after_streaming(
+    async def test_streaming_usage_aggregation(
         self, pipeline_config, sample_processed_query, sample_documents, mcp_mode, expected_usage
     ):
-        """Tests that get_lm_usage works correctly after a streaming execution."""
+        """Tests that streaming execution correctly aggregates usage in PipelineResult."""
+        from cairo_coder.core.types import StreamEventType
+
         # Set up query processor to return prediction with usage
         qp_prediction = dspy.Prediction(processed_query=sample_processed_query)
         qp_prediction.set_lm_usage(self._QUERY_USAGE_MINI)
@@ -752,10 +740,10 @@ class TestPipelineHelperMethods:
         pipeline_config.document_retriever.aforward = AsyncMock(return_value=dr_prediction)
 
         if mcp_mode:
-            # MCP mode - set MCP program with no usage
+            # MCP mode - set MCP program with no usage (uses sync __call__, not aforward)
             mcp_prediction = dspy.Prediction(answer="MCP answer")
             mcp_prediction.set_lm_usage({})
-            pipeline_config.mcp_generation_program.aforward = AsyncMock(return_value=mcp_prediction)
+            pipeline_config.mcp_generation_program = Mock(return_value=mcp_prediction)
         else:
             # Normal mode - set generation program with usage
             async def mock_streaming(*args, **kwargs):
@@ -787,15 +775,17 @@ class TestPipelineHelperMethods:
 
             pipeline = RagPipeline(pipeline_config)
 
-            # Execute the pipeline to ensure the full flow is invoked.
-            async for _ in pipeline.aforward_streaming(
+            # Execute the pipeline and capture the END event which contains PipelineResult
+            pipeline_result = None
+            async for event in pipeline.aforward_streaming(
                 query="How do I create a Cairo contract?", mcp_mode=mcp_mode
             ):
-                pass
+                if event.type == StreamEventType.END:
+                    pipeline_result = event.data
+                    break
 
-            result = pipeline.get_lm_usage()
-
-        assert result == expected_usage
+        assert pipeline_result is not None
+        assert pipeline_result.usage == expected_usage
 
 
 class TestConvenienceFunctions:

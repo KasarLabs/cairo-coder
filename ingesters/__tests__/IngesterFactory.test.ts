@@ -58,7 +58,7 @@ describe('IngesterFactory', () => {
       expect(() => {
         // @ts-ignore - Testing with invalid source
         IngesterFactory.createIngester('unknown_source');
-      }).toThrow('Unsupported source: unknown_source');
+      }).toThrow("Source 'unknown_source' not found in sources.json config");
     });
   });
 

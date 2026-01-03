@@ -153,13 +153,25 @@ def mock_agent_factory(mock_agent: Mock):
 @pytest.fixture
 def mock_agent():
     """Create a mock agent with OpenAI-specific forward method."""
+    from cairo_coder.core.types import PipelineResult
+
     mock_agent = AsyncMock()
+
+    # Deterministic LM usage for unit tests
+    mock_usage = {
+        "gemini/gemini-3-flash-preview": {
+            "prompt_tokens": 100,
+            "completion_tokens": 200,
+            "total_tokens": 300,
+        }
+    }
 
     async def mock_aforward_streaming(
         query: str, chat_history: list[Message] | None = None, mcp_mode: bool = False
     ):
         """Mock agent forward_astreaming method that yields StreamEvent objects."""
         if mcp_mode:
+            answer = "Cairo is a programming language"
             # MCP mode returns sources
             yield StreamEvent(
                 type=StreamEventType.SOURCES,
@@ -170,45 +182,43 @@ def mock_agent():
                     }
                 ],
             )
-            yield StreamEvent(type=StreamEventType.RESPONSE, data="Cairo is a programming language")
-            yield StreamEvent(type=StreamEventType.FINAL_RESPONSE, data="Cairo is a programming language")
+            yield StreamEvent(type=StreamEventType.RESPONSE, data=answer)
+            yield StreamEvent(type=StreamEventType.FINAL_RESPONSE, data=answer)
         else:
+            answer = "Hello! I'm Cairo Coder. How can I help you?"
             # Normal mode returns response
             yield StreamEvent(type=StreamEventType.RESPONSE, data="Hello! I'm Cairo Coder.")
             yield StreamEvent(type=StreamEventType.RESPONSE, data=" How can I help you?")
-            yield StreamEvent(type=StreamEventType.FINAL_RESPONSE, data="Hello! I'm Cairo Coder. How can I help you?")
-        yield StreamEvent(type=StreamEventType.END, data="")
+            yield StreamEvent(type=StreamEventType.FINAL_RESPONSE, data=answer)
 
-    def mock_forward(query: str, chat_history: list[Message] | None = None, mcp_mode: bool = False):
-        """Mock agent forward method that returns a Predict object."""
-        mock_predict = Mock()
-
-        # Set up the answer attribute based on mode
-        if mcp_mode:
-            mock_predict.answer = "Cairo is a programming language"
-        else:
-            mock_predict.answer = "Hello! I'm Cairo Coder. How can I help you?"
-
-        # Deterministic LM usage for unit tests
-        # Set up the get_lm_usage method
-        mock_predict.get_lm_usage = Mock(
-            return_value={
-                "gemini/gemini-3-flash-preview": {
-                    "prompt_tokens": 100,
-                    "completion_tokens": 200,
-                    "total_tokens": 300,
-                }
-            }
+        # END event contains the PipelineResult
+        pipeline_result = PipelineResult(
+            processed_query=None,
+            documents=[],
+            grok_citations=[],
+            usage=mock_usage,
+            answer=answer,
+            formatted_sources=[],
         )
-
-        return mock_predict
+        yield StreamEvent(type=StreamEventType.END, data=pipeline_result)
 
     async def mock_aforward(query: str, chat_history: list[Message] | None = None, mcp_mode: bool = False):
-        """Mock agent aforward method that returns a Predict object."""
-        return mock_forward(query, chat_history, mcp_mode)
+        """Mock agent aforward method that returns a PipelineResult."""
+        if mcp_mode:
+            answer = "Cairo is a programming language"
+        else:
+            answer = "Hello! I'm Cairo Coder. How can I help you?"
 
-    # Assign both sync and async forward methods
-    mock_agent.forward = mock_forward
+        return PipelineResult(
+            processed_query=None,
+            documents=[],
+            grok_citations=[],
+            usage=mock_usage,
+            answer=answer,
+            formatted_sources=[],
+        )
+
+    # Assign async forward methods
     mock_agent.aforward = mock_aforward
     mock_agent.aforward_streaming = mock_aforward_streaming
 
@@ -270,7 +280,7 @@ def client(server, postgres_container, real_pipeline, mock_vector_db, mock_agent
     password = parsed.password or "postgres"
     database = (parsed.path or "/postgres").lstrip("/")
 
-    # Set env so ConfigManager.load_config() succeeds and the vector DB connects
+    # Set env so load_config() succeeds and the vector DB connects
     monkeypatch.setenv("POSTGRES_HOST", host)
     monkeypatch.setenv("POSTGRES_PORT", port)
     monkeypatch.setenv("POSTGRES_DB", database)
@@ -406,7 +416,6 @@ def mock_query_processor(sample_processed_query):
 
     processor.forward = Mock(return_value=prediction)
     processor.aforward = AsyncMock(return_value=prediction)
-    processor.get_lm_usage = Mock(return_value={})
     return processor
 
 
@@ -419,7 +428,6 @@ def mock_document_retriever(sample_documents):
 
     retriever.forward = Mock(return_value=prediction)
     retriever.aforward = AsyncMock(return_value=prediction)
-    retriever.get_lm_usage = Mock(return_value={})
     return retriever
 
 
@@ -435,7 +443,6 @@ def mock_generation_program():
 
     program.forward = Mock(return_value=prediction)
     program.aforward = AsyncMock(return_value=prediction)
-    program.get_lm_usage = Mock(return_value={})
 
     async def mock_streaming(*args, **kwargs):
         yield dspy.streaming.StreamResponse(predict_name="GenerationProgram", signature_field_name="answer", chunk="Here's how to write ", is_last_chunk=False)
@@ -474,7 +481,6 @@ Storage variables use #[storage] attribute.
     prediction.set_lm_usage({})
 
     program.aforward = AsyncMock(return_value=prediction)
-    program.get_lm_usage = Mock(return_value={})
     return program
 
 
@@ -520,7 +526,6 @@ def mock_retrieval_judge():
     judge.forward = Mock(side_effect=filter_docs)
     judge.aforward = AsyncMock(side_effect=async_filter_docs)
     judge.threshold = 0.4
-    judge.get_lm_usage = Mock(return_value={})
 
     return judge
 
@@ -574,7 +579,6 @@ def pipeline(pipeline_config_for_pipeline):
     """Create a RagPipeline instance."""
     with patch("cairo_coder.core.rag_pipeline.RetrievalJudge") as mock_judge_class:
         mock_judge = Mock()
-        mock_judge.get_lm_usage.return_value = {}
 
         # Judge should return prediction with documents
         async def judge_aforward(query, documents):

@@ -9,7 +9,8 @@ import asyncio
 import asyncpg
 import structlog
 
-from cairo_coder.config.manager import ConfigManager
+from cairo_coder.core.config import load_config
+from cairo_coder.core.constants import MAX_POOL_SIZE, MIN_POOL_SIZE
 
 logger = structlog.get_logger(__name__)
 
@@ -28,12 +29,12 @@ async def get_pool() -> asyncpg.Pool:
     key = id(loop)
     pool = pools.get(key)
     if pool is None:
-        config = ConfigManager.load_config()
+        config = load_config()
         try:
             pool = await asyncpg.create_pool(
                 dsn=config.vector_store.dsn,
-                min_size=2,
-                max_size=10,
+                min_size=MIN_POOL_SIZE,
+                max_size=MAX_POOL_SIZE,
             )
             pools[key] = pool
             logger.info("Database connection pool created successfully.")

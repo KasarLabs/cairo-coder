@@ -2,7 +2,7 @@
 
 import pytest
 
-from cairo_coder.config.manager import ConfigManager
+from cairo_coder.core.config import load_config
 
 
 class TestConfigIntegration:
@@ -21,7 +21,7 @@ class TestConfigIntegration:
         monkeypatch.setenv("PORT", "8001")
         monkeypatch.setenv("DEBUG", "true")
 
-        config = ConfigManager.load_config()
+        config = load_config()
 
         # Verify all settings
         assert config.vector_store.host == "test-db.example.com"
@@ -42,7 +42,7 @@ class TestConfigIntegration:
         monkeypatch.setenv("POSTGRES_HOST", "custom-host")
         monkeypatch.setenv("PORT", "9000")
 
-        config = ConfigManager.load_config()
+        config = load_config()
 
         # Check overridden values
         assert config.vector_store.host == "custom-host"
@@ -64,7 +64,7 @@ class TestConfigIntegration:
         monkeypatch.setenv("POSTGRES_PORT", "5433")
         monkeypatch.setenv("POSTGRES_DB", "test_cairo")
 
-        config = ConfigManager.load_config()
+        config = load_config()
 
         expected_dsn = "postgresql://test_user:test_password@test-db.example.com:5433/test_cairo"
         assert config.vector_store.dsn == expected_dsn
@@ -73,4 +73,4 @@ class TestConfigIntegration:
         """Test that missing password raises an error."""
         # No password set due to autouse fixture
         with pytest.raises(ValueError, match="Database password is required"):
-            ConfigManager.load_config()
+            load_config()
