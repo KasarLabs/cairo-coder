@@ -1,235 +1,180 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
-
-For detailed Python backend information, see `python/CLAUDE.md`.
+Agent instructions for working with Cairo Coder.
 
 ## Project Overview
 
-Cairo Coder is an open-source Cairo language code generation service using Retrieval-Augmented Generation (RAG) to transform natural language requests into functional Cairo smart contracts and programs.
+Cairo Coder is a Cairo language code generation service using RAG (Retrieval-Augmented Generation) with DSPy.
 
-### Technology Stack
-
-- **Backend**: Python with DSPy framework for RAG pipeline (`python/`)
-- **Ingester**: TypeScript/Bun for documentation processing (`ingesters/`)
-- **Database**: PostgreSQL with pgvector extension
-- **Runtime**: Bun for ingester, uv for Python backend
+**Stack:** Python/FastAPI backend, TypeScript/Bun ingester, PostgreSQL/pgvector database.
 
 ## Essential Commands
 
-### Documentation Ingestion
+### Python Backend (from `python/` directory)
 
 ```bash
-# Install dependencies
-cd ingesters && bun install
-
-# Run interactive ingestion
-bun run generate-embeddings
-
-# Non-interactive (CI/CD)
-bun run generate-embeddings:yes
-
-# Run tests
-bun test
-```
-
-### Python Backend
-
-```bash
-cd python
-
 # Setup
 curl -LsSf https://astral.sh/uv/install.sh | sh
 uv sync
 
-# Development
+# Run server
 uv run cairo-coder              # Start FastAPI server
+uv run cairo-coder --dev        # Development mode with auto-reload
+
+# Testing
 uv run pytest                   # Run all tests
-uv run pytest -k "test_name"   # Run specific test
+uv run pytest -k "test_name"    # Run specific test
+uv run pytest --cov=src/cairo_coder  # With coverage
+
+# Linting & Type Checking
+trunk check --fix               # Lint and auto-fix
+uv run ty check                 # Type checking
 ```
 
-### Docker Operations
+### Ingester (from `ingesters/` directory)
 
 ```bash
-docker compose up postgres backend  # Start main services
-docker compose up ingester         # Run documentation ingestion
+# Setup
+bun install
+
+# Run ingestion
+bun run generate-embeddings      # Interactive
+bun run generate-embeddings:yes  # Non-interactive (CI/CD)
+
+# Testing
+bun test
 ```
 
-## Architecture Overview
+### Docker
 
-### Python Backend (DSPy RAG Pipeline)
-
-The core RAG pipeline is implemented in Python using DSPy:
-
-1. **Query Processing** - Extracts search terms and identifies relevant sources
-2. **Document Retrieval** - Queries pgvector for similar documentation chunks
-3. **Answer Generation** - Generates Cairo code with streaming support
-
-**Key Locations:**
-
-- Pipeline: `python/src/cairo_coder/dspy/`
-- Agents: `python/src/cairo_coder/agents/registry.py`
-- Server: `python/src/cairo_coder/server/app.py`
-
-### Ingester System (TypeScript/Bun)
-
-Documentation processing system that downloads, chunks, and embeds documentation:
-
-**Structure:**
-
-```text
-ingesters/
-├── src/
-│   ├── ingesters/        # Source-specific ingesters
-│   ├── db/              # PostgreSQL vector store
-│   ├── config/          # Settings and env management
-│   ├── types/           # TypeScript type definitions
-│   └── utils/           # Utilities including path resolution
-├── __tests__/           # Bun test suite
-└── package.json         # Bun scripts (no build step)
+```bash
+# From root directory
+docker compose up postgres backend   # Start services
+docker compose up postgres ingester  # Run ingestion
 ```
 
-**Key Design Patterns:**
+## Key File Locations
 
-1. **Template Method Pattern** (`BaseIngester`):
+| Component          | Location                                    |
+| ------------------ | ------------------------------------------- |
+| RAG Pipeline       | `python/src/cairo_coder/dspy/`              |
+| Agent Registry     | `python/src/cairo_coder/agents/registry.py` |
+| API Server         | `python/src/cairo_coder/server/app.py`      |
+| Core Types         | `python/src/cairo_coder/core/types.py`      |
+| Ingesters          | `ingesters/src/ingesters/`                  |
+| Ingester Types     | `ingesters/src/types/index.ts`              |
+| Optimized Programs | `python/optimizers/results/`                |
 
-   - Abstract class defining ingestion workflow
-   - Subclasses implement source-specific logic
-   - Consistent processing pipeline across all sources
+## Development Guidelines
 
-2. **Factory Pattern** (`IngesterFactory`):
+### Python
 
-   - Creates appropriate ingester for each documentation source
-   - Uses static imports for better testability and Bun compatibility
+- Use `uv` for all dependency management (not pip/poetry)
+- Follow DSPy patterns: Signatures -> Modules -> Programs
+- Type hints required (enforced by mypy)
+- Use structlog for logging: `get_logger(__name__)`
+- Async/await for I/O operations
 
-3. **Path Resolution** (`utils/paths.ts`):
-   - Automatically finds repository root via `.git` directory
-   - All paths relative to repo root (no hardcoded absolute paths)
-   - `getRepoPath()`, `getPythonPath()`, `getTempDir()` utilities
+### TypeScript/Ingester
 
-### Database Architecture
+- Bun runs TypeScript directly (no compilation step)
+- Use path utilities: `getRepoPath()`, `getTempDir()`, `getPythonPath()`
+- Never hardcode absolute paths
+- Follow template method pattern for new ingesters
 
-- **PostgreSQL with pgvector**: Vector similarity search
-- **Embedding Storage**: 1536-dimensional vectors (OpenAI text-embedding-3-large)
-- **Schema**: Content, metadata, embeddings, source filtering
-- **Similarity Measures**: Cosine similarity (default)
+### Testing (Python)
 
-### Integration Flow
+- **Unit tests**: `tests/unit/` - Mock dependencies, fast
+- **Integration tests**: `tests/integration/` - Use TestClient, test full flows
+- **Fixtures**: All shared fixtures in `tests/conftest.py`
+- Never duplicate fixtures in test files
 
-```text
-Python Summarizer → Generated Markdown → Ingester → PostgreSQL → RAG Pipeline → Code Generation
-     (python/)            (python/src/cairo_coder_tools/ (ingesters/)     (pgvector)    (python/)
-                          ingestion/generated/)
-```
+Key fixtures: `client`, `mock_agent`, `mock_vector_db`, `mock_lm`, `sample_documents`
+
+## Adding a New Documentation Source
+
+1. **Ingester** (`ingesters/src/ingesters/`):
+
+   - Create class extending `BaseIngester`
+   - Implement: `downloadAndExtractDocs()`, `createChunks()`, `getExtractDir()`, `parsePage()`
+   - Register in `IngesterFactory.createIngester()`
+
+2. **Types**:
+
+   - Add to `DocumentSource` enum in `ingesters/src/types/index.ts`
+   - Add to `DocumentSource` enum in `python/src/cairo_coder/core/types.py`
+
+3. **Query Processor**:
+
+   - Update `RESOURCE_DESCRIPTIONS` in `python/src/cairo_coder/dspy/query_processor.py`
+
+4. **Optimized Programs** (if applicable):
+
+   - Update `python/optimizers/results/*.json` if prompts reference sources
+
+5. **Run ingestion**:
+   ```bash
+   cd ingesters && bun run generate-embeddings
+   ```
 
 ## Configuration
 
-All configuration via environment variables (`.env` in root):
+Environment variables in `.env` (root directory):
 
 **Required:**
 
-- `POSTGRES_*` - Database credentials
-- `OPENAI_API_KEY` - For embeddings and LLM
+- `POSTGRES_HOST`, `POSTGRES_PORT`, `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB`
+- `OPENAI_API_KEY` - For embeddings
 
 **Optional:**
 
 - `ANTHROPIC_API_KEY`, `GEMINI_API_KEY` - Alternative LLM providers
-- `LANGSMITH_API_KEY` - Tracing/observability
+- `LANGSMITH_API_KEY` - Tracing
+- `XAI_API_KEY` - Grok search
 
-## Development Guidelines
+## Common Tasks
 
-### Ingester Development
+### Fix a failing test
 
-**Code Organization:**
+1. Run `uv run pytest -k "test_name" -v` to see failure details
+2. Check fixtures in `tests/conftest.py` if mocking issues
+3. Run `trunk check --fix` before committing
 
-- Follow template method pattern for new ingesters
-- Use path utilities for all file operations (`getRepoPath()`, `getTempDir()`, `getPythonPath()`)
-- Prefer editing existing files over creating new ones
-- No compilation step - Bun runs TypeScript directly
+### Debug RAG pipeline
 
-**Testing:**
+1. Enable tracing with `LANGSMITH_API_KEY`
+2. Check `python/src/cairo_coder/dspy/` for pipeline logic
+3. Use `uv run cairo-coder --dev` for hot reload during debugging
 
-- Bun test framework (Jest-compatible API)
-- Tests in `__tests__/` directories
-- Focus on behavior, not implementation details
-- Run: `bun test`
+### Add a new LLM provider
 
-**Adding New Documentation Sources:**
+1. Add API key to Configuration section above
+2. Update agent registry in `python/src/cairo_coder/agents/registry.py`
+3. Test with `uv run pytest -k "agent"`
 
-1. Create ingester extending `BaseIngester` in `ingesters/src/ingesters/`
-2. Implement abstract methods:
-   - `downloadAndExtractDocs()` - Fetch documentation
-   - `createChunks()` - Split into searchable chunks
-   - `getExtractDir()` - Use `getTempDir()` for temp storage
-   - `parsePage()` - Parse content into sections
-3. Register in `IngesterFactory.createIngester()`
-4. Add to `DocumentSource` enum in `types/index.ts`
+## Constraints
 
-**Example:**
+- **Never use pip/poetry** - always use `uv` for Python dependencies
+- **Never hardcode paths** in ingesters - use `getRepoPath()`, `getTempDir()`, `getPythonPath()`
+- **Never duplicate fixtures** - all shared fixtures belong in `tests/conftest.py`
+- **Never commit without linting** - run `trunk check --fix` first
+- **Never skip type hints** - enforced by mypy
 
-```typescript
-export class MyDocsIngester extends BaseIngester {
-  constructor() {
-    super(config, DocumentSource.MY_DOCS);
-  }
+## Common Issues
 
-  protected getExtractDir(): string {
-    const { getTempDir } = require("../utils/paths");
-    return getTempDir("my-docs");
-  }
+| Error                                   | Solution                                                 |
+| --------------------------------------- | -------------------------------------------------------- |
+| `ModuleNotFoundError`                   | Run `uv sync` from `python/` directory                   |
+| Embedding failures                      | Check `OPENAI_API_KEY` is set in `.env`                  |
+| `bun: command not found`                | Install Bun: `curl -fsSL https://bun.sh/install \| bash` |
+| Database connection refused             | Run `docker compose up postgres`                         |
+| `DocumentSource` not found after adding | Update both TS and Python enum files (see above)         |
+| Tests pass locally but fail in CI       | Check for hardcoded paths or missing env vars            |
 
-  // Implement other abstract methods...
-}
-```
+## Architecture Reference
 
-### Python Backend Development
+See `docs/ARCHITECTURE.md` for detailed system design and diagrams.
 
-See `python/CLAUDE.md` for comprehensive Python guidelines including:
+## API Reference
 
-- DSPy module patterns
-- Agent registry system
-- Optimization workflows
-- Test suite architecture
-
-### Path Resolution
-
-**Always use path utilities** (never hardcode paths):
-
-```typescript
-import { getRepoPath, getPythonPath, getTempDir } from "../utils/paths";
-
-// ✅ Good
-const envPath = getRepoPath(".env");
-const summaryPath = getPythonPath(
-  "src",
-  "scripts",
-  "summarizer",
-  "generated",
-  "file.md",
-);
-const tempDir = getTempDir("my-ingester");
-
-// ❌ Bad
-const envPath = path.join(__dirname, "../../../.env");
-const summaryPath = "/Users/user/project/python/...";
-```
-
-## Key Documentation Sources
-
-Current ingested sources (see `DocumentSource` enum):
-
-- Cairo Book
-- Starknet Docs
-- Starknet Foundry
-- Cairo by Example
-- OpenZeppelin Contracts
-- Core Library (summarized)
-- Scarb Docs
-- Starknet.js
-
-## MCP (Model Context Protocol) Mode
-
-- Activated via `x-mcp-mode: true` HTTP header
-- Returns raw documentation chunks without LLM generation
-- Useful for integration with other tools needing Cairo documentation
-- Supported in Python backend endpoints
+See `docs/API.md` for HTTP endpoint documentation.
