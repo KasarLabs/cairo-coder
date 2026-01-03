@@ -83,21 +83,6 @@ class RagPipeline(dspy.Module):
         self.retrieval_judge = RetrievalJudge()
         self.grok_search = GrokSearchProgram()
 
-        # Last pipeline result for backward compatibility with last_retrieved_documents
-        # This will be deprecated - prefer using the returned PipelineResult
-        self._last_result: PipelineResult | None = None
-
-    @property
-    def last_retrieved_documents(self) -> list[Document]:
-        """
-        Documents retrieved during the most recent pipeline execution.
-
-        Deprecated: Access documents from the returned PipelineResult instead.
-        """
-        if self._last_result is None:
-            return []
-        return self._last_result.documents
-
     @staticmethod
     def _accumulate_usage(
         accumulated: LMUsage, prediction: dspy.Prediction
@@ -190,7 +175,6 @@ class RagPipeline(dspy.Module):
 
         return processed_query, documents, grok_citations, accumulated_usage
 
-    # Waits for streaming to finish before returning the response
     @traceable(name="RagPipeline", run_type="chain")
     async def aforward(
         self,
@@ -198,7 +182,19 @@ class RagPipeline(dspy.Module):
         chat_history: list[Message] | None = None,
         mcp_mode: bool = False,
         sources: list[DocumentSource] | None = None,
-    ) -> dspy.Prediction:
+    ) -> PipelineResult:
+        """
+        Execute the RAG pipeline and return a PipelineResult.
+
+        Args:
+            query: User's Cairo/Starknet programming question
+            chat_history: Previous conversation messages
+            mcp_mode: Return raw documents without generation
+            sources: Optional source filtering
+
+        Returns:
+            PipelineResult containing documents, usage, answer, and formatted sources
+        """
         chat_history_str = self._format_chat_history(chat_history or [])
         processed_query, documents, grok_citations, accumulated_usage = (
             await self._aprocess_query_and_retrieve_docs(query, chat_history_str, sources)
@@ -210,9 +206,7 @@ class RagPipeline(dspy.Module):
         if mcp_mode:
             result = await self.mcp_generation_program.aforward(documents)
             accumulated_usage = self._accumulate_usage(accumulated_usage, result)
-            result.set_lm_usage(accumulated_usage)
-            # Store result for backward compatibility
-            self._last_result = PipelineResult(
+            return PipelineResult(
                 processed_query=processed_query,
                 documents=documents,
                 grok_citations=grok_citations,
@@ -220,7 +214,6 @@ class RagPipeline(dspy.Module):
                 answer=getattr(result, "answer", None),
                 formatted_sources=self._format_sources(documents, grok_citations),
             )
-            return result
 
         context = self._prepare_context(documents)
 
@@ -229,11 +222,8 @@ class RagPipeline(dspy.Module):
         )
         if result:
             accumulated_usage = self._accumulate_usage(accumulated_usage, result)
-            # Update the result's usage to include accumulated usage from previous steps
-            result.set_lm_usage(accumulated_usage)
 
-        # Store result for backward compatibility
-        self._last_result = PipelineResult(
+        return PipelineResult(
             processed_query=processed_query,
             documents=documents,
             grok_citations=grok_citations,
@@ -241,8 +231,6 @@ class RagPipeline(dspy.Module):
             answer=getattr(result, "answer", None) if result else None,
             formatted_sources=self._format_sources(documents, grok_citations),
         )
-
-        return result
 
 
     async def aforward_streaming(
@@ -329,8 +317,8 @@ class RagPipeline(dspy.Module):
                                 yield StreamEvent(type=StreamEventType.FINAL_RESPONSE, data=final_answer)
                                 rt.end(outputs={"output": final_answer})
 
-            # Store result for backward compatibility
-            self._last_result = PipelineResult(
+            # Pipeline completed - yield the final PipelineResult
+            pipeline_result = PipelineResult(
                 processed_query=processed_query,
                 documents=documents,
                 grok_citations=grok_citations,
@@ -338,9 +326,7 @@ class RagPipeline(dspy.Module):
                 answer=final_answer,
                 formatted_sources=formatted_sources,
             )
-
-            # Pipeline completed
-            yield StreamEvent(type=StreamEventType.END, data=None)
+            yield StreamEvent(type=StreamEventType.END, data=pipeline_result)
 
         except Exception as e:
             # Handle pipeline errors
@@ -349,19 +335,6 @@ class RagPipeline(dspy.Module):
             traceback.print_exc()
             logger.error("Pipeline error", error=e)
             yield StreamEvent(StreamEventType.ERROR, data=f"Pipeline error: {str(e)}")
-
-    def get_lm_usage(self) -> LMUsage:
-        """
-        Get accumulated token usage from the last pipeline execution.
-
-        Deprecated: Access usage from the returned PipelineResult instead.
-
-        Returns:
-            Dictionary mapping model names to usage metrics
-        """
-        if self._last_result is None:
-            return {}
-        return self._last_result.usage
 
     def _format_chat_history(self, chat_history: list[Message]) -> str:
         """
@@ -481,28 +454,6 @@ class RagPipeline(dspy.Module):
             context_parts.append("")
 
         return "\n".join(context_parts)
-
-    def get_current_state(self) -> dict[str, Any]:
-        """
-        Get current pipeline state for debugging.
-
-        Deprecated: Access state from the returned PipelineResult instead.
-
-        Returns:
-            Dictionary with current pipeline state
-        """
-        result = self._last_result
-        return {
-            "processed_query": result.processed_query if result else None,
-            "documents_count": len(result.documents) if result else 0,
-            "documents": result.documents if result else [],
-            "config": {
-                "name": self.config.name,
-                "max_source_count": self.config.max_source_count,
-                "similarity_threshold": self.config.similarity_threshold,
-                "sources": self.config.sources,
-            },
-        }
 
 
 class RagPipelineFactory:

@@ -25,10 +25,10 @@ from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import BaseModel, Field, field_validator
 
 from cairo_coder.core.agent_factory import AgentFactory, create_agent_factory
-from cairo_coder.core.config import ConfigManager, VectorStoreConfig
+from cairo_coder.core.config import VectorStoreConfig, load_config
 from cairo_coder.core.constants import DEFAULT_HOST, DEFAULT_PORT
 from cairo_coder.core.rag_pipeline import RagPipeline
-from cairo_coder.core.types import Message, Role, StreamEventType
+from cairo_coder.core.types import Message, PipelineResult, Role, StreamEventType
 from cairo_coder.db import session as db_session
 from cairo_coder.db.models import UserInteraction
 from cairo_coder.db.repository import create_user_interaction
@@ -169,14 +169,14 @@ async def log_interaction_task(
     query: str,
     chat_history: list[Message],
     response: ChatCompletionResponse,
-    agent: RagPipeline,
+    pipeline_result: "PipelineResult",
     conversation_id: str | None = None,
     user_id: str | None = None,
 ) -> None:
     """Background task that persists a user interaction."""
     sources_data = [
         {"page_content": doc.page_content, "metadata": doc.metadata}
-        for doc in agent.last_retrieved_documents
+        for doc in pipeline_result.documents
     ]
 
     # Convert Message objects to dicts for JSON serialization
@@ -194,7 +194,7 @@ async def log_interaction_task(
         query=query,
         generated_answer=response.choices[0].message.content if response.choices else None,
         retrieved_sources=sources_data,
-        llm_usage=agent.get_lm_usage(),
+        llm_usage=pipeline_result.usage,
     )
     await create_user_interaction(interaction)
 
@@ -205,14 +205,14 @@ async def log_interaction_raw(
     query: str,
     chat_history: list[Message],
     generated_answer: str | None,
-    agent: RagPipeline,
+    pipeline_result: "PipelineResult",
     conversation_id: str | None = None,
     user_id: str | None = None,
 ) -> None:
     """Persist a user interaction without constructing a full response object."""
     sources_data = [
         {"page_content": doc.page_content, "metadata": doc.metadata}
-        for doc in agent.last_retrieved_documents
+        for doc in pipeline_result.documents
     ]
 
     chat_history_dicts = [
@@ -229,7 +229,7 @@ async def log_interaction_raw(
         query=query,
         generated_answer=generated_answer,
         retrieved_sources=sources_data,
-        llm_usage=agent.get_lm_usage()
+        llm_usage=pipeline_result.usage,
     )
     await create_user_interaction(interaction)
 
@@ -489,7 +489,7 @@ class CairoCoderServer:
                 },
             )
         chat_history = messages[:-1]
-        response = await self._generate_chat_completion(agent, query, chat_history, mcp_mode)
+        response, pipeline_result = await self._generate_chat_completion(agent, query, chat_history, mcp_mode)
 
         background_tasks.add_task(
             log_interaction_task,
@@ -498,7 +498,7 @@ class CairoCoderServer:
             query=query,
             chat_history=chat_history,
             response=response,
-            agent=agent,
+            pipeline_result=pipeline_result,
             conversation_id=conversation_id,
             user_id=user_id,
         )
@@ -531,6 +531,7 @@ class CairoCoderServer:
 
         # Process agent and stream responses
         final_response = ""
+        pipeline_result: PipelineResult | None = None
 
         try:
             with ls.trace(name="RagPipelineStreaming", run_type="chain", inputs={"query": query, "chat_history": history, "mcp_mode": mcp_mode}) as rt:
@@ -597,6 +598,8 @@ class CairoCoderServer:
                         rt.end(outputs={"output": final_response})
                         break
                     elif event.type == StreamEventType.END:
+                        # event.data contains the PipelineResult
+                        pipeline_result = event.data
                         rt.end(outputs={"output": final_response})
                         break
 
@@ -618,19 +621,20 @@ class CairoCoderServer:
             yield f"data: {json.dumps(error_chunk)}\n\n"
         finally:
             # Log interaction regardless of client disconnects or errors
-            try:
-                await log_interaction_raw(
-                    agent_id=agent_id,
-                    mcp_mode=mcp_mode,
-                    query=query,
-                    chat_history=history,
-                    generated_answer=final_response,
-                    agent=agent,
-                    conversation_id=conversation_id,
-                    user_id=user_id,
-                )
-            except Exception as log_error:
-                logger.error("Failed to log streaming interaction", error=str(log_error), exc_info=True)
+            if pipeline_result is not None:
+                try:
+                    await log_interaction_raw(
+                        agent_id=agent_id,
+                        mcp_mode=mcp_mode,
+                        query=query,
+                        chat_history=history,
+                        generated_answer=final_response,
+                        pipeline_result=pipeline_result,
+                        conversation_id=conversation_id,
+                        user_id=user_id,
+                    )
+                except Exception as log_error:
+                    logger.error("Failed to log streaming interaction", error=str(log_error), exc_info=True)
 
         # Send final chunk
         final_chunk = {
@@ -667,20 +671,20 @@ class CairoCoderServer:
 
     async def _generate_chat_completion(
         self, agent: RagPipeline, query: str, history: list[Message], mcp_mode: bool
-    ) -> ChatCompletionResponse:
+    ) -> tuple[ChatCompletionResponse, PipelineResult]:
         """Generate non-streaming chat completion response."""
         response_id = str(uuid.uuid4())
         created = int(time.time())
 
-        # Process agent and collect response
-        response: dspy.Prediction = await agent.aforward(
+        # Process agent and collect response - now returns PipelineResult directly
+        pipeline_result: PipelineResult = await agent.aforward(
             query=query, chat_history=history, mcp_mode=mcp_mode
         )
 
-        answer = response.answer
+        answer = pipeline_result.answer
 
-        # Get accumulated usage from the pipeline (not the prediction)
-        lm_usage = agent.get_lm_usage()
+        # Get accumulated usage from the pipeline result
+        lm_usage = pipeline_result.usage
         logger.info(f"LM usage from pipeline: {lm_usage}")
 
         if not lm_usage:
@@ -705,7 +709,7 @@ class CairoCoderServer:
             response_id=response_id,
         )
 
-        return ChatCompletionResponse(
+        chat_response = ChatCompletionResponse(
             id=response_id,
             created=created,
             choices=[
@@ -721,6 +725,8 @@ class CairoCoderServer:
                 total_tokens=total_tokens,
             ),
         )
+
+        return chat_response, pipeline_result
 
 
 def create_app(
@@ -747,7 +753,7 @@ def get_vector_store_config() -> VectorStoreConfig:
     Returns:
         Vector store instance
     """
-    config = ConfigManager.load_config()
+    config = load_config()
     return VectorStoreConfig(
         host=config.vector_store.host,
         port=config.vector_store.port,
@@ -796,7 +802,7 @@ async def lifespan(app: FastAPI):
     await db_session.execute_schema_scripts()
 
     # Load config once
-    config = ConfigManager.load_config()
+    config = load_config()
     vector_store_config = config.vector_store
 
     # embedding_func will default to dspy.settings.embedder (configured in __init__)

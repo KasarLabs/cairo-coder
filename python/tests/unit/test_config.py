@@ -3,11 +3,11 @@
 
 import pytest
 
-from cairo_coder.core.config import Config, ConfigManager, load_config
+from cairo_coder.core.config import Config, load_config, validate_config
 
 
-class TestConfigManager:
-    """Test configuration manager functionality."""
+class TestConfig:
+    """Test configuration functionality."""
 
     def test_load_config_requires_password(self) -> None:
         """Test loading configuration requires database password."""
@@ -20,7 +20,7 @@ class TestConfigManager:
         # Set required password
         monkeypatch.setenv("POSTGRES_PASSWORD", "test-password")
 
-        config = ConfigManager.load_config()
+        config = load_config()
 
         # Check defaults
         assert config.vector_store.host == "postgres"
@@ -46,7 +46,7 @@ class TestConfigManager:
         monkeypatch.setenv("PORT", "8080")
         monkeypatch.setenv("DEBUG", "true")
 
-        config = ConfigManager.load_config()
+        config = load_config()
 
         # Check all values from environment
         assert config.vector_store.host == "env-host"
@@ -63,13 +63,13 @@ class TestConfigManager:
         """Test configuration validation."""
         # Valid config
         monkeypatch.setenv("POSTGRES_PASSWORD", "test-pass")
-        config: Config = ConfigManager.load_config()
-        ConfigManager.validate_config(config)
+        config: Config = load_config()
+        validate_config(config)
 
         # No database password
         config.vector_store.password = ""
         with pytest.raises(ValueError, match="Database password is required"):
-            ConfigManager.validate_config(config)
+            validate_config(config)
 
 
     def test_dsn_property(self, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -80,7 +80,7 @@ class TestConfigManager:
         monkeypatch.setenv("POSTGRES_PORT", "5432")
         monkeypatch.setenv("POSTGRES_DB", "testdb")
 
-        config = ConfigManager.load_config()
+        config = load_config()
 
         expected_dsn = "postgresql://testuser:testpass@testhost:5432/testdb"
         assert config.vector_store.dsn == expected_dsn

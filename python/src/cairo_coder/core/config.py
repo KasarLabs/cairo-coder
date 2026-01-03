@@ -101,22 +101,3 @@ def validate_config(config: Config) -> None:
     # Check database configuration
     if not config.vector_store.password:
         raise ValueError("Database password is required")
-
-
-# Backwards compatibility alias
-class ConfigManager:
-    """
-    Backwards compatibility wrapper for configuration management.
-
-    This class is deprecated. Use `load_config()` and `validate_config()` directly.
-    """
-
-    @staticmethod
-    def load_config() -> Config:
-        """Load configuration from environment variables."""
-        return load_config()
-
-    @staticmethod
-    def validate_config(config: Config) -> None:
-        """Validate configuration for required fields and consistency."""
-        validate_config(config)
