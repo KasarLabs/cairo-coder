@@ -299,7 +299,8 @@ class TestRagPipelineWithJudge:
         # Verify judge was called
         pipeline.retrieval_judge.aforward.assert_called_once()
 
-        filtered_docs = pipeline._current_documents
+        # Use the new stateless pattern - access via last_retrieved_documents property
+        filtered_docs = pipeline.last_retrieved_documents
         assert len(filtered_docs) == expected_count
 
         # Verify all filtered docs meet threshold
@@ -633,9 +634,16 @@ class TestPipelineHelperMethods:
 
     def test_get_current_state(self, sample_documents, sample_processed_query, pipeline):
         """Test pipeline state retrieval."""
-        # Set internal state
-        pipeline._current_processed_query = sample_processed_query
-        pipeline._current_documents = sample_documents
+        from cairo_coder.core.types import PipelineResult
+
+        # Set internal state via _last_result (the new stateless pattern)
+        pipeline._last_result = PipelineResult(
+            processed_query=sample_processed_query,
+            documents=sample_documents,
+            grok_citations=[],
+            usage={},
+            answer=None,
+        )
 
         state = pipeline.get_current_state()
 
@@ -752,10 +760,10 @@ class TestPipelineHelperMethods:
         pipeline_config.document_retriever.aforward = AsyncMock(return_value=dr_prediction)
 
         if mcp_mode:
-            # MCP mode - set MCP program with no usage
+            # MCP mode - set MCP program with no usage (uses sync __call__, not aforward)
             mcp_prediction = dspy.Prediction(answer="MCP answer")
             mcp_prediction.set_lm_usage({})
-            pipeline_config.mcp_generation_program.aforward = AsyncMock(return_value=mcp_prediction)
+            pipeline_config.mcp_generation_program = Mock(return_value=mcp_prediction)
         else:
             # Normal mode - set generation program with usage
             async def mock_streaming(*args, **kwargs):
