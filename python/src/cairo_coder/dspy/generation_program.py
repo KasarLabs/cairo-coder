@@ -210,7 +210,7 @@ class GenerationProgram(dspy.Module):
         max_retries = 3
         for attempt in range(max_retries):
             try:
-                return await self.generation_program.aforward(
+                return await self.generation_program.acall(
                     query=query, context=context, chat_history=chat_history
                 )
             except AdapterParseError as e:
@@ -246,6 +246,7 @@ class GenerationProgram(dspy.Module):
                 dspy.streaming.StreamListener(signature_field_name="answer"),
                 dspy.streaming.StreamListener(signature_field_name="reasoning"),
             ],
+            is_async_program=True,
         )
 
         # Execute the streaming generation. Do not swallow exceptions here;

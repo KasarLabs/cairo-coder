@@ -43,23 +43,23 @@ class TestRetrievalJudge:
     async def test_aforward_empty_documents(self):
         """Test forward with empty document list."""
         judge = RetrievalJudge()
-        prediction = await judge.aforward("test query", [])
+        prediction = await judge.acall("test query", [])
         assert isinstance(prediction, dspy.Prediction)
         assert prediction.documents == []
 
     @pytest.mark.asyncio
     async def test_aforward_with_mocked_rater(self, sample_documents):
         """Test forward method with mocked rater execution."""
-        # Mock rater.aforward to return per-document results
+        # Mock rater.acall to return per-document results
         judge = RetrievalJudge()
-        judge.rater.aforward = AsyncMock(side_effect=[
+        judge.rater.acall = AsyncMock(side_effect=[
             MagicMock(resource_note=0.8, reasoning="Resource Cairo Introduction is highly relevant"),
             MagicMock(resource_note=0.3, reasoning="Resource Starknet Overview is somewhat relevant"),
             MagicMock(resource_note=0.1, reasoning="Resource Python Guide is not relevant"),
         ])
 
         documents = sample_documents
-        prediction = await judge.aforward("How to write Cairo programs?", documents)
+        prediction = await judge.acall("How to write Cairo programs?", documents)
         filtered_docs = prediction.documents
 
         # Assertions
@@ -67,19 +67,19 @@ class TestRetrievalJudge:
         assert filtered_docs[0].metadata["llm_judge_score"] == 0.8
         assert "highly relevant" in filtered_docs[0].metadata["llm_judge_reason"]
 
-        # rater.aforward was invoked for each doc
-        assert judge.rater.aforward.await_count == 3
+        # rater.acall was invoked for each doc
+        assert judge.rater.acall.await_count == 3
 
     @pytest.mark.asyncio
     async def test_forward_with_parse_error(self, sample_documents):
         """Test forward handling parse errors gracefully by dropping the invalid doc."""
         judge = RetrievalJudge()
-        judge.rater.aforward = AsyncMock(side_effect=[
+        judge.rater.acall = AsyncMock(side_effect=[
             MagicMock(resource_note="invalid", reasoning="Some reasoning"),  # Invalid score
             MagicMock(resource_note=0.7, reasoning="Valid result"),
         ])
         documents = sample_documents[:2]
-        prediction = await judge.aforward("test query", documents)
+        prediction = await judge.acall("test query", documents)
         filtered_docs = prediction.documents
 
         # Should only keep the doc that was successfully parsed and scored above threshold.
@@ -96,9 +96,9 @@ class TestRetrievalJudge:
     async def test_aforward_with_exception(self, sample_documents):
         """Test forward handling exceptions by returning all documents."""
         judge = RetrievalJudge()
-        judge.rater.aforward = AsyncMock(side_effect=Exception("Parallel execution failed"))
+        judge.rater.acall = AsyncMock(side_effect=Exception("Parallel execution failed"))
         documents = sample_documents
-        prediction = await judge.aforward("test query", documents)
+        prediction = await judge.acall("test query", documents)
         filtered_docs = prediction.documents
 
         # Should return all documents on failure
@@ -109,7 +109,7 @@ class TestRetrievalJudge:
     async def test_aforward_with_contract_and_test_templates(self, sample_documents):
         """Test forward with contract template."""
         judge = RetrievalJudge()
-        prediction = await judge.aforward(
+        prediction = await judge.acall(
             "test query",
             [
                 Document(
@@ -138,7 +138,7 @@ class TestRetrievalJudge:
     async def test_aforward_with_contract_template(self, sample_documents):
         """Test async forward with contract template."""
         judge = RetrievalJudge()
-        prediction = await judge.aforward(
+        prediction = await judge.acall(
             "test query",
             [
                 Document(
@@ -168,13 +168,13 @@ class TestRetrievalJudge:
     async def test_score_clamping(self, sample_documents):
         """Test that scores are properly clamped to [0,1] range."""
         judge = RetrievalJudge()
-        judge.rater.aforward = AsyncMock(side_effect=[
+        judge.rater.acall = AsyncMock(side_effect=[
             MagicMock(resource_note=1.5, reasoning="Score too high"),
             MagicMock(resource_note=-0.3, reasoning="Score too low"),
             MagicMock(resource_note=0.5, reasoning="Valid score"),
         ])
         documents = sample_documents
-        prediction = await judge.aforward("test", documents)
+        prediction = await judge.acall("test", documents)
         filtered_docs = prediction.documents
 
         # Check scores are clamped and filtering works

@@ -43,13 +43,14 @@ def _make_grok_summary_doc(answer: str) -> Document:
 
 @pytest.mark.asyncio
 async def test_grok_citations_emitted_in_sources_and_summary_excluded(
-    pipeline
+    pipeline, monkeypatch
 ):
+    monkeypatch.delenv("OPTIMIZER_RUN", raising=False)
     # Mock Grok module on the pipeline instance
     grok_doc = _make_grok_summary_doc(GROK_ANSWER)
     grok_prediction = dspy.Prediction(documents=[grok_doc])
     grok_prediction.set_lm_usage({})
-    pipeline.grok_search.aforward = AsyncMock(return_value=grok_prediction)
+    pipeline.grok_search.acall = AsyncMock(return_value=grok_prediction)
     pipeline.grok_search.last_citations = list(GROK_CITATIONS)
 
     # Stream to get SOURCES event
@@ -77,22 +78,23 @@ async def test_grok_citations_emitted_in_sources_and_summary_excluded(
 
 @pytest.mark.asyncio
 async def test_grok_summary_is_first_in_generation_context(
-    pipeline
+    pipeline, monkeypatch
 ):
+    monkeypatch.delenv("OPTIMIZER_RUN", raising=False)
     # Mock Grok module on the pipeline instance
     grok_doc = _make_grok_summary_doc(GROK_ANSWER)
     grok_prediction = dspy.Prediction(documents=[grok_doc])
     grok_prediction.set_lm_usage({})
-    pipeline.grok_search.aforward = AsyncMock(return_value=grok_prediction)
+    pipeline.grok_search.acall = AsyncMock(return_value=grok_prediction)
     pipeline.grok_search.last_citations = list(GROK_CITATIONS)
 
-    await pipeline.aforward(
+    await pipeline.acall(
         "What's vesu and how can I get yield on it?",
         sources=[DocumentSource.STARKNET_BLOG],
     )
 
     # Inspect the generation context to confirm virtual doc has no header
-    _, kwargs = pipeline.generation_program.aforward.call_args
+    _, kwargs = pipeline.generation_program.acall.call_args
     context = kwargs["context"]
     # Virtual documents should NOT have headers to prevent citation
     assert "## Grok Web/X Summary" not in context
@@ -103,20 +105,22 @@ async def test_grok_summary_is_first_in_generation_context(
 
 @pytest.mark.asyncio
 async def test_grok_not_triggered_without_starknet_blog(
-    pipeline
+    pipeline, monkeypatch
 ):
-    pipeline.grok_search.aforward = AsyncMock()
+    monkeypatch.delenv("OPTIMIZER_RUN", raising=False)
+    pipeline.grok_search.acall = AsyncMock()
 
-    await pipeline.aforward("test query", sources=[DocumentSource.CAIRO_BOOK])
-    pipeline.grok_search.aforward.assert_not_called()
+    await pipeline.acall("test query", sources=[DocumentSource.CAIRO_BOOK])
+    pipeline.grok_search.acall.assert_not_called()
 
 
 @pytest.mark.asyncio
 async def test_grok_failure_does_not_pollute_sources(
-    pipeline
+    pipeline, monkeypatch
 ):
+    monkeypatch.delenv("OPTIMIZER_RUN", raising=False)
     # Force Grok to fail
-    pipeline.grok_search.aforward = AsyncMock(side_effect=Exception("Grok failed"))
+    pipeline.grok_search.acall = AsyncMock(side_effect=Exception("Grok failed"))
 
     events = []
     async for ev in pipeline.aforward_streaming(

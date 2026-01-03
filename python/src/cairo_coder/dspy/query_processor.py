@@ -138,7 +138,7 @@ class QueryProcessorProgram(dspy.Module):
             dspy.Prediction containing processed_query and attached usage
         """
         # Execute the DSPy retrieval program
-        result = await self.retrieval_program.aforward(query=query, chat_history=chat_history)
+        result = await self.retrieval_program.acall(query=query, chat_history=chat_history)
 
         # Parse and validate the results
         search_queries = result.search_queries
@@ -153,10 +153,7 @@ class QueryProcessorProgram(dspy.Module):
             resources=resources,
         )
 
-        prediction = dspy.Prediction(processed_query=processed_query)
-        prediction.set_lm_usage(result.get_lm_usage() or {})
-
-        return prediction
+        return dspy.Prediction(processed_query=processed_query)
 
     def _validate_resources(self, resources: list[str]) -> list[DocumentSource]:
         """

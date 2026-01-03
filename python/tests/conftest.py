@@ -32,6 +32,20 @@ from cairo_coder.dspy.retrieval_judge import RetrievalJudge
 from cairo_coder.server.app import CairoCoderServer, get_agent_factory, get_vector_db
 
 
+@pytest.fixture(autouse=True)
+def enable_dspy_track_usage(monkeypatch):
+    """Ensure DSPy usage tracking is enabled for Module.acall in tests."""
+    monkeypatch.setattr(dspy.settings, "track_usage", True, raising=False)
+    yield
+
+
+@pytest.fixture(autouse=True)
+def optimizer_artifacts_optional(monkeypatch):
+    """Skip optimizer artifact loading in tests."""
+    monkeypatch.setenv("OPTIMIZER_RUN", "1")
+    yield
+
+
 @pytest.fixture(scope="function")
 def mock_returned_documents(sample_documents):
     """DSPy Examples derived from sample_documents for DRY content."""
@@ -88,6 +102,11 @@ def mock_lm():
                 answer="Here's a Cairo contract example:\n\n```cairo\n#[starknet::contract]\nmod SimpleContract {\n    // Contract implementation\n}\n```\n\nThis contract demonstrates basic Cairo syntax."
             )
         )
+        mock_program.acall = AsyncMock(
+            return_value=dspy.Prediction(
+                answer="Here's a Cairo contract example:\n\n```cairo\n#[starknet::contract]\nmod SimpleContract {\n    // Contract implementation\n}\n```\n\nThis contract demonstrates basic Cairo syntax."
+            )
+        )
         mock_cot.return_value = mock_program
         yield mock_program
 
@@ -107,6 +126,11 @@ def mock_lm_predict():
         )
         # Mock for async calls - use AsyncMock for coroutine
         mock_program.aforward = AsyncMock(
+            return_value=dspy.Prediction(
+                answer="Here's a Cairo contract example:\n\n```cairo\n#[starknet::contract]\nmod SimpleContract {\n    // Contract implementation\n}\n```\n\nThis contract demonstrates basic Cairo syntax."
+            )
+        )
+        mock_program.acall = AsyncMock(
             return_value=dspy.Prediction(
                 answer="Here's a Cairo contract example:\n\n```cairo\n#[starknet::contract]\nmod SimpleContract {\n    // Contract implementation\n}\n```\n\nThis contract demonstrates basic Cairo syntax."
             )
@@ -202,24 +226,25 @@ def mock_agent():
         )
         yield StreamEvent(type=StreamEventType.END, data=pipeline_result)
 
-    async def mock_aforward(query: str, chat_history: list[Message] | None = None, mcp_mode: bool = False):
-        """Mock agent aforward method that returns a PipelineResult."""
+    async def mock_acall(query: str, chat_history: list[Message] | None = None, mcp_mode: bool = False):
+        """Mock agent acall method that returns a Prediction with usage."""
         if mcp_mode:
             answer = "Cairo is a programming language"
         else:
             answer = "Hello! I'm Cairo Coder. How can I help you?"
 
-        return PipelineResult(
+        prediction = dspy.Prediction(
             processed_query=None,
             documents=[],
             grok_citations=[],
-            usage=mock_usage,
             answer=answer,
             formatted_sources=[],
         )
+        prediction.set_lm_usage(mock_usage)
+        return prediction
 
     # Assign async forward methods
-    mock_agent.aforward = mock_aforward
+    mock_agent.acall = mock_acall
     mock_agent.aforward_streaming = mock_aforward_streaming
 
     return mock_agent
@@ -416,6 +441,7 @@ def mock_query_processor(sample_processed_query):
 
     processor.forward = Mock(return_value=prediction)
     processor.aforward = AsyncMock(return_value=prediction)
+    processor.acall = AsyncMock(return_value=prediction)
     return processor
 
 
@@ -428,6 +454,7 @@ def mock_document_retriever(sample_documents):
 
     retriever.forward = Mock(return_value=prediction)
     retriever.aforward = AsyncMock(return_value=prediction)
+    retriever.acall = AsyncMock(return_value=prediction)
     return retriever
 
 
@@ -443,6 +470,7 @@ def mock_generation_program():
 
     program.forward = Mock(return_value=prediction)
     program.aforward = AsyncMock(return_value=prediction)
+    program.acall = AsyncMock(return_value=prediction)
 
     async def mock_streaming(*args, **kwargs):
         yield dspy.streaming.StreamResponse(predict_name="GenerationProgram", signature_field_name="answer", chunk="Here's how to write ", is_last_chunk=False)
@@ -481,6 +509,7 @@ Storage variables use #[storage] attribute.
     prediction.set_lm_usage({})
 
     program.aforward = AsyncMock(return_value=prediction)
+    program.acall = AsyncMock(return_value=prediction)
     return program
 
 
@@ -525,6 +554,7 @@ def mock_retrieval_judge():
 
     judge.forward = Mock(side_effect=filter_docs)
     judge.aforward = AsyncMock(side_effect=async_filter_docs)
+    judge.acall = AsyncMock(side_effect=async_filter_docs)
     judge.threshold = 0.4
 
     return judge
@@ -581,12 +611,12 @@ def pipeline(pipeline_config_for_pipeline):
         mock_judge = Mock()
 
         # Judge should return prediction with documents
-        async def judge_aforward(query, documents):
+        async def judge_acall(query, documents):
             prediction = dspy.Prediction(documents=documents)
             prediction.set_lm_usage({})
             return prediction
 
-        mock_judge.aforward = AsyncMock(side_effect=judge_aforward)
+        mock_judge.acall = AsyncMock(side_effect=judge_acall)
         mock_judge_class.return_value = mock_judge
         return RagPipeline(pipeline_config_for_pipeline)
 

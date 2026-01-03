@@ -200,33 +200,6 @@ class ErrorResponse:
         }
 
 
-def combine_usage(usage1: LMUsage, usage2: LMUsage) -> LMUsage:
-    """Combine two LM usage dictionaries, tolerating missing inputs."""
-    result: LMUsage = {model: (metrics or {}).copy() for model, metrics in usage1.items()}
-
-    for model, metrics in usage2.items():
-        if model not in result:
-            result[model] = metrics.copy()
-        else:
-            # Merge metrics
-            for key, value in metrics.items():
-                if isinstance(value, int | float):
-                    # Use (x or 0) to handle None values - dict.get() returns None
-                    # if the key exists with value None, not the default
-                    result[model][key] = (result[model].get(key) or 0) + value
-                elif isinstance(value, dict):
-                    if key not in result[model] or result[model][key] is None:
-                        result[model][key] = value.copy()
-                    else:
-                        # Recursive merge for nested dicts
-                        for detail_key, detail_value in value.items():
-                            if isinstance(detail_value, int | float):
-                                result[model][key][detail_key] = (
-                                    (result[model][key].get(detail_key) or 0) + detail_value
-                                )
-    return result
-
-
 class AgentResponse(BaseModel):
     """Response from agent processing."""
 

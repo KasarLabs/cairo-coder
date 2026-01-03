@@ -51,9 +51,9 @@ class TestDocumentRetrieverProgram:
         retriever.vector_db.aforward.return_value = mock_dspy_examples
 
         # Execute retrieval - use async version since we're in async test
-        prediction = await retriever.aforward(sample_processed_query)
+        prediction = await retriever.acall(sample_processed_query)
 
-        # Verify results - aforward now returns a Prediction with documents attribute
+        # Verify results - acall now returns a Prediction with documents attribute
         assert isinstance(prediction, dspy.Prediction)
         result = prediction.documents
         assert len(result) != 0
@@ -80,7 +80,7 @@ class TestDocumentRetrieverProgram:
             resources=[DocumentSource.CAIRO_BOOK],
         )
 
-        prediction = await retriever.aforward(query)
+        prediction = await retriever.acall(query)
 
         # Should still work with empty transformed terms
         assert isinstance(prediction, dspy.Prediction)
@@ -98,7 +98,7 @@ class TestDocumentRetrieverProgram:
         # Override sources
         custom_sources = [DocumentSource.SCARB_DOCS, DocumentSource.OPENZEPPELIN_DOCS]
 
-        prediction = await retriever.aforward(sample_processed_query, sources=custom_sources)
+        prediction = await retriever.acall(sample_processed_query, sources=custom_sources)
 
         # Verify result
         assert isinstance(prediction, dspy.Prediction)
@@ -114,7 +114,7 @@ class TestDocumentRetrieverProgram:
         """Test handling of empty document results."""
         retriever.vector_db.aforward = AsyncMock(return_value=[])
 
-        prediction = await retriever.aforward(sample_processed_query)
+        prediction = await retriever.acall(sample_processed_query)
 
         # Should return prediction with empty documents list
         assert isinstance(prediction, dspy.Prediction)
@@ -127,7 +127,7 @@ class TestDocumentRetrieverProgram:
         retriever.vector_db.aforward.side_effect = Exception("Database connection error")
 
         with pytest.raises(Exception) as exc_info:
-            await retriever.aforward(sample_processed_query)
+            await retriever.acall(sample_processed_query)
 
         assert "Database connection error" in str(exc_info.value)
 
@@ -138,7 +138,7 @@ class TestDocumentRetrieverProgram:
         retriever.vector_db.aforward.side_effect = Exception("Query execution error")
 
         with pytest.raises(Exception) as exc_info:
-            await retriever.aforward(sample_processed_query)
+            await retriever.acall(sample_processed_query)
 
         assert "Query execution error" in str(exc_info.value)
 
@@ -153,7 +153,7 @@ class TestDocumentRetrieverProgram:
             max_source_count=15,  # Custom value
             similarity_threshold=0.4,
         )
-        await retriever.aforward(sample_processed_query)
+        await retriever.acall(sample_processed_query)
         # Verify max_source_count was passed as k parameter
         retriever.vector_db.aforward.assert_called()
 
@@ -181,7 +181,7 @@ class TestDocumentRetrieverProgram:
 
         retriever.vector_db.aforward = AsyncMock(return_value=mock_examples)
 
-        prediction = await retriever.aforward(sample_processed_query)
+        prediction = await retriever.acall(sample_processed_query)
         result = prediction.documents
 
         # Verify conversion to Document objects
@@ -243,7 +243,7 @@ class TestDocumentRetrieverProgram:
         )
         mock_vector_db.aforward.return_value = mock_dspy_examples
 
-        prediction = await retriever.aforward(query)
+        prediction = await retriever.acall(query)
         result: list[Document] = prediction.documents
 
         found_templates = {

@@ -71,9 +71,9 @@ def _(dspy, vector_db, vector_store_config):
             mcp_mode: bool = False,
             sources: list[DocumentSource] | None = None,
         ) -> dspy.Prediction:
-            context = await documentation_fetcher.aforward(query=query, mcp_mode=True)
-            return await self.generation_program.aforward(
-                query=query, context=context, chat_history=None
+            context_prediction = await documentation_fetcher.acall(query=query, mcp_mode=True)
+            return await self.generation_program.acall(
+                query=query, context=context_prediction.answer, chat_history=None
             )
 
     generation_program = dspy.syncify(ProgramToOptimize())

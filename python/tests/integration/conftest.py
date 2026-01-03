@@ -35,7 +35,7 @@ def patch_dspy_streaming_error(monkeypatch, real_pipeline):
         type("S", (), {"StreamResponse": FakeStreamResponse, "StreamListener": FakeStreamListener}),
     )
 
-    def fake_streamify(_program, stream_listeners=None):  # noqa: ARG001
+    def fake_streamify(_program, stream_listeners=None, **kwargs):  # noqa: ARG001
         def runner(**kwargs):  # noqa: ARG001
             async def gen():
                 raise RuntimeError("unhandled errors in a TaskGroup (1 sub-exception)")
@@ -86,17 +86,17 @@ def real_pipeline(mock_query_processor, mock_vector_store_config, mock_vector_db
     # Avoid LLM calls in the judge and non-streaming generation
     from unittest.mock import AsyncMock
 
-    async def _judge_aforward(query, documents):
+    async def _judge_acall(query, documents):
         prediction = dspy.Prediction(documents=documents)
         prediction.set_lm_usage({})
         return prediction
 
-    pipeline.retrieval_judge.aforward = AsyncMock(side_effect=_judge_aforward)
+    pipeline.retrieval_judge.acall = AsyncMock(side_effect=_judge_acall)
 
     # Patch non-streaming generation to mimic conversation turns using chat_history
     import dspy as _dspy
 
-    async def _fake_gen_aforward(query: str, context: str, chat_history: str | None = None):
+    async def _fake_gen_acall(query: str, context: str, chat_history: str | None = None):
         lines = [ln for ln in (chat_history or "").split("\n") if ln.strip()]
         # Mimic the test's selection based on number of prior message pairs
         responses = [
@@ -116,13 +116,13 @@ def real_pipeline(mock_query_processor, mock_vector_store_config, mock_vector_db
         final_prediction.set_lm_usage({})
         yield final_prediction
 
-    pipeline.generation_program.aforward = AsyncMock(side_effect=_fake_gen_aforward)
+    pipeline.generation_program.acall = AsyncMock(side_effect=_fake_gen_acall)
     pipeline.generation_program.aforward_streaming =_fake_gen_aforward_streaming
 
     # Patch MCP generation to a deterministic simple string as tests expect
     mcp_prediction = _dspy.Prediction(answer="Cairo is a programming language")
     mcp_prediction.set_lm_usage({})
-    pipeline.mcp_generation_program.aforward = AsyncMock(return_value=mcp_prediction)
+    pipeline.mcp_generation_program.acall = AsyncMock(return_value=mcp_prediction)
 
     def _mcp_forward(documents):  # noqa: ARG001 - deterministic response
         prediction = _dspy.Prediction(answer="Cairo is a programming language")
@@ -139,7 +139,7 @@ def patch_suggestion_program(monkeypatch):
     import dspy
 
     mock_suggestion_program = Mock(spec=dspy.Predict)
-    mock_suggestion_program.aforward = AsyncMock(return_value=dspy.Prediction(suggestions=[
+    mock_suggestion_program.acall = AsyncMock(return_value=dspy.Prediction(suggestions=[
         "How do I deploy this contract to testnet?",
         "What are the best practices for contract security?",
         "Can you explain how storage works in Cairo contracts?",
