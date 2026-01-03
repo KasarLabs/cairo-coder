@@ -17,7 +17,7 @@ from dspy.adapters import XMLAdapter
 from langsmith import traceable
 
 from cairo_coder.core.config import VectorStoreConfig
-from cairo_coder.core.constants import SIMILARITY_THRESHOLD
+from cairo_coder.core.constants import DEFAULT_JUDGE_LM, MAX_SOURCE_COUNT, SIMILARITY_THRESHOLD
 from cairo_coder.core.types import (
     Document,
     DocumentSource,
@@ -53,7 +53,7 @@ class RagPipelineConfig:
     generation_program: GenerationProgram
     mcp_generation_program: McpGenerationProgram
     sources: list[DocumentSource]
-    max_source_count: int = 10
+    max_source_count: int = MAX_SOURCE_COUNT
     similarity_threshold: float = SIMILARITY_THRESHOLD
 
 
@@ -124,7 +124,9 @@ class RagPipeline(dspy.Module):
         processed_query = qp_prediction.processed_query
 
         # Use provided sources or fall back to processed query sources
-        retrieval_sources = sources or processed_query.resources
+        retrieval_sources = (
+            processed_query.resources if sources is None else sources
+        )
         dr_prediction = await self.document_retriever.aforward(
             processed_query=processed_query, sources=retrieval_sources
         )
@@ -149,7 +151,7 @@ class RagPipeline(dspy.Module):
 
         try:
             with dspy.context(
-                lm=dspy.LM("gemini/gemini-flash-lite-latest", max_tokens=10000, temperature=0.5),
+                lm=dspy.LM(DEFAULT_JUDGE_LM, max_tokens=10000, temperature=0.5),
                 adapter=XMLAdapter(),
             ):
                 judge_pred = await self.retrieval_judge.aforward(query=query, documents=documents)
@@ -164,14 +166,13 @@ class RagPipeline(dspy.Module):
             # documents already contains all retrieved docs, no action needed
 
         # Ensure Grok summary is present and first in order (for generation context)
-        try:
-            if grok_summary_doc is not None:
-                if grok_summary_doc in documents:
-                    documents = [grok_summary_doc] + [d for d in documents if d is not grok_summary_doc]
-                else:
-                    documents = [grok_summary_doc] + documents
-        except Exception:
-            pass
+        if grok_summary_doc is not None:
+            if grok_summary_doc in documents:
+                documents = [grok_summary_doc] + [
+                    d for d in documents if d is not grok_summary_doc
+                ]
+            else:
+                documents = [grok_summary_doc] + documents
 
         return processed_query, documents, grok_citations, accumulated_usage
 
@@ -220,15 +221,14 @@ class RagPipeline(dspy.Module):
         result = await self.generation_program.aforward(
             query=query, context=context, chat_history=chat_history_str
         )
-        if result:
-            accumulated_usage = self._accumulate_usage(accumulated_usage, result)
+        accumulated_usage = self._accumulate_usage(accumulated_usage, result)
 
         return PipelineResult(
             processed_query=processed_query,
             documents=documents,
             grok_citations=grok_citations,
             usage=accumulated_usage,
-            answer=getattr(result, "answer", None) if result else None,
+            answer=getattr(result, "answer", None),
             formatted_sources=self._format_sources(documents, grok_citations),
         )
 

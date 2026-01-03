@@ -5,9 +5,9 @@
  */
 
 import * as fs from 'fs';
-import * as path from 'path';
 import { type BookConfig } from './types';
 import { type DocumentSource } from '../types';
+import { getRepoPath } from './paths';
 
 /**
  * Configuration for a single documentation source
@@ -38,8 +38,7 @@ let cachedConfig: SourcesConfig | null = null;
  * Get the path to the sources.json config file
  */
 function getConfigPath(): string {
-  // Navigate from src/utils to config/sources.json
-  return path.resolve(__dirname, '..', '..', 'config', 'sources.json');
+  return getRepoPath('ingesters', 'config', 'sources.json');
 }
 
 /**

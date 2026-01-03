@@ -327,42 +327,32 @@ class DocumentRetrieverProgram(dspy.Module):
         Returns:
             List of relevant Document objects, ranked by similarity
         """
-        try:
-            search_queries = processed_query.search_queries
-            if not search_queries or len(search_queries) == 0:
-                search_queries = [processed_query.original]
+        search_queries = processed_query.search_queries or [processed_query.original]
 
+        db_url = self.vector_store_config.dsn
+        pg_table_name = self.vector_store_config.table_name
+        sync_retriever = SourceFilteredPgVectorRM(
+            db_url=db_url,
+            pg_table_name=pg_table_name,
+            content_field="content",
+            fields=["id", "content", "metadata"],
+            k=self.max_source_count,
+        )
 
-            db_url = self.vector_store_config.dsn
-            pg_table_name = self.vector_store_config.table_name
-            sync_retriever = SourceFilteredPgVectorRM(
-                db_url=db_url,
-                pg_table_name=pg_table_name,
-                content_field="content",
-                fields=["id", "content", "metadata"],
-                k=self.max_source_count,
+        retrieved_examples: list[dspy.Example] = []
+        for search_query in search_queries:
+            examples = sync_retriever.forward(
+                query=search_query, sources=sources, k=self.max_source_count
             )
+            retrieved_examples.extend(examples)
 
-            retrieved_examples: list[dspy.Example] = []
-            for search_query in search_queries:
-                examples = sync_retriever.forward(query=search_query, sources=sources, k=self.max_source_count)
-                retrieved_examples.extend(examples)
+        # Convert to Document objects and deduplicate using a set
+        documents = {
+            Document(page_content=ex.content, metadata=ex.metadata)
+            for ex in retrieved_examples
+        }
 
-            # Convert to Document objects and deduplicate using a set
-            documents = set()
-            for ex in retrieved_examples:
-                doc = Document(page_content=ex.content, metadata=ex.metadata)
-                try:
-                    documents.add(doc)
-                except Exception as e:
-                    logger.error(f"Error adding document: {e}. Type of fields: {[type(field) for field in ex]}")
-
-            return list(documents)
-        except Exception as e:
-            import traceback
-
-            logger.error(f"Error fetching documents: {traceback.format_exc()}")
-            raise e
+        return list(documents)
 
     async def _afetch_documents(
         self, processed_query: ProcessedQuery, sources: list[DocumentSource]
@@ -377,35 +367,21 @@ class DocumentRetrieverProgram(dspy.Module):
         Returns:
             List of Document objects from vector store
         """
-        try:
+        search_queries = processed_query.search_queries or [processed_query.original]
 
-            search_queries = processed_query.search_queries
-            if not search_queries or len(search_queries) == 0:
-                search_queries = [processed_query.original]
+        retrieved_examples: list[dspy.Example] = []
+        for search_query in search_queries:
+            # Use async version of retriever
+            examples = await self.vector_db.aforward(query=search_query, sources=sources)
+            retrieved_examples.extend(examples)
 
+        # Convert to Document objects and deduplicate using a set
+        documents = {
+            Document(page_content=ex.content, metadata=ex.metadata)
+            for ex in retrieved_examples
+        }
 
-            retrieved_examples: list[dspy.Example] = []
-            for search_query in search_queries:
-                # Use async version of retriever
-                examples = await self.vector_db.aforward(query=search_query, sources=sources)
-                retrieved_examples.extend(examples)
-
-            # Convert to Document objects and deduplicate using a set
-            documents = set()
-            for ex in retrieved_examples:
-                doc = Document(page_content=ex.content, metadata=ex.metadata)
-                try:
-                    documents.add(doc)
-                except Exception as e:
-                    logger.error(f"Error adding document: {e}. Type of fields: {[type(field) for field in ex]}")
-
-            return list(documents)
-
-        except Exception as e:
-            import traceback
-
-            logger.error(f"Error fetching documents: {traceback.format_exc()}")
-            raise e
+        return list(documents)
 
     def _enhance_context(self, processed_query: ProcessedQuery, context: list[Document]) -> list[Document]:
         """

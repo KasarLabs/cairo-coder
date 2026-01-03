@@ -26,6 +26,7 @@ DEFAULT_POSTGRES_TABLE_NAME = "documents"
 SIMILARITY_THRESHOLD = 0.4
 MAX_SOURCE_COUNT = 5
 DEFAULT_RETRIEVAL_K = 5
+DEFAULT_JUDGE_LM = "gemini/gemini-flash-lite-latest"
 
 # =============================================================================
 # Connection Pool Configuration
