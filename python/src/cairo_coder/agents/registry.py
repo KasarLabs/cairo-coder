@@ -11,6 +11,7 @@ from enum import Enum
 from typing import Any
 
 from cairo_coder.core.config import VectorStoreConfig
+from cairo_coder.core.constants import MAX_SOURCE_COUNT, SIMILARITY_THRESHOLD
 from cairo_coder.core.rag_pipeline import RagPipeline, RagPipelineFactory
 from cairo_coder.core.types import DocumentSource
 from cairo_coder.dspy.document_retriever import SourceFilteredPgVectorRM
@@ -37,8 +38,8 @@ class AgentSpec:
     sources: list[DocumentSource]
     pipeline_builder: Callable[..., RagPipeline]
     builder_kwargs: dict[str, Any] = field(default_factory=dict)
-    max_source_count: int = 5
-    similarity_threshold: float = 0.4
+    max_source_count: int = MAX_SOURCE_COUNT
+    similarity_threshold: float = SIMILARITY_THRESHOLD
 
     def build(self, vector_db: SourceFilteredPgVectorRM, vector_store_config: VectorStoreConfig) -> RagPipeline:
         """
@@ -74,8 +75,8 @@ registry: dict[AgentId, AgentSpec] = {
             "generation_program": create_generation_program(AgentId.CAIRO_CODER),
             "mcp_generation_program": create_mcp_generation_program(),
         },
-        max_source_count=5,
-        similarity_threshold=0.4,
+        max_source_count=MAX_SOURCE_COUNT,
+        similarity_threshold=SIMILARITY_THRESHOLD,
     ),
     AgentId.STARKNET: AgentSpec(
         name="Starknet Agent",
@@ -87,8 +88,8 @@ registry: dict[AgentId, AgentSpec] = {
             "generation_program": create_generation_program(AgentId.STARKNET),
             "mcp_generation_program": create_mcp_generation_program(),
         },
-        max_source_count=5,
-        similarity_threshold=0.4,
+        max_source_count=MAX_SOURCE_COUNT,
+        similarity_threshold=SIMILARITY_THRESHOLD,
     )
 }
 

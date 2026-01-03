@@ -14,6 +14,7 @@ from psycopg2 import sql
 
 import dspy
 from cairo_coder.core.config import VectorStoreConfig
+from cairo_coder.core.constants import SIMILARITY_THRESHOLD
 from cairo_coder.core.types import Document, DocumentSource, ProcessedQuery
 from cairo_coder.dspy.pgvector_rm import PgVectorRM
 
@@ -533,7 +534,7 @@ class DocumentRetrieverProgram(dspy.Module):
         vector_store_config: VectorStoreConfig,
         vector_db: SourceFilteredPgVectorRM | None = None,
         max_source_count: int = 5,
-        similarity_threshold: float = 0.4,
+        similarity_threshold: float = SIMILARITY_THRESHOLD,
     ):
         """
         Initialize the DocumentRetrieverProgram.
@@ -741,7 +742,7 @@ def create_document_retriever(
     vector_store_config: VectorStoreConfig,
     vector_db: SourceFilteredPgVectorRM | None = None,
     max_source_count: int = 5,
-    similarity_threshold: float = 0.4,
+    similarity_threshold: float = SIMILARITY_THRESHOLD,
 ) -> DocumentRetrieverProgram:
     """
     Factory function to create a DocumentRetrieverProgram instance.

@@ -24,9 +24,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import BaseModel, Field, field_validator
 
-from cairo_coder.config.manager import ConfigManager
 from cairo_coder.core.agent_factory import AgentFactory, create_agent_factory
-from cairo_coder.core.config import VectorStoreConfig
+from cairo_coder.core.config import ConfigManager, VectorStoreConfig
+from cairo_coder.core.constants import DEFAULT_HOST, DEFAULT_PORT
 from cairo_coder.core.rag_pipeline import RagPipeline
 from cairo_coder.core.types import Message, Role, StreamEventType
 from cairo_coder.db import session as db_session
@@ -844,8 +844,8 @@ def main():
 
     uvicorn.run(
         "cairo_coder.server.app:create_app_factory",
-        host="0.0.0.0",
-        port=3001,
+        host=DEFAULT_HOST,
+        port=DEFAULT_PORT,
         reload=args.dev,
         log_level="info",
         workers=args.workers,

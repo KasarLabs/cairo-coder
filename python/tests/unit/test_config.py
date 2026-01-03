@@ -3,8 +3,7 @@
 
 import pytest
 
-from cairo_coder.config.manager import ConfigManager
-from cairo_coder.core.config import Config
+from cairo_coder.core.config import Config, ConfigManager, load_config
 
 
 class TestConfigManager:
@@ -14,7 +13,7 @@ class TestConfigManager:
         """Test loading configuration requires database password."""
         # No password set due to autouse fixture
         with pytest.raises(ValueError, match="Database password is required"):
-            ConfigManager.load_config()
+            load_config()
 
     def test_load_config_with_defaults(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """Test loading configuration with default values."""

@@ -17,6 +17,7 @@ from dspy.adapters import XMLAdapter
 from langsmith import traceable
 
 from cairo_coder.core.config import VectorStoreConfig
+from cairo_coder.core.constants import SIMILARITY_THRESHOLD
 from cairo_coder.core.types import (
     Document,
     DocumentSource,
@@ -51,7 +52,7 @@ class RagPipelineConfig:
     mcp_generation_program: McpGenerationProgram
     sources: list[DocumentSource]
     max_source_count: int = 10
-    similarity_threshold: float = 0.4
+    similarity_threshold: float = SIMILARITY_THRESHOLD
 
 
 class RagPipeline(dspy.Module):

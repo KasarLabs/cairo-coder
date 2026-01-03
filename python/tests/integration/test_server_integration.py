@@ -16,8 +16,7 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from cairo_coder.agents.registry import AgentId
-from cairo_coder.config.manager import ConfigManager
-from cairo_coder.core.config import VectorStoreConfig
+from cairo_coder.core.config import ConfigManager, VectorStoreConfig
 from cairo_coder.server.app import CairoCoderServer, ChatCompletionResponse, create_app
 
 
@@ -369,7 +368,7 @@ class TestServerStartup:
         """Test create_app with default config manager."""
         with (
             patch("cairo_coder.server.app.create_agent_factory"),
-            patch("cairo_coder.config.manager.ConfigManager") as mock_config_class,
+            patch("cairo_coder.core.config.ConfigManager") as mock_config_class,
         ):
             mock_config_class.return_value = Mock()
             app = create_app(mock_vector_store_config)

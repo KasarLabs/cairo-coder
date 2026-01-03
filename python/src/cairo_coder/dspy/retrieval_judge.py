@@ -16,6 +16,7 @@ import structlog
 from langsmith import traceable
 
 import dspy
+from cairo_coder.core.constants import SIMILARITY_THRESHOLD
 from cairo_coder.core.types import Document, combine_usage
 from cairo_coder.dspy.document_retriever import CONTRACT_TEMPLATE_TITLE, TEST_TEMPLATE_TITLE
 
@@ -98,7 +99,7 @@ class RetrievalRecallPrecision(dspy.Signature):
     )
 
 
-DEFAULT_THRESHOLD = 0.4
+DEFAULT_THRESHOLD = SIMILARITY_THRESHOLD
 DEFAULT_PARALLEL_THREADS = 5
 
 

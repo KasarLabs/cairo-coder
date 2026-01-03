@@ -2,7 +2,7 @@
 
 import pytest
 
-from cairo_coder.config.manager import ConfigManager
+from cairo_coder.core.config import ConfigManager
 
 
 class TestConfigIntegration:
