@@ -232,3 +232,20 @@ class AgentResponse(BaseModel):
 
     success: bool
     error: ErrorResponse | None = None
+
+
+@dataclass
+class PipelineResult:
+    """
+    Result from a RAG pipeline execution.
+
+    Contains all outputs from a pipeline run, making the pipeline stateless
+    by returning this result instead of storing state in instance variables.
+    """
+
+    processed_query: ProcessedQuery
+    documents: list[Document]
+    grok_citations: list[str]
+    usage: LMUsage
+    answer: str | None = None
+    formatted_sources: list[FormattedSource] = field(default_factory=list)
