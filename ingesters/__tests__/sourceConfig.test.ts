@@ -28,7 +28,9 @@ describe('sourceConfig', () => {
     const bookConfig = getBookConfig(DocumentSource.CAIRO_BOOK);
 
     expect(sourceConfig).toEqual(config.sources[DocumentSource.CAIRO_BOOK]);
-    expect(bookConfig).toEqual(config.sources[DocumentSource.CAIRO_BOOK].config);
+    expect(bookConfig).toEqual(
+      config.sources[DocumentSource.CAIRO_BOOK].config,
+    );
   });
 
   it('returns all available sources from config', () => {

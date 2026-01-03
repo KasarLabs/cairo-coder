@@ -84,7 +84,7 @@ def real_pipeline(mock_query_processor, mock_vector_store_config, mock_vector_db
     )
 
     # Avoid LLM calls in the judge and non-streaming generation
-    from unittest.mock import AsyncMock, Mock
+    from unittest.mock import AsyncMock
 
     async def _judge_aforward(query, documents):
         prediction = dspy.Prediction(documents=documents)
