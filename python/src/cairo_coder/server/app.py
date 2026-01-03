@@ -684,7 +684,11 @@ class CairoCoderServer:
 
         # Get accumulated usage from the pipeline result
         lm_usage = pipeline_result.usage
-        logger.info(f"LM usage from pipeline: {lm_usage}")
+        if not lm_usage:
+            logger.warning("No LM usage data available from pipeline - this is unexpected")
+            lm_usage = {}
+        else:
+            logger.info(f"LM usage from pipeline: {lm_usage}")
 
         # Aggregate, for all entries, together the prompt_tokens, completion_tokens, total_tokens fields
         total_prompt_tokens = sum(entry.get("prompt_tokens", 0) for entry in lm_usage.values())

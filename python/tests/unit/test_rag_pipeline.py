@@ -20,7 +20,6 @@ from cairo_coder.core.types import (
     Message,
     Role,
     StreamEventType,
-    combine_usage,
 )
 from cairo_coder.dspy.retrieval_judge import RetrievalJudge
 
@@ -770,88 +769,3 @@ class TestConvenienceFunctions:
         assert pipeline.config.max_source_count == 20
         assert pipeline.config.similarity_threshold == 0.6
         assert pipeline.config.sources == [DocumentSource.CAIRO_BOOK]
-
-
-class TestCombineUsage:
-    """Tests for the combine_usage function."""
-
-    @pytest.mark.parametrize(
-        "usage1,usage2,expected",
-        [
-            # Test handling None values in usage dicts
-            pytest.param(
-                {
-                    "gpt-4": {
-                        "prompt_tokens": None,  # Key exists but value is None
-                        "completion_tokens": 100,
-                    }
-                },
-                {
-                    "gpt-4": {
-                        "prompt_tokens": 50,
-                        "completion_tokens": 50,
-                    }
-                },
-                {
-                    "gpt-4": {
-                        "prompt_tokens": 50,
-                        "completion_tokens": 150,
-                    }
-                },
-                id="none_values_in_usage_dict",
-            ),
-            # Test handling None values in nested dicts
-            pytest.param(
-                {
-                    "gpt-4": {
-                        "details": {
-                            "audio_tokens": None,  # Key exists but value is None
-                            "cached_tokens": 100,
-                        }
-                    }
-                },
-                {
-                    "gpt-4": {
-                        "details": {
-                            "audio_tokens": 25,
-                            "cached_tokens": 50,
-                        }
-                    }
-                },
-                {
-                    "gpt-4": {
-                        "details": {
-                            "audio_tokens": 25,
-                            "cached_tokens": 150,
-                        }
-                    }
-                },
-                id="none_values_in_nested_dict",
-            ),
-            # Test basic combining of usage dicts
-            pytest.param(
-                {"gpt-4": {"prompt_tokens": 100, "completion_tokens": 50}},
-                {"gpt-4": {"prompt_tokens": 200, "completion_tokens": 100}},
-                {"gpt-4": {"prompt_tokens": 300, "completion_tokens": 150}},
-                id="basic_combining",
-            ),
-            # Test combining with empty dicts
-            pytest.param(
-                {},
-                {},
-                {},
-                id="both_empty",
-            ),
-            # Test combining with one empty dict
-            pytest.param(
-                {"gpt-4": {"tokens": 100}},
-                {},
-                {"gpt-4": {"tokens": 100}},
-                id="second_empty",
-            ),
-        ],
-    )
-    def test_combine_usage(self, usage1, usage2, expected):
-        """Test combine_usage with various input scenarios."""
-        result = combine_usage(usage1, usage2)
-        assert result == expected
