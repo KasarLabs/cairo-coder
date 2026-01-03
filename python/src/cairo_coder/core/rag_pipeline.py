@@ -5,6 +5,8 @@ This module implements the RagPipeline class that orchestrates the three-stage
 RAG workflow: Query Processing → Document Retrieval → Generation.
 """
 
+import asyncio
+import contextlib
 import os
 from collections.abc import AsyncGenerator
 from dataclasses import dataclass
@@ -220,98 +222,156 @@ class RagPipeline(dspy.Module):
         Yields:
             StreamEvent objects for real-time updates
         """
-        try:
-            with dspy.track_usage() as usage_tracker:
-                # Stage 1: Process query
-                yield StreamEvent(type=StreamEventType.PROCESSING, data="Processing query...")
+        event_queue: asyncio.Queue[StreamEvent | None] = asyncio.Queue()
 
-                chat_history_str = self._format_chat_history(chat_history or [])
+        async def _emit(event: StreamEvent) -> None:
+            await event_queue.put(event)
 
-                # Stage 2: Retrieve documents
-                yield StreamEvent(
-                    type=StreamEventType.PROCESSING, data="Retrieving relevant documents..."
-                )
-
-                processed_query, documents, grok_citations = (
-                    await self._aprocess_query_and_retrieve_docs(query, chat_history_str, sources)
-                )
-
-                # Emit sources event
-                formatted_sources = self._format_sources(documents, grok_citations)
-                yield StreamEvent(type=StreamEventType.SOURCES, data=formatted_sources)
-
-                final_answer: str | None = None
-
-                if mcp_mode:
-                    # MCP mode: Return raw documents
-                    yield StreamEvent(
-                        type=StreamEventType.PROCESSING, data="Formatting documentation..."
+        async def _run_pipeline() -> None:
+            try:
+                with dspy.track_usage() as usage_tracker:
+                    # Stage 1: Process query
+                    await _emit(
+                        StreamEvent(type=StreamEventType.PROCESSING, data="Processing query...")
                     )
 
-                    mcp_prediction = await self.mcp_generation_program.acall(documents)
-                    final_answer = mcp_prediction.answer
-                    # Emit single response plus a final response event for clients that rely on it
-                    yield StreamEvent(type=StreamEventType.RESPONSE, data=mcp_prediction.answer)
-                    yield StreamEvent(type=StreamEventType.FINAL_RESPONSE, data=mcp_prediction.answer)
-                else:
-                    # Normal mode: Generate response
-                    yield StreamEvent(type=StreamEventType.PROCESSING, data="Generating response...")
+                    chat_history_str = self._format_chat_history(chat_history or [])
 
-                    # Prepare context for generation
-                    context = self._prepare_context(documents)
+                    # Stage 2: Retrieve documents
+                    await _emit(
+                        StreamEvent(
+                            type=StreamEventType.PROCESSING,
+                            data="Retrieving relevant documents...",
+                        )
+                    )
 
-                    # Stream response generation. Use ChatAdapter for streaming, which performs better.
-                    with dspy.context(
-                        adapter=dspy.adapters.ChatAdapter()
-                    ), ls.trace(
-                        name="GenerationProgramStreaming",
-                        run_type="llm",
-                        inputs={
-                            "query": query,
-                            "chat_history": chat_history_str,
-                            "context": context,
-                        },
-                    ) as rt:
-                        chunk_accumulator = ""
-                        async for chunk in self.generation_program.aforward_streaming(
-                            query=query, context=context, chat_history=chat_history_str
-                        ):
-                            if isinstance(chunk, dspy.streaming.StreamResponse):
-                                # Incremental token
-                                # Emit thinking events for reasoning field, response events for answer field
-                                if chunk.signature_field_name == "reasoning":
-                                    yield StreamEvent(type=StreamEventType.REASONING, data=chunk.chunk)
-                                elif chunk.signature_field_name == "answer":
-                                    chunk_accumulator += chunk.chunk
-                                    yield StreamEvent(type=StreamEventType.RESPONSE, data=chunk.chunk)
-                                else:
-                                    logger.warning(
-                                        f"Unknown signature field name: {chunk.signature_field_name}"
+                    processed_query, documents, grok_citations = (
+                        await self._aprocess_query_and_retrieve_docs(
+                            query, chat_history_str, sources
+                        )
+                    )
+
+                    # Emit sources event
+                    formatted_sources = self._format_sources(documents, grok_citations)
+                    await _emit(StreamEvent(type=StreamEventType.SOURCES, data=formatted_sources))
+
+                    final_answer: str | None = None
+
+                    if mcp_mode:
+                        # MCP mode: Return raw documents
+                        await _emit(
+                            StreamEvent(
+                                type=StreamEventType.PROCESSING,
+                                data="Formatting documentation...",
+                            )
+                        )
+
+                        mcp_prediction = await self.mcp_generation_program.acall(documents)
+                        final_answer = mcp_prediction.answer
+                        # Emit single response plus a final response event for clients that rely on it
+                        await _emit(
+                            StreamEvent(type=StreamEventType.RESPONSE, data=mcp_prediction.answer)
+                        )
+                        await _emit(
+                            StreamEvent(
+                                type=StreamEventType.FINAL_RESPONSE, data=mcp_prediction.answer
+                            )
+                        )
+                    else:
+                        # Normal mode: Generate response
+                        await _emit(
+                            StreamEvent(
+                                type=StreamEventType.PROCESSING,
+                                data="Generating response...",
+                            )
+                        )
+
+                        # Prepare context for generation
+                        context = self._prepare_context(documents)
+
+                        # Stream response generation. Use ChatAdapter for streaming, which performs better.
+                        with dspy.context(
+                            adapter=dspy.adapters.ChatAdapter()
+                        ), ls.trace(
+                            name="GenerationProgramStreaming",
+                            run_type="llm",
+                            inputs={
+                                "query": query,
+                                "chat_history": chat_history_str,
+                                "context": context,
+                            },
+                        ) as rt:
+                            chunk_accumulator = ""
+                            async for chunk in self.generation_program.aforward_streaming(
+                                query=query, context=context, chat_history=chat_history_str
+                            ):
+                                if isinstance(chunk, dspy.streaming.StreamResponse):
+                                    # Incremental token
+                                    # Emit thinking events for reasoning field, response events for answer field
+                                    if chunk.signature_field_name == "reasoning":
+                                        await _emit(
+                                            StreamEvent(
+                                                type=StreamEventType.REASONING, data=chunk.chunk
+                                            )
+                                        )
+                                    elif chunk.signature_field_name == "answer":
+                                        chunk_accumulator += chunk.chunk
+                                        await _emit(
+                                            StreamEvent(
+                                                type=StreamEventType.RESPONSE, data=chunk.chunk
+                                            )
+                                        )
+                                    else:
+                                        logger.warning(
+                                            "Unknown signature field name: %s",
+                                            chunk.signature_field_name,
+                                        )
+                                elif isinstance(chunk, dspy.Prediction):
+                                    # Final complete answer
+                                    final_answer = getattr(chunk, "answer", None) or chunk_accumulator
+                                    await _emit(
+                                        StreamEvent(
+                                            type=StreamEventType.FINAL_RESPONSE, data=final_answer
+                                        )
                                     )
-                            elif isinstance(chunk, dspy.Prediction):
-                                # Final complete answer
-                                final_answer = getattr(chunk, "answer", None) or chunk_accumulator
-                                yield StreamEvent(type=StreamEventType.FINAL_RESPONSE, data=final_answer)
-                                rt.end(outputs={"output": final_answer})
+                                    rt.end(outputs={"output": final_answer})
 
-                # Pipeline completed - yield the final PipelineResult
-                pipeline_result = PipelineResult(
-                    processed_query=processed_query,
-                    documents=documents,
-                    grok_citations=grok_citations,
-                    usage=usage_tracker.get_total_tokens(),
-                    answer=final_answer,
-                    formatted_sources=formatted_sources,
-                )
-                yield StreamEvent(type=StreamEventType.END, data=pipeline_result)
+                    # Pipeline completed - yield the final PipelineResult
+                    pipeline_result = PipelineResult(
+                        processed_query=processed_query,
+                        documents=documents,
+                        grok_citations=grok_citations,
+                        usage=usage_tracker.get_total_tokens(),
+                        answer=final_answer,
+                        formatted_sources=formatted_sources,
+                    )
+                    await _emit(StreamEvent(type=StreamEventType.END, data=pipeline_result))
 
-        except Exception as e:
-            # Handle pipeline errors
-            import traceback
+            except asyncio.CancelledError:
+                raise
+            except Exception as e:
+                # Handle pipeline errors
+                import traceback
 
-            traceback.print_exc()
-            logger.error("Pipeline error", error=e)
-            yield StreamEvent(StreamEventType.ERROR, data=f"Pipeline error: {str(e)}")
+                traceback.print_exc()
+                logger.error("Pipeline error", error=e)
+                await _emit(StreamEvent(StreamEventType.ERROR, data=f"Pipeline error: {str(e)}"))
+            finally:
+                await event_queue.put(None)
+
+        pipeline_task = asyncio.create_task(_run_pipeline())
+
+        try:
+            while True:
+                event = await event_queue.get()
+                if event is None:
+                    break
+                yield event
+        finally:
+            if not pipeline_task.done():
+                pipeline_task.cancel()
+                with contextlib.suppress(asyncio.CancelledError):
+                    await pipeline_task
 
     def _format_chat_history(self, chat_history: list[Message]) -> str:
         """

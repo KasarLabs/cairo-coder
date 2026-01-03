@@ -648,6 +648,7 @@ class TestPipelineHelperMethods:
     ):
         """Streaming should take usage from DSPy's usage tracker."""
         from contextlib import contextmanager
+
         from cairo_coder.core.types import StreamEventType
         expected_usage = self._GEN_USAGE_FULL
 
