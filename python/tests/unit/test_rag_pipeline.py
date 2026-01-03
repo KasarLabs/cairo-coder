@@ -69,25 +69,10 @@ def create_custom_retrieval_judge(score_map, threshold=0.4):
         return filter_docs(query, documents)
 
     judge.forward = Mock(side_effect=filter_docs)
-    judge.aforward = AsyncMock(side_effect=async_filter_docs)
+    judge.acall = AsyncMock(side_effect=async_filter_docs)
     judge.threshold = threshold
 
     return judge
-
-
-# Helper function to merge usage dictionaries
-def merge_usage_dict(sources: list[dict]) -> dict:
-    """Merge usage dictionaries."""
-    merged_usage = {}
-    for source in sources:
-        for model_name, metrics in source.items():
-            if model_name not in merged_usage:
-                merged_usage[model_name] = {}
-            for metric_name, value in metrics.items():
-                merged_usage[model_name][metric_name] = (
-                    merged_usage[model_name].get(metric_name, 0) + value
-                )
-    return merged_usage
 
 
 class TestRagPipeline:
@@ -96,12 +81,12 @@ class TestRagPipeline:
     @pytest.mark.asyncio
     async def test_async_pipeline_execution(self, pipeline):
         """Test async pipeline execution."""
-        result = await pipeline.aforward("How to write Cairo contracts?")
+        result = await pipeline.acall("How to write Cairo contracts?")
 
         # Verify async components were called
-        pipeline.query_processor.aforward.assert_called_once()
-        pipeline.document_retriever.aforward.assert_called_once()
-        pipeline.generation_program.aforward.assert_called_once()
+        pipeline.query_processor.acall.assert_called_once()
+        pipeline.document_retriever.acall.assert_called_once()
+        pipeline.generation_program.acall.assert_called_once()
 
         # Verify result
         assert result.answer == "Here's how to write Cairo contracts..."
@@ -124,10 +109,10 @@ class TestRagPipeline:
     @pytest.mark.asyncio
     async def test_mcp_mode_execution(self, pipeline):
         """Test MCP mode pipeline execution."""
-        result = await pipeline.aforward("How to write Cairo contracts?", mcp_mode=True)
+        result = await pipeline.acall("How to write Cairo contracts?", mcp_mode=True)
 
         # Verify MCP program was used
-        pipeline.mcp_generation_program.aforward.assert_called_once()
+        pipeline.mcp_generation_program.acall.assert_called_once()
         assert "Cairo contracts are defined using #[starknet::contract]" in result.answer
 
     @pytest.mark.asyncio
@@ -138,10 +123,10 @@ class TestRagPipeline:
             Message(role=Role.ASSISTANT, content="Previous answer"),
         ]
 
-        await pipeline.aforward("Follow-up question", chat_history=chat_history)
+        await pipeline.acall("Follow-up question", chat_history=chat_history)
 
         # Verify chat history was formatted and passed
-        call_args = pipeline.query_processor.aforward.call_args
+        call_args = pipeline.query_processor.acall.call_args
         assert "User: Previous question" in call_args[1]["chat_history"]
         assert "Assistant: Previous answer" in call_args[1]["chat_history"]
 
@@ -149,10 +134,10 @@ class TestRagPipeline:
     async def test_pipeline_with_custom_sources(self, pipeline):
         """Test pipeline with custom sources."""
         sources = [DocumentSource.SCARB_DOCS]
-        await pipeline.aforward("Scarb question", sources=sources)
+        await pipeline.acall("Scarb question", sources=sources)
 
         # Verify sources were passed to retriever
-        call_args = pipeline.document_retriever.aforward.call_args[1]
+        call_args = pipeline.document_retriever.acall.call_args[1]
         assert call_args["sources"] == sources
 
     @pytest.mark.asyncio
@@ -161,19 +146,19 @@ class TestRagPipeline:
         # Configure retriever to return empty prediction
         empty_prediction = dspy.Prediction(documents=[])
         empty_prediction.set_lm_usage({})
-        pipeline.document_retriever.aforward.return_value = empty_prediction
+        pipeline.document_retriever.acall.return_value = empty_prediction
 
-        await pipeline.aforward("test query")
+        await pipeline.acall("test query")
 
         # Verify generation was called with "No relevant documentation found"
-        call_args = pipeline.generation_program.aforward.call_args
+        call_args = pipeline.generation_program.acall.call_args
         assert "No relevant documentation found" in call_args[1]["context"]
 
     @pytest.mark.asyncio
     async def test_pipeline_error_handling(self, pipeline):
         """Test pipeline error handling."""
         # Configure pipeline's retriever to fail
-        pipeline.document_retriever.aforward.side_effect = Exception("Retrieval error")
+        pipeline.document_retriever.acall.side_effect = Exception("Retrieval error")
 
         events = []
         async for event in pipeline.aforward_streaming("test query"):
@@ -205,7 +190,7 @@ class TestRagPipelineWithJudge:
         # Return prediction with documents - modify the pipeline's document retriever
         dr_prediction = dspy.Prediction(documents=docs)
         dr_prediction.set_lm_usage({})
-        pipeline.document_retriever.aforward.return_value = dr_prediction
+        pipeline.document_retriever.acall.return_value = dr_prediction
 
         # Setup judge with specific scores
         judge = create_custom_retrieval_judge(
@@ -217,22 +202,22 @@ class TestRagPipelineWithJudge:
         )
         # Configure the mock instance that the pipeline will use
 
-        async def judge_aforward_with_prediction(query, documents):
-            result_docs = await judge.aforward(query, documents)
+        async def judge_acall_with_prediction(query, documents):
+            result_docs = await judge.acall(query, documents)
             prediction = dspy.Prediction(documents=result_docs)
             prediction.set_lm_usage({})
             return prediction
 
-        pipeline.retrieval_judge.aforward.side_effect = judge_aforward_with_prediction
+        pipeline.retrieval_judge.acall.side_effect = judge_acall_with_prediction
         pipeline.retrieval_judge.threshold = judge.threshold
 
-        await pipeline.aforward("Cairo question")
+        await pipeline.acall("Cairo question")
 
         # Verify judge was called
-        pipeline.retrieval_judge.aforward.assert_called_once()
+        pipeline.retrieval_judge.acall.assert_called_once()
 
         # Verify context only contains high-scoring docs
-        call_args = pipeline.generation_program.aforward.call_args
+        call_args = pipeline.generation_program.acall.call_args
         context = call_args[1]["context"]
         assert "Cairo contract content" in context
         assert "Cairo storage content" in context
@@ -245,15 +230,15 @@ class TestRagPipelineWithJudge:
     ):
         """Test that when judge fails, all documents are passed through."""
         # Mock the judge to fail
-        pipeline.retrieval_judge.aforward.side_effect = Exception("Judge failed")
+        pipeline.retrieval_judge.acall.side_effect = Exception("Judge failed")
 
-        await pipeline.aforward("test query")
+        await pipeline.acall("test query")
 
         # Verify judge exists
         assert pipeline.retrieval_judge is not None
 
         # All documents should be in context (because judge failed)
-        call_args = pipeline.generation_program.aforward.call_args
+        call_args = pipeline.generation_program.acall.call_args
         context = call_args[1]["context"]
         for doc in sample_documents:
             assert doc.page_content in context
@@ -268,7 +253,7 @@ class TestRagPipelineWithJudge:
         # Return prediction with documents
         dr_prediction = dspy.Prediction(documents=sample_documents)
         dr_prediction.set_lm_usage({})
-        pipeline.document_retriever.aforward.return_value = dr_prediction
+        pipeline.document_retriever.acall.return_value = dr_prediction
 
         # Judge with scores: 0.9, 0.8, 0.7, 0.6 (based on sample_documents)
         score_map = {
@@ -280,25 +265,25 @@ class TestRagPipelineWithJudge:
 
         judge = create_custom_retrieval_judge(score_map, threshold=threshold)
 
-        async def judge_aforward_with_prediction(query, documents):
-            result_docs = await judge.aforward(query, documents)
+        async def judge_acall_with_prediction(query, documents):
+            result_docs = await judge.acall(query, documents)
             prediction = dspy.Prediction(documents=result_docs)
             prediction.set_lm_usage({})
             return prediction
 
-        pipeline.retrieval_judge.aforward.side_effect = judge_aforward_with_prediction
+        pipeline.retrieval_judge.acall.side_effect = judge_acall_with_prediction
         pipeline.retrieval_judge.threshold = judge.threshold
 
-        result = await pipeline.aforward("test query")
+        result = await pipeline.acall("test query")
 
         # Count filtered docs based on threshold
         scores = [0.9, 0.8, 0.7, 0.6]
         expected_count = sum(1 for score in scores if score >= threshold)
 
         # Verify judge was called
-        pipeline.retrieval_judge.aforward.assert_called_once()
+        pipeline.retrieval_judge.acall.assert_called_once()
 
-        # Access filtered docs from the returned PipelineResult
+        # Access filtered docs from the returned Prediction
         filtered_docs = result.documents
         assert len(filtered_docs) == expected_count
 
@@ -311,13 +296,13 @@ class TestRagPipelineWithJudge:
     async def test_judge_failure_fallback(self, mock_judge_class, sample_documents, pipeline):
         """Test fallback when judge fails."""
         # Create failing judge
-        pipeline.retrieval_judge.aforward.side_effect = Exception("Judge failed")
+        pipeline.retrieval_judge.acall.side_effect = Exception("Judge failed")
 
         # Should not raise, should use all docs
-        await pipeline.aforward("test query")
+        await pipeline.acall("test query")
 
         # All documents should be passed through
-        call_args = pipeline.generation_program.aforward.call_args
+        call_args = pipeline.generation_program.acall.call_args
         context = call_args[1]["context"]
         for doc in sample_documents:
             assert doc.page_content in context
@@ -337,7 +322,7 @@ class TestRagPipelineWithJudge:
         # Return prediction with documents
         dr_prediction = dspy.Prediction(documents=docs)
         dr_prediction.set_lm_usage({})
-        pipeline.document_retriever.aforward.return_value = dr_prediction
+        pipeline.document_retriever.acall.return_value = dr_prediction
 
         # Create judge that returns invalid score
         async def filter_with_parse_error(query, documents):
@@ -354,13 +339,13 @@ class TestRagPipelineWithJudge:
             prediction.set_lm_usage({})
             return prediction
 
-        pipeline.retrieval_judge.aforward.side_effect = filter_with_parse_error
+        pipeline.retrieval_judge.acall.side_effect = filter_with_parse_error
         pipeline.retrieval_judge.threshold = 0.5
 
-        await pipeline.aforward("test query")
+        await pipeline.acall("test query")
 
         # The doc with the parse error ("Content1") should be dropped and not in the context.
-        call_args = pipeline.generation_program.aforward.call_args
+        call_args = pipeline.generation_program.acall.call_args
         context = call_args[1]["context"]
         assert "Content1" not in context
         assert "Content2" in context
@@ -369,12 +354,12 @@ class TestRagPipelineWithJudge:
     @patch("cairo_coder.core.rag_pipeline.RetrievalJudge")
     async def test_async_judge_execution(self, mock_judge_class, pipeline, mock_retrieval_judge):
         """Test async execution with judge."""
-        pipeline.retrieval_judge.aforward.side_effect = mock_retrieval_judge.aforward
+        pipeline.retrieval_judge.acall.side_effect = mock_retrieval_judge.acall
 
-        result = await pipeline.aforward("test query")
+        result = await pipeline.acall("test query")
 
         # Verify async judge was called
-        pipeline.retrieval_judge.aforward.assert_called_once()
+        pipeline.retrieval_judge.acall.assert_called_once()
         assert result.answer == "Here's how to write Cairo contracts..."
 
     @patch("cairo_coder.core.rag_pipeline.RetrievalJudge")
@@ -384,23 +369,23 @@ class TestRagPipelineWithJudge:
         # Return prediction with documents
         dr_prediction = dspy.Prediction(documents=sample_documents)
         dr_prediction.set_lm_usage({})
-        pipeline.document_retriever.aforward.return_value = dr_prediction
+        pipeline.document_retriever.acall.return_value = dr_prediction
 
         # Set up judge to return prediction
-        async def judge_aforward_with_prediction(query, documents):
-            result_docs = await mock_retrieval_judge.aforward(query, documents)
+        async def judge_acall_with_prediction(query, documents):
+            result_docs = await mock_retrieval_judge.acall(query, documents)
             prediction = dspy.Prediction(documents=result_docs)
             prediction.set_lm_usage({})
             return prediction
 
-        pipeline.retrieval_judge.aforward.side_effect = judge_aforward_with_prediction
+        pipeline.retrieval_judge.acall.side_effect = judge_acall_with_prediction
 
         events = []
         async for event in pipeline.aforward_streaming("test query"):
             events.append(event)
 
         # Verify judge was called
-        pipeline.retrieval_judge.aforward.assert_called_once()
+        pipeline.retrieval_judge.acall.assert_called_once()
 
         # Verify filtered sources in event
         sources_event = next(e for e in events if e.type == "sources")
@@ -418,25 +403,25 @@ class TestRagPipelineWithJudge:
         # Return prediction with documents
         dr_prediction = dspy.Prediction(documents=docs)
         dr_prediction.set_lm_usage({})
-        pipeline.document_retriever.aforward.return_value = dr_prediction
+        pipeline.document_retriever.acall.return_value = dr_prediction
 
         judge = create_custom_retrieval_judge({"Test Doc": 0.75})
 
-        async def judge_aforward_with_prediction(query, documents):
-            result_docs = await judge.aforward(query, documents)
+        async def judge_acall_with_prediction(query, documents):
+            result_docs = await judge.acall(query, documents)
             prediction = dspy.Prediction(documents=result_docs)
             prediction.set_lm_usage({})
             return prediction
 
-        pipeline.retrieval_judge.aforward.side_effect = judge_aforward_with_prediction
+        pipeline.retrieval_judge.acall.side_effect = judge_acall_with_prediction
 
-        await pipeline.aforward("test query")
+        await pipeline.acall("test query")
 
         # Check that judge was called and documents have metadata
-        pipeline.retrieval_judge.aforward.assert_called_once()
+        pipeline.retrieval_judge.acall.assert_called_once()
 
         # Verify that generation received the filtered document with metadata
-        gen_call_args = pipeline.generation_program.aforward.call_args[1]
+        gen_call_args = pipeline.generation_program.acall.call_args[1]
         context = gen_call_args["context"]
 
         # The document should be in the context (score 0.75 is above threshold)
@@ -635,142 +620,77 @@ class TestPipelineHelperMethods:
     _QUERY_USAGE_MINI = {
         "gpt-4o-mini": {"prompt_tokens": 200, "completion_tokens": 100, "total_tokens": 300}
     }
-    _GEN_USAGE_MINI = {
-        "gpt-4o-mini": {"prompt_tokens": 1000, "completion_tokens": 500, "total_tokens": 1500}
-    }
     _GEN_USAGE_FULL = {
         "gpt-4o": {"prompt_tokens": 1000, "completion_tokens": 500, "total_tokens": 1500}
     }
-    _JUDGE_USAGE = {
-        "anthropic/claude-3-haiku": {
-            "prompt_tokens": 50,
-            "completion_tokens": 5,
-            "total_tokens": 55,
-        }
-    }
-
-    @pytest.mark.parametrize(
-        "query_usage, generation_usage, judge_usage, expected_usage",
-        [
-            pytest.param(
-                _QUERY_USAGE_MINI,
-                _GEN_USAGE_MINI,
-                _JUDGE_USAGE,
-                merge_usage_dict([_QUERY_USAGE_MINI, _GEN_USAGE_MINI, _JUDGE_USAGE]),
-                id="all_components_usage",
-            ),
-            pytest.param(
-                _QUERY_USAGE_MINI,
-                _GEN_USAGE_FULL,
-                {},
-                merge_usage_dict([_QUERY_USAGE_MINI, _GEN_USAGE_FULL]),
-                id="different_model_no_judge_usage",
-            ),
-            pytest.param({}, {}, {}, {}, id="empty_usage"),
-            pytest.param(_QUERY_USAGE_MINI, {}, {}, _QUERY_USAGE_MINI, id="only_query_usage"),
-            pytest.param({}, _GEN_USAGE_MINI, {}, _GEN_USAGE_MINI, id="only_generation_usage"),
-            pytest.param({}, {}, _JUDGE_USAGE, _JUDGE_USAGE, id="only_judge_usage"),
-        ],
-    )
-    @pytest.mark.asyncio
-    @patch("cairo_coder.core.rag_pipeline.RetrievalJudge")
-    async def test_pipeline_usage_aggregation(
-        self,
-        mock_judge_class,
-        pipeline_config,
-        sample_processed_query,
-        sample_documents,
-        query_usage,
-        generation_usage,
-        judge_usage,
-        expected_usage,
-    ):
-        """Tests that PipelineResult correctly aggregates token usage from its components."""
-        # Set up mocks to return predictions with usage
-        qp_prediction = dspy.Prediction(processed_query=sample_processed_query)
-        qp_prediction.set_lm_usage(query_usage)
-        pipeline_config.query_processor.aforward = AsyncMock(return_value=qp_prediction)
-
-        dr_prediction = dspy.Prediction(documents=sample_documents)
-        dr_prediction.set_lm_usage({})
-        pipeline_config.document_retriever.aforward = AsyncMock(return_value=dr_prediction)
-
-        gen_prediction = dspy.Prediction(answer="Test answer")
-        gen_prediction.set_lm_usage(generation_usage)
-        pipeline_config.generation_program.aforward = AsyncMock(return_value=gen_prediction)
-
-        # Set up judge mock
-        judge_prediction = dspy.Prediction(documents=sample_documents)
-        judge_prediction.set_lm_usage(judge_usage)
-        mock_judge = Mock()
-        mock_judge.aforward = AsyncMock(return_value=judge_prediction)
-        mock_judge_class.return_value = mock_judge
-
-        # Create pipeline and execute it
-        pipeline = RagPipeline(pipeline_config)
-        pipeline_result = await pipeline.aforward("test query")
-
-        # Check accumulated usage from the returned PipelineResult
-        assert pipeline_result.usage == expected_usage
 
     @pytest.mark.asyncio
-    @pytest.mark.parametrize(
-        "mcp_mode, expected_usage",
-        [
-            pytest.param(True, _QUERY_USAGE_MINI, id="mcp_mode"),
-            pytest.param(
-                False, merge_usage_dict([_QUERY_USAGE_MINI, _GEN_USAGE_FULL]), id="normal_mode"
-            ),
-        ],
-    )
-    async def test_streaming_usage_aggregation(
-        self, pipeline_config, sample_processed_query, sample_documents, mcp_mode, expected_usage
+    async def test_prediction_to_pipeline_result_uses_usage(
+        self, sample_processed_query, sample_documents
     ):
-        """Tests that streaming execution correctly aggregates usage in PipelineResult."""
+        """PipelineResult should use the usage attached to the Prediction."""
+        prediction = dspy.Prediction(
+            processed_query=sample_processed_query,
+            documents=sample_documents,
+            grok_citations=[],
+            answer="Test answer",
+            formatted_sources=[],
+        )
+        prediction.set_lm_usage(self._QUERY_USAGE_MINI)
+
+        pipeline_result = RagPipeline.prediction_to_pipeline_result(prediction)
+
+        assert pipeline_result.usage == self._QUERY_USAGE_MINI
+
+    @pytest.mark.asyncio
+    @patch("cairo_coder.core.rag_pipeline.dspy.track_usage")
+    async def test_streaming_uses_usage_tracker(
+        self, mock_track_usage, pipeline_config, sample_processed_query, sample_documents
+    ):
+        """Streaming should take usage from DSPy's usage tracker."""
+        from contextlib import contextmanager
         from cairo_coder.core.types import StreamEventType
+        expected_usage = self._GEN_USAGE_FULL
 
-        # Set up query processor to return prediction with usage
+        class DummyTracker:
+            def get_total_tokens(self):
+                return expected_usage
+
+        @contextmanager
+        def fake_track_usage():
+            yield DummyTracker()
+
+        mock_track_usage.side_effect = fake_track_usage
+
+        # Set up query processor and document retriever
         qp_prediction = dspy.Prediction(processed_query=sample_processed_query)
-        qp_prediction.set_lm_usage(self._QUERY_USAGE_MINI)
-        pipeline_config.query_processor.aforward = AsyncMock(return_value=qp_prediction)
+        pipeline_config.query_processor.acall = AsyncMock(return_value=qp_prediction)
 
-        # Set up document retriever
         dr_prediction = dspy.Prediction(documents=sample_documents)
-        dr_prediction.set_lm_usage({})
-        pipeline_config.document_retriever.aforward = AsyncMock(return_value=dr_prediction)
+        pipeline_config.document_retriever.acall = AsyncMock(return_value=dr_prediction)
 
-        if mcp_mode:
-            # MCP mode - set MCP program with no usage (uses sync __call__, not aforward)
-            mcp_prediction = dspy.Prediction(answer="MCP answer")
-            mcp_prediction.set_lm_usage({})
-            pipeline_config.mcp_generation_program = Mock(return_value=mcp_prediction)
-        else:
-            # Normal mode - set generation program with usage
-            async def mock_streaming(*args, **kwargs):
-                yield dspy.streaming.StreamResponse(
-                    predict_name="GenerationProgram",
-                    signature_field_name="answer",
-                    chunk="Test ",
-                    is_last_chunk=False,
-                )
-                yield dspy.streaming.StreamResponse(
-                    predict_name="GenerationProgram",
-                    signature_field_name="answer",
-                    chunk="answer",
-                    is_last_chunk=True,
-                )
-                gen_prediction = dspy.Prediction(answer="Test answer")
-                gen_prediction.set_lm_usage(self._GEN_USAGE_FULL)
-                yield gen_prediction
+        async def mock_streaming(*args, **kwargs):
+            yield dspy.streaming.StreamResponse(
+                predict_name="GenerationProgram",
+                signature_field_name="answer",
+                chunk="Test ",
+                is_last_chunk=False,
+            )
+            yield dspy.streaming.StreamResponse(
+                predict_name="GenerationProgram",
+                signature_field_name="answer",
+                chunk="answer",
+                is_last_chunk=True,
+            )
+            yield dspy.Prediction(answer="Test answer")
 
-            pipeline_config.generation_program.aforward_streaming = mock_streaming
+        pipeline_config.generation_program.aforward_streaming = mock_streaming
 
         # Patch the RetrievalJudge
         with patch("cairo_coder.core.rag_pipeline.RetrievalJudge") as mock_judge_class:
             judge_prediction = dspy.Prediction(documents=sample_documents)
-            judge_prediction.set_lm_usage({})
             mock_judge = Mock()
-            mock_judge.aforward = AsyncMock(return_value=judge_prediction)
+            mock_judge.acall = AsyncMock(return_value=judge_prediction)
             mock_judge_class.return_value = mock_judge
 
             pipeline = RagPipeline(pipeline_config)
@@ -778,7 +698,7 @@ class TestPipelineHelperMethods:
             # Execute the pipeline and capture the END event which contains PipelineResult
             pipeline_result = None
             async for event in pipeline.aforward_streaming(
-                query="How do I create a Cairo contract?", mcp_mode=mcp_mode
+                query="How do I create a Cairo contract?", mcp_mode=False
             ):
                 if event.type == StreamEventType.END:
                     pipeline_result = event.data

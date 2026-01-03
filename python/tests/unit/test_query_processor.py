@@ -30,13 +30,13 @@ class TestQueryProcessorProgram:
             resources=["cairo_book", "starknet_docs"],
             reasoning="I need to create a Cairo contract",
         )
-        mock_lm_predict.aforward.return_value = prediction
+        mock_lm_predict.acall.return_value = prediction
 
         query = "How do I define storage variables in a Cairo contract?"
 
-        result_prediction = await processor.aforward(query)
+        result_prediction = await processor.acall(query)
 
-        # aforward now returns a Prediction with processed_query attribute
+        # acall now returns a Prediction with processed_query attribute
         assert isinstance(result_prediction, dspy.Prediction)
         result = result_prediction.processed_query
         assert isinstance(result, ProcessedQuery)
@@ -93,15 +93,15 @@ class TestQueryProcessorProgram:
     async def test_empty_query_handling(self, processor):
         """Test handling of empty or whitespace queries."""
         with patch.object(processor, "retrieval_program") as mock_program:
-            mock_program.aforward = AsyncMock(
+            mock_program.acall = AsyncMock(
                 return_value=dspy.Prediction(
                     search_queries=[], resources=[], reasoning="Empty query"
                 )
             )
 
-            result_prediction = await processor.aforward("")
+            result_prediction = await processor.acall("")
 
-            # aforward now returns a Prediction
+            # acall now returns a Prediction
             assert isinstance(result_prediction, dspy.Prediction)
             result = result_prediction.processed_query
             assert result.original == ""

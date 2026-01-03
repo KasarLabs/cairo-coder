@@ -22,13 +22,11 @@ from cairo_coder.core.types import (
     Document,
     DocumentSource,
     FormattedSource,
-    LMUsage,
     Message,
     PipelineResult,
     ProcessedQuery,
     StreamEvent,
     StreamEventType,
-    combine_usage,
     title_from_url,
 )
 from cairo_coder.dspy.document_retriever import DocumentRetrieverProgram
@@ -83,54 +81,30 @@ class RagPipeline(dspy.Module):
         self.retrieval_judge = RetrievalJudge()
         self.grok_search = GrokSearchProgram()
 
-    @staticmethod
-    def _accumulate_usage(
-        accumulated: LMUsage, prediction: dspy.Prediction
-    ) -> LMUsage:
-        """
-        Accumulate token usage from a prediction.
-
-        Args:
-            accumulated: Current accumulated usage
-            prediction: DSPy prediction object with usage information
-
-        Returns:
-            Updated accumulated usage
-        """
-        usage = prediction.get_lm_usage()
-        if not usage:
-            logger.warning("No usage found in prediction")
-            return accumulated
-        return combine_usage(accumulated, usage)
-
     async def _aprocess_query_and_retrieve_docs(
         self,
         query: str,
         chat_history_str: str,
         sources: list[DocumentSource] | None = None,
-    ) -> tuple[ProcessedQuery, list[Document], list[str], LMUsage]:
+    ) -> tuple[ProcessedQuery, list[Document], list[str]]:
         """
         Process query and retrieve documents - shared async logic.
 
         Returns:
-            Tuple of (processed_query, documents, grok_citations, accumulated_usage)
+            Tuple of (processed_query, documents, grok_citations)
         """
-        accumulated_usage: LMUsage = {}
-
-        qp_prediction = await self.query_processor.aforward(
+        qp_prediction = await self.query_processor.acall(
             query=query, chat_history=chat_history_str
         )
-        accumulated_usage = self._accumulate_usage(accumulated_usage, qp_prediction)
         processed_query = qp_prediction.processed_query
 
         # Use provided sources or fall back to processed query sources
         retrieval_sources = (
             processed_query.resources if sources is None else sources
         )
-        dr_prediction = await self.document_retriever.aforward(
+        dr_prediction = await self.document_retriever.acall(
             processed_query=processed_query, sources=retrieval_sources
         )
-        accumulated_usage = self._accumulate_usage(accumulated_usage, dr_prediction)
         documents = dr_prediction.documents
 
         # Optional Grok web/X augmentation: activate when STARKNET_BLOG is among sources.
@@ -138,8 +112,7 @@ class RagPipeline(dspy.Module):
         grok_summary_doc = None
         try:
             if DocumentSource.STARKNET_BLOG in retrieval_sources and not os.getenv("OPTIMIZER_RUN"):
-                grok_pred = await self.grok_search.aforward(processed_query, chat_history_str)
-                accumulated_usage = self._accumulate_usage(accumulated_usage, grok_pred)
+                grok_pred = await self.grok_search.acall(processed_query, chat_history_str)
                 grok_docs = grok_pred.documents
 
                 grok_citations = list(self.grok_search.last_citations)
@@ -154,8 +127,7 @@ class RagPipeline(dspy.Module):
                 lm=dspy.LM(DEFAULT_JUDGE_LM, max_tokens=10000, temperature=0.5),
                 adapter=XMLAdapter(),
             ):
-                judge_pred = await self.retrieval_judge.aforward(query=query, documents=documents)
-                accumulated_usage = self._accumulate_usage(accumulated_usage, judge_pred)
+                judge_pred = await self.retrieval_judge.acall(query=query, documents=documents)
                 documents = judge_pred.documents
         except Exception as e:
             logger.warning(
@@ -174,7 +146,7 @@ class RagPipeline(dspy.Module):
             else:
                 documents = [grok_summary_doc] + documents
 
-        return processed_query, documents, grok_citations, accumulated_usage
+        return processed_query, documents, grok_citations
 
     @traceable(name="RagPipeline", run_type="chain")
     async def aforward(
@@ -183,9 +155,9 @@ class RagPipeline(dspy.Module):
         chat_history: list[Message] | None = None,
         mcp_mode: bool = False,
         sources: list[DocumentSource] | None = None,
-    ) -> PipelineResult:
+    ) -> dspy.Prediction:
         """
-        Execute the RAG pipeline and return a PipelineResult.
+        Execute the RAG pipeline and return a DSPy Prediction.
 
         Args:
             query: User's Cairo/Starknet programming question
@@ -194,10 +166,10 @@ class RagPipeline(dspy.Module):
             sources: Optional source filtering
 
         Returns:
-            PipelineResult containing documents, usage, answer, and formatted sources
+            Prediction containing documents, answer, and formatted sources
         """
         chat_history_str = self._format_chat_history(chat_history or [])
-        processed_query, documents, grok_citations, accumulated_usage = (
+        processed_query, documents, grok_citations = (
             await self._aprocess_query_and_retrieve_docs(query, chat_history_str, sources)
         )
         logger.info(
@@ -205,30 +177,26 @@ class RagPipeline(dspy.Module):
         )
 
         if mcp_mode:
-            result = await self.mcp_generation_program.aforward(documents)
-            accumulated_usage = self._accumulate_usage(accumulated_usage, result)
-            return PipelineResult(
+            result = await self.mcp_generation_program.acall(documents)
+            return dspy.Prediction(
                 processed_query=processed_query,
                 documents=documents,
                 grok_citations=grok_citations,
-                usage=accumulated_usage,
-                answer=getattr(result, "answer", None),
+                answer=result.answer,
                 formatted_sources=self._format_sources(documents, grok_citations),
             )
 
         context = self._prepare_context(documents)
 
-        result = await self.generation_program.aforward(
+        result = await self.generation_program.acall(
             query=query, context=context, chat_history=chat_history_str
         )
-        accumulated_usage = self._accumulate_usage(accumulated_usage, result)
 
-        return PipelineResult(
+        return dspy.Prediction(
             processed_query=processed_query,
             documents=documents,
             grok_citations=grok_citations,
-            usage=accumulated_usage,
-            answer=getattr(result, "answer", None),
+            answer=result.answer,
             formatted_sources=self._format_sources(documents, grok_citations),
         )
 
@@ -253,49 +221,57 @@ class RagPipeline(dspy.Module):
             StreamEvent objects for real-time updates
         """
         try:
-            # Stage 1: Process query
-            yield StreamEvent(type=StreamEventType.PROCESSING, data="Processing query...")
+            with dspy.track_usage() as usage_tracker:
+                # Stage 1: Process query
+                yield StreamEvent(type=StreamEventType.PROCESSING, data="Processing query...")
 
-            chat_history_str = self._format_chat_history(chat_history or [])
+                chat_history_str = self._format_chat_history(chat_history or [])
 
-            # Stage 2: Retrieve documents
-            yield StreamEvent(
-                type=StreamEventType.PROCESSING, data="Retrieving relevant documents..."
-            )
-
-            processed_query, documents, grok_citations, accumulated_usage = (
-                await self._aprocess_query_and_retrieve_docs(query, chat_history_str, sources)
-            )
-
-            # Emit sources event
-            formatted_sources = self._format_sources(documents, grok_citations)
-            yield StreamEvent(type=StreamEventType.SOURCES, data=formatted_sources)
-
-            final_answer: str | None = None
-
-            if mcp_mode:
-                # MCP mode: Return raw documents
+                # Stage 2: Retrieve documents
                 yield StreamEvent(
-                    type=StreamEventType.PROCESSING, data="Formatting documentation..."
+                    type=StreamEventType.PROCESSING, data="Retrieving relevant documents..."
                 )
 
-                mcp_prediction = self.mcp_generation_program(documents)
-                accumulated_usage = self._accumulate_usage(accumulated_usage, mcp_prediction)
-                final_answer = mcp_prediction.answer
-                # Emit single response plus a final response event for clients that rely on it
-                yield StreamEvent(type=StreamEventType.RESPONSE, data=mcp_prediction.answer)
-                yield StreamEvent(type=StreamEventType.FINAL_RESPONSE, data=mcp_prediction.answer)
-            else:
-                # Normal mode: Generate response
-                yield StreamEvent(type=StreamEventType.PROCESSING, data="Generating response...")
+                processed_query, documents, grok_citations = (
+                    await self._aprocess_query_and_retrieve_docs(query, chat_history_str, sources)
+                )
 
-                # Prepare context for generation
-                context = self._prepare_context(documents)
+                # Emit sources event
+                formatted_sources = self._format_sources(documents, grok_citations)
+                yield StreamEvent(type=StreamEventType.SOURCES, data=formatted_sources)
 
-                # Stream response generation. Use ChatAdapter for streaming, which performs better.
-                with dspy.context(
-                    adapter=dspy.adapters.ChatAdapter()
-                ), ls.trace(name="GenerationProgramStreaming", run_type="llm", inputs={"query": query, "chat_history": chat_history_str, "context": context}) as rt:
+                final_answer: str | None = None
+
+                if mcp_mode:
+                    # MCP mode: Return raw documents
+                    yield StreamEvent(
+                        type=StreamEventType.PROCESSING, data="Formatting documentation..."
+                    )
+
+                    mcp_prediction = await self.mcp_generation_program.acall(documents)
+                    final_answer = mcp_prediction.answer
+                    # Emit single response plus a final response event for clients that rely on it
+                    yield StreamEvent(type=StreamEventType.RESPONSE, data=mcp_prediction.answer)
+                    yield StreamEvent(type=StreamEventType.FINAL_RESPONSE, data=mcp_prediction.answer)
+                else:
+                    # Normal mode: Generate response
+                    yield StreamEvent(type=StreamEventType.PROCESSING, data="Generating response...")
+
+                    # Prepare context for generation
+                    context = self._prepare_context(documents)
+
+                    # Stream response generation. Use ChatAdapter for streaming, which performs better.
+                    with dspy.context(
+                        adapter=dspy.adapters.ChatAdapter()
+                    ), ls.trace(
+                        name="GenerationProgramStreaming",
+                        run_type="llm",
+                        inputs={
+                            "query": query,
+                            "chat_history": chat_history_str,
+                            "context": context,
+                        },
+                    ) as rt:
                         chunk_accumulator = ""
                         async for chunk in self.generation_program.aforward_streaming(
                             query=query, context=context, chat_history=chat_history_str
@@ -309,24 +285,25 @@ class RagPipeline(dspy.Module):
                                     chunk_accumulator += chunk.chunk
                                     yield StreamEvent(type=StreamEventType.RESPONSE, data=chunk.chunk)
                                 else:
-                                    logger.warning(f"Unknown signature field name: {chunk.signature_field_name}")
+                                    logger.warning(
+                                        f"Unknown signature field name: {chunk.signature_field_name}"
+                                    )
                             elif isinstance(chunk, dspy.Prediction):
                                 # Final complete answer
-                                accumulated_usage = self._accumulate_usage(accumulated_usage, chunk)
                                 final_answer = getattr(chunk, "answer", None) or chunk_accumulator
                                 yield StreamEvent(type=StreamEventType.FINAL_RESPONSE, data=final_answer)
                                 rt.end(outputs={"output": final_answer})
 
-            # Pipeline completed - yield the final PipelineResult
-            pipeline_result = PipelineResult(
-                processed_query=processed_query,
-                documents=documents,
-                grok_citations=grok_citations,
-                usage=accumulated_usage,
-                answer=final_answer,
-                formatted_sources=formatted_sources,
-            )
-            yield StreamEvent(type=StreamEventType.END, data=pipeline_result)
+                # Pipeline completed - yield the final PipelineResult
+                pipeline_result = PipelineResult(
+                    processed_query=processed_query,
+                    documents=documents,
+                    grok_citations=grok_citations,
+                    usage=usage_tracker.get_total_tokens(),
+                    answer=final_answer,
+                    formatted_sources=formatted_sources,
+                )
+                yield StreamEvent(type=StreamEventType.END, data=pipeline_result)
 
         except Exception as e:
             # Handle pipeline errors
@@ -454,6 +431,18 @@ class RagPipeline(dspy.Module):
             context_parts.append("")
 
         return "\n".join(context_parts)
+
+    @staticmethod
+    def prediction_to_pipeline_result(prediction: dspy.Prediction) -> PipelineResult:
+        """Convert a DSPy Prediction into a PipelineResult."""
+        return PipelineResult(
+            processed_query=prediction.processed_query,
+            documents=prediction.documents,
+            grok_citations=prediction.grok_citations,
+            usage=prediction.get_lm_usage(),
+            answer=prediction.answer,
+            formatted_sources=prediction.formatted_sources,
+        )
 
 
 class RagPipelineFactory:

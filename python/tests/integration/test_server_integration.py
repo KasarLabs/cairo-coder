@@ -87,23 +87,23 @@ class TestServerIntegration:
             "You can deploy it using Scarb with the deploy command.",
         ]
 
-        async def mock_aforward(query: str, chat_history=None, mcp_mode=False, **kwargs):
-            from cairo_coder.core.types import PipelineResult
+        async def mock_acall(query: str, chat_history=None, mcp_mode=False, **kwargs):
+            import dspy
 
             history_length = len(chat_history) if chat_history else 0
             response_idx = min(history_length // 2, len(conversation_responses) - 1)
 
-            # Return a PipelineResult with the answer
-            return PipelineResult(
+            prediction = dspy.Prediction(
                 processed_query=None,
                 documents=[],
                 grok_citations=[],
-                usage={},
                 answer=conversation_responses[response_idx],
                 formatted_sources=[],
             )
+            prediction.set_lm_usage({})
+            return prediction
 
-        mock_agent.aforward = mock_aforward
+        mock_agent.acall = mock_acall
 
         # Test conversation flow
         messages = [{"role": "user", "content": "Hello"}]
@@ -586,7 +586,7 @@ class TestSuggestionEndpoint:
         import dspy
         # Create a mock program
         mock_program = Mock(spec=dspy.Predict)
-        mock_program.aforward = AsyncMock(
+        mock_program.acall = AsyncMock(
             return_value=dspy.Prediction(suggestions=["My custom suggestion"])
         )
         # Patch dspy.Predict constructor

@@ -17,7 +17,7 @@ from langsmith import traceable
 
 import dspy
 from cairo_coder.core.constants import SIMILARITY_THRESHOLD
-from cairo_coder.core.types import Document, combine_usage
+from cairo_coder.core.types import Document
 from cairo_coder.dspy.templates import CONTRACT_TEMPLATE_TITLE, TEST_TEMPLATE_TITLE
 
 logger = structlog.get_logger(__name__)
@@ -145,23 +145,16 @@ class RetrievalJudge(dspy.Module):
             documents
         )
 
-        aggregated_usage = {}
-
         # TODO: can we use dspy.Parallel here instead of asyncio gather?
         if judged_payloads:
             try:
                 # Judge concurrently
                 async def judge_one(doc_string: str):
-                    return await self.rater.aforward(query=query, system_resource=doc_string)
+                    return await self.rater.acall(query=query, system_resource=doc_string)
 
                 results = await asyncio.gather(
                     *[judge_one(ds) for ds in judged_payloads], return_exceptions=True
                 )
-
-                # Aggregate usage from results
-                for res in results:
-                    if isinstance(res, dspy.Prediction):
-                        aggregated_usage = combine_usage(aggregated_usage, res.get_lm_usage() or {})
 
                 self._attach_scores_and_filter_async(
                     query=query,
@@ -178,9 +171,7 @@ class RetrievalJudge(dspy.Module):
                 )
                 return dspy.Prediction(documents=documents)
 
-        pred = dspy.Prediction(documents=keep_docs)
-        pred.set_lm_usage(aggregated_usage)
-        return pred
+        return dspy.Prediction(documents=keep_docs)
 
     # =========================
     # Internal Helpers

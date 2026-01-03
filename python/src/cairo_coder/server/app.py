@@ -435,7 +435,7 @@ class CairoCoderServer:
             with dspy.context(
                 lm=dspy.LM("gemini/gemini-flash-lite-latest", max_tokens=10000), adapter=XMLAdapter()
             ):
-                result = await suggestion_program.aforward(chat_history=formatted_history)
+                result = await suggestion_program.acall(chat_history=formatted_history)
             suggestions = result.suggestions if isinstance(result.suggestions, list) else []
             return SuggestionResponse(suggestions=suggestions)
 
@@ -676,10 +676,9 @@ class CairoCoderServer:
         response_id = str(uuid.uuid4())
         created = int(time.time())
 
-        # Process agent and collect response - now returns PipelineResult directly
-        pipeline_result: PipelineResult = await agent.aforward(
-            query=query, chat_history=history, mcp_mode=mcp_mode
-        )
+        # Process agent and collect response via DSPy Prediction
+        pipeline_prediction = await agent.acall(query=query, chat_history=history, mcp_mode=mcp_mode)
+        pipeline_result = RagPipeline.prediction_to_pipeline_result(pipeline_prediction)
 
         answer = pipeline_result.answer
 
@@ -687,19 +686,13 @@ class CairoCoderServer:
         lm_usage = pipeline_result.usage
         logger.info(f"LM usage from pipeline: {lm_usage}")
 
-        if not lm_usage:
-            logger.warning("No LM usage data available, setting defaults to 0")
-            total_prompt_tokens = 0
-            total_completion_tokens = 0
-            total_tokens = 0
-        else:
-            # Aggregate, for all entries, together the prompt_tokens, completion_tokens, total_tokens fields
-            total_prompt_tokens = sum(entry.get("prompt_tokens", 0) for entry in lm_usage.values())
-            total_completion_tokens = sum(
-                entry.get("completion_tokens", 0) for entry in lm_usage.values()
-            )
-            total_tokens = sum(entry.get("total_tokens", 0) for entry in lm_usage.values())
-            logger.info(f"Token usage - prompt: {total_prompt_tokens}, completion: {total_completion_tokens}, total: {total_tokens}")
+        # Aggregate, for all entries, together the prompt_tokens, completion_tokens, total_tokens fields
+        total_prompt_tokens = sum(entry.get("prompt_tokens", 0) for entry in lm_usage.values())
+        total_completion_tokens = sum(
+            entry.get("completion_tokens", 0) for entry in lm_usage.values()
+        )
+        total_tokens = sum(entry.get("total_tokens", 0) for entry in lm_usage.values())
+        logger.info(f"Token usage - prompt: {total_prompt_tokens}, completion: {total_completion_tokens}, total: {total_tokens}")
 
         logger.info(
             "Chat completion generated",
