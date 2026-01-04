@@ -1,6 +1,6 @@
-const fs = require('fs');
-const { execSync } = require('child_process');
-const path = require('path');
+const fs = require("fs");
+const { execSync } = require("child_process");
+const path = require("path");
 
 // Configuration de débogage
 const DEBUG = true;
@@ -20,8 +20,8 @@ function parseInfoToml(infoPath) {
     throw new Error(`info.toml not found at: ${infoPath}`);
   }
 
-  const content = fs.readFileSync(infoPath, 'utf8');
-  const lines = content.split('\n');
+  const content = fs.readFileSync(infoPath, "utf8");
+  const lines = content.split("\n");
 
   const categories = {};
   let currentCategory = null;
@@ -34,19 +34,19 @@ function parseInfoToml(infoPath) {
     const cleanLine = line.trim();
 
     // Détecter les catégories
-    if (cleanLine.startsWith('# ') && !cleanLine.startsWith('##')) {
+    if (cleanLine.startsWith("# ") && !cleanLine.startsWith("##")) {
       currentCategory = cleanLine.substring(2).trim();
       categories[currentCategory] = [];
       continue;
     }
 
-    if (cleanLine.startsWith('[[exercises]]')) {
+    if (cleanLine.startsWith("[[exercises]]")) {
       if (currentExercise) {
         if (hintLines.length > 0) {
           currentExercise.hint = hintLines
-            .join('\n')
-            .replace(/^"""/, '')
-            .replace(/"""$/, '');
+            .join("\n")
+            .replace(/^"""/, "")
+            .replace(/"""$/, "");
         }
         if (currentCategory) {
           categories[currentCategory].push(currentExercise);
@@ -57,25 +57,25 @@ function parseInfoToml(infoPath) {
       hintLines = [];
     } else if (cleanLine.startsWith('hint = """')) {
       collectingHint = true;
-      hintLines.push(cleanLine.replace('hint = """', '').trim());
+      hintLines.push(cleanLine.replace('hint = """', "").trim());
     } else if (collectingHint) {
       if (cleanLine.endsWith('"""')) {
-        hintLines.push(cleanLine.replace('"""', '').trim());
+        hintLines.push(cleanLine.replace('"""', "").trim());
         collectingHint = false;
       } else {
         hintLines.push(cleanLine);
       }
-    } else if (cleanLine.startsWith('name = ')) {
+    } else if (cleanLine.startsWith("name = ")) {
       const match = cleanLine.match(/name = "(.+)"/);
       if (match) {
         currentExercise.name = match[1];
       }
-    } else if (cleanLine.startsWith('path = ')) {
+    } else if (cleanLine.startsWith("path = ")) {
       const match = cleanLine.match(/path = "(.+)"/);
       if (match) {
         currentExercise.path = match[1];
       }
-    } else if (cleanLine.startsWith('mode = ')) {
+    } else if (cleanLine.startsWith("mode = ")) {
       const match = cleanLine.match(/mode = "(.+)"/);
       if (match) {
         currentExercise.mode = match[1];
@@ -86,7 +86,7 @@ function parseInfoToml(infoPath) {
   // N'oublie pas le dernier exercice
   if (currentExercise) {
     if (hintLines.length > 0) {
-      currentExercise.hint = hintLines.join('\n').replace(/"""$/, '');
+      currentExercise.hint = hintLines.join("\n").replace(/"""$/, "");
     }
     if (currentCategory) {
       categories[currentCategory].push(currentExercise);
@@ -97,16 +97,16 @@ function parseInfoToml(infoPath) {
 }
 
 async function testServerConnection() {
-  log('Testing server connection...');
+  log("Testing server connection...");
 
   try {
-    const response = await fetch('http://localhost:3001/', {
-      method: 'GET',
+    const response = await fetch("http://localhost:3001/", {
+      method: "GET",
       timeout: 5000,
     });
 
     if (response.ok) {
-      log('✅ Server connection successful');
+      log("✅ Server connection successful");
       return true;
     } else {
       log(`❌ Server responded with status: ${response.status}`);
@@ -139,7 +139,7 @@ STDERR: ${errorFeedback.stderr}
 Please analyze the error and fix the code accordingly.
 
 Exercise: ${exercise.name}
-${exercise.hint ? `Hint: ${exercise.hint}` : ''}
+${exercise.hint ? `Hint: ${exercise.hint}` : ""}
 
 Instructions:
 1. Carefully analyze the compilation error above
@@ -157,7 +157,7 @@ Please provide only the corrected code, without any additional explanation or ma
     prompt = `You are solving a Cairo programming exercise.
 
 Exercise: ${exercise.name}
-${exercise.hint ? `Hint: ${exercise.hint}` : ''}
+${exercise.hint ? `Hint: ${exercise.hint}` : ""}
 
 Instructions:
 1. Read and understand the exercise requirements
@@ -173,8 +173,8 @@ Please provide only the corrected code, without any additional explanation or ma
   }
 
   const requestBody = {
-    model: 'cairo-coder',
-    messages: [{ role: 'user', content: prompt }],
+    model: "cairo-coder",
+    messages: [{ role: "user", content: prompt }],
     stream: false,
   };
 
@@ -185,11 +185,11 @@ Please provide only the corrected code, without any additional explanation or ma
       );
 
       const response = await fetch(
-        'http://localhost:3001/v1/chat/completions',
+        "http://localhost:3001/v1/chat/completions",
         {
-          method: 'POST',
+          method: "POST",
           headers: {
-            'Content-Type': 'application/json',
+            "Content-Type": "application/json",
           },
           body: JSON.stringify(requestBody),
           timeout: 120000, // 2 minutes
@@ -209,9 +209,9 @@ Please provide only the corrected code, without any additional explanation or ma
       if (SAVE_RESPONSES) {
         const responseFile = path.join(
           __dirname,
-          '..',
-          '..',
-          'debug',
+          "..",
+          "..",
+          "debug",
           `${exercise.name}_response_attempt${attemptNumber}.json`,
         );
         fs.mkdirSync(path.dirname(responseFile), { recursive: true });
@@ -227,7 +227,7 @@ Please provide only the corrected code, without any additional explanation or ma
         );
         return cleanCode;
       } else {
-        throw new Error('Invalid response format from API');
+        throw new Error("Invalid response format from API");
       }
     } catch (error) {
       log(
@@ -259,16 +259,16 @@ async function testExerciseWithFeedback(
     log(`❌ Exercise file not found: ${exercisePath}`);
     return {
       success: false,
-      error: { message: 'File not found', type: 'FILE_ERROR' },
+      error: { message: "File not found", type: "FILE_ERROR" },
       attempts: 0,
     };
   }
 
   // Lire le contenu original
-  const originalContent = fs.readFileSync(exercisePath, 'utf8');
+  const originalContent = fs.readFileSync(exercisePath, "utf8");
 
   // Sauvegarder l'original
-  const backupPath = exercisePath + '.backup';
+  const backupPath = exercisePath + ".backup";
   fs.writeFileSync(backupPath, originalContent);
 
   let lastError = null;
@@ -305,9 +305,9 @@ async function testExerciseWithFeedback(
         if (SAVE_RESPONSES && runNumber === RUN_NUMBER) {
           const solutionFile = path.join(
             __dirname,
-            '..',
-            '..',
-            'debug',
+            "..",
+            "..",
+            "debug",
             `${exercise.name}_solution_attempt${attemptNumber}.cairo`,
           );
           fs.mkdirSync(path.dirname(solutionFile), { recursive: true });
@@ -323,9 +323,9 @@ async function testExerciseWithFeedback(
             `cargo run --bin starklings run ${exercise.name}`,
             {
               cwd: starklingsPath,
-              stdio: 'pipe',
+              stdio: "pipe",
               timeout: 300000,
-              encoding: 'utf8',
+              encoding: "utf8",
             },
           );
 
@@ -343,26 +343,26 @@ async function testExerciseWithFeedback(
           );
           log(`Error code: ${error.status}`);
           log(
-            `stdout: ${error.stdout ? error.stdout.substring(0, 500) : 'none'}`,
+            `stdout: ${error.stdout ? error.stdout.substring(0, 500) : "none"}`,
           );
           log(
-            `stderr: ${error.stderr ? error.stderr.substring(0, 500) : 'none'}`,
+            `stderr: ${error.stderr ? error.stderr.substring(0, 500) : "none"}`,
           );
 
           // Formater l'erreur pour le feedback
           lastError = {
             exitCode: error.status,
-            stdout: error.stdout || '',
-            stderr: error.stderr || '',
+            stdout: error.stdout || "",
+            stderr: error.stderr || "",
           };
 
           // Sauvegarder les erreurs pour chaque tentative si c'est le dernier run
           if (SAVE_RESPONSES && runNumber === RUN_NUMBER) {
             const errorFile = path.join(
               __dirname,
-              '..',
-              '..',
-              'debug',
+              "..",
+              "..",
+              "debug",
               `${exercise.name}_error_attempt${attemptNumber}.txt`,
             );
             fs.writeFileSync(
@@ -400,7 +400,7 @@ async function testExerciseWithFeedback(
         if (attemptNumber === MAX_FEEDBACK_ATTEMPTS + 1) {
           return {
             success: false,
-            error: { message: apiError.message, type: 'API_ERROR' },
+            error: { message: apiError.message, type: "API_ERROR" },
             attempts: attemptNumber,
             finalAttempt: attemptNumber,
           };
@@ -469,9 +469,9 @@ async function processCategoryWorker(
       }
     }
 
-    const statusEmoji = result.success ? '✅' : '❌';
+    const statusEmoji = result.success ? "✅" : "❌";
     const attemptInfo =
-      result.attempts > 1 ? ` (${result.attempts} attempts)` : '';
+      result.attempts > 1 ? ` (${result.attempts} attempts)` : "";
     log(`[${categoryName}] ${exercise.name}: ${statusEmoji}${attemptInfo}`);
   }
 
@@ -486,10 +486,10 @@ async function processCategoryWorker(
 
   const reportPath = path.join(
     __dirname,
-    '..',
-    '..',
-    'debug',
-    `${categoryName.toLowerCase().replace(/\s+/g, '_')}_report_run${runNumber}.json`,
+    "..",
+    "..",
+    "debug",
+    `${categoryName.toLowerCase().replace(/\s+/g, "_")}_report_run${runNumber}.json`,
   );
   fs.writeFileSync(reportPath, JSON.stringify(categoryResults, null, 2));
 
@@ -508,8 +508,8 @@ function extractCairoCode(generatedResponse) {
     // Extraire le contenu du premier bloc de code trouvé
     const codeBlock = matches[0];
     const codeContent = codeBlock
-      .replace(/```(?:cairo|rust|)?\s*\n/, '')
-      .replace(/\n```$/, '');
+      .replace(/```(?:cairo|rust|)?\s*\n/, "")
+      .replace(/\n```$/, "");
     return codeContent.trim();
   }
 
@@ -519,7 +519,7 @@ function extractCairoCode(generatedResponse) {
 
 function generateConsolidatedReport(allResults) {
   if (allResults.length === 0) {
-    return { error: 'No successful runs' };
+    return { error: "No successful runs" };
   }
 
   // Taux de réussite global
@@ -587,7 +587,7 @@ function generateConsolidatedReport(allResults) {
     categoryAverages[category] = {
       successRate:
         (rates.reduce((sum, rate) => sum + rate, 0) / rates.length).toFixed(1) +
-        '%',
+        "%",
       averageAttempts: (
         attempts.reduce((sum, att) => sum + att, 0) / attempts.length
       ).toFixed(1),
@@ -616,8 +616,8 @@ function generateConsolidatedReport(allResults) {
             run: run.runNumber,
             attempts: exercise.attempts || 1,
             finalAttempt: exercise.finalAttempt || 1,
-            type: exercise.error.type || 'COMPILATION_ERROR',
-            message: exercise.error.message || 'Compilation failed',
+            type: exercise.error.type || "COMPILATION_ERROR",
+            message: exercise.error.message || "Compilation failed",
             stdout: exercise.error.stdout
               ? exercise.error.stdout.substring(0, 500)
               : null,
@@ -633,13 +633,13 @@ function generateConsolidatedReport(allResults) {
   return {
     summary: {
       totalRuns: allResults.length,
-      globalSuccessRate: averageSuccessRate + '%',
+      globalSuccessRate: averageSuccessRate + "%",
       averageAttemptsPerExercise: averageAttemptsPerExercise,
       totalFeedbackSuccesses: totalFeedbackSuccesses,
       feedbackSuccessRate:
         totalExercises > 0
-          ? ((totalFeedbackSuccesses / totalExercises) * 100).toFixed(1) + '%'
-          : '0%',
+          ? ((totalFeedbackSuccesses / totalExercises) * 100).toFixed(1) + "%"
+          : "0%",
     },
     categorySuccessRates: categoryAverages,
     exerciseErrorsByCategory: exerciseErrorsByCategory,
@@ -647,28 +647,28 @@ function generateConsolidatedReport(allResults) {
 }
 
 async function runSingleTest(runNumber) {
-  const starklingsPath = path.join(process.cwd(), 'starklings');
-  const infoPath = path.join(starklingsPath, 'info.toml');
+  const starklingsPath = path.join(process.cwd(), "starklings");
+  const infoPath = path.join(starklingsPath, "info.toml");
 
   if (!fs.existsSync(starklingsPath)) {
-    throw new Error('Starklings directory not found');
+    throw new Error("Starklings directory not found");
   }
 
   if (!fs.existsSync(infoPath)) {
-    throw new Error('info.toml not found in starklings directory');
+    throw new Error("info.toml not found in starklings directory");
   }
 
   // Tester la connexion au serveur
   const serverOk = await testServerConnection();
   if (!serverOk) {
-    throw new Error('Server is not accessible');
+    throw new Error("Server is not accessible");
   }
 
   // Parser les exercices par catégorie
   const categories = parseInfoToml(infoPath);
 
   if (Object.keys(categories).length === 0) {
-    throw new Error('No categories found');
+    throw new Error("No categories found");
   }
 
   // Filtrer à une seule catégorie si demandé
@@ -697,7 +697,7 @@ async function runSingleTest(runNumber) {
   }
 
   // Créer le dossier de debug
-  const debugDir = path.join(__dirname, '..', '..', 'debug');
+  const debugDir = path.join(__dirname, "..", "..", "debug");
   fs.mkdirSync(debugDir, { recursive: true });
 
   // Calculer le total d'exercices
@@ -788,11 +788,11 @@ async function main() {
   }
 
   // Générer le rapport consolidé
-  const debugDir = path.join(__dirname, '..', '..', 'debug');
+  const debugDir = path.join(__dirname, "..", "..", "debug");
   const consolidatedReport = generateConsolidatedReport(allResults);
   const consolidatedReportPath = path.join(
     debugDir,
-    'consolidated_report.json',
+    "consolidated_report.json",
   );
   fs.writeFileSync(
     consolidatedReportPath,
@@ -841,6 +841,6 @@ async function main() {
 }
 
 main().catch((error) => {
-  console.error('❌ Fatal error:', error);
+  console.error("❌ Fatal error:", error);
   process.exit(1);
 });

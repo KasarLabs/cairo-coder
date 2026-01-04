@@ -1,3 +1,4 @@
+import { createHash } from 'crypto';
 import { logger } from './logger';
 
 // Public API interfaces
@@ -905,9 +906,10 @@ export class RecursiveMarkdownSplitter {
 
       // Generate unique ID using 0-based numbering
       const slug = this.slugify(title);
-      const uniqueId = this.options.idPrefix
+      let uniqueId = this.options.idPrefix
         ? `${this.options.idPrefix}-${slug}-${count}`
         : `${slug}-${count}`;
+      uniqueId = this.clampUniqueId(uniqueId);
 
       // Determine sourceLink based on active source ranges.
       // Strategy:
@@ -984,6 +986,16 @@ export class RecursiveMarkdownSplitter {
       .replace(/\s+/g, '-') // Replace spaces with hyphens
       .replace(/-+/g, '-') // Replace multiple hyphens with single
       .replace(/^-+|-+$/g, ''); // Remove leading/trailing hyphens
+  }
+
+  private clampUniqueId(value: string): string {
+    const maxLength = 255;
+    if (value.length <= maxLength) return value;
+
+    const hash = createHash('md5').update(value).digest('hex');
+    const suffix = `-${hash}`;
+    const prefixLength = Math.max(0, maxLength - suffix.length);
+    return `${value.slice(0, prefixLength)}${suffix}`;
   }
 }
 

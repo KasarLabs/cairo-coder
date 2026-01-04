@@ -1,6 +1,9 @@
 import axios from 'axios';
 import { afterEach, describe, expect, it, vi } from 'bun:test';
-import { StarknetBlogIngester, __testing } from '../src/ingesters/StarknetBlogIngester';
+import {
+  StarknetBlogIngester,
+  __testing,
+} from '../src/ingesters/StarknetBlogIngester';
 import { type BookPageDto } from '../src/utils/types';
 
 const BASE_URL = 'https://www.starknet.io/blog';
@@ -64,19 +67,21 @@ ${urls.map((url) => `  <url><loc>${url}</loc></url>`).join('\n')}
 </urlset>`;
 
 const mockAxiosGet = (responses: Map<string, MockResponse>) => {
-  return vi.spyOn(axios, 'get').mockImplementation(async (url: string | any) => {
-    const key = typeof url === 'string' ? url : String(url);
-    const response = responses.get(key);
-    if (response) {
-      return response as any;
-    }
+  return vi
+    .spyOn(axios, 'get')
+    .mockImplementation(async (url: string | any) => {
+      const key = typeof url === 'string' ? url : String(url);
+      const response = responses.get(key);
+      if (response) {
+        return response as any;
+      }
 
-    return {
-      status: 404,
-      data: '',
-      headers: { 'content-type': 'text/html' },
-    } as any;
-  });
+      return {
+        status: 404,
+        data: '',
+        headers: { 'content-type': 'text/html' },
+      } as any;
+    });
 };
 
 describe('StarknetBlogIngester (crawler)', () => {
@@ -251,7 +256,9 @@ describe('StarknetBlogIngester (crawler)', () => {
       // Verify sourceLink is never undefined or empty
       expect(chunk.metadata.sourceLink).toBeDefined();
       expect(chunk.metadata.sourceLink).not.toBe('');
-      expect(chunk.metadata.sourceLink).toContain('https://www.starknet.io/blog/');
+      expect(chunk.metadata.sourceLink).toContain(
+        'https://www.starknet.io/blog/',
+      );
 
       // Verify sourceLink matches the page name
       expect(chunk.metadata.sourceLink).toContain(chunk.metadata.name);
@@ -301,30 +308,32 @@ describe('StarknetBlogIngester (real page integration)', () => {
       const html = realResponse.data as string;
       expect(html).toContain('Starknet');
 
-      vi.spyOn(axios, 'get').mockImplementation(async (url: string | any, config?: any) => {
-        const key = typeof url === 'string' ? url : String(url);
-        if (key === SITEMAP_URL) {
-          return {
-            status: 200,
-            data: buildSitemap([REAL_PAGE_URL_SLASH]),
-            headers: { 'content-type': 'application/xml' },
-          } as any;
-        }
+      vi.spyOn(axios, 'get').mockImplementation(
+        async (url: string | any, config?: any) => {
+          const key = typeof url === 'string' ? url : String(url);
+          if (key === SITEMAP_URL) {
+            return {
+              status: 200,
+              data: buildSitemap([REAL_PAGE_URL_SLASH]),
+              headers: { 'content-type': 'application/xml' },
+            } as any;
+          }
 
-        if (key === REAL_PAGE_URL || key === REAL_PAGE_URL_SLASH) {
+          if (key === REAL_PAGE_URL || key === REAL_PAGE_URL_SLASH) {
+            return {
+              status: 200,
+              data: html,
+              headers: { 'content-type': 'text/html' },
+            } as any;
+          }
+
           return {
-            status: 200,
-            data: html,
+            status: 404,
+            data: '',
             headers: { 'content-type': 'text/html' },
           } as any;
-        }
-
-        return {
-          status: 404,
-          data: '',
-          headers: { 'content-type': 'text/html' },
-        } as any;
-      });
+        },
+      );
 
       const ingester = new TestStarknetBlogIngester();
       const pages = await ingester.exposedDownloadAndExtractDocs();
@@ -347,11 +356,15 @@ describe('StarknetBlogIngester (real page integration)', () => {
       expect(page?.content).not.toContain('Join our newsletter');
       expect(page?.content).not.toContain('May also interest you');
       expect(page?.content.toLowerCase()).not.toContain('newsletter');
-      expect(page?.content.toLowerCase()).not.toContain('may also interest you');
+      expect(page?.content.toLowerCase()).not.toContain(
+        'may also interest you',
+      );
       expect(page?.content).not.toMatch(/(^|\n)#+\s*Authors?\b/i);
       expect(page?.content).toBe(expectedContent);
       expect(expectedContent.toLowerCase()).not.toContain('newsletter');
-      expect(expectedContent.toLowerCase()).not.toContain('may also interest you');
+      expect(expectedContent.toLowerCase()).not.toContain(
+        'may also interest you',
+      );
       expect(expectedContent).not.toMatch(/(^|\n)#+\s*Authors?\b/i);
     },
     { timeout: 30000 },

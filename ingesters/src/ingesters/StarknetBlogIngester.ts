@@ -70,7 +70,10 @@ class ExcludedUrlsCache {
         updatedAt: new Date().toISOString(),
         excludedUrls: Array.from(this.urls).sort(),
       };
-      await fs.writeFile(EXCLUDED_URLS_CACHE_FILE, JSON.stringify(data, null, 2));
+      await fs.writeFile(
+        EXCLUDED_URLS_CACHE_FILE,
+        JSON.stringify(data, null, 2),
+      );
       this.dirty = false;
       logger.info(`Saved ${this.urls.size} excluded URLs to cache`);
     } catch (error) {
@@ -212,7 +215,9 @@ export class StarknetBlogIngester extends MarkdownIngester {
     }
 
     // Filter out URLs that are already in the excluded cache
-    const urlsToProcess = filteredUrls.filter((url) => !excludedUrlsCache.has(url));
+    const urlsToProcess = filteredUrls.filter(
+      (url) => !excludedUrlsCache.has(url),
+    );
     const skippedFromCache = filteredUrls.length - urlsToProcess.length;
 
     if (skippedFromCache > 0) {
@@ -576,7 +581,8 @@ function extractContent(
     .not('html, head, body')
     .each((_, element) => {
       const node = $(element);
-      const idClass = `${node.attr('id') ?? ''} ${node.attr('class') ?? ''}`.toLowerCase();
+      const idClass =
+        `${node.attr('id') ?? ''} ${node.attr('class') ?? ''}`.toLowerCase();
       if (BOILERPLATE_KEYWORDS.some((keyword) => idClass.includes(keyword))) {
         node.remove();
       }
@@ -602,7 +608,8 @@ function extractContent(
       const textLength = node.text().trim().length;
       if (textLength < 200) return;
 
-      const idClass = `${node.attr('id') ?? ''} ${node.attr('class') ?? ''}`.toLowerCase();
+      const idClass =
+        `${node.attr('id') ?? ''} ${node.attr('class') ?? ''}`.toLowerCase();
       if (
         ['nav', 'menu', 'sidebar', 'header', 'footer'].some((kw) =>
           idClass.includes(kw),
@@ -645,7 +652,8 @@ function extractPublishedYearFromDom(
   }
 
   // Try <time> elements
-  const timeYear = parseYear($('time[datetime]').first().attr('datetime')) ??
+  const timeYear =
+    parseYear($('time[datetime]').first().attr('datetime')) ??
     parseYear($('time').first().text());
   if (timeYear) return timeYear;
 
@@ -781,7 +789,9 @@ function processUrl(
   const parsedHost = parsed.host.startsWith('www.')
     ? parsed.host.slice(4)
     : parsed.host;
-  const baseHost = base.host.startsWith('www.') ? base.host.slice(4) : base.host;
+  const baseHost = base.host.startsWith('www.')
+    ? base.host.slice(4)
+    : base.host;
 
   // Validate: must be same host and under base path
   if (parsedHost !== baseHost) return null;
