@@ -302,6 +302,7 @@ describe('StarknetBlogIngester (real page integration)', () => {
       const realResponse = await axios.get(REAL_PAGE_URL_SLASH, {
         headers: { 'User-Agent': 'cairo-coder-ingester-test' },
         timeout: 30000,
+        responseType: 'text',
       });
 
       expect(realResponse.status).toBe(200);
