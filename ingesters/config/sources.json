@@ -73,7 +73,7 @@
         "chunkOverlap": 512,
         "baseUrl": "https://docs.openzeppelin.com/contracts-cairo",
         "urlSuffix": "",
-        "useUrlMapping": false
+        "useUrlMapping": true
       }
     },
     "corelib_docs": {
@@ -131,7 +131,7 @@
         "fileExtensions": [".md"],
         "chunkSize": 4096,
         "chunkOverlap": 512,
-        "baseUrl": "https://starknet.io/blog",
+        "baseUrl": "https://www.starknet.io/blog",
         "urlSuffix": "",
         "useUrlMapping": false
       }

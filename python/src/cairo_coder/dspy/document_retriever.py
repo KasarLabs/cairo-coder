@@ -6,13 +6,14 @@ relevant documents from the vector store based on processed queries.
 """
 
 
-import asyncpg
 import os
+
+import asyncpg
+import dspy
 import structlog
 from langsmith import traceable
 from psycopg2 import sql
 
-import dspy
 from cairo_coder.core.config import VectorStoreConfig
 from cairo_coder.core.constants import SIMILARITY_THRESHOLD
 from cairo_coder.core.types import Document, DocumentSource, ProcessedQuery

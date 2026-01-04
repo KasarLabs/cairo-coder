@@ -7,7 +7,7 @@ on:
         description: Release tag to add to images
         required: false
         type: string
-        default: ''
+        default: ""
   workflow_dispatch:
 
 permissions:

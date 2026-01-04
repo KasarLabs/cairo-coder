@@ -1,7 +1,7 @@
 services:
   postgres:
     image: pgvector/pgvector:pg17
-    container_name: 'postgres'
+    container_name: "postgres"
     shm_size: 1g
     env_file:
       - path: .env
@@ -18,7 +18,7 @@ services:
     build:
       context: .
       dockerfile: backend.dockerfile
-    container_name: 'cairo-coder-backend'
+    container_name: "cairo-coder-backend"
     env_file:
       - path: .env
         required: true
@@ -33,7 +33,7 @@ services:
 
   ingester:
     platform: linux/amd64
-    container_name: 'cairo-coder-ingester'
+    container_name: "cairo-coder-ingester"
     env_file:
       - path: .env
         required: true

@@ -18,9 +18,11 @@
     "adm-zip": "^0.5.16",
     "asciidoctor": "^3.0.4",
     "axios": "^1.7.9",
+    "cheerio": "^1.0.0-rc.12",
     "dotenv": "^16.4.7",
     "downdoc": "1.0.2-stable",
     "lunr": "^2.3.9",
+    "node-html-markdown": "^2.0.0",
     "pg": "^8.14.1",
     "winston": "^3.17.0"
   },
