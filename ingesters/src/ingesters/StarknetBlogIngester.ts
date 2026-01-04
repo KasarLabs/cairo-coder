@@ -2,6 +2,7 @@ import axios from 'axios';
 import { load, type Cheerio, type Element } from 'cheerio';
 import { NodeHtmlMarkdown } from 'node-html-markdown';
 import { Document } from '@langchain/core/documents';
+import { gunzipSync } from 'zlib';
 import { type BookChunk, DocumentSource } from '../types';
 import { type BookConfig, type BookPageDto } from '../utils/types';
 import { MarkdownIngester } from './MarkdownIngester';
@@ -17,8 +18,13 @@ const CONCURRENCY = 4;
 const MAX_RETRIES = 5;
 const TIMEOUT_MS = 30_000;
 const REQUEST_DELAY_MS = 300;
+const REQUEST_JITTER_MS = 200;
 const MAX_CRAWL_PAGES = 200;
 const ALLOWED_YEARS = new Set([2025, 2026]);
+const MIN_RETRY_DELAY_MS = 1_000;
+const MAX_RETRY_DELAY_MS = 60_000;
+const MIN_MARKDOWN_LENGTH = 30;
+let globalBackoffUntil = 0;
 
 const DEFAULT_EXCLUDE_PATTERNS: RegExp[] = [
   /\/admin/i,
@@ -273,11 +279,28 @@ async function fetchSitemap(url: string): Promise<string | null> {
     const response = await axios.get(url, {
       headers: { 'User-Agent': USER_AGENT },
       timeout: TIMEOUT_MS,
+      responseType: 'arraybuffer',
       validateStatus: () => true,
     });
 
     if (response.status >= 200 && response.status < 300) {
-      return response.data as string;
+      const contentType = response.headers['content-type'] ?? '';
+      const isGzip = /gzip/i.test(contentType) || url.endsWith('.gz');
+      const data = response.data;
+      const buffer = Buffer.isBuffer(data)
+        ? data
+        : Buffer.from(
+            typeof data === 'string' ? data : (data as ArrayBuffer),
+          );
+      let xml = buffer.toString('utf8');
+      if (isGzip) {
+        try {
+          xml = gunzipSync(buffer).toString('utf8');
+        } catch (error) {
+          logger.debug(`Failed to gunzip sitemap ${url}: ${String(error)}`);
+        }
+      }
+      return xml;
     }
   } catch (error) {
     logger.debug(`Failed to fetch sitemap ${url}: ${String(error)}`);
@@ -351,7 +374,7 @@ async function fetchAndProcessPage(
   }
 
   const cleaned = cleanBlogMarkdown(markdown);
-  if (!cleaned || cleaned.length < 50) {
+  if (!cleaned || cleaned.length < MIN_MARKDOWN_LENGTH) {
     logger.debug(`Skipping ${url}: extracted markdown too small`);
     return null;
   }
@@ -370,6 +393,7 @@ async function fetchHtml(url: string): Promise<string | null> {
 
   for (let attempt = 0; attempt < MAX_RETRIES; attempt += 1) {
     try {
+      await waitForGlobalBackoff();
       const response = await axios.get(url, {
         headers: { 'User-Agent': USER_AGENT },
         timeout: TIMEOUT_MS,
@@ -378,16 +402,15 @@ async function fetchHtml(url: string): Promise<string | null> {
 
       const contentType = response.headers['content-type'] ?? '';
       if (response.status === 200 && contentType.includes('text/html')) {
-        await sleep(REQUEST_DELAY_MS);
+        await sleep(REQUEST_DELAY_MS + randomJitter(REQUEST_JITTER_MS));
         return response.data as string;
       }
 
       if (response.status === 429 || response.status >= 500) {
         lastError = `Status ${response.status}`;
         const retryAfter = response.headers['retry-after'];
-        const delayMs = retryAfter
-          ? Number.parseInt(String(retryAfter), 10) * 1000
-          : 2 ** attempt * 1000;
+        const delayMs = computeRetryDelay(retryAfter, attempt);
+        scheduleGlobalBackoff(delayMs);
         await sleep(delayMs);
         continue;
       }
@@ -395,12 +418,15 @@ async function fetchHtml(url: string): Promise<string | null> {
       return null;
     } catch (error) {
       lastError = String(error);
-      const delayMs = 2 ** attempt * 1000;
+      const delayMs = computeRetryDelay(undefined, attempt);
+      scheduleGlobalBackoff(delayMs);
       await sleep(delayMs);
     }
   }
 
-  logger.debug(`Failed to fetch ${url} after ${MAX_RETRIES} attempts: ${lastError}`);
+  logger.debug(
+    `Failed to fetch ${url} after ${MAX_RETRIES} attempts: ${lastError}`,
+  );
   return null;
 }
 
@@ -435,7 +461,11 @@ function extractContent(
     $('h1').first().text().trim() ||
     url;
 
-  $('script, style, noscript, nav, header, footer, aside, img, svg, iframe').remove();
+  const publishedYear = extractPublishedYearFromDom($);
+
+  $(
+    'script, style, noscript, nav, header, footer, aside, img, svg, iframe',
+  ).remove();
 
   $('*').each((_, element) => {
     const node = $(element);
@@ -473,8 +503,8 @@ function extractContent(
       const className = (node.attr('class') ?? '').toLowerCase();
       const id = (node.attr('id') ?? '').toLowerCase();
       if (
-        ['nav', 'menu', 'sidebar', 'header', 'footer'].some((kw) =>
-          className.includes(kw) || id.includes(kw),
+        ['nav', 'menu', 'sidebar', 'header', 'footer'].some(
+          (kw) => className.includes(kw) || id.includes(kw),
         )
       ) {
         return;
@@ -492,20 +522,21 @@ function extractContent(
     mainContent = body.length > 0 ? body : null;
   }
 
-  const htmlFragment = mainContent ? $.html(mainContent) ?? '' : '';
+  const htmlFragment = mainContent ? ($.html(mainContent) ?? '') : '';
   const markdown = NodeHtmlMarkdown.translate(htmlFragment);
-  const publishedYear = extractPublishedYear($, markdown);
+  const normalizedMarkdown = normalizeMarkdown(markdown);
+  const finalPublishedYear =
+    publishedYear ?? extractPublishedYearFromMarkdown(normalizedMarkdown);
 
   return {
-    markdown: normalizeMarkdown(markdown),
+    markdown: normalizedMarkdown,
     title,
-    publishedYear,
+    publishedYear: finalPublishedYear,
   };
 }
 
-function extractPublishedYear(
+function extractPublishedYearFromDom(
   $: ReturnType<typeof load>,
-  markdown: string,
 ): number | null {
   for (const selector of PUBLISHED_META_SELECTORS) {
     const content = $(selector).attr('content');
@@ -522,6 +553,13 @@ function extractPublishedYear(
   const timeTextYear = parseYear(timeText);
   if (timeTextYear) return timeTextYear;
 
+  const jsonLdYear = extractPublishedYearFromJsonLd($);
+  if (jsonLdYear) return jsonLdYear;
+
+  return null;
+}
+
+function extractPublishedYearFromMarkdown(markdown: string): number | null {
   const snippet = markdown.slice(0, 2000);
   const match = snippet.match(MONTH_REGEX);
   if (match && match[2]) {
@@ -551,25 +589,28 @@ function parseYear(value?: string | null): number | null {
 function cleanBlogMarkdown(markdown: string): string {
   let cleaned = markdown;
 
-  cleaned = cleaned.replace(
-    /^#{2,}\s*Join our newsletter[\s\S]*?(?=^#{2,}|\Z)/gim,
-    '',
-  );
-  cleaned = cleaned.replace(
-    /^#{2,}\s*May also interest you[\s\S]*?(?=^#{2,}|\Z)/gim,
-    '',
-  );
+  cleaned = stripSectionByHeading(cleaned, 'Join our newsletter');
+  cleaned = stripSectionByHeading(cleaned, 'May also interest you');
 
   cleaned = cleaned.replace(
-    /Join our newsletter[\s\S]*?(?=\n\n[A-Z]|\Z)/gi,
+    /^Join our newsletter\s*[\s\S]*?(?=\n\n|\s*(?![\s\S]))/gim,
     '',
   );
   cleaned = cleaned.replace(
-    /May also interest you[\s\S]*?(?=\n\n[A-Z]|\Z)/gi,
+    /^May also interest you\s*[\s\S]*?(?=\n\n|\s*(?![\s\S]))/gim,
     '',
   );
 
   return normalizeMarkdown(cleaned).trim();
+}
+
+function stripSectionByHeading(markdown: string, headingText: string): string {
+  const escaped = headingText.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const pattern = new RegExp(
+    `^\\s*#{2,}\\s*${escaped}\\b[^\\n]*\\n[\\s\\S]*?(?=^\\s*#{2,}\\s|\\s*(?![\\s\\S]))`,
+    'gim',
+  );
+  return markdown.replace(pattern, '');
 }
 
 function normalizeMarkdown(markdown: string): string {
@@ -621,7 +662,9 @@ function isValidUrl(url: string, baseUrl: URL): boolean {
   const urlPath = parsed.pathname.replace(/\/$/, '');
   if (basePath && !urlPath.startsWith(basePath)) return false;
 
-  return !DEFAULT_EXCLUDE_PATTERNS.some((pattern) => pattern.test(parsed.pathname));
+  return !DEFAULT_EXCLUDE_PATTERNS.some((pattern) =>
+    pattern.test(parsed.pathname),
+  );
 }
 
 function isBlogPostPath(url: string, baseUrl: string): boolean {
@@ -701,4 +744,105 @@ async function mapWithConcurrency<T, R>(
 
 async function sleep(ms: number): Promise<void> {
   await new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function computeRetryDelay(
+  retryAfter: string | number | undefined,
+  attempt: number,
+): number {
+  if (retryAfter !== undefined) {
+    const raw = String(retryAfter).trim();
+    const seconds = Number.parseInt(raw, 10);
+    if (!Number.isNaN(seconds)) {
+      return clampRetryDelay(seconds * 1000);
+    }
+    const parsedDate = Date.parse(raw);
+    if (!Number.isNaN(parsedDate)) {
+      const delta = parsedDate - Date.now();
+      return clampRetryDelay(delta);
+    }
+  }
+
+  return clampRetryDelay(2 ** attempt * 1000);
+}
+
+function clampRetryDelay(delayMs: number): number {
+  const normalized = Math.max(delayMs, MIN_RETRY_DELAY_MS);
+  return Math.min(normalized, MAX_RETRY_DELAY_MS);
+}
+
+function scheduleGlobalBackoff(delayMs: number): void {
+  const target = Date.now() + delayMs + randomJitter(delayMs * 0.1);
+  if (target > globalBackoffUntil) {
+    globalBackoffUntil = target;
+  }
+}
+
+async function waitForGlobalBackoff(): Promise<void> {
+  const now = Date.now();
+  if (globalBackoffUntil > now) {
+    await sleep(globalBackoffUntil - now);
+  }
+}
+
+function randomJitter(maxJitterMs: number): number {
+  if (maxJitterMs <= 0) return 0;
+  return Math.floor(Math.random() * maxJitterMs);
+}
+
+function extractPublishedYearFromJsonLd(
+  $: ReturnType<typeof load>,
+): number | null {
+  const scripts = $('script[type="application/ld+json"]');
+  for (const element of scripts.toArray()) {
+    const text = $(element).text().trim();
+    if (!text) continue;
+    const year = parseJsonLdForYear(text);
+    if (year) return year;
+  }
+  return null;
+}
+
+function parseJsonLdForYear(payload: string): number | null {
+  try {
+    const parsed = JSON.parse(payload);
+    return findYearInJsonLd(parsed, 0);
+  } catch {
+    return null;
+  }
+}
+
+function findYearInJsonLd(value: unknown, depth: number): number | null {
+  if (depth > 6) return null;
+  if (!value || typeof value !== 'object') return null;
+
+  if (Array.isArray(value)) {
+    for (const entry of value) {
+      const year = findYearInJsonLd(entry, depth + 1);
+      if (year) return year;
+    }
+    return null;
+  }
+
+  const record = value as Record<string, unknown>;
+  const dateKeys = ['datePublished', 'dateCreated', 'dateModified'];
+  for (const key of dateKeys) {
+    const dateValue = record[key];
+    if (typeof dateValue === 'string') {
+      const year = parseYear(dateValue);
+      if (year) return year;
+    }
+  }
+
+  if (record['@graph']) {
+    const year = findYearInJsonLd(record['@graph'], depth + 1);
+    if (year) return year;
+  }
+
+  for (const entry of Object.values(record)) {
+    const year = findYearInJsonLd(entry, depth + 1);
+    if (year) return year;
+  }
+
+  return null;
 }

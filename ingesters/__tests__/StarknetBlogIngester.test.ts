@@ -28,16 +28,21 @@ const buildHtml = (options: {
   title: string;
   metaDate?: string;
   timeDate?: string;
+  headerTimeDate?: string;
+  jsonLdDate?: string;
   bodyText?: string;
 }): string => {
-  const { title, metaDate, timeDate, bodyText } = options;
+  const { title, metaDate, timeDate, headerTimeDate, jsonLdDate, bodyText } =
+    options;
   return `<!doctype html>
 <html>
 <head>
   <title>${title}</title>
   ${metaDate ? `<meta property="article:published_time" content="${metaDate}">` : ''}
+  ${jsonLdDate ? `<script type="application/ld+json">${JSON.stringify({ datePublished: jsonLdDate })}</script>` : ''}
 </head>
 <body>
+  ${headerTimeDate ? `<header><time datetime="${headerTimeDate}">${headerTimeDate}</time></header>` : ''}
   <main>
     <h1>${title}</h1>
     ${timeDate ? `<time datetime="${timeDate}">${timeDate}</time>` : ''}
@@ -51,7 +56,9 @@ const buildHtml = (options: {
 </html>`;
 };
 
-const buildSitemap = (urls: string[]): string => `<?xml version="1.0" encoding="UTF-8"?>
+const buildSitemap = (
+  urls: string[],
+): string => `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
 ${urls.map((url) => `  <url><loc>${url}</loc></url>`).join('\n')}
 </urlset>`;
@@ -167,6 +174,20 @@ describe('StarknetBlogIngester (crawler)', () => {
       }),
     },
     {
+      label: 'json-ld',
+      html: buildHtml({
+        title: 'JsonLd Date',
+        jsonLdDate: '2025-11-01T00:00:00Z',
+      }),
+    },
+    {
+      label: 'header time element',
+      html: buildHtml({
+        title: 'Header Time',
+        headerTimeDate: '2025-08-09T00:00:00Z',
+      }),
+    },
+    {
       label: 'markdown text',
       html: buildHtml({
         title: 'Text Date',
@@ -220,9 +241,11 @@ describe('StarknetBlogIngester (crawler)', () => {
       expect(chunk.metadata.sourceLink).toBe(
         'https://www.starknet.io/blog/posts/2025/hello-world',
       );
-      expect(chunk.metadata.uniqueId.startsWith('starknet-blog-posts-2025-hello-world-')).toBe(
-        true,
-      );
+      expect(
+        chunk.metadata.uniqueId.startsWith(
+          'starknet-blog-posts-2025-hello-world-',
+        ),
+      ).toBe(true);
     });
   });
 });
