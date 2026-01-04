@@ -12,6 +12,7 @@ import {
   RecursiveMarkdownSplitter,
   type SplitOptions,
 } from '../utils/RecursiveMarkdownSplitter';
+import { getTempDir } from '../utils/paths';
 
 const USER_AGENT = 'cairo-coder-ingester';
 const CONCURRENCY = 4;
@@ -24,6 +25,7 @@ const ALLOWED_YEARS = new Set([2025, 2026]);
 const MIN_RETRY_DELAY_MS = 1_000;
 const MAX_RETRY_DELAY_MS = 60_000;
 const MIN_MARKDOWN_LENGTH = 30;
+const MAX_SITEMAP_DEPTH = 5;
 let globalBackoffUntil = 0;
 
 const DEFAULT_EXCLUDE_PATTERNS: RegExp[] = [
@@ -121,6 +123,9 @@ export class StarknetBlogIngester extends MarkdownIngester {
   protected override async downloadAndExtractDocs(): Promise<BookPageDto[]> {
     logger.info('Crawling Starknet blog posts for 2025-2026');
 
+    // Reset global backoff state for fresh crawl
+    globalBackoffUntil = 0;
+
     const baseUrl = this.config.baseUrl;
     const discoveredUrls = await discoverUrls(baseUrl);
 
@@ -205,7 +210,6 @@ export class StarknetBlogIngester extends MarkdownIngester {
   }
 
   protected getExtractDir(): string {
-    const { getTempDir } = require('../utils/paths');
     return getTempDir('starknet-blog');
   }
 
@@ -252,7 +256,23 @@ async function discoverUrlsFromSitemap(baseUrl: string): Promise<string[]> {
   return validUrls;
 }
 
-async function parseSitemap(sitemapUrl: string): Promise<string[]> {
+async function parseSitemap(
+  sitemapUrl: string,
+  depth = 0,
+  visited = new Set<string>(),
+): Promise<string[]> {
+  if (depth > MAX_SITEMAP_DEPTH) {
+    logger.warn(`Sitemap recursion depth exceeded for ${sitemapUrl}`);
+    return [];
+  }
+
+  const normalizedUrl = sitemapUrl.toLowerCase();
+  if (visited.has(normalizedUrl)) {
+    logger.debug(`Skipping already visited sitemap: ${sitemapUrl}`);
+    return [];
+  }
+  visited.add(normalizedUrl);
+
   const sitemapContent = await fetchSitemap(sitemapUrl);
   if (!sitemapContent) {
     return [];
@@ -265,7 +285,7 @@ async function parseSitemap(sitemapUrl: string): Promise<string[]> {
     const nestedUrls: string[] = [];
     for (const loc of locs) {
       if (!loc) continue;
-      const nested = await parseSitemap(loc);
+      const nested = await parseSitemap(loc, depth + 1, visited);
       nestedUrls.push(...nested);
     }
     return nestedUrls;
@@ -292,15 +312,15 @@ async function fetchSitemap(url: string): Promise<string | null> {
         : Buffer.from(
             typeof data === 'string' ? data : (data as ArrayBuffer),
           );
-      let xml = buffer.toString('utf8');
       if (isGzip) {
         try {
-          xml = gunzipSync(buffer).toString('utf8');
+          return gunzipSync(buffer).toString('utf8');
         } catch (error) {
           logger.debug(`Failed to gunzip sitemap ${url}: ${String(error)}`);
+          return null;
         }
       }
-      return xml;
+      return buffer.toString('utf8');
     }
   } catch (error) {
     logger.debug(`Failed to fetch sitemap ${url}: ${String(error)}`);
@@ -415,6 +435,12 @@ async function fetchHtml(url: string): Promise<string | null> {
         continue;
       }
 
+      // Log non-retryable failures (404, 403, etc.) for debugging stale sitemap entries
+      if (response.status !== 200) {
+        logger.debug(`Non-retryable status ${response.status} for ${url}`);
+      } else if (!contentType.includes('text/html')) {
+        logger.debug(`Non-HTML content-type "${contentType}" for ${url}`);
+      }
       return null;
     } catch (error) {
       lastError = String(error);
