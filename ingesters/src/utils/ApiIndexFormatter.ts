@@ -101,6 +101,11 @@ function compactSignature(signature: string): string {
   return normalizeWhitespace(signature.replace(/\n/g, ' '));
 }
 
+function formatDoc(doc: string): string {
+  if (!doc) return '';
+  return doc.replace(/\s+/g, ' ').trim();
+}
+
 function compactFunctionSignature(signature: string): {
   signature: string;
   tags: string[];
@@ -139,11 +144,13 @@ function formatTraitLine(entry: ApiIndexEntry): string {
     })
     .filter(Boolean);
 
+  const docSuffix = entry.doc ? ` | ${formatDoc(entry.doc)}` : '';
+
   if (functions.length === 0) {
-    return traitName;
+    return `${traitName}${docSuffix}`;
   }
 
-  return `${traitName} { ${functions.join('; ')} }`;
+  return `${traitName} { ${functions.join('; ')} }${docSuffix}`;
 }
 
 function formatStructEnumLine(
@@ -151,27 +158,35 @@ function formatStructEnumLine(
   prefix: 'struct' | 'enum',
 ): string {
   const compact = compactSignature(entry.signature);
+  let base: string;
   if (compact.toLowerCase().startsWith(prefix)) {
-    return compact.slice(prefix.length).trim();
+    base = compact.slice(prefix.length).trim();
+  } else {
+    base = compact || entry.itemName;
   }
-  return compact || entry.itemName;
+  const docSuffix = entry.doc ? ` | ${formatDoc(entry.doc)}` : '';
+  return `${base}${docSuffix}`;
 }
 
 function formatImplLine(entry: ApiIndexEntry): string {
   const compact = compactSignature(entry.signature);
-  return compact || `impl ${entry.itemName}`;
+  const base = compact || `impl ${entry.itemName}`;
+  const docSuffix = entry.doc ? ` | ${formatDoc(entry.doc)}` : '';
+  return `${base}${docSuffix}`;
 }
 
 function formatFunctionLine(entry: ApiIndexEntry): string {
   if (!entry.signature) {
-    return entry.itemName;
+    const docSuffix = entry.doc ? ` | ${formatDoc(entry.doc)}` : '';
+    return `${entry.itemName}${docSuffix}`;
   }
   const { signature, tags } = compactFunctionSignature(entry.signature);
   if (entry.itemType === 'extern' && !tags.includes('extern')) {
     tags.push('extern');
   }
   const tagSuffix = tags.length > 0 ? ` [${tags.join(',')}]` : '';
-  return `${signature}${tagSuffix}`;
+  const docSuffix = entry.doc ? ` | ${formatDoc(entry.doc)}` : '';
+  return `${signature}${tagSuffix}${docSuffix}`;
 }
 
 function buildModuleBlocks(docs: ParsedMdxDoc[]): ModuleBlock[] {

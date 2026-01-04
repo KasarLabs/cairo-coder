@@ -41,7 +41,6 @@ packages/**/dist
 
 /data
 
-.trunk
 !.trunk/trunk.yaml
 !.trunk/.gitignore
 

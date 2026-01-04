@@ -2,7 +2,7 @@ import { formatAsApiIndex } from '../ApiIndexFormatter';
 import { ParsedMdxDoc } from '../MdxParser';
 
 describe('ApiIndexFormatter', () => {
-  it('formats modules, templates, and sections', () => {
+  it('formats modules, templates, and sections with item-level docs', () => {
     const docs: ParsedMdxDoc[] = [
       {
         title: 'core::integer',
@@ -91,25 +91,81 @@ describe('ApiIndexFormatter', () => {
 
     const output = formatAsApiIndex(docs);
 
+    // Module-level structure
     expect(output).toContain('[module] core::integer');
     expect(output).toContain('[doc] Unsigned integer ops.');
     expect(output).toContain(
       '[url] https://docs.starknet.io/build/corelib/core-integer',
     );
+
+    // Template compression
     expect(output).toContain('[template:unsigned_int] T in {u8,u16,u32}');
     expect(output).toContain(
       'T_overflowing_add(a: T, b: T) -> Result<T, T> nopanic;',
     );
+
+    // Section headers
     expect(output).toContain('[traits]');
-    expect(output).toContain('NumericLiteral');
-    expect(output).toContain('fn from_int');
     expect(output).toContain('[structs]');
-    expect(output).toContain('u256');
     expect(output).toContain('[enums]');
+    expect(output).toContain('[functions]');
+
+    // Item-level docs are included
+    expect(output).toContain('NumericLiteral');
+    expect(output).toContain('| Numeric literal conversions.');
+    expect(output).toContain('u256');
+    expect(output).toContain('| 256-bit integer.');
     expect(output).toContain('Option');
+    expect(output).toContain('| Optional value.');
+    expect(output).toContain('append');
+    expect(output).toContain('| Append an element.');
+
+    // Multi-module support
     expect(output).toContain('[module] core::array');
     expect(output).toContain(
       '[url] https://docs.starknet.io/build/corelib/core-array',
     );
+  });
+
+  it('preserves full item descriptions', () => {
+    const docs: ParsedMdxDoc[] = [
+      {
+        title: 'core::test::long_doc_fn',
+        description:
+          'This is a very long description that should be fully preserved without any truncation at all.',
+        signature: 'fn long_doc_fn() -> u32;',
+        examples: [],
+        traitFunctions: [],
+        sourceUrl: 'https://docs.starknet.io/build/corelib/core-test',
+        fileName: 'core-test-long_doc_fn.mdx',
+      },
+    ];
+
+    const output = formatAsApiIndex(docs);
+
+    // Full description should be preserved
+    expect(output).toContain(
+      '| This is a very long description that should be fully preserved without any truncation at all.',
+    );
+  });
+
+  it('handles items without descriptions', () => {
+    const docs: ParsedMdxDoc[] = [
+      {
+        title: 'core::test::no_doc_fn',
+        description: '',
+        signature: 'fn no_doc_fn() -> u32;',
+        examples: [],
+        traitFunctions: [],
+        sourceUrl: 'https://docs.starknet.io/build/corelib/core-test',
+        fileName: 'core-test-no_doc_fn.mdx',
+      },
+    ];
+
+    const output = formatAsApiIndex(docs);
+
+    // Should not have a | separator when there's no doc
+    expect(output).toContain('no_doc_fn() -> u32;');
+    expect(output).not.toContain('no_doc_fn() -> u32; |');
   });
 });
