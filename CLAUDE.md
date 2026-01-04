@@ -91,6 +91,12 @@ docker compose up postgres ingester  # Run ingestion
 
 Key fixtures: `client`, `mock_agent`, `mock_vector_db`, `mock_lm`, `sample_documents`
 
+Always run tests before committing.
+
+### Lint and formatting
+
+Lints are managed by the Trunk tool, that can be run with `trunk check --fix`. Always lint and format before committing.
+
 ## Adding a New Documentation Source
 
 1. **Ingester** (`ingesters/src/ingesters/`):

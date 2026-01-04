@@ -1,7 +1,5 @@
 import * as fs from 'fs/promises';
 import * as path from 'path';
-import axios from 'axios';
-import AdmZip from 'adm-zip';
 import { type BookChunk, DocumentSource } from '../types';
 import { type BookConfig, type BookPageDto } from '../utils/types';
 import { processDocFiles } from '../utils/fileUtils';
@@ -15,7 +13,7 @@ const exec = promisify(execCallback);
 /**
  * Ingester for the Cairo Book documentation
  *
- * This ingester downloads the Cairo Book documentation from GitHub releases,
+ * This ingester clones the Cairo Book documentation from the main branch,
  * builds the mdbook, processes the markdown files, and creates chunks for the vector store.
  */
 export class CairoBookIngester extends MarkdownIngester {
@@ -49,17 +47,17 @@ export class CairoBookIngester extends MarkdownIngester {
   }
 
   /**
-   * Download and extract the Cairo Book documentation
+   * Clone and process the Cairo Book documentation
    *
    * @returns Promise<BookPageDto[]> - Array of book pages
    */
   protected override async downloadAndExtractDocs(): Promise<BookPageDto[]> {
-    logger.info('Downloading and processing Cairo Book docs');
+    logger.info('Cloning and processing Cairo Book docs');
     const extractDir = this.getExtractDir();
     // clear extract dir
     await fs.rm(extractDir, { recursive: true, force: true });
 
-    // Download and extract the repository
+    // Clone the repository
     await this.downloadAndExtractRepo(extractDir);
 
     // Update book.toml configuration
@@ -76,49 +74,24 @@ export class CairoBookIngester extends MarkdownIngester {
   }
 
   /**
-   * Download and extract the repository
+   * Clone the repository from the main branch
    *
-   * @param extractDir - The directory to extract to
+   * @param extractDir - The directory to clone into
    */
   private async downloadAndExtractRepo(extractDir: string): Promise<void> {
-    const latestReleaseUrl = `https://api.github.com/repos/${this.config.repoOwner}/${this.config.repoName}/releases/latest`;
-    const response = await axios.get(latestReleaseUrl);
-    const latestRelease = response.data;
-    const zipUrl = latestRelease.zipball_url;
+    const repoUrl = `https://github.com/${this.config.repoOwner}/${this.config.repoName}.git`;
 
-    logger.info(`Downloading repository from ${zipUrl}`);
-    const zipResponse = await axios.get(zipUrl, {
-      responseType: 'arraybuffer',
-    });
-    const zipData = zipResponse.data;
+    logger.info(`Cloning repository from ${repoUrl}`);
 
-    const zipFile = new AdmZip(zipData);
-    zipFile.extractAllTo(extractDir, true);
-
-    // Find the extracted directory (it has a prefix like cairo-book-cairo-book-v2.0.0)
-    const files = await fs.readdir(extractDir);
-    const repoDir = files.find((file) =>
-      file.startsWith(`${this.config.repoOwner}-${this.config.repoName}`),
-    );
-
-    if (!repoDir) {
-      throw new Error('Repository directory not found in the extracted files.');
+    try {
+      await exec(
+        `git clone --depth 1 --branch main "${repoUrl}" "${extractDir}"`,
+      );
+      logger.info('Repository cloned successfully.');
+    } catch (error) {
+      logger.error('Error cloning repository:', error);
+      throw new Error('Failed to clone repository');
     }
-
-    // Move all contents from the nested directory to the extract directory
-    const nestedDir = path.join(extractDir, repoDir);
-    const nestedFiles = await fs.readdir(nestedDir);
-
-    for (const file of nestedFiles) {
-      const srcPath = path.join(nestedDir, file);
-      const destPath = path.join(extractDir, file);
-      await fs.rename(srcPath, destPath);
-    }
-
-    // Remove the now-empty nested directory
-    await fs.rmdir(nestedDir);
-
-    logger.info('Repository downloaded and extracted successfully.');
   }
 
   /**
