@@ -47,6 +47,9 @@ export type BookConfig = {
 
   /** Whether to map pages to URLs or just use the baseUrl. */
   useUrlMapping: boolean;
+
+  /** Optional subdirectory within the repo to target */
+  sourceDir?: string;
 };
 
 /**
