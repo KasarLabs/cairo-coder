@@ -133,8 +133,8 @@ def from_web(
     and compiles it into a single markdown file.
 
     Examples:
-        # Use predefined target for StarkNet 2025 blog posts
-        uv run ingest from-web starknet-blog-2025
+        # Use predefined target for StarkNet 2025/2026 blog posts
+        uv run ingest from-web starknet-blog
 
         # Crawl StarkNet blog manually with filter
         uv run ingest from-web https://www.starknet.io/blog --content-filter="2025"
@@ -153,8 +153,8 @@ def from_web(
         if target.get_exclude_url_patterns():
             typer.echo(f"  Exclude patterns: {target.get_exclude_url_patterns()}")
         # Show details for specific targets
-        if target.name == "starknet-blog-2025":
-            typer.echo("  Content filter: 2025 blog entries only")
+        if target.name == "starknet-blog":
+            typer.echo("  Content filter: 2025/2026 blog entries only")
             typer.echo("  Content processor: removes newsletter/interest sections")
     else:
         # Create a generic target on the fly for custom URLs

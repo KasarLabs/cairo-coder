@@ -91,8 +91,8 @@ class WebTargetConfig:
         return Path(f"{os.getcwd()}/src/cairo_coder_tools/ingestion/generated/{self.name}.md")
 
 
-def is_2025_blog_entry(content: str) -> bool:
-    """Check if content is a blog entry from 2025.
+def is_2025_or_2026_blog_entry(content: str) -> bool:
+    """Check if content is a blog entry from 2025 or 2026.
 
     Looks for patterns like:
         Home  /  Blog
@@ -118,7 +118,7 @@ def is_2025_blog_entry(content: str) -> bool:
         matches = re.findall(pattern, content, re.DOTALL | re.IGNORECASE)
         for match in matches:
             year = match[1] if len(match) > 1 else match[-1]
-            if year == '2025':
+            if year in {'2025', '2026'}:
                 return True
 
     return False
@@ -172,7 +172,7 @@ STARKNET_BLOG = WebTargetConfig(
     name="starknet-blog",
     base_url="https://www.starknet.io/blog",
     exclude_patterns=[r'video/$'],  # Exclude URLs ending with video/
-    content_filter=is_2025_blog_entry,
+    content_filter=is_2025_or_2026_blog_entry,
     content_processor=clean_blog_content,
 )
 
