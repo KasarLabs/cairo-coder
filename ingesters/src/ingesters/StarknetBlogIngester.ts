@@ -13,7 +13,8 @@ import {
   RecursiveMarkdownSplitter,
   type SplitOptions,
 } from '../utils/RecursiveMarkdownSplitter';
-import { getTempDir } from '../utils/paths';
+import { getTempDir, getPythonPath } from '../utils/paths';
+import * as fs from 'fs/promises';
 
 const USER_AGENT = 'cairo-coder-ingester';
 const CONCURRENCY = 4;
@@ -28,6 +29,73 @@ const MAX_RETRY_DELAY_MS = 60_000;
 const MIN_MARKDOWN_LENGTH = 30;
 const MAX_SITEMAP_DEPTH = 5;
 let globalBackoffUntil = 0;
+
+// Cache for URLs that are confirmed NOT 2025/2026 blog posts
+// This avoids re-fetching and re-processing pages on subsequent runs
+const EXCLUDED_URLS_CACHE_FILE = getPythonPath(
+  'src',
+  'cairo_coder_tools',
+  'ingestion',
+  'generated',
+  'starknet-blog-excluded-urls.json',
+);
+
+/**
+ * Simple cache for excluded URLs (non-2025/2026 blog posts).
+ * Persists to disk so subsequent runs skip already-checked pages.
+ */
+class ExcludedUrlsCache {
+  private urls: Set<string> = new Set();
+  private dirty = false;
+
+  async load(): Promise<void> {
+    try {
+      const content = await fs.readFile(EXCLUDED_URLS_CACHE_FILE, 'utf8');
+      const data = JSON.parse(content);
+      if (Array.isArray(data.excludedUrls)) {
+        this.urls = new Set(data.excludedUrls);
+        logger.info(`Loaded ${this.urls.size} excluded URLs from cache`);
+      }
+    } catch {
+      // Cache file doesn't exist or is invalid - start fresh
+      this.urls = new Set();
+      logger.debug('No existing excluded URLs cache found, starting fresh');
+    }
+  }
+
+  async save(): Promise<void> {
+    if (!this.dirty) return;
+    try {
+      const data = {
+        updatedAt: new Date().toISOString(),
+        excludedUrls: Array.from(this.urls).sort(),
+      };
+      await fs.writeFile(EXCLUDED_URLS_CACHE_FILE, JSON.stringify(data, null, 2));
+      this.dirty = false;
+      logger.info(`Saved ${this.urls.size} excluded URLs to cache`);
+    } catch (error) {
+      logger.warn(`Failed to save excluded URLs cache: ${String(error)}`);
+    }
+  }
+
+  has(url: string): boolean {
+    return this.urls.has(url);
+  }
+
+  add(url: string): void {
+    if (!this.urls.has(url)) {
+      this.urls.add(url);
+      this.dirty = true;
+    }
+  }
+
+  get size(): number {
+    return this.urls.size;
+  }
+}
+
+// Global cache instance
+const excludedUrlsCache = new ExcludedUrlsCache();
 
 const DEFAULT_EXCLUDE_PATTERNS: RegExp[] = [
   /\/admin/i,
@@ -127,6 +195,9 @@ export class StarknetBlogIngester extends MarkdownIngester {
     // Reset global backoff state for fresh crawl
     globalBackoffUntil = 0;
 
+    // Load excluded URLs cache to skip already-checked pages
+    await excludedUrlsCache.load();
+
     const baseUrl = this.config.baseUrl;
     const discoveredUrls = await discoverUrls(baseUrl);
 
@@ -140,10 +211,20 @@ export class StarknetBlogIngester extends MarkdownIngester {
       throw new Error('No URLs remaining after Starknet blog filtering');
     }
 
-    logger.info(`Processing ${filteredUrls.length} Starknet blog URLs`);
+    // Filter out URLs that are already in the excluded cache
+    const urlsToProcess = filteredUrls.filter((url) => !excludedUrlsCache.has(url));
+    const skippedFromCache = filteredUrls.length - urlsToProcess.length;
+
+    if (skippedFromCache > 0) {
+      logger.info(
+        `Skipping ${skippedFromCache} URLs from cache, processing ${urlsToProcess.length} URLs`,
+      );
+    } else {
+      logger.info(`Processing ${urlsToProcess.length} Starknet blog URLs`);
+    }
 
     const results = await mapWithConcurrency(
-      filteredUrls,
+      urlsToProcess,
       CONCURRENCY,
       async (url) => {
         const page = await fetchAndProcessPage(url, baseUrl);
@@ -155,6 +236,9 @@ export class StarknetBlogIngester extends MarkdownIngester {
     );
 
     const pages = results.filter((page): page is BookPageDto => page !== null);
+
+    // Save updated cache
+    await excludedUrlsCache.save();
 
     logger.info(`Collected ${pages.length} Starknet blog posts for ingestion`);
     return pages;
@@ -188,6 +272,10 @@ export class StarknetBlogIngester extends MarkdownIngester {
         const contentHash = calculateHash(chunk.content);
         const uniqueId = chunk.meta.uniqueId;
         const sourceLink = pageSource;
+
+        logger.debug(
+          `Creating chunk for ${page.name}: title="${chunk.meta.title || page.name}", sourceLink="${sourceLink}"`,
+        );
 
         chunks.push(
           new Document<BookChunk>({
@@ -397,6 +485,8 @@ async function fetchAndProcessPage(
 
   if (!publishedYear || !ALLOWED_YEARS.has(publishedYear)) {
     logger.debug(`Skipping ${url}: not a 2025/2026 blog post`);
+    // Add to cache so we don't re-check this URL on future runs
+    excludedUrlsCache.add(url);
     return null;
   }
 

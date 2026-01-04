@@ -237,21 +237,48 @@ describe('StarknetBlogIngester (crawler)', () => {
         name: 'posts/2025/hello-world',
         content: '# Hello World\n\nSome content here.',
       },
+      {
+        name: 'scaling-bitcoin',
+        content:
+          '# Scaling Bitcoin\n\n## Overview\n\nContent about Bitcoin.\n\n## Technical Details\n\nMore details here.',
+      },
     ];
 
     const chunks = await ingester.exposedCreateChunks(pages);
 
     expect(chunks.length).toBeGreaterThan(0);
     chunks.forEach((chunk) => {
-      expect(chunk.metadata.name).toBe('posts/2025/hello-world');
+      // Verify sourceLink is never undefined or empty
+      expect(chunk.metadata.sourceLink).toBeDefined();
+      expect(chunk.metadata.sourceLink).not.toBe('');
+      expect(chunk.metadata.sourceLink).toContain('https://www.starknet.io/blog/');
+
+      // Verify sourceLink matches the page name
+      expect(chunk.metadata.sourceLink).toContain(chunk.metadata.name);
+
+      // Verify uniqueId starts with the correct prefix
+      expect(chunk.metadata.uniqueId).toContain('starknet-blog-');
+    });
+
+    // Test specific page sources
+    const helloWorldChunks = chunks.filter(
+      (c) => c.metadata.name === 'posts/2025/hello-world',
+    );
+    expect(helloWorldChunks.length).toBeGreaterThan(0);
+    helloWorldChunks.forEach((chunk) => {
       expect(chunk.metadata.sourceLink).toBe(
         'https://www.starknet.io/blog/posts/2025/hello-world',
       );
-      expect(
-        chunk.metadata.uniqueId.startsWith(
-          'starknet-blog-posts-2025-hello-world-',
-        ),
-      ).toBe(true);
+    });
+
+    const scalingBitcoinChunks = chunks.filter(
+      (c) => c.metadata.name === 'scaling-bitcoin',
+    );
+    expect(scalingBitcoinChunks.length).toBeGreaterThan(0);
+    scalingBitcoinChunks.forEach((chunk) => {
+      expect(chunk.metadata.sourceLink).toBe(
+        'https://www.starknet.io/blog/scaling-bitcoin',
+      );
     });
   });
 });
