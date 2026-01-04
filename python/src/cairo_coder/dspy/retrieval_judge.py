@@ -8,14 +8,14 @@ for usefulness with respect to the user query, filtering out low-scoring documen
 from __future__ import annotations
 
 import asyncio
-from collections.abc import Sequence
 import os
+from collections.abc import Sequence
 from typing import Any
 
+import dspy
 import structlog
 from langsmith import traceable
 
-import dspy
 from cairo_coder.core.constants import SIMILARITY_THRESHOLD
 from cairo_coder.core.types import Document
 from cairo_coder.dspy.templates import CONTRACT_TEMPLATE_TITLE, TEST_TEMPLATE_TITLE

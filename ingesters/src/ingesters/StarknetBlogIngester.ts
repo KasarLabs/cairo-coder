@@ -1,5 +1,6 @@
 import axios from 'axios';
-import { load, type Cheerio, type Element } from 'cheerio';
+import { load, type Cheerio } from 'cheerio';
+import type { AnyNode, Element } from 'domhandler';
 import { NodeHtmlMarkdown } from 'node-html-markdown';
 import { Document } from '@langchain/core/documents';
 import { gunzipSync } from 'zlib';
@@ -244,12 +245,10 @@ async function discoverUrlsFromSitemap(baseUrl: string): Promise<string[]> {
 
   for (const url of urls) {
     if (!url) continue;
-    const normalized = normalizeUrl(url);
-    if (!isValidUrl(normalized, base)) continue;
-    const canonical = canonicalizeUrl(normalized, baseUrl);
-    if (seen.has(canonical)) continue;
-    seen.add(canonical);
-    validUrls.push(canonical);
+    const processed = processUrl(url, base, baseUrl);
+    if (!processed || seen.has(processed)) continue;
+    seen.add(processed);
+    validUrls.push(processed);
   }
 
   logger.info(`Found ${validUrls.length} valid URLs from sitemap`);
@@ -307,11 +306,14 @@ async function fetchSitemap(url: string): Promise<string | null> {
       const contentType = response.headers['content-type'] ?? '';
       const isGzip = /gzip/i.test(contentType) || url.endsWith('.gz');
       const data = response.data;
-      const buffer = Buffer.isBuffer(data)
-        ? data
-        : Buffer.from(
-            typeof data === 'string' ? data : (data as ArrayBuffer),
-          );
+      let buffer: Buffer;
+      if (Buffer.isBuffer(data)) {
+        buffer = data;
+      } else if (typeof data === 'string') {
+        buffer = Buffer.from(data);
+      } else {
+        buffer = Buffer.from(data as ArrayBuffer);
+      }
       if (isGzip) {
         try {
           return gunzipSync(buffer).toString('utf8');
@@ -333,8 +335,11 @@ async function discoverUrlsByCrawling(baseUrl: string): Promise<string[]> {
   logger.info('Falling back to crawling for URL discovery');
   const base = new URL(baseUrl);
   const visited = new Set<string>();
-  const queue: string[] = [normalizeUrl(baseUrl)];
-  visited.add(normalizeUrl(baseUrl));
+  const startUrl = processUrl(baseUrl, base, baseUrl);
+  if (!startUrl) return [];
+
+  const queue: string[] = [startUrl];
+  visited.add(startUrl);
 
   while (queue.length > 0 && visited.size < MAX_CRAWL_PAGES) {
     const current = queue.shift();
@@ -343,15 +348,19 @@ async function discoverUrlsByCrawling(baseUrl: string): Promise<string[]> {
     const html = await fetchHtml(current);
     if (!html) continue;
 
-    const links = extractLinks(html, current);
-    for (const link of links) {
-      if (visited.size >= MAX_CRAWL_PAGES) break;
-      const canonical = canonicalizeUrl(link, baseUrl);
-      if (!isValidUrl(canonical, base)) continue;
-      if (visited.has(canonical)) continue;
-      visited.add(canonical);
-      queue.push(canonical);
-    }
+    const $ = load(html);
+    $('a[href], link[href]').each((_, element) => {
+      if (visited.size >= MAX_CRAWL_PAGES) return;
+
+      const href = $(element).attr('href');
+      if (!href) return;
+
+      const processed = processUrl(href, base, baseUrl, current);
+      if (!processed || visited.has(processed)) return;
+
+      visited.add(processed);
+      queue.push(processed);
+    });
   }
 
   logger.info(`Discovered ${visited.size} pages by crawling`);
@@ -364,13 +373,11 @@ function filterUrls(urls: string[], baseUrl: string): string[] {
   const filtered: string[] = [];
 
   for (const url of urls) {
-    const normalized = normalizeUrl(url);
-    const canonical = canonicalizeUrl(normalized, baseUrl);
-    if (!isValidUrl(canonical, base)) continue;
-    if (!isBlogPostPath(canonical, baseUrl)) continue;
-    if (seen.has(canonical)) continue;
-    seen.add(canonical);
-    filtered.push(canonical);
+    const processed = processUrl(url, base, baseUrl);
+    if (!processed || !isBlogPostPath(processed, baseUrl)) continue;
+    if (seen.has(processed)) continue;
+    seen.add(processed);
+    filtered.push(processed);
   }
 
   return filtered.sort();
@@ -456,25 +463,6 @@ async function fetchHtml(url: string): Promise<string | null> {
   return null;
 }
 
-function extractLinks(html: string, baseUrl: string): string[] {
-  const $ = load(html);
-  const links = new Set<string>();
-
-  $('a[href], link[href]').each((_, element) => {
-    const href = $(element).attr('href');
-    if (!href) return;
-
-    try {
-      const absoluteUrl = new URL(href, baseUrl).toString();
-      links.add(normalizeUrl(absoluteUrl));
-    } catch {
-      return;
-    }
-  });
-
-  return Array.from(links);
-}
-
 function extractContent(
   html: string,
   url: string,
@@ -493,60 +481,56 @@ function extractContent(
     'script, style, noscript, nav, header, footer, aside, img, svg, iframe',
   ).remove();
 
-  $('*').each((_, element) => {
-    const node = $(element);
-    const id = node.attr('id')?.toLowerCase() ?? '';
-    const className = (node.attr('class') ?? '').toLowerCase();
+  // Remove boilerplate elements (but never remove html, head, or body)
+  $('*')
+    .not('html, head, body')
+    .each((_, element) => {
+      const node = $(element);
+      const idClass = `${node.attr('id') ?? ''} ${node.attr('class') ?? ''}`.toLowerCase();
+      if (BOILERPLATE_KEYWORDS.some((keyword) => idClass.includes(keyword))) {
+        node.remove();
+      }
+    });
 
-    if (BOILERPLATE_KEYWORDS.some((keyword) => id.includes(keyword))) {
-      node.remove();
-      return;
-    }
+  let mainContent: Cheerio<AnyNode> | null = null;
 
-    if (BOILERPLATE_KEYWORDS.some((keyword) => className.includes(keyword))) {
-      node.remove();
-    }
-  });
-
-  let mainContent: Cheerio<Element> | null = null;
+  // Try main content selectors first
   for (const selector of MAIN_CONTENT_SELECTORS) {
     const element = $(selector).first();
-    if (element.length === 0) continue;
-    const textLength = element.text().trim().length;
-    if (textLength > 100) {
+    if (element.length && element.text().trim().length > 100) {
       mainContent = element;
       break;
     }
   }
 
-  if (!mainContent || mainContent.length === 0) {
+  // Fallback: find largest content div (excluding nav/sidebar/etc)
+  if (!mainContent) {
     let bestDiv = null;
     let bestLength = 0;
     $('div').each((_, element) => {
       const node = $(element);
       const textLength = node.text().trim().length;
       if (textLength < 200) return;
-      const className = (node.attr('class') ?? '').toLowerCase();
-      const id = (node.attr('id') ?? '').toLowerCase();
+
+      const idClass = `${node.attr('id') ?? ''} ${node.attr('class') ?? ''}`.toLowerCase();
       if (
-        ['nav', 'menu', 'sidebar', 'header', 'footer'].some(
-          (kw) => className.includes(kw) || id.includes(kw),
+        ['nav', 'menu', 'sidebar', 'header', 'footer'].some((kw) =>
+          idClass.includes(kw),
         )
       ) {
         return;
       }
+
       if (textLength > bestLength) {
         bestLength = textLength;
         bestDiv = node;
       }
     });
-    mainContent = bestDiv ?? null;
+    mainContent = bestDiv;
   }
 
-  if (!mainContent || mainContent.length === 0) {
-    const body = $('body').first();
-    mainContent = body.length > 0 ? body : null;
-  }
+  // Last resort: use body
+  mainContent = mainContent ?? $('body').first();
 
   const htmlFragment = mainContent ? ($.html(mainContent) ?? '') : '';
   const markdown = NodeHtmlMarkdown.translate(htmlFragment);
@@ -564,25 +548,19 @@ function extractContent(
 function extractPublishedYearFromDom(
   $: ReturnType<typeof load>,
 ): number | null {
+  // Try meta tags
   for (const selector of PUBLISHED_META_SELECTORS) {
-    const content = $(selector).attr('content');
-    const year = parseYear(content);
+    const year = parseYear($(selector).attr('content'));
     if (year) return year;
   }
 
-  const timeElement = $('time[datetime]').first();
-  const timeAttr = timeElement.attr('datetime');
-  const timeYear = parseYear(timeAttr);
+  // Try <time> elements
+  const timeYear = parseYear($('time[datetime]').first().attr('datetime')) ??
+    parseYear($('time').first().text());
   if (timeYear) return timeYear;
 
-  const timeText = $('time').first().text().trim();
-  const timeTextYear = parseYear(timeText);
-  if (timeTextYear) return timeTextYear;
-
-  const jsonLdYear = extractPublishedYearFromJsonLd($);
-  if (jsonLdYear) return jsonLdYear;
-
-  return null;
+  // Try JSON-LD structured data
+  return extractPublishedYearFromJsonLd($);
 }
 
 function extractPublishedYearFromMarkdown(markdown: string): number | null {
@@ -615,28 +593,31 @@ function parseYear(value?: string | null): number | null {
 function cleanBlogMarkdown(markdown: string): string {
   let cleaned = markdown;
 
-  cleaned = stripSectionByHeading(cleaned, 'Join our newsletter');
-  cleaned = stripSectionByHeading(cleaned, 'May also interest you');
+  // Remove "This article was also published on..." line
+  cleaned = cleaned.replace(
+    /This article was also published on[^\n]*\.?\n*/gi,
+    '',
+  );
 
+  // Remove Author section (typically "Author" followed by name and bio)
   cleaned = cleaned.replace(
-    /^Join our newsletter\s*[\s\S]*?(?=\n\n|\s*(?![\s\S]))/gim,
+    /#{0,6}\s*Authors?\s*\n[\s\S]*?(?=#{1,6}\s|\n{3,}|$)/gi,
     '',
   );
-  cleaned = cleaned.replace(
-    /^May also interest you\s*[\s\S]*?(?=\n\n|\s*(?![\s\S]))/gim,
-    '',
-  );
+
+  // Truncate at "Join our newsletter" - everything after is boilerplate
+  const newsletterIdx = cleaned.search(/Join our newsletter/i);
+  if (newsletterIdx !== -1) {
+    cleaned = cleaned.slice(0, newsletterIdx);
+  }
+
+  // Truncate at "May also interest you" - everything after is related posts
+  const mayInterestIdx = cleaned.search(/May also interest you/i);
+  if (mayInterestIdx !== -1) {
+    cleaned = cleaned.slice(0, mayInterestIdx);
+  }
 
   return normalizeMarkdown(cleaned).trim();
-}
-
-function stripSectionByHeading(markdown: string, headingText: string): string {
-  const escaped = headingText.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  const pattern = new RegExp(
-    `^\\s*#{2,}\\s*${escaped}\\b[^\\n]*\\n[\\s\\S]*?(?=^\\s*#{2,}\\s|\\s*(?![\\s\\S]))`,
-    'gim',
-  );
-  return markdown.replace(pattern, '');
 }
 
 function normalizeMarkdown(markdown: string): string {
@@ -674,25 +655,6 @@ function sanitizePageId(pageName: string): string {
   return pageName.replace(/[^a-zA-Z0-9-_]/g, '-');
 }
 
-function isValidUrl(url: string, baseUrl: URL): boolean {
-  let parsed: URL;
-  try {
-    parsed = new URL(url);
-  } catch {
-    return false;
-  }
-
-  if (normalizeHost(parsed.host) !== normalizeHost(baseUrl.host)) return false;
-
-  const basePath = baseUrl.pathname.replace(/\/$/, '');
-  const urlPath = parsed.pathname.replace(/\/$/, '');
-  if (basePath && !urlPath.startsWith(basePath)) return false;
-
-  return !DEFAULT_EXCLUDE_PATTERNS.some((pattern) =>
-    pattern.test(parsed.pathname),
-  );
-}
-
 function isBlogPostPath(url: string, baseUrl: string): boolean {
   const basePath = new URL(baseUrl).pathname.replace(/\/$/, '');
   const path = new URL(url).pathname.replace(/\/$/, '');
@@ -703,39 +665,53 @@ function isBlogPostPath(url: string, baseUrl: string): boolean {
   return remainder.length > 0 && !remainder.startsWith('page/');
 }
 
-function normalizeUrl(url: string): string {
+/**
+ * Process URL: normalize, validate, and canonicalize in one pass.
+ * Returns the canonical URL string if valid, null otherwise.
+ */
+function processUrl(
+  url: string,
+  base: URL,
+  baseUrl: string,
+  currentUrl?: string,
+): string | null {
+  let parsed: URL;
   try {
-    const parsed = new URL(url);
-    parsed.hash = '';
-    parsed.search = '';
-    const normalized = parsed.toString();
-    return normalized.endsWith('/') && parsed.pathname !== '/'
-      ? normalized.slice(0, -1)
-      : normalized;
+    parsed = new URL(url, currentUrl);
   } catch {
-    return url;
+    return null;
   }
-}
 
-function canonicalizeUrl(url: string, baseUrl: string): string {
-  try {
-    const parsed = new URL(url);
-    const base = new URL(baseUrl);
-    parsed.protocol = base.protocol;
-    parsed.host = base.host;
-    parsed.hash = '';
-    parsed.search = '';
-    const normalized = parsed.toString();
-    return normalized.endsWith('/') && parsed.pathname !== '/'
-      ? normalized.slice(0, -1)
-      : normalized;
-  } catch {
-    return url;
+  // Normalize: remove hash and query params, trailing slash
+  parsed.hash = '';
+  parsed.search = '';
+
+  // Canonicalize: force protocol and host to match base
+  parsed.protocol = base.protocol;
+  const parsedHost = parsed.host.startsWith('www.')
+    ? parsed.host.slice(4)
+    : parsed.host;
+  const baseHost = base.host.startsWith('www.') ? base.host.slice(4) : base.host;
+
+  // Validate: must be same host and under base path
+  if (parsedHost !== baseHost) return null;
+
+  const basePath = base.pathname.replace(/\/$/, '');
+  const urlPath = parsed.pathname.replace(/\/$/, '');
+  if (basePath && !urlPath.startsWith(basePath)) return null;
+
+  // Check exclusion patterns
+  if (
+    DEFAULT_EXCLUDE_PATTERNS.some((pattern) => pattern.test(parsed.pathname))
+  ) {
+    return null;
   }
-}
 
-function normalizeHost(host: string): string {
-  return host.startsWith('www.') ? host.slice(4) : host;
+  parsed.host = base.host;
+  const normalized = parsed.toString();
+  return normalized.endsWith('/') && parsed.pathname !== '/'
+    ? normalized.slice(0, -1)
+    : normalized;
 }
 
 function decodeXml(value: string): string {
@@ -776,25 +752,23 @@ function computeRetryDelay(
   retryAfter: string | number | undefined,
   attempt: number,
 ): number {
+  let delayMs = 2 ** attempt * 1000; // Exponential backoff default
+
   if (retryAfter !== undefined) {
     const raw = String(retryAfter).trim();
     const seconds = Number.parseInt(raw, 10);
+
     if (!Number.isNaN(seconds)) {
-      return clampRetryDelay(seconds * 1000);
-    }
-    const parsedDate = Date.parse(raw);
-    if (!Number.isNaN(parsedDate)) {
-      const delta = parsedDate - Date.now();
-      return clampRetryDelay(delta);
+      delayMs = seconds * 1000;
+    } else {
+      const parsedDate = Date.parse(raw);
+      if (!Number.isNaN(parsedDate)) {
+        delayMs = parsedDate - Date.now();
+      }
     }
   }
 
-  return clampRetryDelay(2 ** attempt * 1000);
-}
-
-function clampRetryDelay(delayMs: number): number {
-  const normalized = Math.max(delayMs, MIN_RETRY_DELAY_MS);
-  return Math.min(normalized, MAX_RETRY_DELAY_MS);
+  return Math.max(MIN_RETRY_DELAY_MS, Math.min(delayMs, MAX_RETRY_DELAY_MS));
 }
 
 function scheduleGlobalBackoff(delayMs: number): void {
@@ -823,24 +797,20 @@ function extractPublishedYearFromJsonLd(
   for (const element of scripts.toArray()) {
     const text = $(element).text().trim();
     if (!text) continue;
-    const year = parseJsonLdForYear(text);
-    if (year) return year;
+
+    try {
+      const parsed = JSON.parse(text);
+      const year = findYearInJsonLd(parsed, 0);
+      if (year) return year;
+    } catch {
+      continue;
+    }
   }
   return null;
 }
 
-function parseJsonLdForYear(payload: string): number | null {
-  try {
-    const parsed = JSON.parse(payload);
-    return findYearInJsonLd(parsed, 0);
-  } catch {
-    return null;
-  }
-}
-
 function findYearInJsonLd(value: unknown, depth: number): number | null {
-  if (depth > 6) return null;
-  if (!value || typeof value !== 'object') return null;
+  if (depth > 6 || !value || typeof value !== 'object') return null;
 
   if (Array.isArray(value)) {
     for (const entry of value) {
@@ -851,24 +821,32 @@ function findYearInJsonLd(value: unknown, depth: number): number | null {
   }
 
   const record = value as Record<string, unknown>;
-  const dateKeys = ['datePublished', 'dateCreated', 'dateModified'];
-  for (const key of dateKeys) {
-    const dateValue = record[key];
-    if (typeof dateValue === 'string') {
-      const year = parseYear(dateValue);
+
+  // Check date fields first (most likely to have publication date)
+  for (const key of ['datePublished', 'dateCreated', 'dateModified']) {
+    if (typeof record[key] === 'string') {
+      const year = parseYear(record[key] as string);
       if (year) return year;
     }
   }
 
+  // Check @graph property (common in JSON-LD)
   if (record['@graph']) {
     const year = findYearInJsonLd(record['@graph'], depth + 1);
     if (year) return year;
   }
 
-  for (const entry of Object.values(record)) {
-    const year = findYearInJsonLd(entry, depth + 1);
+  // Recursively check all other values
+  for (const val of Object.values(record)) {
+    const year = findYearInJsonLd(val, depth + 1);
     if (year) return year;
   }
 
   return null;
 }
+
+export const __testing = {
+  cleanBlogMarkdown,
+  ensureTitleInMarkdown,
+  extractContent,
+};

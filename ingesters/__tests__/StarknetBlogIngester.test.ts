@@ -1,6 +1,6 @@
 import axios from 'axios';
-import { beforeEach, afterEach, describe, expect, it, vi } from 'bun:test';
-import { StarknetBlogIngester } from '../src/ingesters/StarknetBlogIngester';
+import { afterEach, describe, expect, it, vi } from 'bun:test';
+import { StarknetBlogIngester, __testing } from '../src/ingesters/StarknetBlogIngester';
 import { type BookPageDto } from '../src/utils/types';
 
 const BASE_URL = 'https://www.starknet.io/blog';
@@ -64,8 +64,8 @@ ${urls.map((url) => `  <url><loc>${url}</loc></url>`).join('\n')}
 </urlset>`;
 
 const mockAxiosGet = (responses: Map<string, MockResponse>) => {
-  return vi.spyOn(axios, 'get').mockImplementation(async (url) => {
-    const key = typeof url === 'string' ? url : url.toString();
+  return vi.spyOn(axios, 'get').mockImplementation(async (url: string | any) => {
+    const key = typeof url === 'string' ? url : String(url);
     const response = responses.get(key);
     if (response) {
       return response as any;
@@ -80,10 +80,6 @@ const mockAxiosGet = (responses: Map<string, MockResponse>) => {
 };
 
 describe('StarknetBlogIngester (crawler)', () => {
-  beforeEach(() => {
-    vi.restoreAllMocks();
-  });
-
   afterEach(() => {
     vi.restoreAllMocks();
   });
@@ -154,6 +150,9 @@ describe('StarknetBlogIngester (crawler)', () => {
     pages.forEach((page) => {
       expect(page.content).not.toContain('Join our newsletter');
       expect(page.content).not.toContain('May also interest you');
+      expect(page.content.toLowerCase()).not.toContain('newsletter');
+      expect(page.content.toLowerCase()).not.toContain('may also interest you');
+      expect(page.content).not.toMatch(/(^|\n)#+\s*Authors?\b/i);
       expect(page.content.startsWith('# ')).toBe(true);
     });
   });
@@ -222,6 +221,13 @@ describe('StarknetBlogIngester (crawler)', () => {
 
     expect(pages).toHaveLength(1);
     expect(pages[0]?.name).toBe('year-test');
+    expect(pages[0]?.content).not.toContain('Join our newsletter');
+    expect(pages[0]?.content).not.toContain('May also interest you');
+    expect(pages[0]?.content?.toLowerCase()).not.toContain('newsletter');
+    expect(pages[0]?.content?.toLowerCase()).not.toContain(
+      'may also interest you',
+    );
+    expect(pages[0]?.content).not.toMatch(/(^|\n)#+\s*Authors?\b/i);
   });
 
   it('creates chunks with page-scoped source links and stable IDs', async () => {
@@ -248,4 +254,79 @@ describe('StarknetBlogIngester (crawler)', () => {
       ).toBe(true);
     });
   });
+});
+
+describe('StarknetBlogIngester (real page integration)', () => {
+  const REAL_PAGE_URL =
+    'https://www.starknet.io/blog/starknet-2025-year-in-review';
+  const REAL_PAGE_URL_SLASH = `${REAL_PAGE_URL}/`;
+  const REAL_PAGE_NAME = 'starknet-2025-year-in-review';
+
+  it(
+    'processes real page through ingester extraction logic',
+    async () => {
+      const realResponse = await axios.get(REAL_PAGE_URL_SLASH, {
+        headers: { 'User-Agent': 'cairo-coder-ingester-test' },
+        timeout: 30000,
+      });
+
+      expect(realResponse.status).toBe(200);
+      const html = realResponse.data as string;
+      expect(html).toContain('Starknet');
+
+      vi.spyOn(axios, 'get').mockImplementation(async (url: string | any, config?: any) => {
+        const key = typeof url === 'string' ? url : String(url);
+        if (key === SITEMAP_URL) {
+          return {
+            status: 200,
+            data: buildSitemap([REAL_PAGE_URL_SLASH]),
+            headers: { 'content-type': 'application/xml' },
+          } as any;
+        }
+
+        if (key === REAL_PAGE_URL || key === REAL_PAGE_URL_SLASH) {
+          return {
+            status: 200,
+            data: html,
+            headers: { 'content-type': 'text/html' },
+          } as any;
+        }
+
+        return {
+          status: 404,
+          data: '',
+          headers: { 'content-type': 'text/html' },
+        } as any;
+      });
+
+      const ingester = new TestStarknetBlogIngester();
+      const pages = await ingester.exposedDownloadAndExtractDocs();
+      const page = pages.find((entry) => entry.name === REAL_PAGE_NAME);
+
+      const { markdown, title, publishedYear } = __testing.extractContent(
+        html,
+        REAL_PAGE_URL,
+      );
+      const cleaned = __testing.cleanBlogMarkdown(markdown);
+      const expectedContent = __testing.ensureTitleInMarkdown(title, cleaned);
+
+      expect(title).toContain('Starknet');
+      expect(publishedYear).toBe(2025);
+
+      expect(page).toBeDefined();
+      expect(page?.content.startsWith('# ')).toBe(true);
+      expect(page?.content).toContain('Starknet');
+      expect(page?.content).toContain('2025');
+      expect(page?.content).not.toContain('Join our newsletter');
+      expect(page?.content).not.toContain('May also interest you');
+      expect(page?.content.toLowerCase()).not.toContain('newsletter');
+      expect(page?.content.toLowerCase()).not.toContain('may also interest you');
+      expect(page?.content).not.toMatch(/(^|\n)#+\s*Authors?\b/i);
+      expect(page?.content).toBe(expectedContent);
+      expect(expectedContent.toLowerCase()).not.toContain('newsletter');
+      expect(expectedContent.toLowerCase()).not.toContain('may also interest you');
+      expect(expectedContent).not.toMatch(/(^|\n)#+\s*Authors?\b/i);
+    },
+    { timeout: 30000 },
+  );
 });
