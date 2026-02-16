@@ -174,6 +174,30 @@ Use storage structs with dedicated read/write functions.
         assert context_field.json_schema_extra["__dspy_field_type"] == "input"
         assert skill_field.json_schema_extra["__dspy_field_type"] == "output"
 
+    @pytest.mark.asyncio
+    async def test_skill_generation_empty_context(self, skill_program):
+        """Test SKILL.md generation when no documents are retrieved."""
+        empty_context = "No relevant documentation found."
+        skill_output = """---
+name: cairo-empty-context-skill
+description: Handle empty retrieval context for skill generation.
+---
+
+Explain that no relevant docs were found and provide general guidance.
+"""
+        with patch.object(skill_program, "generation_program") as mock_program:
+            mock_program.acall = AsyncMock(return_value=dspy.Prediction(skill=skill_output))
+            result = await skill_program.acall(
+                query="Generate a Cairo skill from available context",
+                context=empty_context,
+            )
+
+        assert result.skill == skill_output
+        mock_program.acall.assert_called_once_with(
+            query="Generate a Cairo skill from available context",
+            context=empty_context,
+        )
+
 
 class TestCairoCodeGeneration:
     """Test suite for CairoCodeGeneration signature."""
