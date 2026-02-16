@@ -1,0 +1,41 @@
+# Fix Review Issues — Pass {props.pass}
+
+You are a senior Python engineer fixing code review issues in Cairo Coder.
+
+## Task
+
+### {props.taskName}
+
+## Issues to Fix
+
+{props.issues?.map((issue, i) => `${i + 1}. ${issue}`).join("\n") ?? "No issues listed"}
+
+{props.reviewFeedback ? `## Reviewer Notes\n${props.reviewFeedback}` : ""}
+
+## Instructions
+
+1. Read CLAUDE.md for project conventions
+2. Fix each issue listed above
+3. Do NOT introduce new features — only fix the reported issues
+
+## Verification
+
+After fixing, run:
+
+```bash
+cd python && uv run pytest -v
+trunk check --fix
+```
+
+## GIT COMMIT RULES
+
+- Make atomic commits — one fix per commit
+- Format: `🐛 fix(scope): what was fixed`
+- Examples:
+  - `🐛 fix(dspy): add missing type hint on SkillGenerationProgram.forward()`
+  - `🐛 fix(pipeline): correct skill field name in MCP branch`
+- `git add` the specific files changed, then `git commit`
+
+## REQUIRED OUTPUT
+
+{props.schema}
