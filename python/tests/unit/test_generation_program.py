@@ -12,12 +12,13 @@ import pytest
 from dspy.adapters.chat_adapter import AdapterParseError
 
 from cairo_coder.agents.registry import AgentId
-from cairo_coder.core.types import Document, Message, Role
+from cairo_coder.core.types import Message, Role
 from cairo_coder.dspy.generation_program import (
     CairoCodeGeneration,
     GenerationProgram,
-    McpGenerationProgram,
     ScarbGeneration,
+    SkillGeneration,
+    SkillGenerationProgram,
     create_generation_program,
     create_mcp_generation_program,
 )
@@ -35,11 +36,6 @@ class TestGenerationProgram:
     def starknet_generation_program(self, mock_lm):
         """Create a Starknet-specific GenerationProgram instance."""
         return GenerationProgram(program_type=AgentId.STARKNET)
-
-    @pytest.fixture
-    def mcp_generation_program(self):
-        """Create an MCP GenerationProgram instance."""
-        return McpGenerationProgram()
 
     @pytest.mark.asyncio
     async def test_general_code_generation(self, generation_program):
@@ -131,48 +127,52 @@ class TestGenerationProgram:
         assert formatted == ""
 
 
-class TestMcpGenerationProgram:
-    """Test suite for McpGenerationProgram."""
+class TestSkillGenerationProgram:
+    """Test suite for SkillGenerationProgram."""
 
     @pytest.fixture
-    def mcp_program(self):
-        """Create an MCP GenerationProgram instance."""
-        return McpGenerationProgram()
+    def skill_program(self, mock_lm):
+        """Create a SkillGenerationProgram instance."""
+        return SkillGenerationProgram()
 
     @pytest.mark.asyncio
-    async def test_mcp_document_formatting(self, mcp_program, sample_documents):
-        """Test MCP mode document formatting."""
-        answer = (await mcp_program.acall(sample_documents)).answer
+    async def test_skill_generation_program(self, skill_program):
+        """Test async SKILL.md generation."""
+        skill_output = """---
+name: cairo-storage-patterns
+description: Build Cairo storage modules with clear access patterns.
+---
 
-        assert isinstance(answer, str)
-        assert len(answer) > 0
+Use storage structs with dedicated read/write functions.
+"""
+        with patch.object(skill_program, "generation_program") as mock_program:
+            mock_program.acall = AsyncMock(return_value=dspy.Prediction(skill=skill_output))
+            result = await skill_program.acall(
+                query="Create a skill for Cairo storage patterns",
+                context="Storage variables use #[storage] and should have explicit accessors.",
+            )
 
-        # Verify document structure is present
-        for i, doc in enumerate(sample_documents, 1):
-            assert f"## {i}." in answer
+        assert result.skill == skill_output
+        assert result.skill.startswith("---\nname:")
+        assert "description:" in result.skill
+        assert "\n---\n" in result.skill
+        mock_program.acall.assert_called_once()
 
-            # Check URL
-            assert f"**URL:** {doc.source_link}" in answer
+    def test_skill_generation_signature_fields(self):
+        """Test that the signature has the expected fields."""
+        signature = SkillGeneration
 
-            # Check content is included
-            assert doc.page_content in answer
+        assert "query" in signature.model_fields
+        assert "context" in signature.model_fields
+        assert "skill" in signature.model_fields
 
-    @pytest.mark.asyncio
-    async def test_mcp_empty_documents(self, mcp_program):
-        """Test MCP mode with empty documents."""
-        result = await mcp_program.acall([])
+        query_field = signature.model_fields["query"]
+        context_field = signature.model_fields["context"]
+        skill_field = signature.model_fields["skill"]
 
-        assert result.answer == "No relevant documentation found."
-
-    @pytest.mark.asyncio
-    async def test_mcp_documents_with_missing_metadata(self, mcp_program):
-        """Test MCP mode with documents missing metadata."""
-        documents = [Document(page_content="Some Cairo content", metadata={})]  # Missing metadata
-
-        answer = (await mcp_program.acall(documents)).answer
-
-        # 1. title (empty) 2. source (empty) 3. url (empty) 4. title (empty) 5. content
-        assert answer == """\n## 1. Some Cairo content\n\n**Source:** None\n**URL:** None\n\nSome Cairo content\n\n---\n"""
+        assert query_field.json_schema_extra["__dspy_field_type"] == "input"
+        assert context_field.json_schema_extra["__dspy_field_type"] == "input"
+        assert skill_field.json_schema_extra["__dspy_field_type"] == "output"
 
 
 class TestCairoCodeGeneration:
@@ -264,7 +264,7 @@ class TestFactoryFunctions:
     def test_create_mcp_generation_program(self):
         """Test the MCP generation program factory function."""
         program = create_mcp_generation_program()
-        assert isinstance(program, McpGenerationProgram)
+        assert isinstance(program, SkillGenerationProgram)
 
 
 class TestForwardRetries:

@@ -32,7 +32,7 @@ from cairo_coder.core.types import (
     title_from_url,
 )
 from cairo_coder.dspy.document_retriever import DocumentRetrieverProgram
-from cairo_coder.dspy.generation_program import GenerationProgram, McpGenerationProgram
+from cairo_coder.dspy.generation_program import GenerationProgram, SkillGenerationProgram
 from cairo_coder.dspy.grok_search import GrokSearchProgram
 from cairo_coder.dspy.query_processor import QueryProcessorProgram
 from cairo_coder.dspy.retrieval_judge import RetrievalJudge
@@ -51,7 +51,7 @@ class RagPipelineConfig:
     query_processor: QueryProcessorProgram
     document_retriever: DocumentRetrieverProgram
     generation_program: GenerationProgram
-    mcp_generation_program: McpGenerationProgram
+    mcp_generation_program: SkillGenerationProgram
     sources: list[DocumentSource]
     max_source_count: int = MAX_SOURCE_COUNT
     similarity_threshold: float = SIMILARITY_THRESHOLD
@@ -179,12 +179,13 @@ class RagPipeline(dspy.Module):
         )
 
         if mcp_mode:
-            result = await self.mcp_generation_program.acall(documents)
+            context = self._prepare_context(documents)
+            result = await self.mcp_generation_program.acall(query=query, context=context)
             return dspy.Prediction(
                 processed_query=processed_query,
                 documents=documents,
                 grok_citations=grok_citations,
-                answer=result.answer,
+                answer=result.skill,
                 formatted_sources=self._format_sources(documents, grok_citations),
             )
 
@@ -258,23 +259,23 @@ class RagPipeline(dspy.Module):
                     final_answer: str | None = None
 
                     if mcp_mode:
-                        # MCP mode: Return raw documents
                         await _emit(
                             StreamEvent(
                                 type=StreamEventType.PROCESSING,
-                                data="Formatting documentation...",
+                                data="Generating skill document...",
                             )
                         )
-
-                        mcp_prediction = await self.mcp_generation_program.acall(documents)
-                        final_answer = mcp_prediction.answer
-                        # Emit single response plus a final response event for clients that rely on it
+                        context = self._prepare_context(documents)
+                        mcp_prediction = await self.mcp_generation_program.acall(
+                            query=query, context=context
+                        )
+                        final_answer = mcp_prediction.skill
                         await _emit(
-                            StreamEvent(type=StreamEventType.RESPONSE, data=mcp_prediction.answer)
+                            StreamEvent(type=StreamEventType.RESPONSE, data=mcp_prediction.skill)
                         )
                         await _emit(
                             StreamEvent(
-                                type=StreamEventType.FINAL_RESPONSE, data=mcp_prediction.answer
+                                type=StreamEventType.FINAL_RESPONSE, data=mcp_prediction.skill
                             )
                         )
                     else:
@@ -515,7 +516,7 @@ class RagPipelineFactory:
         sources: list[DocumentSource],
         query_processor: QueryProcessorProgram,
         generation_program: GenerationProgram,
-        mcp_generation_program: McpGenerationProgram,
+        mcp_generation_program: SkillGenerationProgram,
         document_retriever: DocumentRetrieverProgram | None = None,
         max_source_count: int = 5,
         similarity_threshold: float = SIMILARITY_THRESHOLD,
@@ -529,7 +530,7 @@ class RagPipelineFactory:
             vector_store: Vector store for document retrieval
             query_processor: Query processor
             generation_program: Generation program
-            mcp_generation_program: "Generation" program to use if in MCP mode
+            mcp_generation_program: Skill generation program for MCP mode
             document_retriever: Optional document retriever (creates default if None)
             max_source_count: Maximum documents to retrieve
             similarity_threshold: Minimum similarity for document inclusion

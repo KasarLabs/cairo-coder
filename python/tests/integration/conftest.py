@@ -119,13 +119,13 @@ def real_pipeline(mock_query_processor, mock_vector_store_config, mock_vector_db
     pipeline.generation_program.acall = AsyncMock(side_effect=_fake_gen_acall)
     pipeline.generation_program.aforward_streaming =_fake_gen_aforward_streaming
 
-    # Patch MCP generation to a deterministic simple string as tests expect
-    mcp_prediction = _dspy.Prediction(answer="Cairo is a programming language")
+    # Patch MCP generation to deterministic skill output
+    mcp_prediction = _dspy.Prediction(skill="Cairo is a programming language")
     mcp_prediction.set_lm_usage({})
     pipeline.mcp_generation_program.acall = AsyncMock(return_value=mcp_prediction)
 
-    def _mcp_forward(documents):  # noqa: ARG001 - deterministic response
-        prediction = _dspy.Prediction(answer="Cairo is a programming language")
+    def _mcp_forward(query: str, context: str):  # noqa: ARG001 - deterministic response
+        prediction = _dspy.Prediction(skill="Cairo is a programming language")
         prediction.set_lm_usage({})
         return prediction
 

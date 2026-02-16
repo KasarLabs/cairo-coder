@@ -1,0 +1,14 @@
+{
+  "private": true,
+  "scripts": {
+    "postinstall": "cd node_modules/takopi-smithers && bun run build",
+    "smithers": "bun node_modules/takopi-smithers/dist/cli.js"
+  },
+  "dependencies": {
+    "@ai-sdk/anthropic": "^3.0.44",
+    "ai": "^6.0.86",
+    "smithers-orchestrator": "^0.6.0",
+    "takopi-smithers": "github:evmts/takopi-smithers",
+    "zod": "^4.3.6"
+  }
+}

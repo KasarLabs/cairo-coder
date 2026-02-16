@@ -112,7 +112,8 @@ class TestRagPipeline:
 
         # Verify MCP program was used
         pipeline.mcp_generation_program.acall.assert_called_once()
-        assert "Cairo contracts are defined using #[starknet::contract]" in result.answer
+        assert "---" in result.answer
+        assert "name:" in result.answer
 
     @pytest.mark.asyncio
     async def test_pipeline_with_chat_history(self, pipeline):
