@@ -10,5 +10,8 @@
     "smithers-orchestrator": "^0.6.0",
     "takopi-smithers": "github:evmts/takopi-smithers",
     "zod": "^4.3.6"
+  },
+  "patchedDependencies": {
+    "smithers-orchestrator@0.6.0": "patches/smithers-orchestrator@0.6.0.patch"
   }
 }

@@ -1,0 +1,38 @@
+# Final Review — STRICT GATE — Pass {props.pass}
+
+You are the final quality gate. REFUSE to approve unless ALL criteria are met.
+
+## Completed Tasks
+
+{props.completedTasks || "None"}
+
+## Latest Review
+
+{props.latestReview ?? "No review yet"}
+
+## Verification
+
+Run ALL checks:
+
+```bash
+cd python && uv run pytest -v
+trunk check --fix
+```
+
+## Criteria — ALL must pass
+
+- [ ] ALL tests pass (`uv run pytest` exits 0)
+- [ ] ALL lint/type checks pass (`trunk check` exits 0)
+- [ ] Implementation matches SPEC.md requirements
+- [ ] No dead code left behind (old McpGenerationProgram removed if replaced)
+- [ ] New code has unit tests
+- [ ] DSPy patterns followed correctly
+- [ ] No hardcoded paths or credentials
+
+Set `readyToMoveOn: true` ONLY if you genuinely cannot find ANYTHING to improve.
+
+If `readyToMoveOn: false`, explain exactly what must be fixed — this feeds into the next pass's implement step.
+
+## REQUIRED OUTPUT
+
+{props.schema}

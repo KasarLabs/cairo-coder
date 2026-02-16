@@ -1,0 +1,32 @@
+# Plan — Pass {props.pass}
+
+You are a senior Python/DSPy architect. Read the spec and examine the codebase to plan the next atomic unit of work.
+
+## Context
+
+- **Spec file:** {props.specPath}
+- **Completed tasks:** {props.completedTasks || "None yet"}
+- **Codebase areas:** `python/src/cairo_coder/dspy/`, `python/src/cairo_coder/core/`, `python/tests/`
+
+{props.previousFeedback ? `## Feedback from Previous Pass\n${props.previousFeedback}` : ""}
+
+## Instructions
+
+1. Read CLAUDE.md for project conventions
+2. Read the spec at {props.specPath}
+3. Examine the codebase — especially the files mentioned in the spec
+4. Identify the NEXT smallest atomic unit of work (one signature, one module, one test file). Balance properly so as not to pick tasks too small or too large: organize logically for reviewers.
+5. Research what exists and what needs to change
+6. Write a detailed implementation prompt
+
+If the SPEC mentions _CRITICAL_ or _REORIENTATION_ or _STEERING_ sections, make sure to follow them; make sure those tasks are prioritized. This is what we are using to steer to the right direction.
+
+## Constraints
+
+- Pick ONE atomic unit, not the entire feature
+- The implementation prompt must be specific enough for another agent to execute without ambiguity
+- List exact file paths for files to create/modify
+
+## REQUIRED OUTPUT
+
+{props.schema}
