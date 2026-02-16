@@ -185,11 +185,11 @@ See `docs/ARCHITECTURE.md` for detailed system design and diagrams.
 
 See `docs/API.md` for HTTP endpoint documentation.
 
-
-# takopi-smithers configuration
+## takopi-smithers configuration
 
 @TAKOPI_SMITHERS.md
 
 Additional notes:
+
 - Workflow file: .smithers/workflow.tsx
 - Supervisor config: .takopi-smithers/config.toml
