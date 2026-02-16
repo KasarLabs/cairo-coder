@@ -23,6 +23,9 @@ lint:
     - linters: [ALL]
       paths:
         - .claude/cache
+    - linters: [osv-scanner]
+      paths:
+        - bun.lock
   enabled:
     - ruff@0.12.3
     - actionlint@1.7.7
