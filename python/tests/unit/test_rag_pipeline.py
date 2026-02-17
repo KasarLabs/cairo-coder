@@ -18,6 +18,7 @@ from cairo_coder.core.types import (
     Document,
     DocumentSource,
     Message,
+    PipelineResult,
     Role,
     StreamEventType,
 )
@@ -112,7 +113,41 @@ class TestRagPipeline:
 
         # Verify MCP program was used
         pipeline.mcp_generation_program.acall.assert_called_once()
-        assert "Cairo contracts are defined using #[starknet::contract]" in result.answer
+        assert "---" in result.answer
+        assert "name:" in result.answer
+
+    @pytest.mark.asyncio
+    async def test_mcp_mode_streaming_execution(self, pipeline):
+        """Test MCP mode pipeline execution with streaming."""
+        events = []
+        async for event in pipeline.aforward_streaming(
+            "How to write Cairo contracts?", mcp_mode=True
+        ):
+            events.append(event)
+
+        event_types = [event.type for event in events]
+        assert StreamEventType.PROCESSING in event_types
+        assert StreamEventType.SOURCES in event_types
+        assert StreamEventType.RESPONSE in event_types
+        assert StreamEventType.FINAL_RESPONSE in event_types
+        assert StreamEventType.END in event_types
+
+        response_event = next(e for e in events if e.type == StreamEventType.RESPONSE)
+        final_response_event = next(
+            e for e in events if e.type == StreamEventType.FINAL_RESPONSE
+        )
+        end_event = next(e for e in events if e.type == StreamEventType.END)
+
+        assert isinstance(response_event.data, str)
+        assert isinstance(final_response_event.data, str)
+        assert "---" in response_event.data
+        assert "name:" in response_event.data
+        assert "---" in final_response_event.data
+        assert "name:" in final_response_event.data
+        assert isinstance(end_event.data, PipelineResult)
+
+        pipeline.mcp_generation_program.acall.assert_called_once()
+        pipeline.generation_program.acall.assert_not_called()
 
     @pytest.mark.asyncio
     async def test_pipeline_with_chat_history(self, pipeline):

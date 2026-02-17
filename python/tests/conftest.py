@@ -26,7 +26,7 @@ from cairo_coder.core.types import (
     StreamEventType,
 )
 from cairo_coder.dspy.document_retriever import DocumentRetrieverProgram, SourceFilteredPgVectorRM
-from cairo_coder.dspy.generation_program import GenerationProgram, McpGenerationProgram
+from cairo_coder.dspy.generation_program import GenerationProgram, SkillGenerationProgram
 from cairo_coder.dspy.query_processor import QueryProcessorProgram
 from cairo_coder.dspy.retrieval_judge import RetrievalJudge
 from cairo_coder.server.app import CairoCoderServer, get_agent_factory, get_vector_db
@@ -485,27 +485,19 @@ def mock_generation_program():
 
 @pytest.fixture
 def mock_mcp_generation_program():
-    """Create a mock McpGenerationProgram."""
-    program = Mock(spec=McpGenerationProgram)
-    mcp_answer = """
-## 1. Cairo Contracts
-
-**Source:** Cairo Book
-**URL:** https://book.cairo-lang.org/contracts
-
-Cairo contracts are defined using #[starknet::contract].
-
+    """Create a mock SkillGenerationProgram for MCP mode."""
+    program = Mock(spec=SkillGenerationProgram)
+    skill_output = """---
+name: cairo-contracts-guide
+description: Guide for writing Cairo smart contracts with best practices.
 ---
 
-## 2. Storage Variables
+# Cairo Contracts
 
-**Source:** Starknet Documentation
-**URL:** https://docs.starknet.io/storage
-
+Cairo contracts are defined using #[starknet::contract].
 Storage variables use #[storage] attribute.
 """
-    # Create prediction with usage tracking
-    prediction = dspy.Prediction(answer=mcp_answer)
+    prediction = dspy.Prediction(skill=skill_output)
     prediction.set_lm_usage({})
 
     program.aforward = AsyncMock(return_value=prediction)

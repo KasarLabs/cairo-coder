@@ -20,6 +20,12 @@ lint:
     - linters: [ALL]
       paths:
         - python/src/cairo_coder_tools/ingestion/generated
+    - linters: [ALL]
+      paths:
+        - .claude/cache
+    - linters: [osv-scanner]
+      paths:
+        - bun.lock
   enabled:
     - ruff@0.12.3
     - actionlint@1.7.7

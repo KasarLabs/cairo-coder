@@ -1,0 +1,54 @@
+# Implement — Pass {props.pass}
+
+You are a senior Python engineer implementing a change in Cairo Coder.
+
+## Task
+
+### {props.taskName}
+
+{props.implementationPrompt}
+
+{props.previousWork
+? `## Previous Work\nPrevious implementation did: ${props.previousWork.summary}\nNext smallest unit: ${props.previousWork.nextSmallestUnit}`
+: ""}
+
+{props.reviewFixes ? `## Review Fixes Applied\n${props.reviewFixes}` : ""}
+
+## Files
+
+- **Create:** {JSON.stringify(props.filesToCreate ?? [])}
+- **Modify:** {JSON.stringify(props.filesToModify ?? [])}
+
+## Instructions
+
+1. Read CLAUDE.md for project conventions
+2. Read the existing files before modifying them
+3. Implement the SMALLEST atomic unit described above
+4. Follow DSPy patterns: Signatures → Modules → Programs
+5. Use type hints everywhere (enforced by mypy)
+6. Use `structlog` for logging: `get_logger(__name__)`
+
+## Verification
+
+After implementing, run:
+
+```bash
+cd python && uv run pytest -v
+trunk check --fix
+```
+
+## GIT COMMIT RULES
+
+- Make atomic commits — one logical change per commit
+- Commit EACH smallest unit of work separately, do NOT batch
+- Use emoji prefixes: 🐛 fix, ♻️ refactor, 🧪 test, ⚡ perf, ✨ feat
+- Format: `EMOJI type(scope): description`
+- Examples:
+  - `✨ feat(dspy): add SkillGeneration signature`
+  - `🧪 test(dspy): add unit tests for SkillGenerationProgram`
+  - `♻️ refactor(pipeline): replace McpGenerationProgram with SkillGenerationProgram`
+- `git add` the specific files changed, then `git commit` with the emoji message
+
+## REQUIRED OUTPUT
+
+{props.schema}

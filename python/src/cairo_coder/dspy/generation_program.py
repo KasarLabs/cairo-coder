@@ -15,7 +15,7 @@ from dspy import InputField, OutputField, Signature
 from dspy.adapters.chat_adapter import AdapterParseError
 from langsmith import traceable
 
-from cairo_coder.core.types import Document, Message
+from cairo_coder.core.types import Message
 
 logger = structlog.get_logger(__name__)
 
@@ -152,7 +152,18 @@ within that context.
     )
 
 
+class SkillGeneration(Signature):
+    """
+    Synthesize retrieved documentation into a SKILL.md file for Claude Code.
+    """
 
+    query: str = InputField(desc="Original user request the skill should address")
+    context: str = InputField(
+        desc="Retrieved documentation context used to build the skill instructions"
+    )
+    skill: str = OutputField(
+        desc="A complete SKILL.md file with YAML frontmatter (name, description) and actionable markdown instructions"
+    )
 
 class GenerationProgram(dspy.Module):
     """
@@ -286,55 +297,26 @@ class GenerationProgram(dspy.Module):
         return None
 
 
-class McpGenerationProgram(dspy.Module):
+class SkillGenerationProgram(dspy.Module):
     """
-    Special generation program for MCP (Model Context Protocol) mode.
-
-    This program returns raw documentation without LLM generation,
-    useful for integration with other tools that need Cairo documentation.
+    DSPy module for generating SKILL.md content from query + retrieved context.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
+        self.generation_program = dspy.ChainOfThought(SkillGeneration)
 
-    def forward(self, documents: list[Document]) -> dspy.Prediction:
+    def forward(self, query: str, context: str) -> dspy.Prediction:
         """
-        Format documents for MCP mode response.
-
-        Args:
-            documents: List of retrieved documents
-
-        Returns:
-            Formatted documentation string
+        Generate a skill document synchronously.
         """
-        if not documents:
-            return dspy.Prediction(answer="No relevant documentation found.")
+        return self.generation_program(query=query, context=context)
 
-        formatted_docs = []
-        for i, doc in enumerate(documents, 1):
-            source = doc.source
-            url = doc.source_link
-            title = doc.title
-
-            formatted_doc = f"""
-## {i}. {title}
-
-**Source:** {source}
-**URL:** {url}
-
-{doc.page_content}
-
----
-"""
-            formatted_docs.append(formatted_doc)
-
-        return dspy.Prediction(answer="\n".join(formatted_docs))
-
-    async def aforward(self, documents: list[Document]) -> dspy.Prediction:
+    async def aforward(self, query: str, context: str) -> dspy.Prediction:
         """
-        Format documents for MCP mode response.
+        Generate a skill document asynchronously.
         """
-        return self(documents)
+        return await self.generation_program.acall(query=query, context=context)
 
 
 def create_generation_program(program_type: str) -> GenerationProgram:
@@ -350,11 +332,10 @@ def create_generation_program(program_type: str) -> GenerationProgram:
     return GenerationProgram(program_type=program_type)
 
 
-def create_mcp_generation_program() -> McpGenerationProgram:
-    """
-    Factory function to create an MCP GenerationProgram instance.
+def create_mcp_generation_program() -> SkillGenerationProgram:
+    """Factory function to create an MCP-mode generation program.
 
     Returns:
-        Configured McpGenerationProgram instance
+        Configured SkillGenerationProgram instance
     """
-    return McpGenerationProgram()
+    return SkillGenerationProgram()
