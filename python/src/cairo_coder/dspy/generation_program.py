@@ -154,15 +154,76 @@ within that context.
 
 class SkillGeneration(Signature):
     """
-    Synthesize retrieved documentation into a SKILL.md file for Claude Code.
+    Synthesize retrieved documentation into a SKILL.md file for LLM.
+
+    Skills are modular, self-contained packages that extend LLM's capabilities by providing
+    specialized knowledge, workflows, and tools. They transform LLMs from a general-purpose
+    agent into a specialized agent equipped with procedural knowledge.
+
+    **Core Principles:**
+
+    1. **Concise is Key.** The context window is a public good. Only add context LLM doesn't
+       already have. Challenge each piece of information: "Does LLM really need this?" and
+       "Does this paragraph justify its token cost?" Prefer concise examples over verbose
+       explanations.
+
+    2. **Set Appropriate Degrees of Freedom.** Match specificity to fragility:
+       - High freedom (text instructions): when multiple approaches are valid.
+       - Medium freedom (pseudocode/scripts with parameters): when a preferred pattern exists.
+       - Low freedom (specific scripts, few parameters): when operations are fragile and
+         consistency is critical.
+
+    3. **Progressive Disclosure.** Keep SKILL.md body under 500 lines. Split into separate
+       reference files when approaching this limit. Reference files from SKILL.md and describe
+       clearly when to read them.
+
+    **SKILL.md Structure:**
+
+    The output MUST follow this exact structure:
+
+    1. YAML Frontmatter (required):
+       - `name`: The skill name (kebab-case).
+       - `description`: Primary triggering mechanism. Include BOTH what the skill does AND
+         specific triggers/contexts for when to use it. All "when to use" information goes here,
+         NOT in the body. Example: "Cairo smart contract development patterns and best practices.
+         Use when writing, reviewing, or debugging Cairo contracts for: (1) Storage patterns,
+         (2) Event emission, (3) Interface design, (4) Testing patterns."
+
+    2. Markdown Body (required):
+       - Use imperative/infinitive form throughout.
+       - Include actionable instructions LLM can follow, not generic explanations.
+       - For multi-step processes, break into clear sequential steps.
+       - For branching logic, use conditional workflows with decision points.
+       - When output quality depends on examples, provide input/output pairs.
+       - For strict output requirements, provide exact templates.
+       - For flexible guidance, provide sensible defaults with adaptation notes.
+
+    **What NOT to Include:**
+    - Information LLM already knows (general programming knowledge).
+    - "When to use this skill" sections in the body (put in frontmatter description).
+    - README, CHANGELOG, or other auxiliary documentation files.
+    - Setup/installation procedures (skills are for AI agents, not humans).
+
+    **Quality Checklist:**
+    - Every instruction is actionable by another LLM instance.
+    - Domain-specific details and procedural knowledge are included.
+    - Examples demonstrate desired style and level of detail.
+    - References to bundled resources (scripts/, references/, assets/) are clear about when to
+      read them.
     """
 
     query: str = InputField(desc="Original user request the skill should address")
     context: str = InputField(
-        desc="Retrieved documentation context used to build the skill instructions"
+        desc="Retrieved documentation context used to build the skill instructions. "
+        "Extract actionable patterns, code examples, and domain-specific knowledge from this "
+        "context to embed in the skill."
     )
     skill: str = OutputField(
-        desc="A complete SKILL.md file with YAML frontmatter (name, description) and actionable markdown instructions"
+        desc="A complete SKILL.md file. Must start with YAML frontmatter (--- delimited) "
+        "containing `name` (kebab-case) and `description` (comprehensive trigger description "
+        "including what it does and when to use it). Followed by markdown body with imperative "
+        "instructions, concise examples, and actionable guidance. Under 500 lines. "
+        "No auxiliary files or generic explanations."
     )
 
 class GenerationProgram(dspy.Module):
