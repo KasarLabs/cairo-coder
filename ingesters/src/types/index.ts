@@ -18,6 +18,7 @@ export enum DocumentSource {
   STARKNET_JS = 'starknet_js',
   STARKNET_BLOG = 'starknet_blog',
   DOJO_DOCS = 'dojo_docs',
+  CAIRO_SKILLS = 'cairo_skills',
 }
 
 export type BookChunk = {
@@ -28,4 +29,5 @@ export type BookChunk = {
   uniqueId: string;
   sourceLink: string;
   source: DocumentSource;
+  skillId?: string;
 };
