@@ -5,6 +5,7 @@ import { StarknetDocsIngester } from '../src/ingesters/StarknetDocsIngester';
 import { StarknetFoundryIngester } from '../src/ingesters/StarknetFoundryIngester';
 import { CairoByExampleIngester } from '../src/ingesters/CairoByExampleIngester';
 import { OpenZeppelinDocsIngester } from '../src/ingesters/OpenZeppelinDocsIngester';
+import { CairoSkillsIngester } from '../src/ingesters/CairoSkillsIngester';
 import { BaseIngester } from '../src/BaseIngester';
 import { DocumentSource } from '../src/types';
 
@@ -54,6 +55,14 @@ describe('IngesterFactory', () => {
       expect(ingester).toBeInstanceOf(OpenZeppelinDocsIngester);
     });
 
+    it('should create a CairoSkillsIngester for cairo_skills source', () => {
+      const ingester = IngesterFactory.createIngester(
+        DocumentSource.CAIRO_SKILLS,
+      );
+
+      expect(ingester).toBeInstanceOf(CairoSkillsIngester);
+    });
+
     it('should throw an error for an unknown source', () => {
       expect(() => {
         // @ts-ignore - Testing with invalid source
@@ -77,6 +86,7 @@ describe('IngesterFactory', () => {
         DocumentSource.STARKNET_JS,
         DocumentSource.STARKNET_BLOG,
         DocumentSource.DOJO_DOCS,
+        DocumentSource.CAIRO_SKILLS,
       ]);
     });
   });

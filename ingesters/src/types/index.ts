@@ -30,4 +30,5 @@ export type BookChunk = {
   sourceLink: string;
   source: DocumentSource;
   skillId?: string;
+  fullContent?: string;
 };

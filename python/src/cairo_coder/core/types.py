@@ -31,6 +31,7 @@ class DocumentSource(str, Enum):
     """Available documentation sources."""
 
     CAIRO_BOOK = "cairo_book"
+    CAIRO_SKILLS = "cairo_skills"
     STARKNET_DOCS = "starknet_docs"
     STARKNET_FOUNDRY = "starknet_foundry"
     CAIRO_BY_EXAMPLE = "cairo_by_example"
@@ -60,8 +61,10 @@ class DocumentMetadata(TypedDict, total=False):
     # Source fields
     source: DocumentSource  # DocumentSource value (e.g., "cairo_book")
     sourceLink: str  # Full URL to the source documentation
+    skillId: str  # Skill identifier for all-or-nothing retrieval
 
     # Additional metadata fields that may be present
+    fullContent: str  # Full skill document content (only on full-doc rows)
     similarity: Optional[float]  # Similarity score from retrieval (if include_similarity=True)
 
 

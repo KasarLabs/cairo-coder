@@ -60,6 +60,28 @@ class SourceFilteredPgVectorRM(PgVectorRM):
                 timeout=30,
             )
 
+    async def afetch_by_unique_ids(self, unique_ids: list[str]) -> list[dict]:
+        """
+        Fetch rows by metadata.uniqueId values.
+
+        Args:
+            unique_ids: List of uniqueId values to fetch.
+        Returns:
+            List of dicts containing `content` and `metadata`.
+        """
+        if not unique_ids:
+            return []
+
+        await self._ensure_pool()
+        async with self.pool.acquire() as conn:
+            rows = await conn.fetch(
+                f"SELECT content, metadata FROM {self.pg_table_name} "
+                "WHERE metadata->>'uniqueId' = ANY($1::text[])",
+                unique_ids,
+            )
+
+        return [{"content": row["content"], "metadata": row["metadata"]} for row in rows]
+
     @traceable(name="AsyncDocumentRetriever", run_type="retriever")
     async def aforward(self, query: str, k: int | None = None, sources: list[DocumentSource] | None = None) -> list[dspy.Example]:
         """Async search with PgVector for k top passages using cosine similarity with source filtering.
