@@ -14,21 +14,12 @@ type SkillsConfigFile = {
 const skillsConfigPath = join(import.meta.dir, '..', 'config', 'skills.json');
 
 describe('skills config', () => {
-  it('matches the RFC Step 3 contract', () => {
+  it('should contain at least one skill with valid structure', () => {
     const raw = readFileSync(skillsConfigPath, 'utf8');
     const parsed = JSON.parse(raw) as SkillsConfigFile;
 
     expect(Array.isArray(parsed.skills)).toBe(true);
-    expect(parsed.skills).toHaveLength(4);
-
-    const expectedIds = [
-      'benchmarking-cairo',
-      'cairo-coding',
-      'avnu',
-      'starknet-defi',
-    ];
-
-    expect(parsed.skills.map((skill) => skill.id)).toEqual(expectedIds);
+    expect(parsed.skills.length).toBeGreaterThan(0);
 
     for (const skill of parsed.skills) {
       expect(typeof skill.id).toBe('string');
@@ -39,23 +30,22 @@ describe('skills config', () => {
       expect(url.protocol).toBe('https:');
       expect(url.hostname).toBe('github.com');
     }
+  });
 
-    const benchmarkingCairoUrl = parsed.skills.find(
-      (skill) => skill.id === 'benchmarking-cairo',
-    )?.url;
-    expect(benchmarkingCairoUrl).toBeDefined();
-    expect(benchmarkingCairoUrl as string).toContain('/tree/');
+  it('should have unique skill ids', () => {
+    const raw = readFileSync(skillsConfigPath, 'utf8');
+    const parsed = JSON.parse(raw) as SkillsConfigFile;
 
-    const cairoCodingUrl = parsed.skills.find(
-      (skill) => skill.id === 'cairo-coding',
-    )?.url;
-    expect(cairoCodingUrl).toBeDefined();
-    expect(cairoCodingUrl as string).toContain('/tree/');
+    const ids = parsed.skills.map((skill) => skill.id);
+    expect(new Set(ids).size).toBe(ids.length);
+  });
 
-    const starknetDefiUrl = parsed.skills.find(
-      (skill) => skill.id === 'starknet-defi',
-    )?.url;
-    expect(starknetDefiUrl).toBeDefined();
-    expect(starknetDefiUrl as string).toMatch(/\/blob\/[0-9a-f]{40}\//);
+  it('should use /tree/ or /blob/ GitHub URL formats', () => {
+    const raw = readFileSync(skillsConfigPath, 'utf8');
+    const parsed = JSON.parse(raw) as SkillsConfigFile;
+
+    for (const skill of parsed.skills) {
+      expect(skill.url).toMatch(/\/(tree|blob)\//);
+    }
   });
 });

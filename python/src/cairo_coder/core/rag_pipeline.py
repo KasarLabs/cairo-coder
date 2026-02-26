@@ -7,6 +7,7 @@ RAG workflow: Query Processing → Document Retrieval → Generation.
 
 import asyncio
 import contextlib
+import json
 import os
 from collections.abc import AsyncGenerator
 from dataclasses import dataclass
@@ -139,6 +140,8 @@ class RagPipeline(dspy.Module):
             )
             # documents already contains all retrieved docs, no action needed
 
+        documents = await self._expand_skill_documents(documents)
+
         # Ensure Grok summary is present and first in order (for generation context)
         if grok_summary_doc is not None:
             if grok_summary_doc in documents:
@@ -149,6 +152,84 @@ class RagPipeline(dspy.Module):
                 documents = [grok_summary_doc] + documents
 
         return processed_query, documents, grok_citations
+
+    async def _expand_skill_documents(self, documents: list[Document]) -> list[Document]:
+        """
+        Replace skill chunks with full skill documents when available.
+
+        If a full document row cannot be fetched for a skill, keep that skill's
+        original chunks to degrade gracefully.
+        """
+        skill_chunks = [
+            document
+            for document in documents
+            if document.metadata.get("source") == DocumentSource.CAIRO_SKILLS
+            and document.metadata.get("skillId")
+        ]
+        if not skill_chunks:
+            return documents
+
+        skill_ids = list(dict.fromkeys(doc.metadata["skillId"] for doc in skill_chunks))
+        unique_ids = [f"skill-{skill_id}-full" for skill_id in skill_ids]
+
+        try:
+            rows = await self.document_retriever.vector_db.afetch_by_unique_ids(unique_ids)
+        except Exception as e:
+            logger.warning(
+                "_expand_skill_documents: failed to fetch full rows, keeping original chunks",
+                error=str(e),
+                exc_info=True,
+            )
+            return documents
+
+        full_documents_by_skill_id: dict[str, Document] = {}
+        for row in rows:
+            metadata: Any = row.get("metadata", {})
+            if isinstance(metadata, str):
+                try:
+                    metadata = json.loads(metadata)
+                except Exception:
+                    logger.warning(
+                        "_expand_skill_documents: unable to decode metadata json, skipping row"
+                    )
+                    continue
+
+            if not isinstance(metadata, dict):
+                continue
+
+            skill_id = metadata.get("skillId")
+            full_content = metadata.get("fullContent")
+            if skill_id and full_content:
+                full_documents_by_skill_id[skill_id] = Document(
+                    page_content=full_content,
+                    metadata=metadata,
+                )
+
+        result_documents = [
+            document
+            for document in documents
+            if document.metadata.get("source") != DocumentSource.CAIRO_SKILLS
+        ]
+
+        found_skill_ids = set(full_documents_by_skill_id)
+        for skill_id in skill_ids:
+            if skill_id not in found_skill_ids:
+                original_chunks = [
+                    document
+                    for document in skill_chunks
+                    if document.metadata.get("skillId") == skill_id
+                ]
+                result_documents.extend(original_chunks)
+                logger.warning(
+                    "_expand_skill_documents: no full document found, keeping chunks",
+                    skill_id=skill_id,
+                )
+
+        for skill_id in skill_ids:
+            if skill_id in full_documents_by_skill_id:
+                result_documents.append(full_documents_by_skill_id[skill_id])
+
+        return result_documents
 
     @traceable(name="RagPipeline", run_type="chain")
     async def aforward(

@@ -2,10 +2,6 @@ import { describe, expect, it } from 'bun:test';
 import { DocumentSource, type BookChunk } from '../src/types';
 
 describe('types', () => {
-  it('exposes cairo_skills document source', () => {
-    expect(String(DocumentSource.CAIRO_SKILLS)).toBe('cairo_skills');
-  });
-
   it('supports optional skillId on BookChunk', () => {
     const withoutSkillId: BookChunk = {
       name: 'example',

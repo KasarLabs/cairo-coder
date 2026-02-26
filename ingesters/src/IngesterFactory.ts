@@ -10,7 +10,7 @@ import { ScarbDocsIngester } from './ingesters/ScarbDocsIngester';
 import { StarknetJSIngester } from './ingesters/StarknetJSIngester';
 import { StarknetBlogIngester } from './ingesters/StarknetBlogIngester';
 import { DojoDocsIngester } from './ingesters/DojoDocsIngester';
-import { CairoSkillsIngester } from './ingesters/CairoSkillsIngester';
+import { SkillsIngester } from './ingesters/SkillsIngester';
 import {
   getAvailableSourcesFromConfig,
   getSourceConfig,
@@ -34,7 +34,7 @@ const INGESTER_CLASSES: Record<string, new () => BaseIngester> = {
   StarknetJSIngester,
   StarknetBlogIngester,
   DojoDocsIngester,
-  CairoSkillsIngester,
+  SkillsIngester,
 };
 
 /**

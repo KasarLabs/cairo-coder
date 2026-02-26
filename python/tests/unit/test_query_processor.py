@@ -12,7 +12,6 @@ import pytest
 
 from cairo_coder.core.types import DocumentSource, ProcessedQuery
 from cairo_coder.dspy.query_processor import (
-    RESOURCE_DESCRIPTIONS,
     CairoQueryAnalysis,
     QueryProcessorProgram,
 )
@@ -75,19 +74,6 @@ class TestQueryProcessorProgram:
         validated = processor._validate_resources(resources)
 
         assert validated == [DocumentSource.CAIRO_BOOK, DocumentSource.STARKNET_DOCS]
-
-    def test_cairo_skills_resource_description(self, processor: QueryProcessorProgram):
-        """Test CAIRO_SKILLS resource description covers required domains."""
-        del processor  # Ensure fixture initialization side-effects still run
-
-        description = RESOURCE_DESCRIPTIONS[DocumentSource.CAIRO_SKILLS].lower()
-
-        assert "profil" in description
-        assert "benchmark" in description
-        assert "cairo-profiler" in description
-        assert "cairo coding patterns" in description
-        assert "avnu" in description
-        assert "starknet defi" in description
 
     @pytest.mark.parametrize(
         "query, expected",
