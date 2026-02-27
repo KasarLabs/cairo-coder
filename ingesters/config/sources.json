@@ -150,6 +150,21 @@
         "urlSuffix": "",
         "useUrlMapping": true
       }
+    },
+    "cairo_skills": {
+      "name": "Cairo Skills",
+      "description": "Curated Cairo ecosystem skills for all-or-nothing retrieval",
+      "ingesterClass": "SkillsIngester",
+      "config": {
+        "repoOwner": "",
+        "repoName": "",
+        "fileExtensions": [".md"],
+        "chunkSize": 4096,
+        "chunkOverlap": 512,
+        "baseUrl": "",
+        "urlSuffix": "",
+        "useUrlMapping": false
+      }
     }
   }
 }

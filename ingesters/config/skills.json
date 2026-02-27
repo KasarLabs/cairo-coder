@@ -1,0 +1,20 @@
+{
+  "skills": [
+    {
+      "id": "benchmarking-cairo",
+      "url": "https://github.com/feltroidprime/cairo-skills/tree/main/skills/benchmarking-cairo"
+    },
+    {
+      "id": "cairo-coding",
+      "url": "https://github.com/feltroidprime/cairo-skills/tree/main/skills/cairo-coding"
+    },
+    {
+      "id": "avnu",
+      "url": "https://github.com/avnu-labs/avnu-skill/tree/main/skills/avnu"
+    },
+    {
+      "id": "starknet-defi",
+      "url": "https://github.com/keep-starknet-strange/starknet-agentic/blob/3454ca28ac6bd34eda96dc2faa43d89a5126e93c/skills/starknet-defi/SKILL.md"
+    }
+  ]
+}

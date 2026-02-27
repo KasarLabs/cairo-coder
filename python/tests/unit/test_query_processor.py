@@ -11,7 +11,10 @@ import dspy
 import pytest
 
 from cairo_coder.core.types import DocumentSource, ProcessedQuery
-from cairo_coder.dspy.query_processor import CairoQueryAnalysis, QueryProcessorProgram
+from cairo_coder.dspy.query_processor import (
+    CairoQueryAnalysis,
+    QueryProcessorProgram,
+)
 
 
 class TestQueryProcessorProgram:

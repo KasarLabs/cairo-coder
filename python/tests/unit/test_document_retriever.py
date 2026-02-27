@@ -11,7 +11,10 @@ import pytest
 
 from cairo_coder.core.config import VectorStoreConfig
 from cairo_coder.core.types import Document, DocumentSource, ProcessedQuery
-from cairo_coder.dspy.document_retriever import DocumentRetrieverProgram
+from cairo_coder.dspy.document_retriever import (
+    DocumentRetrieverProgram,
+    SourceFilteredPgVectorRM,
+)
 
 
 class TestDocumentRetrieverProgram:
@@ -287,3 +290,80 @@ class TestDocumentRetrieverFactory:
         assert isinstance(retriever, DocumentRetrieverProgram)
         assert retriever.max_source_count == 5
         assert retriever.similarity_threshold == 0.4
+
+
+class TestSourceFilteredPgVectorRM:
+    """Unit tests for SourceFilteredPgVectorRM helper methods."""
+
+    @pytest.mark.asyncio
+    async def test_afetch_by_unique_ids_returns_empty_for_empty_input(self):
+        """It should return early with no DB calls when given empty input."""
+        retriever = SourceFilteredPgVectorRM.__new__(SourceFilteredPgVectorRM)
+        retriever.pool = Mock()
+        retriever._ensure_pool = AsyncMock()
+
+        result = await retriever.afetch_by_unique_ids([])
+
+        assert result == []
+        retriever._ensure_pool.assert_not_awaited()
+        retriever.pool.acquire.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_afetch_by_unique_ids_uses_parameterized_query_and_returns_rows(self):
+        """It should fetch by unique IDs and map rows to content+metadata dicts."""
+        retriever = SourceFilteredPgVectorRM.__new__(SourceFilteredPgVectorRM)
+        retriever.pg_table_name = "documents"
+        retriever._ensure_pool = AsyncMock()
+
+        conn = AsyncMock()
+        conn.fetch = AsyncMock(
+            return_value=[
+                {"content": "Full skill 1", "metadata": {"uniqueId": "skill-1-full"}},
+                {"content": "Full skill 2", "metadata": {"uniqueId": "skill-2-full"}},
+            ]
+        )
+
+        acquire_ctx = AsyncMock()
+        acquire_ctx.__aenter__.return_value = conn
+        acquire_ctx.__aexit__.return_value = False
+
+        retriever.pool = Mock()
+        retriever.pool.acquire.return_value = acquire_ctx
+
+        unique_ids = ["skill-1-full", "skill-2-full"]
+        result = await retriever.afetch_by_unique_ids(unique_ids)
+
+        retriever._ensure_pool.assert_awaited_once()
+        conn.fetch.assert_awaited_once()
+
+        query, query_unique_ids = conn.fetch.await_args.args
+        assert "SELECT content, metadata FROM documents" in query
+        assert "metadata->>'uniqueId' = ANY($1::text[])" in query
+        assert query_unique_ids == unique_ids
+        assert result == [
+            {"content": "Full skill 1", "metadata": {"uniqueId": "skill-1-full"}},
+            {"content": "Full skill 2", "metadata": {"uniqueId": "skill-2-full"}},
+        ]
+
+    @pytest.mark.asyncio
+    async def test_afetch_by_unique_ids_returns_empty_when_no_rows_match(self):
+        """It should return an empty list when the DB query returns no rows."""
+        retriever = SourceFilteredPgVectorRM.__new__(SourceFilteredPgVectorRM)
+        retriever.pg_table_name = "documents"
+        retriever._ensure_pool = AsyncMock()
+
+        conn = AsyncMock()
+        conn.fetch = AsyncMock(return_value=[])
+
+        acquire_ctx = AsyncMock()
+        acquire_ctx.__aenter__.return_value = conn
+        acquire_ctx.__aexit__.return_value = False
+
+        retriever.pool = Mock()
+        retriever.pool.acquire.return_value = acquire_ctx
+
+        result = await retriever.afetch_by_unique_ids(["non-existent-id"])
+
+        retriever._ensure_pool.assert_awaited_once()
+        conn.fetch.assert_awaited_once()
+        assert result == []
