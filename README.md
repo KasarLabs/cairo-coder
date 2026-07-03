@@ -10,11 +10,18 @@
 
 # Cairo Coder
 
+> [!IMPORTANT]
+> **Sunset notice — the hosted Cairo Coder service will shut down on July 31, 2026.**
+>
+> The public API at `api.cairo-coder.com` and the [cairo-coder.com](https://www.cairo-coder.com) website will be permanently discontinued at the end of July 2026. Please migrate any integrations that rely on the hosted API before this date.
+>
+> Cairo Coder remains fully open source. You can keep using it by self-hosting this repository — see the [Quick Start](#quick-start) below. Thank you to everyone who used and supported the hosted service.
+
 The most powerful open-source [CairoLang](https://www.cairo-lang.org/) generator.
 
-## Use Cairo Coder for Free
+## Hosted Service (deprecated)
 
-Cairo Coder is free to use up to a certain limit, hosted by Kasar Labs. You can use it either as an MCP that enhances your agentic tools, or as a standalone API. [Get an API Key now](https://www.cairo-coder.com/).
+The hosted service operated by Kasar Labs is being sunset and will shut down on **July 31, 2026**. New API keys are no longer recommended for production use. To continue using Cairo Coder after this date, self-host it using the instructions below.
 
 ## Overview
 
